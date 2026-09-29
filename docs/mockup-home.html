@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<title>HomeCube · 首页效果图 v3（米家式卡片语言 + 系统主题）</title>
+<title>HomeCube · 首页效果图 v5（顶栏无面入口 + 时间窗三档 + 称谓问候）</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
@@ -20,8 +20,8 @@
     --sky1: #dce8f4; --sky2: #eef1f5; --sky3: #e6ebf1;
     --glass: rgba(255,255,255,.70); --glass2: rgba(255,255,255,.52);
     --stroke: rgba(255,255,255,.62); --stroke2: rgba(20,24,30,.07);
-    --tx: #15181d; --tx2: #5f6570; --tx3: #8b9099; --tx4: #a6abb3;
-    --accent: #1f4fbf; --danger: #e0361b; --warn: #a45c07;
+    --tx: #15181d; --tx2: #4a4f57; --tx3: #666b73; --tx4: #666b73;
+    --accent: #1f4fbf; --danger: #c92f16; --warn: #995606;
     --band: rgba(255,255,255,.44);
     --t-fin: #2a5cc4; --t-fin-bg: rgba(42,92,196,.12);
     --t-pur: #6a44c4; --t-pur-bg: rgba(106,68,196,.12);
@@ -40,7 +40,7 @@
     --sky1: #16233a; --sky2: #0b1017; --sky3: #090c11;
     --glass: rgba(255,255,255,.085); --glass2: rgba(255,255,255,.05);
     --stroke: rgba(255,255,255,.13); --stroke2: rgba(255,255,255,.08);
-    --tx: #f2f5fa; --tx2: #a9b1bd; --tx3: #7f8894; --tx4: #666e7a;
+    --tx: #f2f5fa; --tx2: #b9c1cc; --tx3: #8b95a3; --tx4: #8b95a3;
     --accent: #93b4ff; --danger: #ff6a52; --warn: #e8a94e;
     --band: rgba(255,255,255,.07);
     --t-fin: #93b4ff; --t-fin-bg: rgba(147,180,255,.16);
@@ -57,19 +57,10 @@
 
   /* ============ 顶栏一行：文字 tab + 下划线（借米家） ============ */
   .topbar { height: 48px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 12px 0 16px; }
-  .fam { font-size: 15px; font-weight: 600; letter-spacing: .2px; flex: none; max-width: 96px;
+  .fam { font-size: 15px; font-weight: 600; letter-spacing: .2px; flex: 1; min-width: 0;
     display: flex; align-items: center; gap: 3px; }
   .fam b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .fam svg { width: 12px; height: 12px; color: var(--tx2); }
-  .tabs { display: flex; align-items: center; gap: 15px; overflow: hidden; flex: 1; height: 100%;
-    padding-left: 8px; -webkit-mask-image: linear-gradient(90deg,#000 0,#000 88%,transparent 100%);
-                          mask-image: linear-gradient(90deg,#000 0,#000 88%,transparent 100%); }
-  .tb { position: relative; display: flex; align-items: center; height: 100%; flex: none;
-    font-size: 14px; color: var(--tx3); white-space: nowrap; }
-  .tb.on { font-size: 16px; font-weight: 600; color: var(--tx); }
-  .tb.on::after { content: ""; position: absolute; left: 50%; bottom: 5px; transform: translateX(-50%);
-    width: 17px; height: 3px; border-radius: 2px; background: var(--tx); }
-  .tb svg { width: 14px; height: 14px; margin-right: 3px; }
   .act { width: 30px; height: 30px; flex: none; display: flex; align-items: center; justify-content: center;
     color: var(--tx); position: relative; }
   .act svg { width: 19px; height: 19px; }
@@ -150,7 +141,8 @@
   .row { display: flex; align-items: center; gap: 9px; padding: 9px 0; border-bottom: 1px solid var(--stroke2); }
   .row:last-child { border-bottom: 0; }
   .dot { width: 26px; height: 26px; border-radius: 9px; flex: none; display: flex; align-items: center;
-    justify-content: center; font-size: 10.5px; font-weight: 600; }
+    justify-content: center; }
+  .dot svg { width: 15px; height: 15px; }
   .row .tx { font-size: 12.5px; line-height: 1.4; }
   .row .tx i { font-style: normal; color: var(--tx3); }
   .row .tm { margin-left: auto; font-size: 11px; color: var(--tx4); flex: none; }
@@ -178,12 +170,10 @@
 </style>
 </head>
 <body>
-<h1>HomeCube · 首页效果图 v4 <span style="font-weight:400;color:#5f646c">· 米家式卡片语言 + 系统主题 + 顶栏消息红点</span></h1>
+<h1>HomeCube · 首页效果图 v5 <span style="font-weight:400;color:#5f646c">· 顶栏不放面切换器 + 时间窗三档 + 称谓问候 + 头像排溢出</span></h1>
 <div class="sub">
-  从米家借的五点：<b>①</b> 两列大卡，图标在卡内左上、名称与状态句压在下方；<b>②</b> 顶栏用文字 tab + 下划线标当前项，不用胶囊底；<b>③</b> 今日信息用跨整行大卡 + 横向时间轴小卡；<b>④</b> 卡片半透明压在主题背景上；<b>⑤</b> 底部栏当前项加重、消息位带未读。<br>
-  <b>本轮已定版进文档的三处</b>：<b>⑨</b> 宫格用固定尺寸卡片自然换行，<b>「C 区占首屏 ≥45%」阈值作废</b>（17.2、导航文档 §12.4）；<b>⑩</b> 主题三态（跟随系统/亮/暗），一份令牌两套值，分包不得写死色值（17.9、18.2#10）；<b>⑪</b> 顶栏右侧是<b>两个动作位</b>——搜索 + 消息入口，<b>顶栏只显红点、D 行显红点 + 计数</b>，两处同源于 <code>home/summary.unread</code>、进入消息页同时熄灭（17.1）。<br>
-  <b>没有借的</b>：不给未启用/未出生的面留任何占位格（17.8 定版）、首页不放「开通更多面」入口、底部仍不是原生 <code>tabBar</code>（门禁 4）。<br>
-  结构口径仍来自 <code>docs/p1-page-structure-navigation.md</code> §1.1 / §3.1 四区 / §3.2 变长宫格 / §3.3 两态 / §3.5 状态句。图标全 SVG，无 emoji。
+  v4 → v5 改的是<b>四处本轮拍板</b>：<b>⑫ 顶栏移除面切换器</b>——顶栏只剩家庭名与右侧两个动作位（搜索、消息红点），<b>首页 C 区服务矩阵是全 App 唯一能点进别的面地方</b>，代价是面内切面恒定 3 步（返回该面一级页 → D 行「首页」→ 点目标格），红利是面集合的消费者从六处减为五处；<b>⑬ 时间窗三档</b>——月 / 季 / 年 在 P1-M1 全部开放，首页也渲染这条时间窗（<code>period</code> 同时驱动财务格、流水、报表、预算），只有月度预算时季/年档显「未设该周期预算」而<b>不折算</b>；<b>⑭ 问候语带称谓</b>——「早上好，爸爸」的称谓读 <code>homeos.Member.relation</code>，缺值回落成员名，不读未出生的家人面；<b>⑮ 头像排溢出</b>——前 3 个头像 + 虚线圈「+N」，整排点击进成员页，<b>「+N」不是邀请入口</b>。<br>
+  顺带把<b>全部文字色按 18.2#10 重算了一遍</b>（含角标白字与强调色）：亮态角标底由 <code>#e0361b</code> 调深到 <code>#c92f16</code>（白字 5.4:1），强调橙黄 <code>#a45c07</code>→<code>#995606</code>（压在面色上 4.6:1）。亮态原第三/第四级灰（<code>#8b9099</code>/<code>#a6abb3</code>）对卡片底只有 3.0:1 与 2.3:1，承载 10~11px 的时效标注与相对时间不达标，已统一提到 <code>#666b73</code>（≥4.7:1）；暗态第四级同理提到 <code>#8b95a3</code>。<b>结论是灰阶层数由达标线决定</b>——第四级浅灰只能用于描边与占位图形，不得承载文字。<br>另外三处按定版口径校正：<b>动态条目左侧改用 registry 面图标</b>（与矩阵同一套，不另建「账/购/长」缩写方块）、<b>C 区标题行右侧只放不可点的纯文案</b>（v4 把「顺序恒为 registry 登记顺序」这类设计注释画进了产品）、<b>顶栏中段留空不是待填位</b>。<b>保留 v4 的米家借法</b>：两列大卡、图标在卡内左上、跨整行今日卡 + 横向时间轴、卡片半透明压在主题背景上、亮暗两态一份令牌。
 </div>
 
 <svg style="display:none">
@@ -211,7 +201,6 @@
       <div class="status"><span>17:12</span><span>5G · 100%</span></div>
       <div class="topbar">
         <div class="fam"><b>示例家庭</b><svg><use href="#i-chev"/></svg></div>
-        <div class="tabs"><div class="tb on">首页</div><div class="tb">财务</div></div>
         <div class="act"><svg><use href="#i-search"/></svg></div>
         <div class="act"><svg><use href="#i-bell"/></svg><span class="rd"></span></div>
       </div>
@@ -233,15 +222,15 @@
         </div>
         <div class="d">
           <div class="sec" style="margin:8px 0 0"><span class="h">家庭动态</span><span class="s">前 20 条</span></div>
-          <div class="row"><span class="dot t-fin">账</span><p class="tx">妈妈 记了一笔 <i>餐饮 ¥128</i></p><span class="tm">8 分钟前</span></div>
-          <div class="row"><span class="dot t-kin">长</span><p class="tx">安安 身高更新 <i>128.5 cm</i></p><span class="tm">今天 08:12</span></div>
+          <div class="row"><span class="dot t-fin"><svg><use href="#i-wallet"/></svg></span><p class="tx">妈妈 记了一笔 <i>餐饮 ¥128</i></p><span class="tm">8 分钟前</span></div>
+          <div class="row"><span class="dot t-gro"><svg><use href="#i-sprout"/></svg></span><p class="tx">安安 身高更新 <i>128.5 cm</i></p><span class="tm">今天 08:12</span></div>
           <div class="all">查看全部</div>
         </div>
       </div>
       <div class="dock"><div class="tab on"><svg><use href="#i-home"/></svg>首页</div><div class="tab"><svg><use href="#i-feed"/></svg>动态</div><div class="plus"><div class="p"><svg><use href="#i-plus"/></svg></div></div><div class="tab"><svg><use href="#i-bell"/></svg>消息<span class="cnt">4</span></div><div class="tab"><svg><use href="#i-me"/></svg>我的</div></div>
       <div class="homebar"></div>
     </div>
-    <p class="note">一格时右半留白是定版结果（未挂载的面不进 <code>faces[]</code>，不放占位格）。顶栏右侧按米家拆成两个动作位：搜索 + 消息红点，消息位仍跳 <code>homeos/notification/list</code>，面内不自建消息中心。</p>
+    <p class="note">一格时右半留白是定版结果（未挂载的面不进 <code>faces[]</code>，不放占位格）。<b>顶栏中段是空的，不是待填位</b>：⑫ 之后它只有家庭切换器与两个动作位，<b>面入口全 App 就首页这一处</b>。头像排 = 前 3 + 虚线圈「+N」（⑮），整排点击进 <code>homeos/family/index</code>，「+N」<b>不触发邀请</b>。消息位仍跳 <code>homeos/notification/list</code>，面内不自建消息中心。</p>
   </div>
 
   <!-- 亮 · 5 面 -->
@@ -251,7 +240,6 @@
       <div class="status"><span>17:12</span><span>5G · 100%</span></div>
       <div class="topbar">
         <div class="fam"><b>示例家庭</b><svg><use href="#i-chev"/></svg></div>
-        <div class="tabs"><div class="tb on">首页</div><div class="tb">财务</div><div class="tb">采购</div><div class="tb">饮食</div><div class="tb">家人</div><div class="tb">成长</div></div>
         <div class="act"><svg><use href="#i-search"/></svg></div>
         <div class="act"><svg><use href="#i-bell"/></svg><span class="rd"></span></div>
       </div>
@@ -267,7 +255,7 @@
             <div class="mini"><p class="tm">18:30</p><p class="lb">值日：妈妈</p></div>
           </div>
         </div>
-        <div class="sec"><span class="h">已启用 5 面</span><span class="s">顺序恒为 registry 登记顺序</span></div>
+        <div class="sec"><span class="h">已启用 5 面</span><span class="s">开通在「我的」</span></div>
         <div class="grid">
           <div class="cell"><div class="ic t-fin"><svg><use href="#i-wallet"/></svg></div><div class="nm">财务</div><div class="hl">预算剩余 <b>¥860</b></div><div class="bdg">2</div></div>
           <div class="cell"><div class="ic t-pur"><svg><use href="#i-cart"/></svg></div><div class="nm">采购</div><div class="hl">待买 <b>7 件</b> · 告急 2</div><div class="bdg">7</div></div>
@@ -277,14 +265,14 @@
         </div>
         <div class="d">
           <div class="sec" style="margin:8px 0 0"><span class="h">家庭动态</span><span class="s">前 20 条</span></div>
-          <div class="row"><span class="dot t-pur">购</span><p class="tx">清单「周末采购」买齐 <i>已生成 6 笔流水</i></p><span class="tm">12 分钟前</span></div>
+          <div class="row"><span class="dot t-pur"><svg><use href="#i-cart"/></svg></span><p class="tx">清单「周末采购」买齐 <i>已生成 6 笔流水</i></p><span class="tm">12 分钟前</span></div>
           <div class="all">查看全部</div>
         </div>
       </div>
       <div class="dock"><div class="tab on"><svg><use href="#i-home"/></svg>首页</div><div class="tab"><svg><use href="#i-feed"/></svg>动态</div><div class="plus"><div class="p"><svg><use href="#i-plus"/></svg></div></div><div class="tab"><svg><use href="#i-bell"/></svg>消息<span class="cnt">4</span></div><div class="tab"><svg><use href="#i-me"/></svg>我的</div></div>
       <div class="homebar"></div>
     </div>
-    <p class="note">文字 tab 到第五个面起横滑（右端渐隐是滑动提示），顶栏高度与结构不变——这是 17.1 一行制的代价与红利。此形态 P4-P5 才出现。</p>
+    <p class="note">五面时顶栏<b>不因此变长或变高</b>（⑫ 之前这里是五个面名横滑，现在整段消失）。矩阵 2 列换行、卡片尺寸固定不拉伸（⑨），顺序恒为 registry 登记序。此形态 P4-P5 才出现。</p>
   </div>
 
   <!-- 暗 · P1 一格 -->
@@ -294,7 +282,6 @@
       <div class="status"><span>17:12</span><span>5G · 100%</span></div>
       <div class="topbar">
         <div class="fam"><b>示例家庭</b><svg><use href="#i-chev"/></svg></div>
-        <div class="tabs"><div class="tb on">首页</div><div class="tb">财务</div></div>
         <div class="act"><svg><use href="#i-search"/></svg></div>
         <div class="act"><svg><use href="#i-bell"/></svg><span class="rd"></span></div>
       </div>
@@ -316,15 +303,15 @@
         </div>
         <div class="d">
           <div class="sec" style="margin:8px 0 0"><span class="h">家庭动态</span><span class="s">前 20 条</span></div>
-          <div class="row"><span class="dot t-fin">账</span><p class="tx">妈妈 记了一笔 <i>餐饮 ¥128</i></p><span class="tm">8 分钟前</span></div>
-          <div class="row"><span class="dot t-kin">长</span><p class="tx">安安 身高更新 <i>128.5 cm</i></p><span class="tm">今天 08:12</span></div>
+          <div class="row"><span class="dot t-fin"><svg><use href="#i-wallet"/></svg></span><p class="tx">妈妈 记了一笔 <i>餐饮 ¥128</i></p><span class="tm">8 分钟前</span></div>
+          <div class="row"><span class="dot t-gro"><svg><use href="#i-sprout"/></svg></span><p class="tx">安安 身高更新 <i>128.5 cm</i></p><span class="tm">今天 08:12</span></div>
           <div class="all">查看全部</div>
         </div>
       </div>
       <div class="dock"><div class="tab on"><svg><use href="#i-home"/></svg>首页</div><div class="tab"><svg><use href="#i-feed"/></svg>动态</div><div class="plus"><div class="p"><svg><use href="#i-plus"/></svg></div></div><div class="tab"><svg><use href="#i-bell"/></svg>消息<span class="cnt">4</span></div><div class="tab"><svg><use href="#i-me"/></svg>我的</div></div>
       <div class="homebar"></div>
     </div>
-    <p class="note">深色不是把颜色取反：背景仍是顶部偏蓝的渐变，卡片靠 <code>rgba(白,.085)</code> 分层，「＋」与当前 tab 的下划线仍是最亮的一处。</p>
+    <p class="note">深色不是把颜色取反：背景仍是顶部偏蓝的渐变，卡片靠 <code>rgba(白,.085)</code> 分层，「＋」与 D 行当前项仍是最亮的一处。亮/暗/跟随系统三态共用一份令牌（⑩），两态逐屏对比度按 18.2#10 判定。</p>
   </div>
 
   <!-- 暗 · 5 面 + unavailable -->
@@ -334,7 +321,6 @@
       <div class="status"><span>17:12</span><span>5G · 100%</span></div>
       <div class="topbar">
         <div class="fam"><b>示例家庭</b><svg><use href="#i-chev"/></svg></div>
-        <div class="tabs"><div class="tb on">首页</div><div class="tb">财务</div><div class="tb">采购</div><div class="tb">饮食</div><div class="tb">家人</div><div class="tb">成长</div></div>
         <div class="act"><svg><use href="#i-search"/></svg></div>
         <div class="act"><svg><use href="#i-bell"/></svg><span class="rd"></span></div>
       </div>
@@ -350,7 +336,7 @@
             <div class="mini"><p class="tm">18:30</p><p class="lb">值日：妈妈</p></div>
           </div>
         </div>
-        <div class="sec"><span class="h">已启用 5 面</span><span class="s">格数恒等于已启用面数</span></div>
+        <div class="sec"><span class="h">已启用 5 面</span><span class="s">开通在「我的」</span></div>
         <div class="grid">
           <div class="cell"><div class="ic t-fin"><svg><use href="#i-wallet"/></svg></div><div class="nm">财务</div><div class="hl">预算剩余 <b>¥860</b></div><div class="bdg">2</div></div>
           <div class="cell off"><div class="ic"><svg><use href="#i-cart"/></svg></div><div class="nm">采购</div><div class="hl">暂不可用 · 上次 待买 7 件</div><div class="asof">截至 08:10 <span class="retry">重试</span></div></div>
@@ -362,7 +348,7 @@
       <div class="dock"><div class="tab on"><svg><use href="#i-home"/></svg>首页</div><div class="tab"><svg><use href="#i-feed"/></svg>动态</div><div class="plus"><div class="p"><svg><use href="#i-plus"/></svg></div></div><div class="tab"><svg><use href="#i-bell"/></svg>消息<span class="cnt">4</span></div><div class="tab"><svg><use href="#i-me"/></svg>我的</div></div>
       <div class="homebar"></div>
     </div>
-    <p class="note"><code>unavailable</code> 格：去色 + 「截至 08:10」+ 重试，不白屏、不影响其他格与基座（18.2#9 的构造样本）。此格被压到首屏外，说明首页是可滚动页。</p>
+    <p class="note"><code>unavailable</code> 格：与可用格<b>同尺寸同结构</b>、仅去色 + 「截至 08:10」+ 重试，不白屏、不影响其他格与基座（18.2#9 的构造样本）。「重试」= 重发一次 <code>home/summary</code>（必要时同时重走按需加载），失败保持原态，<b>不是新接口、不进离线队列</b>。此格被压到首屏外，说明首页是可滚动页。</p>
   </div>
 </div>
 </body>
