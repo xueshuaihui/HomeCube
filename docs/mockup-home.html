@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>HomeCube · 首页效果图 v3（米家式卡片语言 + 系统主题）</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+    background: #dfe2e7; color: #17181a; padding: 36px 32px 56px; -webkit-font-smoothing: antialiased; }
+  h1 { font-size: 19px; font-weight: 600; }
+  .sub { font-size: 12.5px; color: #5f646c; margin: 6px 0 26px; line-height: 1.75; max-width: 1500px; }
+  .board { display: flex; flex-wrap: wrap; gap: 30px 24px; align-items: flex-start; }
+  .shot { width: 390px; }
+  .cap { font-size: 13px; font-weight: 600; margin: 0 0 8px 2px; }
+  .cap span { font-weight: 400; color: #5f646c; }
+  .note { font-size: 11.5px; color: #6b7078; line-height: 1.7; margin: 8px 2px 0; }
+
+  /* ============ 主题令牌 ============ */
+  .phone {
+    --sky1: #dce8f4; --sky2: #eef1f5; --sky3: #e6ebf1;
+    --glass: rgba(255,255,255,.70); --glass2: rgba(255,255,255,.52);
+    --stroke: rgba(255,255,255,.62); --stroke2: rgba(20,24,30,.07);
+    --tx: #15181d; --tx2: #5f6570; --tx3: #8b9099; --tx4: #a6abb3;
+    --accent: #1f4fbf; --danger: #e0361b; --warn: #a45c07;
+    --band: rgba(255,255,255,.44);
+    --t-fin: #2a5cc4; --t-fin-bg: rgba(42,92,196,.12);
+    --t-pur: #6a44c4; --t-pur-bg: rgba(106,68,196,.12);
+    --t-die: #1f7a45; --t-die-bg: rgba(31,122,69,.13);
+    --t-kin: #bf4f28; --t-kin-bg: rgba(191,79,40,.12);
+    --t-gro: #8a6206; --t-gro-bg: rgba(138,98,6,.14);
+    --t-tra: #1b6a8c; --t-tra-bg: rgba(27,106,140,.13);
+    width: 390px; height: 844px; border-radius: 34px; overflow: hidden; position: relative;
+    border: 1px solid rgba(0,0,0,.10); box-shadow: 0 14px 34px rgba(20,24,32,.16);
+    display: flex; flex-direction: column; color: var(--tx);
+    background:
+      radial-gradient(120% 60% at 18% 0%, var(--sky1) 0%, transparent 62%),
+      linear-gradient(180deg, var(--sky1) 0%, var(--sky2) 34%, var(--sky3) 100%);
+  }
+  .phone.dark {
+    --sky1: #16233a; --sky2: #0b1017; --sky3: #090c11;
+    --glass: rgba(255,255,255,.085); --glass2: rgba(255,255,255,.05);
+    --stroke: rgba(255,255,255,.13); --stroke2: rgba(255,255,255,.08);
+    --tx: #f2f5fa; --tx2: #a9b1bd; --tx3: #7f8894; --tx4: #666e7a;
+    --accent: #93b4ff; --danger: #ff6a52; --warn: #e8a94e;
+    --band: rgba(255,255,255,.07);
+    --t-fin: #93b4ff; --t-fin-bg: rgba(147,180,255,.16);
+    --t-pur: #b7a0f7; --t-pur-bg: rgba(183,160,247,.16);
+    --t-die: #6fcf97; --t-die-bg: rgba(111,207,151,.16);
+    --t-kin: #f0997a; --t-kin-bg: rgba(240,153,122,.16);
+    --t-gro: #e2b95f; --t-gro-bg: rgba(226,185,95,.16);
+    --t-tra: #7cc7e6; --t-tra-bg: rgba(124,199,230,.16);
+    border-color: rgba(255,255,255,.10); box-shadow: 0 14px 34px rgba(0,0,0,.55);
+  }
+
+  .status { height: 30px; flex: none; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px; font-size: 11px; font-weight: 600; color: var(--tx2); }
+
+  /* ============ 顶栏一行：文字 tab + 下划线（借米家） ============ */
+  .topbar { height: 48px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 12px 0 16px; }
+  .fam { font-size: 15px; font-weight: 600; letter-spacing: .2px; flex: none; max-width: 96px;
+    display: flex; align-items: center; gap: 3px; }
+  .fam b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fam svg { width: 12px; height: 12px; color: var(--tx2); }
+  .tabs { display: flex; align-items: center; gap: 15px; overflow: hidden; flex: 1; height: 100%;
+    padding-left: 8px; -webkit-mask-image: linear-gradient(90deg,#000 0,#000 88%,transparent 100%);
+                          mask-image: linear-gradient(90deg,#000 0,#000 88%,transparent 100%); }
+  .tb { position: relative; display: flex; align-items: center; height: 100%; flex: none;
+    font-size: 14px; color: var(--tx3); white-space: nowrap; }
+  .tb.on { font-size: 16px; font-weight: 600; color: var(--tx); }
+  .tb.on::after { content: ""; position: absolute; left: 50%; bottom: 5px; transform: translateX(-50%);
+    width: 17px; height: 3px; border-radius: 2px; background: var(--tx); }
+  .tb svg { width: 14px; height: 14px; margin-right: 3px; }
+  .act { width: 30px; height: 30px; flex: none; display: flex; align-items: center; justify-content: center;
+    color: var(--tx); position: relative; }
+  .act svg { width: 19px; height: 19px; }
+  .act .rd { position: absolute; top: 5px; right: 4px; width: 6px; height: 6px; border-radius: 3px;
+    background: var(--danger); border: 1.5px solid var(--sky2); }
+
+  /* ============ 时间窗条 ============ */
+  .period { height: 32px; flex: none; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px; font-size: 12.5px; }
+  .period .l { display: flex; align-items: center; gap: 5px; font-weight: 600; }
+  .period .l svg { width: 11px; height: 11px; color: var(--tx2); }
+  .period .r { display: flex; gap: 10px; font-size: 12px; color: var(--tx3); }
+  .period .r i { font-style: normal; }
+  .period .r i.on { color: var(--tx); font-weight: 600; }
+
+  .scroll { flex: 1; overflow: hidden; padding: 6px 14px 0; }
+
+  /* ============ A 家庭区 ============ */
+  .a { display: flex; align-items: center; justify-content: space-between; margin: 2px 0 10px; }
+  .a h2 { font-size: 15px; font-weight: 600; }
+  .a .greet { font-size: 11.5px; color: var(--tx3); margin-bottom: 2px; }
+  .avs { display: flex; }
+  .av { width: 26px; height: 26px; border-radius: 13px; background: var(--band); border: 1px solid var(--stroke);
+    margin-left: -6px; display: flex; align-items: center; justify-content: center;
+    font-size: 10.5px; font-weight: 600; color: var(--tx2); backdrop-filter: blur(8px); }
+  .av:first-child { margin-left: 0; }
+  .av.ghost { border-style: dashed; color: var(--tx4); }
+
+  /* ============ B 今日区：跨整行大卡 + 横向时间轴（借米家摄像头卡） ============ */
+  .hero { background: var(--glass); border: 1px solid var(--stroke); border-radius: 18px;
+    padding: 12px 13px 11px; margin-bottom: 12px; backdrop-filter: blur(16px); }
+  .hero .hd { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .hero .hd .tg { font-size: 11px; font-weight: 600; color: var(--warn); background: var(--band);
+    border-radius: 6px; padding: 2px 6px; }
+  .hero .hd .tt { font-size: 13.5px; font-weight: 600; }
+  .hero .hd .n { margin-left: auto; font-size: 11.5px; color: var(--tx3); }
+  .strip { display: flex; gap: 8px; }
+  .mini { flex: 1; background: var(--glass2); border: 1px solid var(--stroke2); border-radius: 12px;
+    padding: 8px 9px; }
+  .mini .tm { font-size: 12.5px; font-weight: 600; letter-spacing: -.2px; }
+  .mini .lb { font-size: 10.5px; color: var(--tx3); margin-top: 2px; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap; }
+  .mini.hot { background: var(--t-fin-bg); border-color: transparent; }
+  .mini.hot .lb { color: var(--tx2); }
+
+  /* ============ C 家庭服务矩阵：两列大卡（借米家设备卡） ============ */
+  .sec { display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 8px; }
+  .sec .h { font-size: 13px; font-weight: 600; }
+  .sec .s { font-size: 11px; color: var(--tx4); }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 11px; }
+  .cell { background: var(--glass); border: 1px solid var(--stroke); border-radius: 18px;
+    padding: 12px; min-height: 150px; position: relative; display: flex; flex-direction: column;
+    backdrop-filter: blur(16px); }
+  .cell .ic { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center;
+    justify-content: center; }
+  .cell .ic svg { width: 22px; height: 22px; }
+  .cell .nm { font-size: 15px; font-weight: 600; margin-top: auto; }
+  .cell .hl { font-size: 11.5px; color: var(--tx2); margin-top: 3px; line-height: 1.4; }
+  .cell .hl b { color: var(--tx); font-weight: 600; }
+  .bdg { position: absolute; top: 11px; right: 11px; min-width: 18px; height: 18px; padding: 0 5px;
+    border-radius: 9px; background: var(--danger); color: #fff; font-size: 10.5px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center; }
+  .dark .bdg { color: #1a0704; }
+  .t-fin { background: var(--t-fin-bg); color: var(--t-fin); }
+  .t-pur { background: var(--t-pur-bg); color: var(--t-pur); }
+  .t-die { background: var(--t-die-bg); color: var(--t-die); }
+  .t-kin { background: var(--t-kin-bg); color: var(--t-kin); }
+  .t-gro { background: var(--t-gro-bg); color: var(--t-gro); }
+  .cell.off .ic { background: var(--glass2); color: var(--tx4); }
+  .cell.off .hl { color: var(--tx3); }
+  .asof { font-size: 10.5px; color: var(--tx4); margin-top: 8px; display: flex; align-items: center; gap: 6px; }
+  .retry { font-size: 11px; font-weight: 600; color: var(--accent); border: 1px solid var(--stroke);
+    border-radius: 11px; padding: 1px 8px; }
+
+  /* ============ D 动态区 ============ */
+  .d { background: var(--glass); border: 1px solid var(--stroke); border-radius: 18px;
+    padding: 3px 13px 8px; margin-top: 12px; backdrop-filter: blur(16px); }
+  .row { display: flex; align-items: center; gap: 9px; padding: 9px 0; border-bottom: 1px solid var(--stroke2); }
+  .row:last-child { border-bottom: 0; }
+  .dot { width: 26px; height: 26px; border-radius: 9px; flex: none; display: flex; align-items: center;
+    justify-content: center; font-size: 10.5px; font-weight: 600; }
+  .row .tx { font-size: 12.5px; line-height: 1.4; }
+  .row .tx i { font-style: normal; color: var(--tx3); }
+  .row .tm { margin-left: auto; font-size: 11px; color: var(--tx4); flex: none; }
+  .all { text-align: center; font-size: 12px; color: var(--accent); padding: 8px 0 2px; }
+
+  /* ============ D 行五项 ============ */
+  .dock { height: 64px; flex: none; display: flex; align-items: flex-start; padding: 9px 8px 0;
+    background: var(--band); border-top: 1px solid var(--stroke2); backdrop-filter: blur(18px); }
+  .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    font-size: 10.5px; color: var(--tx3); position: relative; }
+  .tab svg { width: 20px; height: 20px; }
+  .tab.on { color: var(--tx); font-weight: 600; }
+  .tab .rd { position: absolute; top: -1px; left: 55%; width: 6px; height: 6px; border-radius: 3px;
+    background: var(--danger); }
+  .tab .cnt { position: absolute; top: -4px; left: 52%; min-width: 17px; height: 17px; padding: 0 4px;
+    box-sizing: border-box; border-radius: 9px; background: var(--danger); color: #fff;
+    font-size: 10px; line-height: 17px; text-align: center; font-weight: 600; }
+  .plus { flex: 1; display: flex; justify-content: center; }
+  .plus .p { width: 42px; height: 34px; border-radius: 17px; background: var(--tx); color: var(--sky2);
+    display: flex; align-items: center; justify-content: center; margin-top: -20px;
+    box-shadow: 0 6px 14px rgba(0,0,0,.18); }
+  .plus .p svg { width: 18px; height: 18px; }
+  .homebar { position: absolute; left: 50%; bottom: 7px; transform: translateX(-50%);
+    width: 122px; height: 4px; border-radius: 2px; background: var(--tx); opacity: .2; }
+</style>
+</head>
+<body>
+<h1>HomeCube · 首页效果图 v4 <span style="font-weight:400;color:#5f646c">· 米家式卡片语言 + 系统主题 + 顶栏消息红点</span></h1>
+<div class="sub">
+  从米家借的五点：<b>①</b> 两列大卡，图标在卡内左上、名称与状态句压在下方；<b>②</b> 顶栏用文字 tab + 下划线标当前项，不用胶囊底；<b>③</b> 今日信息用跨整行大卡 + 横向时间轴小卡；<b>④</b> 卡片半透明压在主题背景上；<b>⑤</b> 底部栏当前项加重、消息位带未读。<br>
+  <b>本轮已定版进文档的三处</b>：<b>⑨</b> 宫格用固定尺寸卡片自然换行，<b>「C 区占首屏 ≥45%」阈值作废</b>（17.2、导航文档 §12.4）；<b>⑩</b> 主题三态（跟随系统/亮/暗），一份令牌两套值，分包不得写死色值（17.9、18.2#10）；<b>⑪</b> 顶栏右侧是<b>两个动作位</b>——搜索 + 消息入口，<b>顶栏只显红点、D 行显红点 + 计数</b>，两处同源于 <code>home/summary.unread</code>、进入消息页同时熄灭（17.1）。<br>
+  <b>没有借的</b>：不给未启用/未出生的面留任何占位格（17.8 定版）、首页不放「开通更多面」入口、底部仍不是原生 <code>tabBar</code>（门禁 4）。<br>
+  结构口径仍来自 <code>docs/p1-page-structure-navigation.md</code> §1.1 / §3.1 四区 / §3.2 变长宫格 / §3.3 两态 / §3.5 状态句。图标全 SVG，无 emoji。
+</div>
+
+<svg style="display:none">
+  <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="3.5"/><path d="M3 10.5h18"/><circle cx="16.6" cy="15" r="1.4" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-cart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2.2l2 11h10.1l2-8H6.4"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></symbol>
+  <symbol id="i-plate" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4"/></symbol>
+  <symbol id="i-kin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8.5" cy="8" r="3.2"/><circle cx="16.5" cy="9.5" r="2.6"/><path d="M3 19c0-3 2.4-5 5.5-5s5.5 2 5.5 5"/><path d="M14.6 19c.2-2.3 1.6-3.8 3.6-3.8 2 0 3.3 1.4 3.4 3.8"/></symbol>
+  <symbol id="i-sprout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21v-7"/><path d="M12 14c0-3.5-2.4-5.8-6-5.8C6 11.7 8.2 14 12 14Z"/><path d="M12 12.5c0-3.6 2.4-6 6-6 0 3.6-2.4 6-6 6Z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 20 20"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 5.5v13M5.5 12h13"/></symbol>
+  <symbol id="i-feed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 10a5.5 5.5 0 0 1 11 0c0 4 1.5 5.5 1.5 5.5H5S6.5 14 6.5 10Z"/><path d="M10 18.5a2.2 2.2 0 0 0 4 0"/></symbol>
+  <symbol id="i-me" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.9 3.1-6.4 7-6.4s7 2.5 7 6.4"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="5.5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3.5v4M16 3.5v4"/></symbol>
+</svg>
+
+<div class="board">
+
+  <!-- 亮 · P1 一格 -->
+  <div class="shot">
+    <p class="cap">L1 · P1 实际形态 <span>· 只开通财务面 → 一格</span></p>
+    <div class="phone">
+      <div class="status"><span>17:12</span><span>5G · 100%</span></div>
+      <div class="topbar">
+        <div class="fam"><b>示例家庭</b><svg><use href="#i-chev"/></svg></div>
+        <div class="tabs"><div class="tb on">首页</div><div class="tb">财务</div></div>
+        <div class="act"><svg><use href="#i-search"/></svg></div>
+        <div class="act"><svg><use href="#i-bell"/></svg><span class="rd"></span></div>
+      </div>
+      <div class="period"><span class="l">2026 年 9 月<svg><use href="#i-chev"/></svg></span><span class="r"><i class="on">月</i><i>季</i><i>年</i></span></div>
+      <div class="scroll">
+        <div class="a"><div><p class="greet">早上好，爸爸</p><h2>示例家庭</h2></div>
+          <div class="avs"><div class="av">李</div><div class="av">王</div><div class="av">安</div><div class="av ghost">+2</div></div></div>
+        <div class="hero">
+          <div class="hd"><span class="tg">今日 3 项</span><span class="tt">到期与待办</span><span class="n">日历 ›</span></div>
+          <div class="strip">
+            <div class="mini hot"><p class="tm">09:00</p><p class="lb">房贷 ¥4,200</p></div>
+            <div class="mini"><p class="tm">14:00</p><p class="lb">水电气缴费</p></div>
+            <div class="mini"><p class="tm">18:30</p><p class="lb">陪练琴 待办</p></div>
+          </div>
+        </div>
+        <div class="sec"><span class="h">已启用 1 面</span><span class="s">开通在「我的」</span></div>
+        <div class="grid">
+          <div class="cell"><div class="ic t-fin"><svg><use href="#i-wallet"/></svg></div><div class="nm">财务</div><div class="hl">预算剩余 <b>¥860</b> · 待缴 2</div><div class="bdg">2</div></div>
+        </div>
+        <div class="d">
+          <div class="sec" style="margin:8px 0 0"><span class="h">家庭动态</span><span class="s">前 20 条</span></div>
+          <div class="row"><span class="dot t-fin">账</span><p class="tx">妈妈 记了一笔 <i>餐饮 ¥128</i></p><span class="tm">8 分钟前</span></div>
+          <div class="row"><span class="dot t-kin">长</span><p class="tx">安安 身高更新 <i>128.5 cm</i></p><span class="tm">今天 08:12</span></div>
+          <div class="all">查看全部</div>
+        </div>
+      </div>
+      <div class="dock"><div class="tab on"><svg><use href="#i-home"/></svg>首页</div><div class="tab"><svg><use href="#i-feed"/></svg>动态</div><div class="plus"><div class="p"><svg><use href="#i-plus"/></svg></div></div><div class="tab"><svg><use href="#i-bell"/></svg>消息<span class="cnt">4</span></div><div class="tab"><svg><use href="#i-me"/></svg>我的</div></div>
+      <div class="homebar"></div>
+    </div>
+    <p class="note">一格时右半留白是定版结果（未挂载的面不进 <code>faces[]</code>，不放占位格）。顶栏右侧按米家拆成两个动作位：搜索 + 消息红点，消息位仍跳 <code>homeos/notification/list</code>，面内不自建消息中心。</p>
+  </div>
+
+  <!-- 亮 · 5 面 -->
+  <div class="shot">
+    <p class="cap">L2 · 5~6 面 <span>· 两列换行</span></p>
+    <div class="phone">
+      <div class="status"><span>17:12</span><span>5G · 100%</span></div>
+      <div class="topbar">
+        <div class="fam"><b>示例家庭</b><svg><use href="#i-chev"/></svg></div>
+        <div class="tabs"><div class="tb on">首页</div><div class="tb">财务</div><div class="tb">采购</div><div class="tb">饮食</div><div class="tb">家人</div><div class="tb">成长</div></div>
+        <div class="act"><svg><use href="#i-search"/></svg></div>
+        <div class="act"><svg><use href="#i-bell"/></svg><span class="rd"></span></div>
+      </div>
+      <div class="period"><span class="l">2026 年 9 月<svg><use href="#i-chev"/></svg></span><span class="r"><i class="on">月</i><i>季</i><i>年</i></span></div>
+      <div class="scroll">
+        <div class="a"><div><p class="greet">早上好，爸爸</p><h2>示例家庭</h2></div>
+          <div class="avs"><div class="av">李</div><div class="av">王</div><div class="av">安</div><div class="av ghost">+2</div></div></div>
+        <div class="hero">
+          <div class="hd"><span class="tg">今日 4 项</span><span class="tt">到期与待办</span><span class="n">日历 ›</span></div>
+          <div class="strip">
+            <div class="mini hot"><p class="tm">09:00</p><p class="lb">房贷 ¥4,200</p></div>
+            <div class="mini"><p class="tm">11:20</p><p class="lb">牛奶补货</p></div>
+            <div class="mini"><p class="tm">18:30</p><p class="lb">值日：妈妈</p></div>
+          </div>
+        </div>
+        <div class="sec"><span class="h">已启用 5 面</span><span class="s">顺序恒为 registry 登记顺序</span></div>
+        <div class="grid">
+          <div class="cell"><div class="ic t-fin"><svg><use href="#i-wallet"/></svg></div><div class="nm">财务</div><div class="hl">预算剩余 <b>¥860</b></div><div class="bdg">2</div></div>
+          <div class="cell"><div class="ic t-pur"><svg><use href="#i-cart"/></svg></div><div class="nm">采购</div><div class="hl">待买 <b>7 件</b> · 告急 2</div><div class="bdg">7</div></div>
+          <div class="cell"><div class="ic t-die"><svg><use href="#i-plate"/></svg></div><div class="nm">饮食</div><div class="hl">今晚 番茄牛腩</div></div>
+          <div class="cell"><div class="ic t-kin"><svg><use href="#i-kin"/></svg></div><div class="nm">家人</div><div class="hl">作业 <b>3 项</b></div><div class="bdg">3</div></div>
+          <div class="cell"><div class="ic t-gro"><svg><use href="#i-sprout"/></svg></div><div class="nm">成长</div><div class="hl">最近：学会骑车</div></div>
+        </div>
+        <div class="d">
+          <div class="sec" style="margin:8px 0 0"><span class="h">家庭动态</span><span class="s">前 20 条</span></div>
+          <div class="row"><span class="dot t-pur">购</span><p class="tx">清单「周末采购」买齐 <i>已生成 6 笔流水</i></p><span class="tm">12 分钟前</span></div>
+          <div class="all">查看全部</div>
+        </div>
+      </div>
+      <div class="dock"><div class="tab on"><svg><use href="#i-home"/></svg>首页</div><div class="tab"><svg><use href="#i-feed"/></svg>动态</div><div class="plus"><div class="p"><svg><use href="#i-plus"/></svg></div></div><div class="tab"><svg><use href="#i-bell"/></svg>消息<span class="cnt">4</span></div><div class="tab"><svg><use href="#i-me"/></svg>我的</div></div>
+      <div class="homebar"></div>
+    </div>
+    <p class="note">文字 tab 到第五个面起横滑（右端渐隐是滑动提示），顶栏高度与结构不变——这是 17.1 一行制的代价与红利。此形态 P4-P5 才出现。</p>
+  </div>
+
+  <!-- 暗 · P1 一格 -->
+  <div class="shot">
+    <p class="cap">D1 · 深色 <span>· P1 实际形态</span></p>
+    <div class="phone dark">
+      <div class="status"><span>17:12</span><span>5G · 100%</span></div>
+      <div class="topbar">
+        <div class="fam"><b>示例家庭</b><svg><use href="#i-chev"/></svg></div>
+        <div class="tabs"><div class="tb on">首页</div><div class="tb">财务</div></div>
+        <div class="act"><svg><use href="#i-search"/></svg></div>
+        <div class="act"><svg><use href="#i-bell"/></svg><span class="rd"></span></div>
+      </div>
+      <div class="period"><span class="l">2026 年 9 月<svg><use href="#i-chev"/></svg></span><span class="r"><i class="on">月</i><i>季</i><i>年</i></span></div>
+      <div class="scroll">
+        <div class="a"><div><p class="greet">早上好，爸爸</p><h2>示例家庭</h2></div>
+          <div class="avs"><div class="av">李</div><div class="av">王</div><div class="av">安</div><div class="av ghost">+2</div></div></div>
+        <div class="hero">
+          <div class="hd"><span class="tg">今日 3 项</span><span class="tt">到期与待办</span><span class="n">日历 ›</span></div>
+          <div class="strip">
+            <div class="mini hot"><p class="tm">09:00</p><p class="lb">房贷 ¥4,200</p></div>
+            <div class="mini"><p class="tm">14:00</p><p class="lb">水电气缴费</p></div>
+            <div class="mini"><p class="tm">18:30</p><p class="lb">陪练琴 待办</p></div>
+          </div>
+        </div>
+        <div class="sec"><span class="h">已启用 1 面</span><span class="s">开通在「我的」</span></div>
+        <div class="grid">
+          <div class="cell"><div class="ic t-fin"><svg><use href="#i-wallet"/></svg></div><div class="nm">财务</div><div class="hl">预算剩余 <b>¥860</b> · 待缴 2</div><div class="bdg">2</div></div>
+        </div>
+        <div class="d">
+          <div class="sec" style="margin:8px 0 0"><span class="h">家庭动态</span><span class="s">前 20 条</span></div>
+          <div class="row"><span class="dot t-fin">账</span><p class="tx">妈妈 记了一笔 <i>餐饮 ¥128</i></p><span class="tm">8 分钟前</span></div>
+          <div class="row"><span class="dot t-kin">长</span><p class="tx">安安 身高更新 <i>128.5 cm</i></p><span class="tm">今天 08:12</span></div>
+          <div class="all">查看全部</div>
+        </div>
+      </div>
+      <div class="dock"><div class="tab on"><svg><use href="#i-home"/></svg>首页</div><div class="tab"><svg><use href="#i-feed"/></svg>动态</div><div class="plus"><div class="p"><svg><use href="#i-plus"/></svg></div></div><div class="tab"><svg><use href="#i-bell"/></svg>消息<span class="cnt">4</span></div><div class="tab"><svg><use href="#i-me"/></svg>我的</div></div>
+      <div class="homebar"></div>
+    </div>
+    <p class="note">深色不是把颜色取反：背景仍是顶部偏蓝的渐变，卡片靠 <code>rgba(白,.085)</code> 分层，「＋」与当前 tab 的下划线仍是最亮的一处。</p>
+  </div>
+
+  <!-- 暗 · 5 面 + unavailable -->
+  <div class="shot">
+    <p class="cap">D2 · 深色 <span>· 5~6 面，含一格 <code>unavailable</code></span></p>
+    <div class="phone dark">
+      <div class="status"><span>17:12</span><span>5G · 100%</span></div>
+      <div class="topbar">
+        <div class="fam"><b>示例家庭</b><svg><use href="#i-chev"/></svg></div>
+        <div class="tabs"><div class="tb on">首页</div><div class="tb">财务</div><div class="tb">采购</div><div class="tb">饮食</div><div class="tb">家人</div><div class="tb">成长</div></div>
+        <div class="act"><svg><use href="#i-search"/></svg></div>
+        <div class="act"><svg><use href="#i-bell"/></svg><span class="rd"></span></div>
+      </div>
+      <div class="period"><span class="l">2026 年 9 月<svg><use href="#i-chev"/></svg></span><span class="r"><i class="on">月</i><i>季</i><i>年</i></span></div>
+      <div class="scroll">
+        <div class="a"><div><p class="greet">早上好，爸爸</p><h2>示例家庭</h2></div>
+          <div class="avs"><div class="av">李</div><div class="av">王</div><div class="av">安</div><div class="av ghost">+2</div></div></div>
+        <div class="hero">
+          <div class="hd"><span class="tg">今日 4 项</span><span class="tt">到期与待办</span><span class="n">日历 ›</span></div>
+          <div class="strip">
+            <div class="mini hot"><p class="tm">09:00</p><p class="lb">房贷 ¥4,200</p></div>
+            <div class="mini"><p class="tm">11:20</p><p class="lb">牛奶补货</p></div>
+            <div class="mini"><p class="tm">18:30</p><p class="lb">值日：妈妈</p></div>
+          </div>
+        </div>
+        <div class="sec"><span class="h">已启用 5 面</span><span class="s">格数恒等于已启用面数</span></div>
+        <div class="grid">
+          <div class="cell"><div class="ic t-fin"><svg><use href="#i-wallet"/></svg></div><div class="nm">财务</div><div class="hl">预算剩余 <b>¥860</b></div><div class="bdg">2</div></div>
+          <div class="cell off"><div class="ic"><svg><use href="#i-cart"/></svg></div><div class="nm">采购</div><div class="hl">暂不可用 · 上次 待买 7 件</div><div class="asof">截至 08:10 <span class="retry">重试</span></div></div>
+          <div class="cell"><div class="ic t-die"><svg><use href="#i-plate"/></svg></div><div class="nm">饮食</div><div class="hl">今晚 番茄牛腩</div></div>
+          <div class="cell"><div class="ic t-kin"><svg><use href="#i-kin"/></svg></div><div class="nm">家人</div><div class="hl">作业 <b>3 项</b></div><div class="bdg">3</div></div>
+          <div class="cell"><div class="ic t-gro"><svg><use href="#i-sprout"/></svg></div><div class="nm">成长</div><div class="hl">最近：学会骑车</div></div>
+        </div>
+      </div>
+      <div class="dock"><div class="tab on"><svg><use href="#i-home"/></svg>首页</div><div class="tab"><svg><use href="#i-feed"/></svg>动态</div><div class="plus"><div class="p"><svg><use href="#i-plus"/></svg></div></div><div class="tab"><svg><use href="#i-bell"/></svg>消息<span class="cnt">4</span></div><div class="tab"><svg><use href="#i-me"/></svg>我的</div></div>
+      <div class="homebar"></div>
+    </div>
+    <p class="note"><code>unavailable</code> 格：去色 + 「截至 08:10」+ 重试，不白屏、不影响其他格与基座（18.2#9 的构造样本）。此格被压到首屏外，说明首页是可滚动页。</p>
+  </div>
+</div>
+</body>
+</html>
