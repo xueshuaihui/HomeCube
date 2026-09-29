@@ -34,7 +34,7 @@
           与一次性 migrate 初始化容器（重放两条序列后退出，不计入常驻数）
 ```
 
-- **不设网关服务**：Nginx 只做前缀转发、TLS 与静态资源，**不做鉴权**；鉴权在每个服务的中间件里由同一 SDK 完成（22.2 第 8 条）。未出生面的 `/api/{code}/` 前缀由 Nginx 直接返回「**即将上线**」（17.7 第 2 条），**不得**为凑齐路由而留空服务容器。「**未出生**」与「**本家庭未启用**」是两条不同路径、**两个不同用词**（17.8 定版二分）：前者无容器、由 Nginx 兜「即将上线」；后者前缀与服务都在，由该服务中间件按 `scope=module` 拒绝并落审计，客户端呈现「未启用」。
+- **不设网关服务**：Nginx 只做前缀转发、TLS 与静态资源，**不做鉴权**；鉴权在每个服务的中间件里由同一 SDK 完成（22.2 第 8 条）。未出生面的 `/api/{code}/` 前缀由 Nginx 直接返回「**即将上线**」（17.7 第 2 条），**不得**为凑齐路由而留空服务容器。「**未出生**」与「**本家庭未启用**」是两条不同路径、**两个不同用词**（17.8 定版二分）：前者无容器、由 Nginx 兜「即将上线」；后者前缀与服务都在，由该服务中间件按 `scope=module` 拒绝并落审计，客户端呈现「未启用」。**第三个词是「依赖未就绪」（定版 ㉙）**：它**不走上面任何一条路径**——本面已启用、`/api/{code}/` 正常受理、请求照发，只是**某个功能项依赖的他面还没出生**，降级发生在**业务响应内容与客户端呈现层**，不在 Nginx 也不在鉴权中间件。当期唯一实例是 P3 饮食面的忌口过滤（数据归属 `kin`，P4 才出生）。**实现上不得让这一态借用「未启用」的错误码或「暂不可用」的入口态**：三者混用会让 18.2#9③ 的「未挂载面零请求」断言去约束一个应当正常发请求的功能。
 - 发布顺序恒为 `svc-homeos` 先于业务面服务（SDK 与事件目录的提供方先行），Compose 里 finance 用 `condition: service_healthy` 前置。
 - 单机资源门槛按**当期容器数**实测（21.1 全栈资源行）：P1 是 **7 个**常驻（一次性 `migrate` 容器退出后不计入），七服务全出生时才是 **12 个**与 4C/8G 目标阈值。实测超过当期阈值走 11.9 第 ④ 项**同镜像多进程合并部署**降级，不改代码拓扑，且写进当期风险记录。
 
@@ -125,7 +125,7 @@ REVOKE ALL ON SCHEMA public FROM hc_finance;
 | 表 | 用途 | 为什么 per-service |
 |---|---|---|
 | `{code}_outbox` | 发布前落盘，投递器异步搬入 JetStream | 事务边界只在单库单 schema 内成立，跨服务无法同事务写总线 |
-| `{code}_event_dedupe` | 消费幂等键 `(event_type, business_id)` | 去重是消费方自己的状态，不能共享别人的表 |
+| `{code}_event_dedupe` | 消费幂等键 `(event_type, business_id)`（`business_id` 形态见 §3.3 与 PRD 10.4 取值约定） | 去重是消费方自己的状态，不能共享别人的表 |
 | `{code}_dead_letter` | 死信落库与人工重放 | 死信归属消费方（22.2 第 10 条） |
 | `{code}_change_log` | 同步增量游标源 | HomeOS 不代管他服务变更（14.5 第 5 项） |
 | `{code}_idempotency` | `client_request_id` 去重 | 同上 |
@@ -168,7 +168,7 @@ REVOKE ALL ON SCHEMA public FROM hc_finance;
 ### 3.4 消费：durable consumer + 幂等 + 退避 + 死信
 
 - consumer 名 `{consumerCode}-{event_type}`（如 `homeos-finance-transaction-created`），`filter_subject` 精确匹配，`ack_wait=30s`，`backoff=[1s,10s,60s]`，`max_deliver=4`（对应 10.4 的至多重试 3 次）。
-- 进 handler 第一件事：`INSERT ON CONFLICT DO NOTHING INTO {code}_event_dedupe`；已存在即 ack 返回——**重复投递不产生重复业务对象是表约束保证，不是代码纪律**。
+- 进 handler 第一件事：`INSERT ON CONFLICT DO NOTHING INTO {code}_event_dedupe`；已存在即 ack 返回——**重复投递不产生重复业务对象是表约束保证，不是代码纪律**。**去重键是 `(event_type, business_id)`，而 `business_id` 的形态由发布方按 PRD 10.4 的取值约定填写（同一业务对象可合法重复发生的事件必须带周期或版本后缀：`finance.budget.exceeded` = `{budget_id}:{period}`、`{code}.due.registered` = `{source_id}:{due_at}`、`homeos.reminder.fired` = `{reminder_id}:{fire_date}`、`homeos.family.module.updated` = `{family_id}:{code}:{version}`）**。**把 `business_id` 默认取成业务对象 id 会让同一对象的第二次合法事件被当重复丢弃**——预算逐月超支、提醒每次触发、面反复启停全部只生效一次，且症状是「什么都不发生」，排查成本极高；`contracts/events/{code}.yaml` 每条必须登记自己的 `business_id` 形态，门禁 5 据此校验。
 - 超限失败 → publish 到 `dl.{consumerCode}.{event_type}` + 写 `{code}_dead_letter`；管理台按服务查看并人工重放（重放即原样重新入队，走同一幂等键）。
 - `event_dedupe` 留存期取 **365 天 + 30 天余量**，每日清理更早的行。**留存的地板由「最宽的重新入队路径」决定，不是由热流 `max_age=90d` 决定**：死信重放（90 天内）、`HC_HOMEOS`/`HC_FINANCE` 的 90 天窗口、**`HC_ARCHIVE` 的 `max_age=365d` 回放**三条里最长的是最后一条，取 90 天或 7 天都会让「回放一年前的归档事件」重复建业务对象（18.2#5 判「重放新增对象 = 0」）。表按 `created_at` 月度分区，清理即 `DROP PARTITION`，不产生大事务 DELETE。
 
@@ -218,7 +218,7 @@ JWT access（15 分钟）+ refresh（30 天轮换、落库可撤销），claims�
 
 `packages/authz` 提供 `Verify(token)` 与 `Can(ctx, scope, resource, action, obj)`，当期两个服务在中间件的同一位置调用（22.2 第 5 条）：
 
-- 判定顺序严格按 15.2：显式拒绝 > 角色默认矩阵 > 家庭级覆盖 > 对象级 ACL。15.3 默认矩阵内置在 `authz/policy.go`，**八行全部内置**（七个系统、HomeOS 占两行，含未出生系统行；逐格断言 = 8 行 × 5 角色 = 40 格，15.3 表末注、导航文档 §12.6 的 ⑳）；家庭级覆盖从 `GET /api/homeos/permissions/snapshot?fid=` 取，带 `If-None-Match: pver`，绝大多数请求命中 304。**`scope = module` 这一层的判定输入是 `homeos_family_module` 的启用状态**（17.8）：快照接口把该集合并入权限快照一起下发，业务服务不另取第二处开关，`Family.feature_flags` 只承载非面开关。
+- 判定顺序严格按 15.2：显式拒绝 > 角色默认矩阵 > 家庭级覆盖 > 对象级 ACL。15.3 默认矩阵内置在 `authz/policy.go`，**九行全部内置**（七个系统、HomeOS 占三行，含未出生系统行；**逐格断言 = 9 行 × 5 角色 = 45 格**，定版 ㉓ 取代 ⑳ 的 40 格；新增的第九行是「HomeOS · 时间与协作对象」，15.3 表末注、导航文档 §12.7）；**P1 只实现「角色默认矩阵 + `scope=module` + 字段级可见性」三层，家庭级覆盖与对象级 ACL 随 P6 规则引擎出生（定版 ㉖）**——快照接口的响应结构里为这两层留字段（`family_overrides`、`object_acls`）但 **P1 恒返回空数组、不产生数据、不出写接口**，`GET /api/homeos/permissions/snapshot?fid=` 带 `If-None-Match: pver`，绝大多数请求命中 304。**`scope = module` 这一层的判定输入是 `homeos_family_module` 的启用状态**（17.8）：快照接口把该集合并入权限快照一起下发，业务服务不另取第二处开关，`Family.feature_flags` 只承载非面开关。
 - 进程内缓存 TTL 60 秒（按 `(account_id, fid)`），并订阅 `homeos.permission.updated` 与 `homeos.family.module.updated` 立即失效——这是「≤1 秒生效」的服务端实现，不靠 TTL 碰运气。
 - 字段级可见性（15.4）在 **DTO 序列化层**实现，不在 SQL 层过滤：L3 字段不进默认导出与埋点（20.2）只有在 DTO 层才拦得住。财务的「私密标记」行级可见性即在此层实现（15.3 财务隐私默认）。
 - **降级**：SDK 取不到快照（homeos 不可达）→ **拒绝写、允许读已缓存**，并落审计（14.5 第 3 项）。
@@ -228,7 +228,7 @@ JWT access（15 分钟）+ refresh（30 天轮换、落库可撤销），claims�
 `test/authz/matrix_test.go` 按 15.3 的 **7 系统 × 5 角色逐格生成断言**，表格与用例同源，避免文档改了测试没改。P1 的打法：
 
 - `homeos` 与 `finance` 两行：每格打**两个服务各一次**，证明判定不是只有 homeos 实现；
-- 其余五行：按「**服务未出生**」判定——请求经 Nginx 返回未启用、直连服务不存在、事件目录有条目但无生产者，三种形态都要断言（15.3 的「逐格断言与本表的关系」段）；
+- 其余七行（㉓ 加行后）：按「**服务未出生**」判定——请求经 Nginx 返回未启用、直连服务不存在、事件目录有条目但无生产者，三种形态都要断言（15.3 的「逐格断言与本表的关系」段）；
 - 再加一组「**已出生但本家庭未启用**」用例（当期即把某家庭的财务面停用）：`authz` 拒绝写、读接口按 module 拒绝、整条链路落审计，客户端导航与深链均无入口，未挂载面零请求零分包下载——这与「未出生」不是同一条路径（17.8、18.2#9）；
 - 15.3 新增的**「HomeOS · 面配置」行**同样逐格断言：管理员可写、其余三角色只读渲染（无账号角色除外）、非管理员调用 `PUT family/modules` 100 次全拒并落审计；
 - 越权 100 次全拒并落审计（样本量与判定见 18.3#8，18.2 附加门禁、14.5 第 3 项）。
@@ -349,7 +349,7 @@ demo 表不进 16.2 权威表；`migrations/finance/` 里单独一个 demo 目�
 - **`svc-homeos` 要为首页四区兑现的契约**：`home/summary` 的 `faces[]` 由 registry 面目录 × `homeos_family_module` × 服务出生状态**三源在服务端一处合成，只返回已挂载面**；`availability` 两值判定也在服务端完成（客户端不得自行推断某面是否出生或是否被本家庭启用），`unavailable` 时带最后一次投影值与 `as_of`（12.3）。`faces[]` 与 `GET /api/homeos/family/modules` 的启用集合**必须逐项一致**，契约测试对两者做集合比对（导航文档 §3）。新增一面在服务端只改 registry 一行与该家庭的配置行，**不改这两个接口的形状**——这是 17.8「面集合可配置」在契约层的对应物。
 - **`home/summary` 的其余三区同样是服务端契约**：`due_today` 只由**到期中心注册项**（16.4）供数，`count` 是全量、`items[]` 恒给前 3 条（截断在服务端做，客户端不数）；`dynamics.items[]` **在 SQL 层按当前 `member_id` 的角色与字段级权限裁剪后再取前 20**（15.4、导航文档 §7），客户端不做二次过滤；`family.members[]` 的 `relation` 权威源在 `homeos_member`（16.2、⑭），**`svc-kin` 不建关系表**，P4 关系图与 P5 对象选择器按 16.3 走只读接口消费同一字段。矩阵格的「重试」**不是一个服务端契约**：它是重发一次 `home/summary`（必要时同时重走按需加载），不新增接口、不进幂等键与离线队列（17.2）。
 - **设备锁 PIN（3.4.8、11.3 第 ⑪ 项）**：PIN 散列与比对全部在客户端本地，**服务端不存 PIN、不下发任何可离线校验的凭据**；服务端只提供「忘记口令 → 手机号验证码重验 → 允许重设 PIN」这条链路（复用 3.1 身份域的验证码接口，不新增认证因子）。L3 字段的解密仍按二十章在服务端按权限判定，PIN 只是本地解锁载体，**不构成新的授权层**。
-- **启动静默检查更新**：`GET /api/homeos/app/version` 只读、可被 Nginx 侧缓存；**这是 22.2 第 8 条下唯一的免鉴权读口，豁免范围以「响应不含任何家庭数据与 `family_id` 维度、内容 = 静态发布配置」为边界**，一旦要带家庭相关信息即必须回到中间件内鉴权（不是反代放行）；返回当前版本与更新说明，客户端静默比对、可跳过更新引导，**检查失败不阻断首屏**（3.4.8）。P1 期间该接口只需返回静态配置，出包与灰度通道属 P1 末附加门禁③。
+- **登录后静默检查更新（定版 ㉕ 收紧时机）**：`GET /api/homeos/app/version` 只读、可被 Nginx 侧缓存，**但它是常规鉴权接口——走 `svc-homeos` 自己的中间件、必须带 token，22.2 第 8 条之下不存在任何免鉴权读口**（本节此前写的「唯一免鉴权例外」是对架构红线的擅自豁免，已撤销）；响应不含任何家庭数据与 `family_id`，这一性质是它的**结果**而不是给它开后门**的理由**。触发时机 = **登录换到 token 之后**，未登录冷启动不检查；首屏仍只有 `home/summary` 一个业务请求，版本检查不占用它、也不新增第二个首屏请求。返回当前版本 + 更新说明 + `min_compat`，客户端静默比对、可跳过更新引导，**检查失败不阻断首屏**（3.4.8、12.4）。P1 期间该接口只需返回静态配置，出包与灰度通道属 P1 末附加门禁③。
 
 `admin/`（Vite + React）P1 范围五项：家庭与成员查询、权限矩阵断言结果、**按服务**的死信查看/重放、审计与最小指标看板、对账报表入口。不做业务功能，不做用户侧配置。
 
@@ -371,7 +371,7 @@ make rollback    # 只切回上一版本镜像 tag，校验备份完整性并打
 
 - RPO ≤15 分钟靠 **WAL 连续归档**（`archive_command` 每分钟搬运一段），全量每日 1 次 + 每月留存 12 份（21.3）。
 - **不允许只恢复单个 schema**：跨面逻辑引用会立刻失配（21.3 恢复顺序行）。
-- M1 必须完成**首次真实恢复演练**（含全栈 Compose 重建）并记录耗时——14.5 第 9 项的门禁。
+- M1 必须完成**首次真实恢复演练**（含全栈 Compose 重建）并记录耗时——14.5 第 9 项的门禁；**此后每季度一次**（12.3 数据备份行），演练记录经 `GET /api/homeos/data/backup-status` 可查、经 `POST /api/homeos/data/restore` 触发（PRD 3.7 的管理台口）。**只做首次不做季度 = 12.3 的「每季度 1 次」是一句没有载体的话**。
 - 回滚刻意保持薄：数据库向后兼容由迁移纪律保证，不执行 down 迁移；**部署包上传与目标机执行由人手动完成**，脚本不做远程编排。
 - 健康检查：每服务 `/healthz` 报告「本 schema 可连 + JetStream 已连」，`/metrics` 带常量标签 `code`（22.2 第 10 条）；当期两个服务都要可拉，每新增一个服务即在期末复验这一条（14.5 第 9 项）。
 
@@ -380,8 +380,8 @@ make rollback    # 只切回上一版本镜像 tag，校验备份完整性并打
 | # | 门禁 | 实现 | 失败即 |
 |---|---|---|---|
 | 1 | 迁移 | 逐服务在空库重放自己那条序列 + 版本表与代码声明一致 + 迁移文件只触碰本 schema | 阻断合并 |
-| 2 | 数据归属 | 新增表名与 `TableName()` 比对 16.2 白名单；表前缀与所在服务一致；**未出生域的表/迁移目录/分包出现即失败** | 阻断合并 |
-| 3 | 验收指标 | 18.2 与 18.3 各条自动化用例（并发写 200、重放 1000×3、越权 100 次、搜索样本 P95、收敛时间、AA 两项等式、**面开通/停用生效时限与「未挂载面零请求零下载」抓包（18.2#9）**）产出报告 | 阻断灰度/发布 |
+| 2 | 数据归属 | **业务表**名与 `TableName()` 比对 16.2 白名单；表前缀与所在服务一致；**未出生域的表/迁移目录/分包出现即失败**；**底座运行表族按命名后缀白名单放行、不进 16.2**（定版 ㉔）：`_outbox` / `_event_dedupe` / `_dead_letter` / `_change_log` / `_idempotency` / `_proj_*` / `homeos_search_index` / `homeos_audit_log` / `homeos_due_registration` / `homeos_event_archive`，命中后缀只校验「前缀 = 所在服务」；`finance_demo_item` 走单独收紧白名单（§8.3） | 阻断合并 |
+| 3 | 验收指标 | 18.2 与 18.3 各条自动化用例（并发写 200、重放 1000×3、越权 100 次、搜索样本 P95、收敛时间、AA 两项等式、**面开通/停用生效时限与「未挂载面零请求零下载」抓包（18.2#9）**、**非功能基线五项 + 40 条主链路冒烟 ×3（18.2#11）**、**角色可见集与称谓回落链（18.2#12）**、**按服务分别计量的可用性与故障注入（18.2#13，定版 ㉗ 新增）**、**设备锁与 L3 解锁链路抽检（18.2#14，㉗ 新增）**）产出报告 | 阻断灰度/发布 |
 | 4 | 分域与鉴权 | 路由前缀 AST、handler 内裸 SQL 与自写判定分支禁用（必须经 authz SDK）、业务表 `version`+软删、跨 schema SQL / 跨服务 import / 请求链路同步写调用禁用、`rclient` 三要素齐备、消费者幂等键存在、`pages.json` 分包命名与三查（无 `tabBar`／**分包集合 = 已出生域 − `homeos`**／路由全三段式）、**七条前端同源检查**：四条结构同源（分包内无切换家庭调用、无硬编码面清单、搜索只调 `/api/homeos/search`、无自造时间窗状态，17.8、4.5.3）+ 三条 UI 同源（分包内无硬编码色值、无自建未读计数或消息入口、**无第二处面入口或自建面切换器**，17.9、17.1、⑫）、`check-no-emoji` | 阻断合并 |
 | 5 | 契约 | `contracts/openapi/*` 与 `contracts/events/*` 向后兼容 diff；发布未登记事件、引用不存在的服务、破坏性变更未升 version | 阻断合并 |
 
@@ -391,7 +391,7 @@ make rollback    # 只切回上一版本镜像 tag，校验备份完整性并打
 
 - 指标最小集（全部带 `family_id` 与 `code`，当期各服务分别出图）：接口 P95/P99、错误率、`/healthz` 存活、outbox 积压、死信数、事件端到端收敛时间、跨服务调用耗时与降级次数、同步冲突数、投递回执率、依赖调用量（未定版项为 0，OCR/ASR 有真实调用量）。告警阈值写进 `deploy/alerts.yml`（21.5）。
 - 审计事件按 21.5 的**九类**落 `homeos_audit_log`（P1 可测八类，「规则启停」随 P6 规则引擎出生），各服务在**自己**的流上发 `{code}.audit.recorded`（P1 = `homeos.audit.recorded` + `finance.audit.recorded`，与业务写同一 outbox 事务落盘），`svc-homeos` 消费后统一落 `homeos_audit_log`——因此 homeos 不可达时审计不丢，只延后收敛；连续 5 次越权通知管理员。
-- **合规素材底稿四项**：L2/L3 字段清单（由 20.1 表生成）、埋点字典（19.5）、保留期表（21.4）、第三方 SDK 与数据出境清单（P1 含 OCR/ASR 两家，其余为空表 + `adapter/` 接口清单）。P1 末附加门禁①只判文本定版，不判素材收集（11.9）。
+- **合规素材底稿四项**：L2/L3 字段清单（**由 `contracts/data-levels.yaml` 生成，该文件是 20.1 的机器可读形态、由 20.1 派生而非手写，定版 ㉔**；18.2#7 的逐字段抽检与门禁共用这一份源）、埋点字典（19.5）、保留期表（21.4）、第三方 SDK 与数据出境清单（P1 含 OCR/ASR 两家，其余为空表 + `adapter/` 接口清单）。P1 末附加门禁①只判文本定版，不判素材收集（11.9）。
 
 ---
 
@@ -405,7 +405,7 @@ make rollback    # 只切回上一版本镜像 tag，校验备份完整性并打
 | S1（2 周） | 骨架可跑 | registry 七域登记 + 实建 2 服务 + Nginx 前缀反代（未出生 5 前缀返回「即将上线」，用词按 17.8 二分）+ 2 schema/2 账号 + 两条迁移序列与工具链 + Compose + 门禁 1/2/4 接驳 + Jarvis Workbench 建 HomeCube 项目与任务模板 | `make up` 干净机器 ≤30 分钟；`svc-homeos` 单独重启不影响 `svc-finance`；门禁 1/2/4 全绿 |
 | S2（2 周） | 总线与契约 | 两条源流 + 归档流 + 死信流 + outbox 投递器 + durable consumer 框架 + 去重表 + 七域事件目录（含 10.3 十一条与启用期字段）+ 契约 diff + 门禁 5 接驳 | 重放 1000 事件 ×3 不产生重复对象；服务停 5 分钟事件不丢；未登记事件 CI 拒绝 |
 | S3（2 周） | 身份 | 账号/验证码（测试码 + 站内信桩）、家庭、成员（**`homeos_member.relation` 家庭内称谓：建档即可写、`PUT /members` 可改，权威归属 `homeos`，⑭**）、邀请码/链接/二维码三态、多家庭列表与切换（重签发 token）、JWKS 分发 + **`homeos_family_module` 表与 `GET/PUT /api/homeos/family/modules`（乐观锁 + 审计 + `pver+1` + `homeos.family.module.updated`）** + **强制选面的服务端约束**：`POST /families` 后未落任何 `FamilyModule` 行即视为半成品家庭，鉴权侧按 0 可见面处理、写接口一律拒绝；仅剩最后一面时停用被拒（17.8 的**服务端**兜底，前端引导态只是它的表现） | 3.4.1 场景走查；切换后上下文重建 ≤1 秒；**面开通/停用 P95 ≤2 秒生效（18.2#9①）**；非管理员调用写接口 100% 被拒并落审计；**门禁 2 断言 `kin` schema 内无 `kin_relation` 一类的第二称谓源（⑭）** |
-| S4（2 周） | 鉴权 SDK | `Permission` 表 + `authz/policy.go` 内置八行矩阵（七系统、HomeOS 占两行） + 两服务中间件接入 + `pver` 与 `permission.updated` 失效 + 字段级可见性落在 DTO 层 + 降级策略 + 逐格断言用例 | **附加门禁②通过**；权限变更 ≤1 秒跨服务生效；越权 100 次全拒并落审计 |
+| S4（2 周） | 鉴权 SDK | `Permission` 表 + `authz/policy.go` 内置**九行**矩阵（七系统、HomeOS 占三行，㉓） + 两服务中间件接入 + **家庭级覆盖与对象级 ACL 两层在 P1 只留空结构、不出写口（㉖）** + `pver` 与 `permission.updated` 失效 + 字段级可见性落在 DTO 层 + 降级策略 + 逐格断言用例 | **附加门禁②通过**；权限变更 ≤1 秒跨服务生效；越权 100 次全拒并落审计 |
 | S5（2 周） | 到期与通知 | 三对象 + `homeos_due_registration` 与回调表 + 16.4 三事件（`{code}.due.registered` / `{code}.due.revoked` / `homeos.todo.completed`）+ 30s 扫描触发 + 站内信（**含 `type` 三枚举 `budget_alert`/`system`/`reminder` 与未读计数接口**）+ push adapter/stub + `dedupe_key` 与回执埋点 + **`home/summary` 的 `faces[]` 合成（registry 面目录 × `homeos_family_module` × 服务出生状态 ×**当前成员角色的 `scope=module` 判定**，四层同一处算完，只返回该成员可见的那一份；`family/modules` 的 `visible` 字段用同一个判定，**客户端不得二次裁剪**，⑯）** + **L0 家庭对象两张表：`homeos_vote`（只有对象与接口，创建入口随饮食 P3/家人 P4）与 `homeos_board_message`（3.4.3 留言板，评论写入经事件、不由业务面直写）** + **`home/summary` 的 `unread`（服务端按 `member_id` 聚合 `read_at IS NULL`，与 `notifications` 同一口径，17.1）** + **`home/summary` 的 A/B/D 三区供数：`family.members[]`（含 `relation` 与 `member_count`，⑭⑮）、`due_today`（`count` 全量、`items[]` 服务端截前 3）、`dynamics.items[]`（`code`/`actor_name`/`action`/`summary`/`at`，**按当前成员角色与字段级权限在 SQL 层裁剪后取前 20**）** | 财务四类对象可注册可触发；**注册收敛**（财务写成功 → `homeos` 侧该注册项可扫描）P95 ≤5s、P99 ≤60s，样本 ≥100 条注册；**回写收敛**（到期触发 → 源对象状态回写可见）P95 ≤5s，样本取 18.2#2 的 500 条定时提醒子集（18.1 最终一致性口径）；18.2#2 ≥99.9%（站内信口径）；回写失败进死信且计入对账；**`faces[]` 与 `family/modules` 逐项一致、格数随家庭配置变化、`availability` 两值各有样例**；**`unread` 在 `home/summary` 与 `notifications` 两个出口逐值一致，「全部已读」后两处同时归零**（17.1）；**`due_today.items[]` 恒 ≤3 而 `count` 为全量、`dynamics.items[]` 零越权条目**（儿童身份的账号抽检其父辈私密流水不出现在条目与摘要里） |
 | S6（2 周） | 同步与检索 | 两份 `change_log`/幂等表 + delta 接口 + `version` 乐观锁与 409 双版本 + 客户端 per-`(family_id, service)` 队列与重放 + `homeos_search_index` + bigram + 投影写入器与重建脚本 + 每日对账 + **`GET /api/homeos/app/bundles` 分包清单契约与客户端校验回退（17.8）** | 18.2#3、#4（当期口径）通过；游标互不干扰；对账报表可出且零孤儿引用；**18.2#9 三项达标（生效时限、未挂载面零请求零下载、停用前后统计一致）**；**底座段收口 = 14.5 第 1-7 项 + 附加门禁②③**（第 8 项前端 shell 与第 9 项数据安全在 S14 收口） |
 | S7-S8（4 周） | 财务主干 | `finance_account`/`category`/`transaction`/`ledger` 四表 + 记账写路径（幂等、乐观锁、软删）+ 流水筛选与游标分页 + 单条查询 + 回收站 + **`is_active`/`sort_order`/`is_archived`/`archived_at` 四列与停用·排序·归档·恢复四个接口** | 18.3#1 记账 ≤3 步 ≤5s；18.3#8 跨家庭越权 100 次全拒；**18.3#10 五项断言全过（含余额非 0 归档被拒）** |
