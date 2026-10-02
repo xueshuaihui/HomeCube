@@ -11,7 +11,7 @@ FROM nginx:1.27-alpine
 RUN rm /etc/nginx/conf.d/default.conf
 
 # Copy custom nginx config for static serving
-COPY deploy/nginx-admin.conf /etc/nginx/conf.d/default.conf
+COPY nginx-admin.conf /etc/nginx/conf.d/default.conf
 
 # Copy built admin assets to nginx document root
 # Build first with: cd admin && npm run build (adjust as needed)

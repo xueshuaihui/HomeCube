@@ -185,7 +185,7 @@ services:
   # 使用 golang-migrate CLI 镜像，挂载 migrations 目录，执行完后退出。
   # 依赖 postgres16 健康，在 svc-homeos/svc-finance 之前运行。
   migrate:
-    image: migrate/migrate:latest
+    image: migrate/migrate:v4.20.1
     command: >
       sh -c "
         echo 'Running migrations for homeos...' &&

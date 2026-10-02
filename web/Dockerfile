@@ -11,7 +11,7 @@ FROM nginx:1.27-alpine
 RUN rm /etc/nginx/conf.d/default.conf
 
 # Copy custom nginx config for static serving
-COPY deploy/nginx-web.conf /etc/nginx/conf.d/default.conf
+COPY nginx-web.conf /etc/nginx/conf.d/default.conf
 
 # Copy built H5 assets to nginx document root
 # Build first with: cd web && npm run build:h5

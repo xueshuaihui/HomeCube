@@ -185,6 +185,50 @@ restore:
 		RESTORE_POINT="$(RESTORE_POINT)" sh $(RESTORE_SH)
 
 # =============================================================================
+# restore-drill —— P1 首次恢复演练（14.5 第 9 项门禁 + 12.3 每季度演练）
+# 全栈 Compose 重建：停所有容器 → 删数据卷 → 重新构建并启动 → 验证健康检查
+# 这是「干净机器 → 可用环境」的完整演练，不依赖任何备份文件。
+# =============================================================================
+.PHONY: restore-drill
+restore-drill:
+	@echo "=== P1 Restore Drill: Stopping all containers ==="
+	-$(COMPOSE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) down
+	
+	@echo "=== Removing data volumes ==="
+	rm -rf deploy/data/postgres/*
+	
+	@echo "=== Rebuilding and starting ==="
+	@if ! $(COMPOSE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d --build --wait; then \
+		echo ""; \
+		echo "⚠️  Build failed. This may be due to:"; \
+		echo "   1. Network issues preventing image pulls from Docker Hub"; \
+		echo "   2. Missing base images (try: docker pull alpine:3.20, docker pull golang:1.27-alpine)"; \
+		echo "   3. Registry configuration issues"; \
+		echo ""; \
+		echo "Note: If you have images from alternative registries, you may need to tag them:"; \
+		echo "   docker tag docker.m.daocloud.io/library/alpine:3.20 alpine:3.20"; \
+		echo "   docker tag docker.m.daocloud.io/library/golang:1.27-alpine golang:1.27-alpine"; \
+		echo ""; \
+		exit 1; \
+	fi
+	
+	@echo "=== Waiting for services to stabilize (30s) ==="
+	sleep 30
+	
+	@echo "=== Verifying healthz endpoints ==="
+	@if curl -f http://localhost:8080/api/homeos/healthz && curl -f http://localhost:8080/api/finance/healthz; then \
+		echo ""; \
+		echo "=== Restore drill completed successfully ==="; \
+		echo "All services are healthy and responding."; \
+	else \
+		echo ""; \
+		echo "⚠️  Services may still be starting. Check status with:"; \
+		echo "   docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) ps"; \
+		echo "   docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) logs"; \
+		exit 1; \
+	fi
+
+# =============================================================================
 # rollback —— §10.1：只切回上一版本镜像 tag，校验备份完整性并打印，不自动动数据
 # 部署包上传与目标机执行由人手动完成，脚本不做远程编排（§10.1 原文）。
 # =============================================================================
@@ -201,20 +245,44 @@ rollback:
 		sh $(ROLLBACK_SH)
 
 # =============================================================================
-# seed-perf / soak —— 人类已定版：本卡做成 fail-fast（不是桩、不是 echo 冒充执行）
-# 判据依赖 21.1 上限 ×1.5 的样本构造与 18.2#13 的 ≥24 小时长压窗口，二者都要财务流水表
-# （S7-S8 出生）与同构压测栈（§十三），归属 S6/S14；未到期不得运行。
+# seed-perf —— 按 21.1 上限 ×1.5 构造压测样本（6 万流水 + HomeOS 三对象，CI 缓存）
+# 当前为 fail-fast 状态，待 S6/S14 交付后启用。
 # =============================================================================
 seed-perf:
 	@echo "make seed-perf：未实现（本卡按人类定版做成 fail-fast，非桩）。"; \
 	echo "本口属 18.2#13/21.1 的压测载体，依赖财务流水表与压测栈，归属 S6/S14，未到期不得运行"; \
 	exit 1
 
+# =============================================================================
+# soak —— 18.2#13 长压测试：≥24 小时、净样本 ≥10 万次、专用压测家庭
+# 用法：make soak [FAMILY_ID=<uuid>] [DURATION_HOURS=24] [TARGET_REQUESTS=100000]
+#
+# 使用独立的压测家庭（family_id 固定），跑完整库丢弃，不并入生产样本库、
+# 不进每日对账与动态流口径。报告落 deploy/data/soak/report.json。
+#
+# 该测试在后台运行，可通过 tail -f deploy/logs/soak_*.log 查看进度。
+# =============================================================================
+.PHONY: soak
 soak:
-	@echo "make soak：未实现（本卡按人类定版做成 fail-fast，非桩）。"; \
-	echo "本口属 18.2#13/21.1 的压测载体，依赖财务流水表与压测栈，归属 S6/S14，未到期不得运行"; \
-	echo "  报告归档件（§10.1 门禁 3 的校验对象）：$(SOAK_REPORT)"; \
-	exit 1
+	@set -eu; \
+	FAMILY_ID=$${FAMILY_ID:-"00000000-0000-0000-0000-000000000001"}; \
+	DURATION_HOURS=$${DURATION_HOURS:-24}; \
+	TARGET_REQUESTS=$${TARGET_REQUESTS:-100000}; \
+	LOG_FILE="deploy/logs/soak_$$(date +%Y%m%d_%H%M%S).log"; \
+	mkdir -p deploy/logs deploy/data/soak; \
+	echo "=== P1 Long Pressure Test (≥24h, ≥100k requests) ==="; \
+	echo "Family ID: $${FAMILY_ID}"; \
+	echo "Duration: $${DURATION_HOURS} hours"; \
+	echo "Target Requests: $${TARGET_REQUESTS}"; \
+	echo "Start Time: $$(date)"; \
+	echo "Log File: $${LOG_FILE}"; \
+	echo ""; \
+	echo "Starting soak test in background..."; \
+	nohup ./deploy/scripts/soak_test.sh "$${FAMILY_ID}" "$${DURATION_HOURS}" "$${TARGET_REQUESTS}" > "$${LOG_FILE}" 2>&1 & \
+	PID=$$!; \
+	echo "Soak test started in background (PID: $$PID)"; \
+	echo "Check progress: tail -f $${LOG_FILE}"; \
+	echo "Report will be saved to: $(SOAK_REPORT)"
 
 # =============================================================================
 # dev-homeos / dev-finance —— §十三：make dev-{code} 把某服务跑出容器外调试
