@@ -58,7 +58,7 @@ SOAK_REPORT  ?= $(DEPLOY_DIR)/data/soak/report.json
 RESTORE_POINT ?=
 ROLLBACK_TAG  ?=
 
-.PHONY: up backup restore rollback seed-perf soak dev-homeos dev-finance
+.PHONY: up backup restore rollback seed-perf soak dev-homeos dev-finance inject-faults check-device-lock
 
 # =============================================================================
 # up —— §10.1：干净机器 -> 可用环境：建当期 schema 与账号 -> 迁移 -> 种子 -> 健康检查
@@ -328,4 +328,33 @@ dev-finance:
 	echo "[dev] svc-finance 跑在容器外（§十三），GOTOOLCHAIN=local，env 取自 $(ENV_FILE)"; \
 	set -a; . ./"$(ENV_FILE)"; set +a; \
 	GOTOOLCHAIN=local $(GO) -C $(SERVER_DIR) run "$${pkg}"
+
+# =============================================================================
+# inject-faults —— P1 故障注入测试（每服务各 20 次，PRD 18.2#13）
+# 对 homeos 和 finance 分别执行 20 次随机故障注入，验证服务容错能力。
+# 故障类型：数据库中断、NATS 中断、内存压力、磁盘满、网络延迟、进程崩溃
+# 出口判据：成功率 ≥95%
+# =============================================================================
+.PHONY: inject-faults
+inject-faults:
+	@echo "=== P1 Fault Injection Test (20 times per service) ==="
+	@echo "Testing svc-homeos..."
+	./deploy/scripts/fault_injection.sh homeos 20
+	
+	@echo ""
+	@echo "Testing svc-finance..."
+	./deploy/scripts/fault_injection.sh finance 20
+	
+	@echo ""
+	@echo "=== All fault injection tests completed ==="
+
+# =============================================================================
+# check-device-lock —— P1 设备锁与 L3 解锁链路抽检（PRD 18.2#14）
+# 验证敏感数据访问控制：未解锁隐藏、解锁后可见、PIN 失败锁定、跨设备重解锁
+# 测试场景：5 个（未解锁访问、解锁、解锁后访问、PIN 锁定、跨设备）
+# =============================================================================
+.PHONY: check-device-lock
+check-device-lock:
+	@echo "=== P1 Device Lock & L3 Unlock Check ==="
+	./deploy/scripts/device_lock_check.sh
 
