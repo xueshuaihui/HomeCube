@@ -206,3 +206,115 @@ type FinanceGoal struct {
 func (FinanceGoal) TableName() string {
 	return setTableName("finance_goal")
 }
+
+// FinanceSplitSettlement represents a split settlement record (finance_split_settlement table).
+type FinanceSplitSettlement struct {
+	ID               string         `gorm:"primaryKey" json:"id"`
+	FamilyID         string         `gorm:"not null;index:idx_finance_split_settlement_family_id" json:"family_id"`
+	TransactionID    string         `gorm:"not null;index:idx_finance_split_settlement_transaction_id" json:"transaction_id"`
+	Status           string         `gorm:"type:text;not null;default:'draft'" json:"status"` // "draft", "pending", "settled"
+	TotalAmountCents int64          `gorm:"type:bigint;not null" json:"total_amount_cents"`   // total split amount in cents
+	SettledAt        *time.Time     `json:"settled_at,omitempty"`
+	Version          int64          `gorm:"type:bigint;not null;default:1" json:"version"`
+	CreatedAt        time.Time      `json:"created_at"`
+	UpdatedAt        time.Time      `json:"updated_at"`
+	DeletedAt        gorm.DeletedAt `gorm:"index" json:"-"`
+	DeletedBy        *string        `json:"deleted_by,omitempty"`
+}
+
+// TableName returns the table name for FinanceSplitSettlement.
+func (FinanceSplitSettlement) TableName() string {
+	return setTableName("finance_split_settlement")
+}
+
+// FinanceParticipant represents a participant in a split settlement (finance_participant table).
+type FinanceParticipant struct {
+	ID               string         `gorm:"primaryKey" json:"id"`
+	SettlementID     string         `gorm:"not null;index:idx_finance_participant_settlement_id" json:"settlement_id"`
+	AccountID        string         `gorm:"not null;index:idx_finance_participant_account_id" json:"account_id"`
+	ShareRatio       float64        `gorm:"type:numeric(5,4);not null" json:"share_ratio"`      // share ratio (0.0000 - 1.0000)
+	ShareAmountCents int64          `gorm:"type:bigint;not null" json:"share_amount_cents"`     // share amount in cents
+	Status           string         `gorm:"type:text;not null;default:'pending'" json:"status"` // "pending", "paid"
+	PaidAt           *time.Time     `json:"paid_at,omitempty"`
+	Version          int64          `gorm:"type:bigint;not null;default:1" json:"version"`
+	CreatedAt        time.Time      `json:"created_at"`
+	UpdatedAt        time.Time      `json:"updated_at"`
+	DeletedAt        gorm.DeletedAt `gorm:"index" json:"-"`
+	DeletedBy        *string        `json:"deleted_by,omitempty"`
+}
+
+// TableName returns the table name for FinanceParticipant.
+func (FinanceParticipant) TableName() string {
+	return setTableName("finance_participant")
+}
+
+// FinanceCreditCard represents a credit card account (finance_credit_card table).
+type FinanceCreditCard struct {
+	ID                  string         `gorm:"primaryKey" json:"id"`
+	FamilyID            string         `gorm:"not null;index:idx_finance_credit_card_family_id" json:"family_id"`
+	CardNumberHash      string         `gorm:"type:text;not null;uniqueIndex:uk_finance_credit_card_card_number_hash" json:"card_number_hash"` // hashed card number
+	Issuer              string         `gorm:"type:text;not null" json:"issuer"`                                                               // card issuer
+	BillingDay          int32          `gorm:"type:integer;not null" json:"billing_day"`                                                       // billing day (1-31)
+	DueDay              int32          `gorm:"type:integer;not null" json:"due_day"`                                                           // due day (1-31)
+	CreditLimitCents    int64          `gorm:"type:bigint;not null" json:"credit_limit_cents"`                                                 // credit limit in cents
+	CurrentBalanceCents int64          `gorm:"type:bigint;not null;default:0" json:"current_balance_cents"`                                    // current balance in cents (positive means owed)
+	Currency            string         `gorm:"type:text;not null;default:'CNY'" json:"currency"`                                               // currency code
+	Status              string         `gorm:"type:text;not null;default:'active'" json:"status"`                                              // "active", "frozen", "closed"
+	Version             int64          `gorm:"type:bigint;not null;default:1" json:"version"`
+	CreatedAt           time.Time      `json:"created_at"`
+	UpdatedAt           time.Time      `json:"updated_at"`
+	DeletedAt           gorm.DeletedAt `gorm:"index" json:"-"`
+	DeletedBy           *string        `json:"deleted_by,omitempty"`
+}
+
+// TableName returns the table name for FinanceCreditCard.
+func (FinanceCreditCard) TableName() string {
+	return setTableName("finance_credit_card")
+}
+
+// FinanceInvoice represents an invoice record (finance_invoice table).
+type FinanceInvoice struct {
+	ID                  string         `gorm:"primaryKey" json:"id"`
+	FamilyID            string         `gorm:"not null;index:idx_finance_invoice_family_id" json:"family_id"`
+	InvoiceNumber       string         `gorm:"type:text;not null;uniqueIndex:uk_finance_invoice_number" json:"invoice_number"` // invoice number
+	AmountCents         int64          `gorm:"type:bigint;not null" json:"amount_cents"`                                       // invoice amount in cents
+	TaxAmountCents      int64          `gorm:"type:bigint;not null;default:0" json:"tax_amount_cents"`                         // tax amount in cents
+	Vendor              string         `gorm:"type:text;not null" json:"vendor"`                                               // vendor/supplier
+	IssueDate           time.Time      `gorm:"type:date;not null" json:"issue_date"`                                           // issue date
+	ReimbursementStatus string         `gorm:"type:text;not null;default:'pending'" json:"reimbursement_status"`               // "pending", "reimbursed", "rejected"
+	ReimbursedAt        *time.Time     `json:"reimbursed_at,omitempty"`
+	RejectedReason      *string        `json:"rejected_reason,omitempty"`
+	TransactionID       *string        `gorm:"index:idx_finance_invoice_transaction_id" json:"transaction_id,omitempty"` // related transaction ID
+	Version             int64          `gorm:"type:bigint;not null;default:1" json:"version"`
+	CreatedAt           time.Time      `json:"created_at"`
+	UpdatedAt           time.Time      `json:"updated_at"`
+	DeletedAt           gorm.DeletedAt `gorm:"index" json:"-"`
+	DeletedBy           *string        `json:"deleted_by,omitempty"`
+}
+
+// TableName returns the table name for FinanceInvoice.
+func (FinanceInvoice) TableName() string {
+	return setTableName("finance_invoice")
+}
+
+// FinanceAssetLiabilityReport represents an asset-liability report snapshot (finance_asset_liability_report table).
+type FinanceAssetLiabilityReport struct {
+	ID                    string         `gorm:"primaryKey" json:"id"`
+	FamilyID              string         `gorm:"not null;index:idx_finance_asset_liability_report_family_id" json:"family_id"`
+	Period                string         `gorm:"type:text;not null;uniqueIndex:uk_finance_asset_liability_report_family_period" json:"period"` // period format: YYYY-MM
+	TotalAssetsCents      int64          `gorm:"type:bigint;not null;default:0" json:"total_assets_cents"`                                     // total assets in cents
+	TotalLiabilitiesCents int64          `gorm:"type:bigint;not null;default:0" json:"total_liabilities_cents"`                                // total liabilities in cents
+	NetWorthCents         int64          `gorm:"type:bigint;not null" json:"net_worth_cents"`                                                  // net worth = assets - liabilities
+	SnapshotAt            time.Time      `gorm:"not null" json:"snapshot_at"`                                                                  // snapshot generation time
+	Details               string         `gorm:"type:jsonb" json:"details,omitempty"`                                                          // detailed breakdown (optional)
+	Version               int64          `gorm:"type:bigint;not null;default:1" json:"version"`
+	CreatedAt             time.Time      `json:"created_at"`
+	UpdatedAt             time.Time      `json:"updated_at"`
+	DeletedAt             gorm.DeletedAt `gorm:"index" json:"-"`
+	DeletedBy             *string        `json:"deleted_by,omitempty"`
+}
+
+// TableName returns the table name for FinanceAssetLiabilityReport.
+func (FinanceAssetLiabilityReport) TableName() string {
+	return setTableName("finance_asset_liability_report")
+}

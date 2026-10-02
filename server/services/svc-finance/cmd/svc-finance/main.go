@@ -152,6 +152,41 @@ func run(addr string) error {
 	// Voice entry endpoint
 	group.POST("/voice-entry", voiceHandler.VoiceEntry)
 
+	// Loan endpoints
+	group.POST("/loans", financeHandler.CreateLoan)
+	group.GET("/loans", financeHandler.ListLoans)
+	group.PUT("/loans/:id/payoff", financeHandler.PayOffLoan)
+	group.GET("/loans/:id/repayment-plans", financeHandler.GetRepaymentPlans)
+
+	// Repayment plan endpoints
+	group.PUT("/repayment-plans/:id/pay", financeHandler.PayRepaymentPlan)
+
+	// Goal endpoints
+	group.POST("/goals", financeHandler.CreateGoal)
+	group.GET("/goals", financeHandler.ListGoals)
+	group.PUT("/goals/:id/progress", financeHandler.UpdateGoalProgress)
+
+	// Split settlement endpoints (S17-S18)
+	group.POST("/split-settlements", financeHandler.CreateSplitSettlement)
+	group.GET("/split-settlements", financeHandler.ListSplitSettlements)
+	group.PUT("/split-settlements/:id/participants", financeHandler.AddParticipant)
+	group.PUT("/split-settlements/:id/settle", financeHandler.SettleSplit)
+	group.GET("/split-settlements/:id/participants", financeHandler.GetParticipants)
+
+	// Credit card endpoints (S17-S18)
+	group.POST("/credit-cards", financeHandler.CreateCreditCard)
+	group.GET("/credit-cards", financeHandler.ListCreditCards)
+	group.PUT("/credit-cards/:id/balance", financeHandler.UpdateCreditCardBalance)
+
+	// Invoice endpoints (S17-S18)
+	group.POST("/invoices", financeHandler.CreateInvoice)
+	group.GET("/invoices", financeHandler.ListInvoices)
+	group.PUT("/invoices/:id/reimburse", financeHandler.ReimburseInvoice)
+
+	// Asset-liability report endpoints (S17-S18)
+	group.POST("/reports/asset-liability", financeHandler.GenerateAssetLiabilityReport)
+	group.GET("/reports/asset-liability", financeHandler.GetAssetLiabilityReport)
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 

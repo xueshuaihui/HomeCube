@@ -60,6 +60,11 @@ func setupTestRepo(t *testing.T) (*repo.FinanceRepo, *gorm.DB) {
 		&model.FinanceLoan{},
 		&model.FinanceRepaymentPlan{},
 		&model.FinanceGoal{},
+		&model.FinanceSplitSettlement{},
+		&model.FinanceParticipant{},
+		&model.FinanceCreditCard{},
+		&model.FinanceInvoice{},
+		&model.FinanceAssetLiabilityReport{},
 	)
 	if err != nil {
 		t.Fatalf("failed to migrate models: %v", err)
@@ -1212,13 +1217,13 @@ func TestCreateAndGetGoal(t *testing.T) {
 	deadline := time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC)
 
 	goal := &model.FinanceGoal{
-		FamilyID:          "test-family-001",
-		Name:              "Vacation Fund",
-		TargetAmountCents: 5000000, // 50,000 yuan
+		FamilyID:           "test-family-001",
+		Name:               "Vacation Fund",
+		TargetAmountCents:  5000000, // 50,000 yuan
 		CurrentAmountCents: 0,
-		Deadline:          deadline,
-		IsAchieved:        false,
-		Version:           1,
+		Deadline:           deadline,
+		IsAchieved:         false,
+		Version:            1,
 	}
 
 	err := r.CreateGoal(ctx, goal)
@@ -1255,13 +1260,13 @@ func TestListGoalsByFamily(t *testing.T) {
 	// Create multiple goals
 	for i := 0; i < 3; i++ {
 		goal := &model.FinanceGoal{
-			FamilyID:          "test-family-001",
-			Name:              "Goal " + string(rune('A'+i)),
-			TargetAmountCents: int64((i + 1) * 1000000),
+			FamilyID:           "test-family-001",
+			Name:               "Goal " + string(rune('A'+i)),
+			TargetAmountCents:  int64((i + 1) * 1000000),
 			CurrentAmountCents: 0,
-			Deadline:          time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC),
-			IsAchieved:        false,
-			Version:           1,
+			Deadline:           time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC),
+			IsAchieved:         false,
+			Version:            1,
 		}
 		err := r.CreateGoal(ctx, goal)
 		if err != nil {
@@ -1286,13 +1291,13 @@ func TestUpdateGoalProgress(t *testing.T) {
 	deadline := time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC)
 
 	goal := &model.FinanceGoal{
-		FamilyID:          "test-family-001",
-		Name:              "Savings Goal",
-		TargetAmountCents: 1000000, // 10,000 yuan
+		FamilyID:           "test-family-001",
+		Name:               "Savings Goal",
+		TargetAmountCents:  1000000, // 10,000 yuan
 		CurrentAmountCents: 0,
-		Deadline:          deadline,
-		IsAchieved:        false,
-		Version:           1,
+		Deadline:           deadline,
+		IsAchieved:         false,
+		Version:            1,
 	}
 
 	err := r.CreateGoal(ctx, goal)
@@ -1340,5 +1345,766 @@ func TestUpdateGoalProgress(t *testing.T) {
 
 	if !retrieved.IsAchieved {
 		t.Error("expected IsAchieved to be true in DB")
+	}
+}
+
+// ==================== Split Settlement Tests ====================
+
+func TestCreateAndGetSplitSettlement(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	settlement := &model.FinanceSplitSettlement{
+		FamilyID:         "test-family-001",
+		TransactionID:    "test-txn-001",
+		Status:           "draft",
+		TotalAmountCents: 100000,
+		Version:          1,
+	}
+
+	err := r.CreateSplitSettlement(ctx, settlement)
+	if err != nil {
+		t.Fatalf("failed to create split settlement: %v", err)
+	}
+
+	retrieved, err := r.GetSplitSettlementByID(ctx, settlement.ID)
+	if err != nil {
+		t.Fatalf("failed to get split settlement: %v", err)
+	}
+
+	if retrieved == nil {
+		t.Fatal("expected split settlement to be retrieved")
+	}
+
+	if retrieved.TotalAmountCents != settlement.TotalAmountCents {
+		t.Errorf("expected total amount %d, got %d", settlement.TotalAmountCents, retrieved.TotalAmountCents)
+	}
+
+	if retrieved.Status != "draft" {
+		t.Errorf("expected status draft, got %s", retrieved.Status)
+	}
+}
+
+func TestListSplitSettlementsByFamily(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	// Create multiple settlements
+	for i := 0; i < 3; i++ {
+		settlement := &model.FinanceSplitSettlement{
+			FamilyID:         "test-family-001",
+			TransactionID:    "test-txn-" + string(rune('A'+i)),
+			Status:           "draft",
+			TotalAmountCents: int64((i + 1) * 50000),
+			Version:          1,
+		}
+		err := r.CreateSplitSettlement(ctx, settlement)
+		if err != nil {
+			t.Fatalf("failed to create settlement %d: %v", i, err)
+		}
+	}
+
+	settlements, err := r.ListSplitSettlementsByFamily(ctx, "test-family-001", nil)
+	if err != nil {
+		t.Fatalf("failed to list split settlements: %v", err)
+	}
+
+	if len(settlements) != 3 {
+		t.Errorf("expected 3 settlements, got %d", len(settlements))
+	}
+}
+
+func TestAddParticipantToDraftSettlement(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	// Create a draft settlement
+	settlement := &model.FinanceSplitSettlement{
+		FamilyID:         "test-family-001",
+		TransactionID:    "test-txn-001",
+		Status:           "draft",
+		TotalAmountCents: 100000,
+		Version:          1,
+	}
+	err := r.CreateSplitSettlement(ctx, settlement)
+	if err != nil {
+		t.Fatalf("failed to create settlement: %v", err)
+	}
+
+	// Add participant
+	participant := &model.FinanceParticipant{
+		SettlementID:     settlement.ID,
+		AccountID:        "test-account-001",
+		ShareRatio:       0.5,
+		ShareAmountCents: 50000,
+		Status:           "pending",
+		Version:          1,
+	}
+
+	err = r.AddParticipant(ctx, participant)
+	if err != nil {
+		t.Fatalf("failed to add participant: %v", err)
+	}
+
+	// Verify participant was added
+	participants, err := r.GetParticipantsBySettlement(ctx, settlement.ID)
+	if err != nil {
+		t.Fatalf("failed to get participants: %v", err)
+	}
+
+	if len(participants) != 1 {
+		t.Errorf("expected 1 participant, got %d", len(participants))
+	}
+
+	if participants[0].ShareAmountCents != 50000 {
+		t.Errorf("expected share amount 50000, got %d", participants[0].ShareAmountCents)
+	}
+}
+
+func TestCannotAddParticipantToNonDraftSettlement(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	// Create a pending settlement
+	settlement := &model.FinanceSplitSettlement{
+		FamilyID:         "test-family-001",
+		TransactionID:    "test-txn-001",
+		Status:           "pending",
+		TotalAmountCents: 100000,
+		Version:          1,
+	}
+	err := r.CreateSplitSettlement(ctx, settlement)
+	if err != nil {
+		t.Fatalf("failed to create settlement: %v", err)
+	}
+
+	// Try to add participant (should fail)
+	participant := &model.FinanceParticipant{
+		SettlementID:     settlement.ID,
+		AccountID:        "test-account-001",
+		ShareRatio:       0.5,
+		ShareAmountCents: 50000,
+		Status:           "pending",
+		Version:          1,
+	}
+
+	err = r.AddParticipant(ctx, participant)
+	if err != repo.ErrInvalidSplitStatusTransition {
+		t.Errorf("expected ErrInvalidSplitStatusTransition, got %v", err)
+	}
+}
+
+func TestSettleSplitWithValidAmounts(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	// Create a pending settlement
+	settlement := &model.FinanceSplitSettlement{
+		FamilyID:         "test-family-001",
+		TransactionID:    "test-txn-001",
+		Status:           "pending",
+		TotalAmountCents: 100000,
+		Version:          1,
+	}
+	err := r.CreateSplitSettlement(ctx, settlement)
+	if err != nil {
+		t.Fatalf("failed to create settlement: %v", err)
+	}
+
+	// Add participants with amounts that sum to total
+	for i := 0; i < 2; i++ {
+		participant := &model.FinanceParticipant{
+			SettlementID:     settlement.ID,
+			AccountID:        "test-account-" + string(rune('A'+i)),
+			ShareRatio:       0.5,
+			ShareAmountCents: 50000,
+			Status:           "pending",
+			Version:          1,
+		}
+		err = r.AddParticipantDirectly(ctx, participant)
+		if err != nil {
+			t.Fatalf("failed to add participant %d: %v", i, err)
+		}
+	}
+
+	// Settle the split
+	updated, err := r.SettleSplit(ctx, settlement.ID)
+	if err != nil {
+		t.Fatalf("failed to settle split: %v", err)
+	}
+
+	if updated.Status != "settled" {
+		t.Errorf("expected status settled, got %s", updated.Status)
+	}
+
+	if updated.SettledAt == nil {
+		t.Error("expected SettledAt to be set")
+	}
+}
+
+func TestSettleSplitWithMismatchedAmounts(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	// Create a pending settlement
+	settlement := &model.FinanceSplitSettlement{
+		FamilyID:         "test-family-001",
+		TransactionID:    "test-txn-001",
+		Status:           "pending",
+		TotalAmountCents: 100000,
+		Version:          1,
+	}
+	err := r.CreateSplitSettlement(ctx, settlement)
+	if err != nil {
+		t.Fatalf("failed to create settlement: %v", err)
+	}
+
+	// Add participants with amounts that DON'T sum to total
+	participant := &model.FinanceParticipant{
+		SettlementID:     settlement.ID,
+		AccountID:        "test-account-001",
+		ShareRatio:       0.5,
+		ShareAmountCents: 60000, // Should be 100000 but is 60000
+		Status:           "pending",
+		Version:          1,
+	}
+	err = r.AddParticipantDirectly(ctx, participant)
+	if err != nil {
+		t.Fatalf("failed to add participant: %v", err)
+	}
+
+	// Try to settle (should fail due to amount mismatch)
+	_, err = r.SettleSplit(ctx, settlement.ID)
+	if err == nil {
+		t.Error("expected error for amount mismatch")
+	}
+	// Check if the error contains the expected message
+	if err != nil && len(err.Error()) < 23 {
+		t.Errorf("expected ErrSplitAmountMismatch, got %v", err)
+	} else if err != nil && err.Error()[:23] != "split settlement amount" {
+		t.Errorf("expected ErrSplitAmountMismatch, got %v", err)
+	}
+}
+
+func TestSplitSettlementStateMachine(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	// Create a draft settlement
+	settlement := &model.FinanceSplitSettlement{
+		FamilyID:         "test-family-001",
+		TransactionID:    "test-txn-001",
+		Status:           "draft",
+		TotalAmountCents: 100000,
+		Version:          1,
+	}
+	err := r.CreateSplitSettlement(ctx, settlement)
+	if err != nil {
+		t.Fatalf("failed to create settlement: %v", err)
+	}
+
+	// Transition: draft -> pending
+	updated, err := r.SettleSplit(ctx, settlement.ID)
+	if err != nil {
+		t.Fatalf("failed to transition to pending: %v", err)
+	}
+	if updated.Status != "pending" {
+		t.Errorf("expected status pending, got %s", updated.Status)
+	}
+
+	// Add valid participants
+	participant := &model.FinanceParticipant{
+		SettlementID:     settlement.ID,
+		AccountID:        "test-account-001",
+		ShareRatio:       1.0,
+		ShareAmountCents: 100000,
+		Status:           "pending",
+		Version:          1,
+	}
+	err = r.AddParticipantDirectly(ctx, participant)
+	if err != nil {
+		t.Fatalf("failed to add participant: %v", err)
+	}
+
+	// Transition: pending -> settled
+	updated, err = r.SettleSplit(ctx, settlement.ID)
+	if err != nil {
+		t.Fatalf("failed to transition to settled: %v", err)
+	}
+	if updated.Status != "settled" {
+		t.Errorf("expected status settled, got %s", updated.Status)
+	}
+
+	// Try to settle again (should fail - irreversible)
+	_, err = r.SettleSplit(ctx, settlement.ID)
+	if err != repo.ErrInvalidSplitStatusTransition {
+		t.Errorf("expected ErrInvalidSplitStatusTransition for already settled, got %v", err)
+	}
+}
+
+// ==================== Credit Card Tests ====================
+
+func TestCreateAndGetCreditCard(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	card := &model.FinanceCreditCard{
+		FamilyID:            "test-family-001",
+		CardNumberHash:      "hash_abc123",
+		Issuer:              "Bank of China",
+		BillingDay:          15,
+		DueDay:              5,
+		CreditLimitCents:    5000000,
+		CurrentBalanceCents: 0,
+		Currency:            "CNY",
+		Status:              "active",
+		Version:             1,
+	}
+
+	err := r.CreateCreditCard(ctx, card)
+	if err != nil {
+		t.Fatalf("failed to create credit card: %v", err)
+	}
+
+	retrieved, err := r.GetCreditCardByID(ctx, card.ID)
+	if err != nil {
+		t.Fatalf("failed to get credit card: %v", err)
+	}
+
+	if retrieved == nil {
+		t.Fatal("expected credit card to be retrieved")
+	}
+
+	if retrieved.CreditLimitCents != card.CreditLimitCents {
+		t.Errorf("expected credit limit %d, got %d", card.CreditLimitCents, retrieved.CreditLimitCents)
+	}
+
+	if retrieved.Issuer != card.Issuer {
+		t.Errorf("expected issuer %s, got %s", card.Issuer, retrieved.Issuer)
+	}
+}
+
+func TestListCreditCardsByFamily(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	// Create multiple cards
+	for i := 0; i < 3; i++ {
+		card := &model.FinanceCreditCard{
+			FamilyID:            "test-family-001",
+			CardNumberHash:      "hash_" + string(rune('A'+i)),
+			Issuer:              "Issuer " + string(rune('A'+i)),
+			BillingDay:          15,
+			DueDay:              5,
+			CreditLimitCents:    int64((i + 1) * 1000000),
+			CurrentBalanceCents: 0,
+			Currency:            "CNY",
+			Status:              "active",
+			Version:             1,
+		}
+		err := r.CreateCreditCard(ctx, card)
+		if err != nil {
+			t.Fatalf("failed to create card %d: %v", i, err)
+		}
+	}
+
+	cards, err := r.ListCreditCardsByFamily(ctx, "test-family-001", nil)
+	if err != nil {
+		t.Fatalf("failed to list credit cards: %v", err)
+	}
+
+	if len(cards) != 3 {
+		t.Errorf("expected 3 cards, got %d", len(cards))
+	}
+}
+
+func TestUpdateCreditCardBalance(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	card := &model.FinanceCreditCard{
+		FamilyID:            "test-family-001",
+		CardNumberHash:      "hash_test",
+		Issuer:              "Test Bank",
+		BillingDay:          15,
+		DueDay:              5,
+		CreditLimitCents:    5000000,
+		CurrentBalanceCents: 0,
+		Currency:            "CNY",
+		Status:              "active",
+		Version:             1,
+	}
+
+	err := r.CreateCreditCard(ctx, card)
+	if err != nil {
+		t.Fatalf("failed to create credit card: %v", err)
+	}
+
+	// Update balance
+	updated, err := r.UpdateCreditCardBalance(ctx, card.ID, 150000)
+	if err != nil {
+		t.Fatalf("failed to update balance: %v", err)
+	}
+
+	if updated.CurrentBalanceCents != 150000 {
+		t.Errorf("expected balance 150000, got %d", updated.CurrentBalanceCents)
+	}
+
+	if updated.Version != 2 {
+		t.Errorf("expected version 2, got %d", updated.Version)
+	}
+}
+
+// ==================== Invoice Tests ====================
+
+func TestCreateAndGetInvoice(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	issueDate := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	invoice := &model.FinanceInvoice{
+		FamilyID:            "test-family-001",
+		InvoiceNumber:       "INV-2024-001",
+		AmountCents:         100000,
+		TaxAmountCents:      6000,
+		Vendor:              "Test Vendor",
+		IssueDate:           issueDate,
+		ReimbursementStatus: "pending",
+		Version:             1,
+	}
+
+	err := r.CreateInvoice(ctx, invoice)
+	if err != nil {
+		t.Fatalf("failed to create invoice: %v", err)
+	}
+
+	retrieved, err := r.GetInvoiceByID(ctx, invoice.ID)
+	if err != nil {
+		t.Fatalf("failed to get invoice: %v", err)
+	}
+
+	if retrieved == nil {
+		t.Fatal("expected invoice to be retrieved")
+	}
+
+	if retrieved.AmountCents != invoice.AmountCents {
+		t.Errorf("expected amount %d, got %d", invoice.AmountCents, retrieved.AmountCents)
+	}
+
+	if retrieved.ReimbursementStatus != "pending" {
+		t.Errorf("expected status pending, got %s", retrieved.ReimbursementStatus)
+	}
+}
+
+func TestListInvoicesByFamily(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	// Create multiple invoices
+	for i := 0; i < 3; i++ {
+		invoice := &model.FinanceInvoice{
+			FamilyID:            "test-family-001",
+			InvoiceNumber:       "INV-2024-00" + string(rune('1'+i)),
+			AmountCents:         int64((i + 1) * 50000),
+			TaxAmountCents:      int64((i + 1) * 3000),
+			Vendor:              "Vendor " + string(rune('A'+i)),
+			IssueDate:           time.Date(2024, 1, 15+i, 0, 0, 0, 0, time.UTC),
+			ReimbursementStatus: "pending",
+			Version:             1,
+		}
+		err := r.CreateInvoice(ctx, invoice)
+		if err != nil {
+			t.Fatalf("failed to create invoice %d: %v", i, err)
+		}
+	}
+
+	invoices, err := r.ListInvoicesByFamily(ctx, "test-family-001", nil)
+	if err != nil {
+		t.Fatalf("failed to list invoices: %v", err)
+	}
+
+	if len(invoices) != 3 {
+		t.Errorf("expected 3 invoices, got %d", len(invoices))
+	}
+}
+
+func TestMarkInvoiceAsReimbursed(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	issueDate := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	invoice := &model.FinanceInvoice{
+		FamilyID:            "test-family-001",
+		InvoiceNumber:       "INV-2024-001",
+		AmountCents:         100000,
+		TaxAmountCents:      6000,
+		Vendor:              "Test Vendor",
+		IssueDate:           issueDate,
+		ReimbursementStatus: "pending",
+		Version:             1,
+	}
+
+	err := r.CreateInvoice(ctx, invoice)
+	if err != nil {
+		t.Fatalf("failed to create invoice: %v", err)
+	}
+
+	// Mark as reimbursed
+	txnID := "test-txn-001"
+	updated, err := r.MarkInvoiceAsReimbursed(ctx, invoice.ID, "reimbursed", nil, &txnID)
+	if err != nil {
+		t.Fatalf("failed to mark as reimbursed: %v", err)
+	}
+
+	if updated.ReimbursementStatus != "reimbursed" {
+		t.Errorf("expected status reimbursed, got %s", updated.ReimbursementStatus)
+	}
+
+	if updated.ReimbursedAt == nil {
+		t.Error("expected ReimbursedAt to be set")
+	}
+
+	if updated.TransactionID == nil || *updated.TransactionID != txnID {
+		t.Errorf("expected transaction ID %s, got %v", txnID, updated.TransactionID)
+	}
+}
+
+func TestMarkInvoiceAsRejected(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	issueDate := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	invoice := &model.FinanceInvoice{
+		FamilyID:            "test-family-001",
+		InvoiceNumber:       "INV-2024-002",
+		AmountCents:         100000,
+		TaxAmountCents:      6000,
+		Vendor:              "Test Vendor",
+		IssueDate:           issueDate,
+		ReimbursementStatus: "pending",
+		Version:             1,
+	}
+
+	err := r.CreateInvoice(ctx, invoice)
+	if err != nil {
+		t.Fatalf("failed to create invoice: %v", err)
+	}
+
+	// Mark as rejected
+	reason := "Invalid invoice"
+	updated, err := r.MarkInvoiceAsReimbursed(ctx, invoice.ID, "rejected", &reason, nil)
+	if err != nil {
+		t.Fatalf("failed to mark as rejected: %v", err)
+	}
+
+	if updated.ReimbursementStatus != "rejected" {
+		t.Errorf("expected status rejected, got %s", updated.ReimbursementStatus)
+	}
+
+	if updated.RejectedReason == nil || *updated.RejectedReason != reason {
+		t.Errorf("expected rejected reason %s, got %v", reason, updated.RejectedReason)
+	}
+}
+
+func TestCannotTransitionInvoiceFromNonPending(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	issueDate := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	invoice := &model.FinanceInvoice{
+		FamilyID:            "test-family-001",
+		InvoiceNumber:       "INV-2024-003",
+		AmountCents:         100000,
+		TaxAmountCents:      6000,
+		Vendor:              "Test Vendor",
+		IssueDate:           issueDate,
+		ReimbursementStatus: "reimbursed", // Already reimbursed
+		Version:             1,
+	}
+
+	err := r.CreateInvoice(ctx, invoice)
+	if err != nil {
+		t.Fatalf("failed to create invoice: %v", err)
+	}
+
+	// Try to mark again (should fail)
+	_, err = r.MarkInvoiceAsReimbursed(ctx, invoice.ID, "rejected", nil, nil)
+	if err != repo.ErrInvalidInvoiceStatusTransition {
+		t.Errorf("expected ErrInvalidInvoiceStatusTransition, got %v", err)
+	}
+}
+
+// ==================== Asset-Liability Report Tests ====================
+
+func TestGenerateAssetLiabilityReport(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	// Create test data
+	account := &model.FinanceAccount{
+		FamilyID: "test-family-001",
+		Name:     "Test Account",
+		Type:     "bank",
+		Balance:  500000,
+		Version:  1,
+	}
+	err := r.CreateAccount(ctx, account)
+	if err != nil {
+		t.Fatalf("failed to create account: %v", err)
+	}
+
+	goal := &model.FinanceGoal{
+		FamilyID:           "test-family-001",
+		Name:               "Test Goal",
+		TargetAmountCents:  1000000,
+		CurrentAmountCents: 300000,
+		Deadline:           time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC),
+		IsAchieved:         false,
+		Version:            1,
+	}
+	err = r.CreateGoal(ctx, goal)
+	if err != nil {
+		t.Fatalf("failed to create goal: %v", err)
+	}
+
+	loan := &model.FinanceLoan{
+		FamilyID:       "test-family-001",
+		LenderName:     "Alice",
+		BorrowerName:   "Bob",
+		PrincipalCents: 200000,
+		InterestRate:   5.0,
+		StartDate:      time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		EndDate:        time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		Status:         "active",
+		Version:        1,
+	}
+	err = r.CreateLoan(ctx, loan)
+	if err != nil {
+		t.Fatalf("failed to create loan: %v", err)
+	}
+
+	card := &model.FinanceCreditCard{
+		FamilyID:            "test-family-001",
+		CardNumberHash:      "hash_cc001",
+		Issuer:              "Test Bank",
+		BillingDay:          15,
+		DueDay:              5,
+		CreditLimitCents:    5000000,
+		CurrentBalanceCents: 100000,
+		Currency:            "CNY",
+		Status:              "active",
+		Version:             1,
+	}
+	err = r.CreateCreditCard(ctx, card)
+	if err != nil {
+		t.Fatalf("failed to create credit card: %v", err)
+	}
+
+	// Generate report
+	report, err := r.GenerateAssetLiabilityReport(ctx, "test-family-001", "2024-01")
+	if err != nil {
+		t.Fatalf("failed to generate report: %v", err)
+	}
+
+	// Verify calculations
+	// Assets = account balance (500000) + goal current (300000) = 800000
+	expectedAssets := int64(800000)
+	if report.TotalAssetsCents != expectedAssets {
+		t.Errorf("expected total assets %d, got %d", expectedAssets, report.TotalAssetsCents)
+	}
+
+	// Liabilities = loan principal (200000) + credit card balance (100000) = 300000
+	expectedLiabilities := int64(300000)
+	if report.TotalLiabilitiesCents != expectedLiabilities {
+		t.Errorf("expected total liabilities %d, got %d", expectedLiabilities, report.TotalLiabilitiesCents)
+	}
+
+	// Net worth = assets - liabilities = 800000 - 300000 = 500000
+	expectedNetWorth := int64(500000)
+	if report.NetWorthCents != expectedNetWorth {
+		t.Errorf("expected net worth %d, got %d", expectedNetWorth, report.NetWorthCents)
+	}
+
+	// Verify constraint: net_worth == assets - liabilities
+	if report.NetWorthCents != report.TotalAssetsCents-report.TotalLiabilitiesCents {
+		t.Errorf("net worth constraint violated: %d != %d - %d", report.NetWorthCents, report.TotalAssetsCents, report.TotalLiabilitiesCents)
+	}
+}
+
+func TestGetLatestAssetLiabilityReport(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	// Generate two reports for different periods
+	_, err := r.GenerateAssetLiabilityReport(ctx, "test-family-001", "2024-01")
+	if err != nil {
+		t.Fatalf("failed to generate first report: %v", err)
+	}
+
+	time.Sleep(10 * time.Millisecond) // Ensure different timestamps
+
+	_, err = r.GenerateAssetLiabilityReport(ctx, "test-family-001", "2024-02")
+	if err != nil {
+		t.Fatalf("failed to generate second report: %v", err)
+	}
+
+	// Get latest report
+	report, err := r.GetLatestAssetLiabilityReport(ctx, "test-family-001")
+	if err != nil {
+		t.Fatalf("failed to get latest report: %v", err)
+	}
+
+	if report == nil {
+		t.Fatal("expected latest report to be retrieved")
+	}
+
+	if report.Period != "2024-02" {
+		t.Errorf("expected period 2024-02, got %s", report.Period)
+	}
+}
+
+func TestGetAssetLiabilityReportByPeriod(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	// Generate report for specific period
+	_, err := r.GenerateAssetLiabilityReport(ctx, "test-family-001", "2024-03")
+	if err != nil {
+		t.Fatalf("failed to generate report: %v", err)
+	}
+
+	// Get report by period
+	report, err := r.GetAssetLiabilityReportByPeriod(ctx, "test-family-001", "2024-03")
+	if err != nil {
+		t.Fatalf("failed to get report by period: %v", err)
+	}
+
+	if report == nil {
+		t.Fatal("expected report to be retrieved")
+	}
+
+	if report.Period != "2024-03" {
+		t.Errorf("expected period 2024-03, got %s", report.Period)
+	}
+}
+
+func TestAssetLiabilityReportNetWorthConstraint(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	// Generate report
+	report, err := r.GenerateAssetLiabilityReport(ctx, "test-family-001", "2024-04")
+	if err != nil {
+		t.Fatalf("failed to generate report: %v", err)
+	}
+
+	// Verify the fundamental constraint
+	if report.NetWorthCents != report.TotalAssetsCents-report.TotalLiabilitiesCents {
+		t.Errorf("ASSET-LIABILITY CONSTRAINT VIOLATED: net_worth (%d) != assets (%d) - liabilities (%d)",
+			report.NetWorthCents, report.TotalAssetsCents, report.TotalLiabilitiesCents)
 	}
 }

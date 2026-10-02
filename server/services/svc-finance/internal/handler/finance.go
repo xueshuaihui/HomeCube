@@ -965,3 +965,401 @@ func (h *FinanceHandler) UpdateGoalProgress(c *gin.Context) {
 
 	c.JSON(http.StatusOK, goal)
 }
+
+// ==================== Split Settlement Handlers ====================
+
+// CreateSplitSettlementRequest represents the request body for creating a split settlement.
+type CreateSplitSettlementRequest struct {
+	FamilyID      string `json:"family_id" binding:"required,uuid"`
+	TransactionID string `json:"transaction_id" binding:"required,uuid"`
+	TotalAmount   int64  `json:"total_amount_cents" binding:"required,ne=0"`
+}
+
+// CreateSplitSettlement handles POST /api/finance/split-settlements.
+func (h *FinanceHandler) CreateSplitSettlement(c *gin.Context) {
+	var req CreateSplitSettlementRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		return
+	}
+
+	settlement := &model.FinanceSplitSettlement{
+		ID:               generateUUID(),
+		FamilyID:         req.FamilyID,
+		TransactionID:    req.TransactionID,
+		Status:           "draft",
+		TotalAmountCents: req.TotalAmount,
+		Version:          1,
+	}
+
+	if err := h.repo.CreateSplitSettlement(c.Request.Context(), settlement); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create split settlement: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, settlement)
+}
+
+// ListSplitSettlements handles GET /api/finance/split-settlements?family_id=&status=.
+func (h *FinanceHandler) ListSplitSettlements(c *gin.Context) {
+	familyID := c.Query("family_id")
+	if familyID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "family_id is required"})
+		return
+	}
+
+	status := c.Query("status")
+	var statusPtr *string
+	if status != "" {
+		statusPtr = &status
+	}
+
+	settlements, err := h.repo.ListSplitSettlementsByFamily(c.Request.Context(), familyID, statusPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list split settlements: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"items": settlements})
+}
+
+// AddParticipantRequest represents the request body for adding a participant.
+type AddParticipantRequest struct {
+	SettlementID     string  `json:"settlement_id" binding:"required,uuid"`
+	AccountID        string  `json:"account_id" binding:"required,uuid"`
+	ShareRatio       float64 `json:"share_ratio" binding:"required,min=0,max=1"`
+	ShareAmountCents int64   `json:"share_amount_cents" binding:"required"`
+}
+
+// AddParticipant handles PUT /api/finance/split-settlements/:id/participants.
+func (h *FinanceHandler) AddParticipant(c *gin.Context) {
+	settlementID := c.Param("id")
+	if settlementID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "settlement id is required"})
+		return
+	}
+
+	var req AddParticipantRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		return
+	}
+
+	// Override settlement_id from URL parameter
+	req.SettlementID = settlementID
+
+	participant := &model.FinanceParticipant{
+		ID:               generateUUID(),
+		SettlementID:     req.SettlementID,
+		AccountID:        req.AccountID,
+		ShareRatio:       req.ShareRatio,
+		ShareAmountCents: req.ShareAmountCents,
+		Status:           "pending",
+		Version:          1,
+	}
+
+	if err := h.repo.AddParticipant(c.Request.Context(), participant); err != nil {
+		if err == repo.ErrInvalidSplitStatusTransition {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to add participant: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, participant)
+}
+
+// SettleSplit handles PUT /api/finance/split-settlements/:id/settle.
+func (h *FinanceHandler) SettleSplit(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "settlement id is required"})
+		return
+	}
+
+	settlement, err := h.repo.SettleSplit(c.Request.Context(), id)
+	if err != nil {
+		if err == repo.ErrInvalidSplitStatusTransition || err == repo.ErrSplitAmountMismatch {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to settle split: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, settlement)
+}
+
+// GetParticipants handles GET /api/finance/split-settlements/:id/participants.
+func (h *FinanceHandler) GetParticipants(c *gin.Context) {
+	settlementID := c.Param("id")
+	if settlementID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "settlement id is required"})
+		return
+	}
+
+	participants, err := h.repo.GetParticipantsBySettlement(c.Request.Context(), settlementID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get participants: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"items": participants})
+}
+
+// ==================== Credit Card Handlers ====================
+
+// CreateCreditCardRequest represents the request body for creating a credit card.
+type CreateCreditCardRequest struct {
+	FamilyID         string `json:"family_id" binding:"required,uuid"`
+	CardNumberHash   string `json:"card_number_hash" binding:"required"`
+	Issuer           string `json:"issuer" binding:"required"`
+	BillingDay       int32  `json:"billing_day" binding:"required,min=1,max=31"`
+	DueDay           int32  `json:"due_day" binding:"required,min=1,max=31"`
+	CreditLimitCents int64  `json:"credit_limit_cents" binding:"required,min=1"`
+	Currency         string `json:"currency"`
+}
+
+// CreateCreditCard handles POST /api/finance/credit-cards.
+func (h *FinanceHandler) CreateCreditCard(c *gin.Context) {
+	var req CreateCreditCardRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		return
+	}
+
+	card := &model.FinanceCreditCard{
+		ID:                  generateUUID(),
+		FamilyID:            req.FamilyID,
+		CardNumberHash:      req.CardNumberHash,
+		Issuer:              req.Issuer,
+		BillingDay:          req.BillingDay,
+		DueDay:              req.DueDay,
+		CreditLimitCents:    req.CreditLimitCents,
+		CurrentBalanceCents: 0,
+		Currency:            req.Currency,
+		Status:              "active",
+		Version:             1,
+	}
+
+	if card.Currency == "" {
+		card.Currency = "CNY"
+	}
+
+	if err := h.repo.CreateCreditCard(c.Request.Context(), card); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create credit card: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, card)
+}
+
+// ListCreditCards handles GET /api/finance/credit-cards?family_id=&status=.
+func (h *FinanceHandler) ListCreditCards(c *gin.Context) {
+	familyID := c.Query("family_id")
+	if familyID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "family_id is required"})
+		return
+	}
+
+	status := c.Query("status")
+	var statusPtr *string
+	if status != "" {
+		statusPtr = &status
+	}
+
+	cards, err := h.repo.ListCreditCardsByFamily(c.Request.Context(), familyID, statusPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list credit cards: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"items": cards})
+}
+
+// UpdateCreditCardBalanceRequest represents the request body for updating credit card balance.
+type UpdateCreditCardBalanceRequest struct {
+	NewBalanceCents int64 `json:"new_balance_cents" binding:"required,min=0"`
+}
+
+// UpdateCreditCardBalance handles PUT /api/finance/credit-cards/:id/balance.
+func (h *FinanceHandler) UpdateCreditCardBalance(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "credit card id is required"})
+		return
+	}
+
+	var req UpdateCreditCardBalanceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		return
+	}
+
+	card, err := h.repo.UpdateCreditCardBalance(c.Request.Context(), id, req.NewBalanceCents)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update credit card balance: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, card)
+}
+
+// ==================== Invoice Handlers ====================
+
+// CreateInvoiceRequest represents the request body for creating an invoice.
+type CreateInvoiceRequest struct {
+	FamilyID       string    `json:"family_id" binding:"required,uuid"`
+	InvoiceNumber  string    `json:"invoice_number" binding:"required"`
+	AmountCents    int64     `json:"amount_cents" binding:"required,min=0"`
+	TaxAmountCents int64     `json:"tax_amount_cents"`
+	Vendor         string    `json:"vendor" binding:"required"`
+	IssueDate      time.Time `json:"issue_date" binding:"required"`
+}
+
+// CreateInvoice handles POST /api/finance/invoices.
+func (h *FinanceHandler) CreateInvoice(c *gin.Context) {
+	var req CreateInvoiceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		return
+	}
+
+	invoice := &model.FinanceInvoice{
+		ID:                  generateUUID(),
+		FamilyID:            req.FamilyID,
+		InvoiceNumber:       req.InvoiceNumber,
+		AmountCents:         req.AmountCents,
+		TaxAmountCents:      req.TaxAmountCents,
+		Vendor:              req.Vendor,
+		IssueDate:           req.IssueDate,
+		ReimbursementStatus: "pending",
+		Version:             1,
+	}
+
+	if err := h.repo.CreateInvoice(c.Request.Context(), invoice); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create invoice: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, invoice)
+}
+
+// ListInvoices handles GET /api/finance/invoices?family_id=&status=.
+func (h *FinanceHandler) ListInvoices(c *gin.Context) {
+	familyID := c.Query("family_id")
+	if familyID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "family_id is required"})
+		return
+	}
+
+	status := c.Query("status")
+	var statusPtr *string
+	if status != "" {
+		statusPtr = &status
+	}
+
+	invoices, err := h.repo.ListInvoicesByFamily(c.Request.Context(), familyID, statusPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list invoices: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"items": invoices})
+}
+
+// ReimburseInvoiceRequest represents the request body for reimbursing an invoice.
+type ReimburseInvoiceRequest struct {
+	Status        string  `json:"status" binding:"required,oneof=reimbursed rejected"`
+	Reason        *string `json:"reason"`
+	TransactionID *string `json:"transaction_id"`
+}
+
+// ReimburseInvoice handles PUT /api/finance/invoices/:id/reimburse.
+func (h *FinanceHandler) ReimburseInvoice(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invoice id is required"})
+		return
+	}
+
+	var req ReimburseInvoiceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		return
+	}
+
+	invoice, err := h.repo.MarkInvoiceAsReimbursed(c.Request.Context(), id, req.Status, req.Reason, req.TransactionID)
+	if err != nil {
+		if err == repo.ErrInvalidInvoiceStatusTransition {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update invoice status: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, invoice)
+}
+
+// ==================== Asset-Liability Report Handlers ====================
+
+// GenerateAssetLiabilityReportRequest represents the request body for generating a report.
+type GenerateAssetLiabilityReportRequest struct {
+	FamilyID string `json:"family_id" binding:"required,uuid"`
+	Period   string `json:"period" binding:"required"` // YYYY-MM format
+}
+
+// GenerateAssetLiabilityReport handles POST /api/finance/reports/asset-liability.
+func (h *FinanceHandler) GenerateAssetLiabilityReport(c *gin.Context) {
+	var req GenerateAssetLiabilityReportRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		return
+	}
+
+	report, err := h.repo.GenerateAssetLiabilityReport(c.Request.Context(), req.FamilyID, req.Period)
+	if err != nil {
+		if err == repo.ErrAssetLiabilityMismatch {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate asset-liability report: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, report)
+}
+
+// GetAssetLiabilityReport handles GET /api/finance/reports/asset-liability?family_id=&period=.
+func (h *FinanceHandler) GetAssetLiabilityReport(c *gin.Context) {
+	familyID := c.Query("family_id")
+	if familyID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "family_id is required"})
+		return
+	}
+
+	period := c.Query("period")
+
+	var report *model.FinanceAssetLiabilityReport
+	var err error
+
+	if period != "" {
+		report, err = h.repo.GetAssetLiabilityReportByPeriod(c.Request.Context(), familyID, period)
+	} else {
+		report, err = h.repo.GetLatestAssetLiabilityReport(c.Request.Context(), familyID)
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get asset-liability report: " + err.Error()})
+		return
+	}
+
+	if report == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "no asset-liability report found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, report)
+}
