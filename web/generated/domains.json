@@ -1,0 +1,31 @@
+{
+  "codes": [
+    "homeos",
+    "finance",
+    "purchase",
+    "diet",
+    "trip",
+    "kin",
+    "growth"
+  ],
+  "meta": {
+    "currentPhase": "P1",
+    "implemented": [
+      "homeos",
+      "finance"
+    ],
+    "unborn": [
+      "purchase",
+      "diet",
+      "trip",
+      "kin",
+      "growth"
+    ],
+    "bundles": [
+      "finance"
+    ],
+    "bundleRoots": [
+      "pages/finance"
+    ]
+  }
+}

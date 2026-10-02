@@ -1,0 +1,11 @@
+{
+  "pages": [
+    { "path": "pages/homeos/home/index" }
+  ],
+  "subPackages": [
+    {
+      "root": "pages/finance",
+      "pages": [{ "path": "flow/index" }]
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "name": "HomeCube",
+  "appid": "",
+  "description": "家立方 HomeCube 客户端（主包 shell + pages/{code} 分包）",
+  "versionName": "0.0.0",
+  "versionCode": "100",
+  "vueVersion": "3",
+  "transformPx": false,
+  "h5": {
+    "title": "HomeCube",
+    "router": {
+      "mode": "hash",
+      "base": "/"
+    },
+    "optimization": {
+      "subPackages": true
+    }
+  }
+}
