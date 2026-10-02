@@ -106,18 +106,18 @@ func (FinanceLedger) TableName() string {
 
 // FinanceBudget represents a financial budget (finance_budget table).
 type FinanceBudget struct {
-	ID         string         `gorm:"primaryKey" json:"id"`
-	FamilyID   string         `gorm:"not null;index:idx_finance_budget_family_id" json:"family_id"`
-	CategoryID string         `gorm:"not null;index:idx_finance_budget_category_id" json:"category_id"`
-	AmountCents int64         `gorm:"type:bigint;not null" json:"amount_cents"` // amount in cents
-	Period     string         `gorm:"type:text;not null" json:"period"`          // "monthly", "quarterly", "yearly"
-	StartDate  time.Time      `gorm:"type:date;not null" json:"start_date"`
-	EndDate    time.Time      `gorm:"type:date;not null" json:"end_date"`
-	IsActive   bool           `gorm:"type:boolean;not null;default:true" json:"is_active"`
-	Version    int64          `gorm:"type:bigint;not null;default:1" json:"version"`
-	CreatedAt  time.Time      `json:"created_at"`
-	UpdatedAt  time.Time      `json:"updated_at"`
-	DeletedAt  gorm.DeletedAt `gorm:"index" json:"-"`
+	ID          string         `gorm:"primaryKey" json:"id"`
+	FamilyID    string         `gorm:"not null;index:idx_finance_budget_family_id" json:"family_id"`
+	CategoryID  string         `gorm:"not null;index:idx_finance_budget_category_id" json:"category_id"`
+	AmountCents int64          `gorm:"type:bigint;not null" json:"amount_cents"` // amount in cents
+	Period      string         `gorm:"type:text;not null" json:"period"`         // "monthly", "quarterly", "yearly"
+	StartDate   time.Time      `gorm:"type:date;not null" json:"start_date"`
+	EndDate     time.Time      `gorm:"type:date;not null" json:"end_date"`
+	IsActive    bool           `gorm:"type:boolean;not null;default:true" json:"is_active"`
+	Version     int64          `gorm:"type:bigint;not null;default:1" json:"version"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 // TableName returns the table name for FinanceBudget.
@@ -127,20 +127,82 @@ func (FinanceBudget) TableName() string {
 
 // FinanceBill represents a financial bill (finance_bill table).
 type FinanceBill struct {
-	ID         string         `gorm:"primaryKey" json:"id"`
-	FamilyID   string         `gorm:"not null;index:idx_finance_bill_family_id" json:"family_id"`
-	PayeeID    string         `gorm:"not null;index:idx_finance_bill_payee_id" json:"payee_id"`
-	AmountCents int64         `gorm:"type:bigint;not null" json:"amount_cents"` // amount in cents
-	DueAt      time.Time      `gorm:"not null" json:"due_at"`
-	PaidAt     *time.Time     `json:"paid_at,omitempty"`
-	Status     string         `gorm:"type:text;not null;default:'pending'" json:"status"` // "pending", "paid", "overdue"
-	Version    int64          `gorm:"type:bigint;not null;default:1" json:"version"`
-	CreatedAt  time.Time      `json:"created_at"`
-	UpdatedAt  time.Time      `json:"updated_at"`
-	DeletedAt  gorm.DeletedAt `gorm:"index" json:"-"`
+	ID          string         `gorm:"primaryKey" json:"id"`
+	FamilyID    string         `gorm:"not null;index:idx_finance_bill_family_id" json:"family_id"`
+	PayeeID     string         `gorm:"not null;index:idx_finance_bill_payee_id" json:"payee_id"`
+	AmountCents int64          `gorm:"type:bigint;not null" json:"amount_cents"` // amount in cents
+	DueAt       time.Time      `gorm:"not null" json:"due_at"`
+	PaidAt      *time.Time     `json:"paid_at,omitempty"`
+	Status      string         `gorm:"type:text;not null;default:'pending'" json:"status"` // "pending", "paid", "overdue"
+	Version     int64          `gorm:"type:bigint;not null;default:1" json:"version"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 // TableName returns the table name for FinanceBill.
 func (FinanceBill) TableName() string {
 	return setTableName("finance_bill")
+}
+
+// FinanceLoan represents a loan between parties (finance_loan table).
+type FinanceLoan struct {
+	ID             string         `gorm:"primaryKey" json:"id"`
+	FamilyID       string         `gorm:"not null;index:idx_finance_loan_family_id" json:"family_id"`
+	LenderName     string         `gorm:"type:text;not null" json:"lender_name"`
+	BorrowerName   string         `gorm:"type:text;not null" json:"borrower_name"`
+	PrincipalCents int64          `gorm:"type:bigint;not null" json:"principal_cents"`               // amount in cents
+	InterestRate   float64        `gorm:"type:numeric(5,2);not null;default:0" json:"interest_rate"` // annual interest rate as percentage (e.g., 5.5 for 5.5%)
+	StartDate      time.Time      `gorm:"type:date;not null" json:"start_date"`
+	EndDate        time.Time      `gorm:"type:date;not null" json:"end_date"`
+	Status         string         `gorm:"type:text;not null;default:'active'" json:"status"` // "active", "paid_off"
+	Version        int64          `gorm:"type:bigint;not null;default:1" json:"version"`
+	CreatedAt      time.Time      `json:"created_at"`
+	UpdatedAt      time.Time      `json:"updated_at"`
+	DeletedAt      gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
+// TableName returns the table name for FinanceLoan.
+func (FinanceLoan) TableName() string {
+	return setTableName("finance_loan")
+}
+
+// FinanceRepaymentPlan represents a repayment installment for a loan (finance_repayment_plan table).
+type FinanceRepaymentPlan struct {
+	ID          string         `gorm:"primaryKey" json:"id"`
+	FamilyID    string         `gorm:"not null;index:idx_finance_repayment_plan_family_id" json:"family_id"`
+	LoanID      string         `gorm:"not null;index:idx_finance_repayment_plan_loan_id" json:"loan_id"`
+	DueAt       time.Time      `gorm:"not null;index:idx_finance_repayment_plan_due_at" json:"due_at"`
+	AmountCents int64          `gorm:"type:bigint;not null" json:"amount_cents"` // amount in cents
+	PaidAt      *time.Time     `json:"paid_at,omitempty"`
+	Status      string         `gorm:"type:text;not null;default:'pending'" json:"status"` // "pending", "paid", "overdue"
+	Version     int64          `gorm:"type:bigint;not null;default:1" json:"version"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
+// TableName returns the table name for FinanceRepaymentPlan.
+func (FinanceRepaymentPlan) TableName() string {
+	return setTableName("finance_repayment_plan")
+}
+
+// FinanceGoal represents a savings goal (finance_goal table).
+type FinanceGoal struct {
+	ID                 string         `gorm:"primaryKey" json:"id"`
+	FamilyID           string         `gorm:"not null;index:idx_finance_goal_family_id" json:"family_id"`
+	Name               string         `gorm:"type:text;not null" json:"name"`
+	TargetAmountCents  int64          `gorm:"type:bigint;not null" json:"target_amount_cents"`            // amount in cents
+	CurrentAmountCents int64          `gorm:"type:bigint;not null;default:0" json:"current_amount_cents"` // amount in cents
+	Deadline           time.Time      `gorm:"type:date;not null" json:"deadline"`
+	IsAchieved         bool           `gorm:"type:boolean;not null;default:false" json:"is_achieved"`
+	Version            int64          `gorm:"type:bigint;not null;default:1" json:"version"`
+	CreatedAt          time.Time      `json:"created_at"`
+	UpdatedAt          time.Time      `json:"updated_at"`
+	DeletedAt          gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
+// TableName returns the table name for FinanceGoal.
+func (FinanceGoal) TableName() string {
+	return setTableName("finance_goal")
 }

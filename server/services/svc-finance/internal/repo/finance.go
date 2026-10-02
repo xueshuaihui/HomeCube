@@ -537,3 +537,247 @@ func (r *FinanceRepo) MarkAsPaid(ctx context.Context, id string) (*model.Finance
 
 	return updatedBill, nil
 }
+
+// ==================== Loan Operations ====================
+
+// CreateLoan creates a new finance loan.
+func (r *FinanceRepo) CreateLoan(ctx context.Context, loan *model.FinanceLoan) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if loan.ID == "" {
+			loan.ID = generateUUID()
+		}
+		if err := tx.Create(loan).Error; err != nil {
+			return fmt.Errorf("failed to create loan: %w", err)
+		}
+		return r.sync.AppendChangeLog(ctx, tx, loan.FamilyID, "loan", loan.ID, "CREATE", loan.Version, loan)
+	})
+}
+
+// GetLoanByID retrieves a loan by its ID.
+func (r *FinanceRepo) GetLoanByID(ctx context.Context, id string) (*model.FinanceLoan, error) {
+	var loan model.FinanceLoan
+	result := r.db.WithContext(ctx).Where("id = ?", id).First(&loan)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get loan: %w", result.Error)
+	}
+	return &loan, nil
+}
+
+// ListLoansByFamily retrieves all loans for a family with optional status filter.
+func (r *FinanceRepo) ListLoansByFamily(ctx context.Context, familyID string, status *string) ([]model.FinanceLoan, error) {
+	query := r.db.WithContext(ctx).
+		Where("family_id = ? AND deleted_at IS NULL", familyID)
+
+	if status != nil && *status != "" {
+		query = query.Where("status = ?", *status)
+	}
+
+	query = query.Order("created_at DESC")
+
+	var loans []model.FinanceLoan
+	result := query.Find(&loans)
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to list loans: %w", result.Error)
+	}
+	return loans, nil
+}
+
+// PayOffLoan marks a loan as paid off and increments version.
+func (r *FinanceRepo) PayOffLoan(ctx context.Context, id string) (*model.FinanceLoan, error) {
+	var updatedLoan *model.FinanceLoan
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var loan model.FinanceLoan
+		result := tx.Where("id = ?", id).First(&loan)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return errors.New("loan not found")
+			}
+			return fmt.Errorf("failed to get loan: %w", result.Error)
+		}
+
+		loan.Status = "paid_off"
+		loan.Version++
+
+		result = tx.Save(&loan)
+		if result.Error != nil {
+			return fmt.Errorf("failed to pay off loan: %w", result.Error)
+		}
+
+		updatedLoan = &loan
+		return r.sync.AppendChangeLog(ctx, tx, loan.FamilyID, "loan", loan.ID, "UPDATE", loan.Version, loan)
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return updatedLoan, nil
+}
+
+// ==================== RepaymentPlan Operations ====================
+
+// CreateRepaymentPlan creates a new repayment plan entry.
+func (r *FinanceRepo) CreateRepaymentPlan(ctx context.Context, plan *model.FinanceRepaymentPlan) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if plan.ID == "" {
+			plan.ID = generateUUID()
+		}
+		if err := tx.Create(plan).Error; err != nil {
+			return fmt.Errorf("failed to create repayment plan: %w", err)
+		}
+		return r.sync.AppendChangeLog(ctx, tx, plan.FamilyID, "repayment_plan", plan.ID, "CREATE", plan.Version, plan)
+	})
+}
+
+// GetRepaymentPlanByID retrieves a repayment plan by its ID.
+func (r *FinanceRepo) GetRepaymentPlanByID(ctx context.Context, id string) (*model.FinanceRepaymentPlan, error) {
+	var plan model.FinanceRepaymentPlan
+	result := r.db.WithContext(ctx).Where("id = ?", id).First(&plan)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get repayment plan: %w", result.Error)
+	}
+	return &plan, nil
+}
+
+// GetRepaymentPlansByLoanID retrieves all repayment plans for a loan.
+func (r *FinanceRepo) GetRepaymentPlansByLoanID(ctx context.Context, loanID string) ([]model.FinanceRepaymentPlan, error) {
+	var plans []model.FinanceRepaymentPlan
+	result := r.db.WithContext(ctx).
+		Where("loan_id = ? AND deleted_at IS NULL", loanID).
+		Order("due_at ASC").
+		Find(&plans)
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to get repayment plans: %w", result.Error)
+	}
+	return plans, nil
+}
+
+// ListOverdueRepaymentPlans retrieves all overdue repayment plans.
+func (r *FinanceRepo) ListOverdueRepaymentPlans(ctx context.Context) ([]model.FinanceRepaymentPlan, error) {
+	now := time.Now()
+	var plans []model.FinanceRepaymentPlan
+	result := r.db.WithContext(ctx).
+		Where("status = 'pending' AND due_at < ? AND deleted_at IS NULL", now).
+		Order("due_at ASC").
+		Find(&plans)
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to list overdue repayment plans: %w", result.Error)
+	}
+	return plans, nil
+}
+
+// MarkRepaymentPlanAsPaid marks a repayment plan as paid and increments version.
+func (r *FinanceRepo) MarkRepaymentPlanAsPaid(ctx context.Context, id string) (*model.FinanceRepaymentPlan, error) {
+	var updatedPlan *model.FinanceRepaymentPlan
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var plan model.FinanceRepaymentPlan
+		result := tx.Where("id = ?", id).First(&plan)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return errors.New("repayment plan not found")
+			}
+			return fmt.Errorf("failed to get repayment plan: %w", result.Error)
+		}
+
+		now := time.Now()
+		plan.Status = "paid"
+		plan.PaidAt = &now
+		plan.Version++
+
+		result = tx.Save(&plan)
+		if result.Error != nil {
+			return fmt.Errorf("failed to mark repayment plan as paid: %w", result.Error)
+		}
+
+		updatedPlan = &plan
+		return r.sync.AppendChangeLog(ctx, tx, plan.FamilyID, "repayment_plan", plan.ID, "UPDATE", plan.Version, plan)
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return updatedPlan, nil
+}
+
+// ==================== Goal Operations ====================
+
+// CreateGoal creates a new finance goal.
+func (r *FinanceRepo) CreateGoal(ctx context.Context, goal *model.FinanceGoal) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if goal.ID == "" {
+			goal.ID = generateUUID()
+		}
+		if err := tx.Create(goal).Error; err != nil {
+			return fmt.Errorf("failed to create goal: %w", err)
+		}
+		return r.sync.AppendChangeLog(ctx, tx, goal.FamilyID, "goal", goal.ID, "CREATE", goal.Version, goal)
+	})
+}
+
+// GetGoalByID retrieves a goal by its ID.
+func (r *FinanceRepo) GetGoalByID(ctx context.Context, id string) (*model.FinanceGoal, error) {
+	var goal model.FinanceGoal
+	result := r.db.WithContext(ctx).Where("id = ?", id).First(&goal)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get goal: %w", result.Error)
+	}
+	return &goal, nil
+}
+
+// ListGoalsByFamily retrieves all goals for a family.
+func (r *FinanceRepo) ListGoalsByFamily(ctx context.Context, familyID string) ([]model.FinanceGoal, error) {
+	var goals []model.FinanceGoal
+	result := r.db.WithContext(ctx).
+		Where("family_id = ? AND deleted_at IS NULL", familyID).
+		Order("deadline ASC, created_at DESC").
+		Find(&goals)
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to list goals: %w", result.Error)
+	}
+	return goals, nil
+}
+
+// UpdateGoalProgress updates the current amount of a goal and checks if achieved.
+func (r *FinanceRepo) UpdateGoalProgress(ctx context.Context, id string, currentAmountCents int64) (*model.FinanceGoal, error) {
+	var updatedGoal *model.FinanceGoal
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var goal model.FinanceGoal
+		result := tx.Where("id = ?", id).First(&goal)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return errors.New("goal not found")
+			}
+			return fmt.Errorf("failed to get goal: %w", result.Error)
+		}
+
+		goal.CurrentAmountCents = currentAmountCents
+		if currentAmountCents >= goal.TargetAmountCents {
+			goal.IsAchieved = true
+		}
+		goal.Version++
+
+		result = tx.Save(&goal)
+		if result.Error != nil {
+			return fmt.Errorf("failed to update goal progress: %w", result.Error)
+		}
+
+		updatedGoal = &goal
+		return r.sync.AppendChangeLog(ctx, tx, goal.FamilyID, "goal", goal.ID, "UPDATE", goal.Version, goal)
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return updatedGoal, nil
+}

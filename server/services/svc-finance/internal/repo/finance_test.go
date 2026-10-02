@@ -57,6 +57,9 @@ func setupTestRepo(t *testing.T) (*repo.FinanceRepo, *gorm.DB) {
 		&model.FinanceLedger{},
 		&model.FinanceBudget{},
 		&model.FinanceBill{},
+		&model.FinanceLoan{},
+		&model.FinanceRepaymentPlan{},
+		&model.FinanceGoal{},
 	)
 	if err != nil {
 		t.Fatalf("failed to migrate models: %v", err)
@@ -798,5 +801,544 @@ func TestMarkBillAsPaid(t *testing.T) {
 
 	if retrieved.Status != "paid" {
 		t.Errorf("expected status paid in DB, got %s", retrieved.Status)
+	}
+}
+
+func TestCreateAndGetLoan(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	startDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	endDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	loan := &model.FinanceLoan{
+		FamilyID:       "test-family-001",
+		LenderName:     "Alice",
+		BorrowerName:   "Bob",
+		PrincipalCents: 1000000, // 10,000 yuan
+		InterestRate:   5.5,
+		StartDate:      startDate,
+		EndDate:        endDate,
+		Status:         "active",
+		Version:        1,
+	}
+
+	err := r.CreateLoan(ctx, loan)
+	if err != nil {
+		t.Fatalf("failed to create loan: %v", err)
+	}
+
+	retrieved, err := r.GetLoanByID(ctx, loan.ID)
+	if err != nil {
+		t.Fatalf("failed to get loan: %v", err)
+	}
+
+	if retrieved == nil {
+		t.Fatal("expected loan to be retrieved")
+	}
+
+	if retrieved.PrincipalCents != loan.PrincipalCents {
+		t.Errorf("expected principal %d, got %d", loan.PrincipalCents, retrieved.PrincipalCents)
+	}
+
+	if retrieved.Status != "active" {
+		t.Errorf("expected status active, got %s", retrieved.Status)
+	}
+}
+
+func TestListLoansByFamilyWithStatus(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	startDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	endDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	// Create loans with different statuses
+	statuses := []string{"active", "paid_off"}
+	for i, status := range statuses {
+		loan := &model.FinanceLoan{
+			FamilyID:       "test-family-001",
+			LenderName:     "Lender " + string(rune('A'+i)),
+			BorrowerName:   "Borrower " + string(rune('A'+i)),
+			PrincipalCents: int64((i + 1) * 500000),
+			InterestRate:   float64(i+1) * 3.0,
+			StartDate:      startDate,
+			EndDate:        endDate,
+			Status:         status,
+			Version:        1,
+		}
+		err := r.CreateLoan(ctx, loan)
+		if err != nil {
+			t.Fatalf("failed to create loan %d: %v", i, err)
+		}
+	}
+
+	// List all loans
+	loans, err := r.ListLoansByFamily(ctx, "test-family-001", nil)
+	if err != nil {
+		t.Fatalf("failed to list loans: %v", err)
+	}
+
+	if len(loans) != 2 {
+		t.Errorf("expected 2 loans, got %d", len(loans))
+	}
+
+	// List only active loans
+	active := "active"
+	loansActive, err := r.ListLoansByFamily(ctx, "test-family-001", &active)
+	if err != nil {
+		t.Fatalf("failed to list active loans: %v", err)
+	}
+
+	if len(loansActive) != 1 {
+		t.Errorf("expected 1 active loan, got %d", len(loansActive))
+	}
+
+	if loansActive[0].Status != "active" {
+		t.Errorf("expected active status, got %s", loansActive[0].Status)
+	}
+}
+
+func TestPayOffLoan(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	startDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	endDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	loan := &model.FinanceLoan{
+		FamilyID:       "test-family-001",
+		LenderName:     "Alice",
+		BorrowerName:   "Bob",
+		PrincipalCents: 500000,
+		InterestRate:   4.0,
+		StartDate:      startDate,
+		EndDate:        endDate,
+		Status:         "active",
+		Version:        1,
+	}
+
+	err := r.CreateLoan(ctx, loan)
+	if err != nil {
+		t.Fatalf("failed to create loan: %v", err)
+	}
+
+	// Pay off the loan
+	updatedLoan, err := r.PayOffLoan(ctx, loan.ID)
+	if err != nil {
+		t.Fatalf("failed to pay off loan: %v", err)
+	}
+
+	if updatedLoan.Status != "paid_off" {
+		t.Errorf("expected status paid_off, got %s", updatedLoan.Status)
+	}
+
+	if updatedLoan.Version != 2 {
+		t.Errorf("expected version 2, got %d", updatedLoan.Version)
+	}
+
+	// Verify the loan is updated in database
+	retrieved, err := r.GetLoanByID(ctx, loan.ID)
+	if err != nil {
+		t.Fatalf("failed to get loan: %v", err)
+	}
+
+	if retrieved.Status != "paid_off" {
+		t.Errorf("expected status paid_off in DB, got %s", retrieved.Status)
+	}
+}
+
+func TestCreateAndGetRepaymentPlan(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	// First create a loan
+	startDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	endDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	loan := &model.FinanceLoan{
+		FamilyID:       "test-family-001",
+		LenderName:     "Alice",
+		BorrowerName:   "Bob",
+		PrincipalCents: 1000000,
+		InterestRate:   5.0,
+		StartDate:      startDate,
+		EndDate:        endDate,
+		Status:         "active",
+		Version:        1,
+	}
+
+	err := r.CreateLoan(ctx, loan)
+	if err != nil {
+		t.Fatalf("failed to create loan: %v", err)
+	}
+
+	// Create repayment plan
+	dueAt := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
+	plan := &model.FinanceRepaymentPlan{
+		FamilyID:    "test-family-001",
+		LoanID:      loan.ID,
+		DueAt:       dueAt,
+		AmountCents: 100000,
+		Status:      "pending",
+		Version:     1,
+	}
+
+	err = r.CreateRepaymentPlan(ctx, plan)
+	if err != nil {
+		t.Fatalf("failed to create repayment plan: %v", err)
+	}
+
+	retrieved, err := r.GetRepaymentPlanByID(ctx, plan.ID)
+	if err != nil {
+		t.Fatalf("failed to get repayment plan: %v", err)
+	}
+
+	if retrieved == nil {
+		t.Fatal("expected repayment plan to be retrieved")
+	}
+
+	if retrieved.AmountCents != plan.AmountCents {
+		t.Errorf("expected amount %d, got %d", plan.AmountCents, retrieved.AmountCents)
+	}
+
+	if retrieved.Status != "pending" {
+		t.Errorf("expected status pending, got %s", retrieved.Status)
+	}
+}
+
+func TestGetRepaymentPlansByLoanID(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	// Create a loan
+	startDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	endDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	loan := &model.FinanceLoan{
+		FamilyID:       "test-family-001",
+		LenderName:     "Alice",
+		BorrowerName:   "Bob",
+		PrincipalCents: 1000000,
+		InterestRate:   5.0,
+		StartDate:      startDate,
+		EndDate:        endDate,
+		Status:         "active",
+		Version:        1,
+	}
+
+	err := r.CreateLoan(ctx, loan)
+	if err != nil {
+		t.Fatalf("failed to create loan: %v", err)
+	}
+
+	// Create multiple repayment plans
+	for i := 0; i < 3; i++ {
+		plan := &model.FinanceRepaymentPlan{
+			FamilyID:    "test-family-001",
+			LoanID:      loan.ID,
+			DueAt:       time.Date(2024, time.Month(2+i), 1, 0, 0, 0, 0, time.UTC),
+			AmountCents: int64((i + 1) * 100000),
+			Status:      "pending",
+			Version:     1,
+		}
+		err := r.CreateRepaymentPlan(ctx, plan)
+		if err != nil {
+			t.Fatalf("failed to create repayment plan %d: %v", i, err)
+		}
+	}
+
+	plans, err := r.GetRepaymentPlansByLoanID(ctx, loan.ID)
+	if err != nil {
+		t.Fatalf("failed to get repayment plans: %v", err)
+	}
+
+	if len(plans) != 3 {
+		t.Errorf("expected 3 repayment plans, got %d", len(plans))
+	}
+
+	// Verify they are ordered by due_at
+	for i := 0; i < len(plans)-1; i++ {
+		if plans[i].DueAt.After(plans[i+1].DueAt) {
+			t.Errorf("expected plans to be ordered by due_at, but plan %d is after plan %d", i, i+1)
+		}
+	}
+}
+
+func TestListOverdueRepaymentPlans(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	// Create a loan
+	startDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	endDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	loan := &model.FinanceLoan{
+		FamilyID:       "test-family-001",
+		LenderName:     "Alice",
+		BorrowerName:   "Bob",
+		PrincipalCents: 1000000,
+		InterestRate:   5.0,
+		StartDate:      startDate,
+		EndDate:        endDate,
+		Status:         "active",
+		Version:        1,
+	}
+
+	err := r.CreateLoan(ctx, loan)
+	if err != nil {
+		t.Fatalf("failed to create loan: %v", err)
+	}
+
+	now := time.Now()
+
+	// Create an overdue plan (due date in the past)
+	overduePlan := &model.FinanceRepaymentPlan{
+		FamilyID:    "test-family-001",
+		LoanID:      loan.ID,
+		DueAt:       now.Add(-7 * 24 * time.Hour), // 7 days ago
+		AmountCents: 100000,
+		Status:      "pending",
+		Version:     1,
+	}
+	err = r.CreateRepaymentPlan(ctx, overduePlan)
+	if err != nil {
+		t.Fatalf("failed to create overdue plan: %v", err)
+	}
+
+	// Create a future plan (not overdue)
+	futurePlan := &model.FinanceRepaymentPlan{
+		FamilyID:    "test-family-001",
+		LoanID:      loan.ID,
+		DueAt:       now.Add(7 * 24 * time.Hour), // 7 days from now
+		AmountCents: 100000,
+		Status:      "pending",
+		Version:     1,
+	}
+	err = r.CreateRepaymentPlan(ctx, futurePlan)
+	if err != nil {
+		t.Fatalf("failed to create future plan: %v", err)
+	}
+
+	// List overdue plans
+	plans, err := r.ListOverdueRepaymentPlans(ctx)
+	if err != nil {
+		t.Fatalf("failed to list overdue plans: %v", err)
+	}
+
+	if len(plans) != 1 {
+		t.Errorf("expected 1 overdue plan, got %d", len(plans))
+	}
+
+	if len(plans) > 0 && plans[0].ID != overduePlan.ID {
+		t.Errorf("expected overdue plan ID %s, got %s", overduePlan.ID, plans[0].ID)
+	}
+}
+
+func TestMarkRepaymentPlanAsPaid(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	// Create a loan
+	startDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	endDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	loan := &model.FinanceLoan{
+		FamilyID:       "test-family-001",
+		LenderName:     "Alice",
+		BorrowerName:   "Bob",
+		PrincipalCents: 1000000,
+		InterestRate:   5.0,
+		StartDate:      startDate,
+		EndDate:        endDate,
+		Status:         "active",
+		Version:        1,
+	}
+
+	err := r.CreateLoan(ctx, loan)
+	if err != nil {
+		t.Fatalf("failed to create loan: %v", err)
+	}
+
+	// Create a repayment plan
+	dueAt := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
+	plan := &model.FinanceRepaymentPlan{
+		FamilyID:    "test-family-001",
+		LoanID:      loan.ID,
+		DueAt:       dueAt,
+		AmountCents: 100000,
+		Status:      "pending",
+		Version:     1,
+	}
+
+	err = r.CreateRepaymentPlan(ctx, plan)
+	if err != nil {
+		t.Fatalf("failed to create repayment plan: %v", err)
+	}
+
+	// Mark as paid
+	updatedPlan, err := r.MarkRepaymentPlanAsPaid(ctx, plan.ID)
+	if err != nil {
+		t.Fatalf("failed to mark repayment plan as paid: %v", err)
+	}
+
+	if updatedPlan.Status != "paid" {
+		t.Errorf("expected status paid, got %s", updatedPlan.Status)
+	}
+
+	if updatedPlan.PaidAt == nil {
+		t.Error("expected PaidAt to be set")
+	}
+
+	if updatedPlan.Version != 2 {
+		t.Errorf("expected version 2, got %d", updatedPlan.Version)
+	}
+
+	// Verify the plan is updated in database
+	retrieved, err := r.GetRepaymentPlanByID(ctx, plan.ID)
+	if err != nil {
+		t.Fatalf("failed to get repayment plan: %v", err)
+	}
+
+	if retrieved.Status != "paid" {
+		t.Errorf("expected status paid in DB, got %s", retrieved.Status)
+	}
+}
+
+func TestCreateAndGetGoal(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	deadline := time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC)
+
+	goal := &model.FinanceGoal{
+		FamilyID:          "test-family-001",
+		Name:              "Vacation Fund",
+		TargetAmountCents: 5000000, // 50,000 yuan
+		CurrentAmountCents: 0,
+		Deadline:          deadline,
+		IsAchieved:        false,
+		Version:           1,
+	}
+
+	err := r.CreateGoal(ctx, goal)
+	if err != nil {
+		t.Fatalf("failed to create goal: %v", err)
+	}
+
+	retrieved, err := r.GetGoalByID(ctx, goal.ID)
+	if err != nil {
+		t.Fatalf("failed to get goal: %v", err)
+	}
+
+	if retrieved == nil {
+		t.Fatal("expected goal to be retrieved")
+	}
+
+	if retrieved.TargetAmountCents != goal.TargetAmountCents {
+		t.Errorf("expected target amount %d, got %d", goal.TargetAmountCents, retrieved.TargetAmountCents)
+	}
+
+	if retrieved.CurrentAmountCents != 0 {
+		t.Errorf("expected current amount 0, got %d", retrieved.CurrentAmountCents)
+	}
+
+	if retrieved.IsAchieved {
+		t.Error("expected IsAchieved to be false")
+	}
+}
+
+func TestListGoalsByFamily(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	// Create multiple goals
+	for i := 0; i < 3; i++ {
+		goal := &model.FinanceGoal{
+			FamilyID:          "test-family-001",
+			Name:              "Goal " + string(rune('A'+i)),
+			TargetAmountCents: int64((i + 1) * 1000000),
+			CurrentAmountCents: 0,
+			Deadline:          time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC),
+			IsAchieved:        false,
+			Version:           1,
+		}
+		err := r.CreateGoal(ctx, goal)
+		if err != nil {
+			t.Fatalf("failed to create goal %d: %v", i, err)
+		}
+	}
+
+	goals, err := r.ListGoalsByFamily(ctx, "test-family-001")
+	if err != nil {
+		t.Fatalf("failed to list goals: %v", err)
+	}
+
+	if len(goals) != 3 {
+		t.Errorf("expected 3 goals, got %d", len(goals))
+	}
+}
+
+func TestUpdateGoalProgress(t *testing.T) {
+	r, _ := setupTestRepo(t)
+	ctx := context.Background()
+
+	deadline := time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC)
+
+	goal := &model.FinanceGoal{
+		FamilyID:          "test-family-001",
+		Name:              "Savings Goal",
+		TargetAmountCents: 1000000, // 10,000 yuan
+		CurrentAmountCents: 0,
+		Deadline:          deadline,
+		IsAchieved:        false,
+		Version:           1,
+	}
+
+	err := r.CreateGoal(ctx, goal)
+	if err != nil {
+		t.Fatalf("failed to create goal: %v", err)
+	}
+
+	// Update progress to 50%
+	updatedGoal, err := r.UpdateGoalProgress(ctx, goal.ID, 500000)
+	if err != nil {
+		t.Fatalf("failed to update goal progress: %v", err)
+	}
+
+	if updatedGoal.CurrentAmountCents != 500000 {
+		t.Errorf("expected current amount 500000, got %d", updatedGoal.CurrentAmountCents)
+	}
+
+	if updatedGoal.IsAchieved {
+		t.Error("expected IsAchieved to still be false at 50%")
+	}
+
+	if updatedGoal.Version != 2 {
+		t.Errorf("expected version 2, got %d", updatedGoal.Version)
+	}
+
+	// Update progress to 100% (achieved)
+	updatedGoal2, err := r.UpdateGoalProgress(ctx, goal.ID, 1000000)
+	if err != nil {
+		t.Fatalf("failed to update goal progress to 100%%: %v", err)
+	}
+
+	if !updatedGoal2.IsAchieved {
+		t.Error("expected IsAchieved to be true at 100%")
+	}
+
+	// Verify the goal is updated in database
+	retrieved, err := r.GetGoalByID(ctx, goal.ID)
+	if err != nil {
+		t.Fatalf("failed to get goal: %v", err)
+	}
+
+	if retrieved.CurrentAmountCents != 1000000 {
+		t.Errorf("expected current amount 1000000 in DB, got %d", retrieved.CurrentAmountCents)
+	}
+
+	if !retrieved.IsAchieved {
+		t.Error("expected IsAchieved to be true in DB")
 	}
 }

@@ -770,3 +770,198 @@ func (h *FinanceHandler) ExportTransactions(c *gin.Context) {
 	// Send file data
 	c.Data(http.StatusOK, contentType, data)
 }
+
+// ==================== Loan Handlers ====================
+
+// CreateLoanRequest represents the request body for creating a loan.
+type CreateLoanRequest struct {
+	FamilyID       string    `json:"family_id" binding:"required,uuid"`
+	LenderName     string    `json:"lender_name" binding:"required"`
+	BorrowerName   string    `json:"borrower_name" binding:"required"`
+	PrincipalCents int64     `json:"principal_cents" binding:"required,min=1"`
+	InterestRate   float64   `json:"interest_rate" binding:"min=0,max=100"`
+	StartDate      time.Time `json:"start_date" binding:"required"`
+	EndDate        time.Time `json:"end_date" binding:"required"`
+}
+
+// CreateLoan handles POST /api/finance/loans.
+func (h *FinanceHandler) CreateLoan(c *gin.Context) {
+	var req CreateLoanRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		return
+	}
+
+	loan := &model.FinanceLoan{
+		FamilyID:       req.FamilyID,
+		LenderName:     req.LenderName,
+		BorrowerName:   req.BorrowerName,
+		PrincipalCents: req.PrincipalCents,
+		InterestRate:   req.InterestRate,
+		StartDate:      req.StartDate,
+		EndDate:        req.EndDate,
+		Status:         "active",
+		Version:        1,
+	}
+
+	if err := h.repo.CreateLoan(c.Request.Context(), loan); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create loan: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, loan)
+}
+
+// ListLoans handles GET /api/finance/loans?family_id=&status=.
+func (h *FinanceHandler) ListLoans(c *gin.Context) {
+	familyID := c.Query("family_id")
+	if familyID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "family_id is required"})
+		return
+	}
+
+	status := c.Query("status")
+	var statusPtr *string
+	if status != "" {
+		statusPtr = &status
+	}
+
+	loans, err := h.repo.ListLoansByFamily(c.Request.Context(), familyID, statusPtr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list loans: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"items": loans})
+}
+
+// PayOffLoan handles PUT /api/finance/loans/:id/payoff.
+func (h *FinanceHandler) PayOffLoan(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "loan id is required"})
+		return
+	}
+
+	loan, err := h.repo.PayOffLoan(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to pay off loan: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, loan)
+}
+
+// GetRepaymentPlans handles GET /api/finance/loans/:id/repayment-plans.
+func (h *FinanceHandler) GetRepaymentPlans(c *gin.Context) {
+	loanID := c.Param("id")
+	if loanID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "loan id is required"})
+		return
+	}
+
+	plans, err := h.repo.GetRepaymentPlansByLoanID(c.Request.Context(), loanID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get repayment plans: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"items": plans})
+}
+
+// PayRepaymentPlan handles PUT /api/finance/repayment-plans/:id/pay.
+func (h *FinanceHandler) PayRepaymentPlan(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "repayment plan id is required"})
+		return
+	}
+
+	plan, err := h.repo.MarkRepaymentPlanAsPaid(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to mark repayment plan as paid: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, plan)
+}
+
+// ==================== Goal Handlers ====================
+
+// CreateGoalRequest represents the request body for creating a goal.
+type CreateGoalRequest struct {
+	FamilyID          string    `json:"family_id" binding:"required,uuid"`
+	Name              string    `json:"name" binding:"required"`
+	TargetAmountCents int64     `json:"target_amount_cents" binding:"required,min=1"`
+	Deadline          time.Time `json:"deadline" binding:"required"`
+}
+
+// CreateGoal handles POST /api/finance/goals.
+func (h *FinanceHandler) CreateGoal(c *gin.Context) {
+	var req CreateGoalRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		return
+	}
+
+	goal := &model.FinanceGoal{
+		FamilyID:           req.FamilyID,
+		Name:               req.Name,
+		TargetAmountCents:  req.TargetAmountCents,
+		CurrentAmountCents: 0,
+		Deadline:           req.Deadline,
+		IsAchieved:         false,
+		Version:            1,
+	}
+
+	if err := h.repo.CreateGoal(c.Request.Context(), goal); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create goal: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, goal)
+}
+
+// ListGoals handles GET /api/finance/goals?family_id=.
+func (h *FinanceHandler) ListGoals(c *gin.Context) {
+	familyID := c.Query("family_id")
+	if familyID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "family_id is required"})
+		return
+	}
+
+	goals, err := h.repo.ListGoalsByFamily(c.Request.Context(), familyID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list goals: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"items": goals})
+}
+
+// UpdateGoalProgress handles PUT /api/finance/goals/:id/progress.
+type UpdateGoalProgressRequest struct {
+	CurrentAmountCents int64 `json:"current_amount_cents" binding:"required,min=0"`
+}
+
+func (h *FinanceHandler) UpdateGoalProgress(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "goal id is required"})
+		return
+	}
+
+	var req UpdateGoalProgressRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		return
+	}
+
+	goal, err := h.repo.UpdateGoalProgress(c.Request.Context(), id, req.CurrentAmountCents)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update goal progress: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, goal)
+}
