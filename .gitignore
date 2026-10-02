@@ -1,22 +1,54 @@
-# 依赖
-node_modules/
+# =============================================================================
+# 目录与产物口径的权威源：docs/p1-tech-plan.md §1.2（仓库布局）、§10.1（备份与长压
+# 报告落盘路径）；PRD 22.4（monorepo 与各目录职责）。
+# origin 是 PUBLIC 仓库（github.com/xueshuaihui/HomeCube，p1-dev-brief §3）：
+# 凭据、本机绝对路径、运行期数据一律不得进版本库。
+# 本文件保留 S1-A 之前已存在的条目（node_modules/、server/bin/、web/dist/、
+# web/unpackage/、admin/dist/、.env*、deploy/data/、*.log、.DS_Store、.idea/、
+# .vscode/），只按本卡要求补齐 Go 产物口与 deploy/env.local，不删既有条目。
+# =============================================================================
 
-# 构建产物
-server/bin/
+# ---- Go 构建产物（server/ 是本 monorepo 唯一的 Go module，§1.2、PRD 22.4）----
+# server/bin/：既有约定，二进制的集中落盘位（每服务一个 cmd、一个镜像，PRD 22.4，
+#              镜像内的层不参与版本库）。
+# *.test：go test -c 的产物；*.out：go test -coverprofile / CPU profile 的产物；
+# *.exe：交叉编译 Windows 时的产物名（本机 darwin/amd64 不产，作兜底）。
+/server/bin/
+*.test
+*.out
+*.exe
+
+# ---- Node / 前端构建产物（web = uni-app(Vue3)、admin = Vite + React，§1.2）----
+node_modules/
 web/dist/
 web/unpackage/
 admin/dist/
 
-# 环境与密钥
+# ---- 运行期数据：备份包与长压报告（§10.1 原文路径）--------------------------
+# backup 的 pg_dump -Fd + NATS 流快照 + uploads tar 落 deploy/data/backups，
+# soak 的门禁 3 归档件落 deploy/data/soak/report.json；两者都是本机/演练产物，
+# 且备份包内含家庭数据（PRD 21.3、二十章数据分级），进 PUBLIC 仓库即数据外泄。
+deploy/data/
+*.log
+# 附件目录 uploads/{family_id}/：真实家庭票据与图片直接落本机磁盘（PRD 14.7 原文「附件
+# 目录 uploads/{family_id}/；单笔 ≤3 张、单张 ≤5MB、格式限 jpg/png/webp」，deploy/env.local.example
+# 的 UPLOAD_DIR=./uploads/{family_id} 即此路径），属家庭敏感数据且随 uploads tar 进备份包
+# （PRD 二十章数据分级、21.3），进 PUBLIC 仓库（p1-dev-brief §3：push 前自查不得含运行期数据）
+# 即外泄。锚定仓库根写 /uploads/，不用裸 uploads/——后者会匹配任意层级的同名目录。
+/uploads/
+
+# 为什么还要这一条：make dev-{homeos,finance} 用 go -C server run（Makefile:195、213），进程 cwd 是 server/，UPLOAD_DIR=./uploads/{family_id}（deploy/env.local.example:65）写出的真实票据就落在 server/uploads/，上面的 /uploads/ 锚在仓库根拦不住它；origin 是 PUBLIC 仓库（本文件卷首、p1-dev-brief §3）。
+/server/uploads/
+
+# ---- 本机 env（§十三：端口与 env 在 deploy/env.local.example）----------------
+# 只提交 *.example（值全为 CHANGE_ME 占位符）；deploy/env.local 是本机填写的副本，
+# 含真实 DSN 口令，必须忽略。
 .env
 .env.*
 !.env.example
+/deploy/env.local
 
-# 本地数据与日志
-deploy/data/
-*.log
-
-# 编辑器与系统
+# ---- 编辑器与系统（本机 macOS，Finder 遍历目录会不断生成 .DS_Store）----------
 .DS_Store
 .idea/
 .vscode/

@@ -63,15 +63,15 @@ T0 的账（已完成，列在这里是给实现期对锚用，不是待办）�
 - 平台：macOS（Intel / x86_64），`/bin/zsh` 登录、脚本按 **bash 3.2** 写。
 - **bash 3.2 + 中文 locale 陷阱**：`$VAR` 紧跟中文字符会中断脚本解析。所有 shell 里变量一律写 `${VAR}`，且不要在中文注释行尾留未闭合内容。
 - Python 脚本：**不要用 heredoc 从 stdin 喂含中文的脚本**（会报 non-UTF-8 source）。写成文件，首行 `# -*- coding: utf-8 -*-`。
-- Node v24.18.0。`gh` 已授权，但 **GitHub 下载极慢**，需要 `curl` 分片加速取二进制。
+- Node v24.19.0（本机 `node -v` 实测）。`gh` 已授权，但 **GitHub 下载极慢**，需要 `curl` 分片加速取二进制。
 - **不要用 shell 碰 `~/Downloads`**。
 - 远端：`origin = git@github.com:xueshuaihui/HomeCube.git`，**仓库是 PUBLIC**。push 前按公开标准自查：不含密钥、不含本机绝对路径、不含未定版内部信息。
-- 当前分支 `feat/p1`（从 `0512dae` 切出）。仓库内容**只有 `docs/`，零代码**——S1 是从零建 monorepo。
+- 当前分支 `feat/p1`（从 `0512dae` 切出）。S1 骨架已落盘：仓库根下除 `docs/` 外还有 `server/`（`packages/registry`、`packages/obs`、`services/svc-homeos`、`services/svc-finance`、`migrations/{homeos,finance}`、`contracts/`、`test/`、`go.mod`）、`web/`（uni-app 工程 + `scripts/` 三个质量脚本 + `generated/domains.json`）、`admin/`、`deploy/`、`Makefile`、`.github/`（后两者今天只有命令口与 workflow 占位目录，五道门禁的接驳还没进 CI）。
 
 **文档校验器（每次改文档后必跑，派子 agent 跑）**：
 
 1. Markdown 表格列数一致性：逐表比对表头行与分隔行的 `|` 列数。基线 = **118 张表 0 处不一致**（PRD 66 / 技术方案 9 / 导航 39 / 本简报 4）。
-2. 路由三段式：正则 `(?<![\w/-])((?:homeos|finance|purchase|diet|kin|growth|travel)/[a-z_-]+/[a-z_-]+)`。基线 = **74 条**（homeos 32 / finance 42）。注意 feature 段允许连字符。**已知假阳性一条**：正则会把散文里的 `purchase/diet/trip` 面名枚举误判成路由（唯一命中数因此是 75 不是 74），核对时先排除它。
+2. 路由三段式：正则 `(?<![\w/-])((?:homeos|finance|purchase|diet|kin|growth|trip)/[a-z_-]+/[a-z_-]+)`（域名单以 registry 为准，出行段的系统码是 `trip` 不是 `travel`，见 PRD 16.1）。基线 = **74 条**（homeos 32 / finance 42）。注意 feature 段允许连字符。**已知假阳性一条**：正则会把散文里的 `purchase/diet/trip` 面名枚举误判成路由（唯一命中数因此是 75 不是 74），核对时先排除它。
 3. 数字对账（T0 后的基线，三份文档 + 本简报内出现处必须互相一致）：逐格断言 **45 格**（`40 格` 只允许作为 ⑳ 的原文与取代标注存在）、全局态 **十个**（`九个` 只允许作为「此前九个」的历史表述存在）、18.2 **14 条**、18.3 **10 条**、**120 屏**（`118 屏` 只允许作为 §12.4 ⑩ 行的原文与取代标注存在，**不是 ⑰**）、主包 **32 位 / P1 实建 31**、财务 **M1 29 + M2 13 = 42**、常驻容器 **7 / 全出生 12**、M1 **26-31 周**、六期墙钟 **156-189 周**、18.2#13 的三个数 **≥24 小时 / 净样本 ≥10 万次 / 每服务 20 次注入**（写法一律用「10 万次」，全文不得再出现 `100,000`）。
 
 ## 4. 工作分解：S1~S19

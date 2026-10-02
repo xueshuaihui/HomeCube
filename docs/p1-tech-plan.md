@@ -72,6 +72,13 @@ HomeCube/
 - 跨面调用只能出现两种形态：`rclient.Call`（只读）与 `bus` 订阅/发布；
 - **registry 里没有实建服务的那五个域，任何目录、迁移文件、分包、subject 配置出现即门禁 2/4 失败**（不是靠人工记住「这期还不该有它」）。
 
+**S1 骨架落盘后，本节 tree 注释需要四点实测补充**（只登记磁盘上已成立、且不引向任何待定版的部分）：
+
+- **`packages/obs` 的实际职责比注释多两项、少一项**。多：Gin engine 装配与 `/healthz` 探针聚合（PRD 22.2 第 10 条那两个运维端点加路由域自检），以及 §2.1 的 DSN 形态校验与 `UPLOAD_DIR` 落点校验——理由是上面那条 `services/A → services/B` 的 import 禁令本身：装配逻辑若在两个 cmd 各写一遍就是两份 `/healthz` 与两份路由规则，与 §1.3「一张域表是唯一真源」相反。少：**审计上报未实现**——审计信封、21.5 九类、`{code}.audit.recorded` 与业务写同一 outbox 事务落盘，载体分别是 S2 与 S4/S5，本包不留占位函数；注释里这一项属 §10.3 那条路径的将来时，今天还没落地。
+- **分包根有一层前缀在域表之外**：`BundlePath` 存的是 PRD 16.1「前端分包」列的原样形态 `pages/{code}`，它相对 uni-app 源根 `web/src`，所以磁盘上的真实页面根是 `web/src/pages`（当期 `homeos` 为主包目录、`finance` 为分包目录）。`web` → `src` 这一段不进域表：它是工程结构，不是 PRD 16.1 登记的七个命名维度之一。registry 侧的文件系统断言（`server/packages/registry/registry_fs_test.go`）因此把该根**从域表派生**（取 homeos 行 `BundlePath` 的目录段再拼 `web/src`）而不是硬编码；它的目录列举函数在探针根不存在时直接 `t.Fatalf`——此前一版误信一个磁盘上并不存在的 `web/pages` 路径，使「不该存在的目录不存在」退化成空集通过，这条 `t.Fatal` 就是防同一种假绿。
+- **服务骨架的形状 = 一个 code + 一个监听地址 flag**：`server/services/svc-{code}/cmd/svc-{code}/main.go` 里只声明本进程的 code、`-addr` 与可选的地址 env 键名，其余（路由组前缀、schema、专属账号、探针名、日志与指标的 `code`、NATS 客户端标识）全部从 registry 行查出；配置校验一次报全（`errors.Join`）并 `os.Exit(1)`，不带病启动。两个 cmd 互不 import，`packages/*` 不 import `services/*`——`main.go` 的 import 只有 `packages/obs` 与标准库，`obs` 只 import `packages/registry`。
+- **忽略面在 `.gitignore`，其卷首把权威源指回本节**：Go 产物 `/server/bin/`、`*.test`、`*.out`、`*.exe`；前端产物 `node_modules/`、`web/dist/`、`web/unpackage/`、`admin/dist/`；运行期数据 `deploy/data/`（备份包与 18.2#13 的长压归档件）、`*.log`；本机 env 只提交 `*.example`，`/deploy/env.local` 忽略。附件目录是**两条**：`/uploads/` 与 `/server/uploads/`。第二条不是冗余——`make dev-{code}` 用 `go -C server run`（§十三），进程 cwd 是 `server/`，而 `UPLOAD_DIR` 按 §8.1 与 PRD 14.7 写的是相对形态 `./uploads/{family_id}`，真实票据因此落在 `server/uploads/`，锚在仓库根的 `/uploads/` 拦不住它；origin 是 PUBLIC 仓库。
+
 ### 1.3 命名一致性：一个 code，七处生效（16.1、14.5 第 1 项）
 
 `packages/registry` 里一张域表是唯一真源，**P1 一次性登记七个 code**，`registry.Domains()` 被服务启动、迁移工具、前端构建脚本与 CI 共用。这张表**是面目录，不是封闭清单**（17.8）：七个是当前条目数，追加一个面即在域表加一行，其余六类命名域自动随之生效（**共七类命名维度**，即下表七行），「家庭启用了哪些面」另有权威源（`homeos_family_module`），两者不互为替代：
@@ -87,6 +94,28 @@ HomeCube/
 | 迁移序列 | `migrations/{code}/` | 2 条 | golang-migrate 目录 |
 
 **CI 校验的是「已存在的东西必须合法」与「不该存在的东西必须不存在」两件事**：七域的命名规则全生效（例如有人提交 `migrations/diet/…` 即失败），但只有登记为实建的域才要求文件存在。任一处偏离即门禁 2/4 失败，「架构漂移」因此在合并前被拦住。
+
+**这张表对非 Go 消费者的出口** = `server/packages/registry/cmd/registryd`。该命令自身不持有第二张表，只打印包 API 的返回值，`--format` 取四个值：
+
+- `json`：整表，`registry.Domains()` 的登记序，每行含全部存值字段；
+- `codes`：一行一个 code，同序；
+- `bundles`：一行一个分包集合 code，即 `registry.BundleSet()` 的序——第 2 查要拿去比对 `subPackages[].root` 的那一份；
+- `meta`：一份 JSON，五个键 `currentPhase` / `implemented` / `unborn` / `bundles` / `bundleRoots`。
+
+**`bundles` 与 `meta` 两个出口存在的理由是 §1.3 自己**：当期期号与派生出的分包集合只活在 Go 表里，shell/Node 侧没有这两个出口就得自带一份「当期」，那正是唯一真源要禁掉的第二源；`bundleRoots` 给的是各域存值 `BundlePath`，脚本不得自己拼 `pages/` 前缀。`--format` 传这四个之外的值即报错并以退出码 1 结束，不静默回落到默认值。当期消费者是 `web/scripts/check-pages.mjs`（现场取 live 值）、`web/scripts/gen-domains.mjs`（写 `web/generated/domains.json` 快照，选定「提交 + 断言逐值一致」而不是忽略重生成）与 `deploy/gen-nginx-unborn.mjs`（用 `meta.unborn` 与 `json` 全表生成未出生面的 nginx include）。
+
+**七个命名维度之外，另有十一处名字是从存值派生的**（`Domain` 上的方法，域表不为其多存一格；每条都能在代码里逐字对上，出处按代码注释登记）：
+
+- `RoutePrefixGlob()` → `/api/{code}/*`。存值是归一化的前缀形态 `/api/{code}/`（Gin 路由组与 Nginx location 拼的是前缀），glob 由这个方法给；门禁 4 的 AST 检查比存值前缀，不是比 glob。
+- `StreamName()` → `HC_{CODE}`（code 大写）：§3.1 流表两行原文即 `HC_HOMEOS` / `HC_FINANCE`，其余五条在同一个表里写成 `HC_PURCHASE … HC_GROWTH`。
+- `StreamSubjectPattern()` → `{code}.>`；`ArchiveSubjectPattern()` → `arch.{code}.>`；`DeadLetterSubjectPattern()` → `dl.{code}.>`：§3.1 的 subjects 列与 `HC_ARCHIVE` / `HC_DL` 两行。三条都从 `SubjectPrefix` 派生，所以带点的模式与拼接结果不可能各走一边。
+- `VersionTable()` → `schema_migrations_{code}`（§2.2「落在自己 schema 内」）。
+- `ProjectionTable(src)` → `{code}_proj_{src}`（§2.3 与 PRD 16.3），参数 `src` 是**他域**的 code。
+- `MigrationFileName(seq, desc)` → `{code}_{序号补零 4 位}_{描述}.up.sql`：补零宽度取自两份文档自己的例子（PRD 16.6 的 `finance_0007_…` 与 `purchase_0001_…`、§1.2 的 `{code}_0007_desc.up.sql`），宽度在本包只有一处常量声明；PRD 16.1 与 22.2 第 6 条只说「序号」，P2-P6 出现第五位属文档问题而非代码决定。
+- `OpenAPIContractPath()` → `contracts/openapi/{code}.yaml`、`EventsContractPath()` → `contracts/events/{code}.yaml`：两条都相对 `server/`（§1.2 与 §3.2），也就是那个唯一 Go module 的根。
+- `DSNSearchPath()` → `search_path={code}`：本节 row 2 的校验点与 §2.1 的 DSN 示例。
+
+另有两件事**刻意不在域表里**，同属本节的口径：端口、env 键名、镜像名不存字段（PRD 16.1 登记的七类不含它们，镜像与容器名在 compose 侧由 `svc-{code}` 派生）；§3.4 的 durable consumer 名在域表里**没有**派生方法，代码里也没有任何位置生成它——它的两种读法尚未归一，本节不替它选写法。至于流的创建与 subject 授权，那是 S2 的载体，`packages/bus` 今天是占位空目录。
 
 ---
 
@@ -114,11 +143,18 @@ REVOKE ALL ON SCHEMA public FROM hc_finance;
 **每服务一条独立序列**，golang-migrate 一个实例一条序列、各自版本表 `schema_migrations_{code}`（落在自己 schema 内）。CI 逐服务在空库重放自己那条序列，并校验代码声明的版本与迁移头部一致。当期两条序列，其余五条随各面出生期新增——**序列数随出生期增加不是异常，是设计**。
 
 约定：
+- **版本表在第 0001 步显式创建**（见 `migrations/{code}/{code}_0001_base_schema.up.sql`），不依赖 golang-migrate 自动建表；表结构为 `(version bigint PRIMARY KEY, dirty boolean NOT NULL DEFAULT false)`。
 - 迁移只允许 `CREATE TABLE`/`ALTER` 本域前缀的表；出现他域前缀即门禁 2 失败。
 - **不存在跨服务外键**（16.3）：引用他域对象只存 `id`，无物理约束，完整性由每日对账兜住。这条纪律让各条序列彻底解耦，发布不需要跨域排序。
 - 业务表必备列：`id uuid primary key`（UUIDv7，时间有序抑制索引膨胀）、`family_id uuid not null`、`version bigint not null default 1`、`created_at/updated_at`、`deleted_at/deleted_by`（14.7、22.2 第 9 条）。系统预置数据用可空 `family_id` 表达（财务的预置分类与预置账户即属此类）。
 - 金额一律 `amount_cents bigint`；禁止浮点与 `numeric` 混用（14.7）。
 - 索引第一列固定 `family_id`；流水表按 `family_id + occurred_at` 分区/索引（21.2），**P1 内就要按 6 万条量级建好索引口径**，不留给 M2 补课。
+
+**落盘现状（S1，只登记磁盘上已有的，不追加规则）**：
+
+- 两条序列各四步、每步 `up`/`down` 成对，磁盘上共 16 个迁移文件，落在 `server/migrations/homeos/` 与 `server/migrations/finance/`。四步的描述段依次是 `base_schema`、`outbox_dedupe_dead_letter`、`change_log_idempotency`、`proj_{他域 code}`——第四步两侧不同名，homeos 侧是 `proj_finance`、finance 侧是 `proj_homeos`，与 §2.3 末行列出的两张投影表一一对应。文件名形态即 §1.3 row 7 的 `migrations/{code}/` 与 §1.2 的 `{code}_{序号}_{描述}.up.sql`。
+- `server/go.mod` 是这条序列所在的那个 module 的声明处：**整个 `server/` 目录只有一个 Go module**，module path 为 `github.com/xueshuaihui/HomeCube/server`，`go 1.27`，**没有 `toolchain` 指令**——构建期的宿主工具链由每个 go 调用点显式传的 `GOTOOLCHAIN=local` 钉住（§十五 该行）。该文件的注释块同时写明：**golang-migrate 故意不是这个 module 的依赖**，因为骨架卡禁止迁移执行器与自写 migrate driver（不存在 `server/cmd/migrate` 这类口），执行器属 compose 的一次性 migrate 容器侧（§2.1 末条「建 schema 与建账号只发生在 `make up` 与迁移容器里」、§10.1 的 migrate 容器行）。
+- 「执行器最终落哪个文件/镜像、由哪张卡交付」与「迁移文件名口径是否需要在 `{code}_` 之外再加东西」是**待定版①**，本节不写结论；上面两条只复述磁盘上已经成立、且两种读法都不冲突的事实。
 
 ### 2.3 每个服务的底座侧表（同构命名，落各自 schema）
 
@@ -131,7 +167,9 @@ REVOKE ALL ON SCHEMA public FROM hc_finance;
 | `{code}_idempotency` | `client_request_id` 去重 | 同上 |
 | `{code}_proj_{src}` | 他域数据的本地投影 | 投影只允许本服务订阅器写，可随时重建（16.3）；**P1 有两张**：`finance_proj_homeos`（成员/权限快照）与 `homeos_proj_finance`（首页财务格子状态句，见 6 章） |
 
-`svc-homeos` 额外持有 `homeos_family_module`（本家庭启用哪些面的唯一权威源，17.8）、`homeos_due_registration`、`homeos_notification*`、`homeos_search_index`、`homeos_audit_log`、`homeos_event_archive`（冷存）等全局对象。
+**当期落盘的底座侧表实例**（上表的「现在有哪几张」，只登记名字与落在哪一步，不追加结构规则）：两条序列的第 0002 步各建 `{code}_outbox`、`{code}_event_dedupe`、`{code}_dead_letter`，第 0003 步各建 `{code}_change_log`、`{code}_idempotency`，第 0004 步各建一张投影表——homeos 侧 `homeos_proj_finance`、finance 侧 `finance_proj_homeos`，即上表末行所说的「P1 有两张」已在磁盘上。六个名字全部命中 §10.2 第 2 道定版 ㉔ 的后缀白名单（`_outbox` / `_event_dedupe` / `_dead_letter` / `_change_log` / `_idempotency` / `_proj_*`），门禁 2 对它们只校验「前缀 = 所在服务」。去重表的分区口径、版本表落点等尚未定版的项本节一律不动，只登记到表名为止。
+
+`svc-homeos` 额外持有 `homeos_family_module`（本家庭启用哪些面的唯一权威源，17.8）、`homeos_due_registration`、`homeos_notification*`、`homeos_search_index`、`homeos_audit_log`、`homeos_event_archive`（冷存）等全局对象。**这批全局对象当期一张都还没建**——两条序列的四步只建上表那六族底座侧表。
 
 ---
 
@@ -170,7 +208,7 @@ REVOKE ALL ON SCHEMA public FROM hc_finance;
 - consumer 名 `{consumerCode}-{event_type}`（如 `homeos-finance-transaction-created`），`filter_subject` 精确匹配，`ack_wait=30s`，`backoff=[1s,10s,60s]`，`max_deliver=4`（对应 10.4 的至多重试 3 次）。
 - 进 handler 第一件事：`INSERT ON CONFLICT DO NOTHING INTO {code}_event_dedupe`；已存在即 ack 返回——**重复投递不产生重复业务对象是表约束保证，不是代码纪律**。**去重键是 `(event_type, business_id)`，而 `business_id` 的形态由发布方按 PRD 10.4 的取值约定填写（同一业务对象可合法重复发生的事件必须带周期或版本后缀：`finance.budget.exceeded` = `{budget_id}:{period}`、`{code}.due.registered` = `{source_id}:{due_at}`、`homeos.reminder.fired` = `{reminder_id}:{fire_date}`、`homeos.family.module.updated` = `{family_id}:{code}:{version}`）**。**把 `business_id` 默认取成业务对象 id 会让同一对象的第二次合法事件被当重复丢弃**——预算逐月超支、提醒每次触发、面反复启停全部只生效一次，且症状是「什么都不发生」，排查成本极高；`contracts/events/{code}.yaml` 每条必须登记自己的 `business_id` 形态，门禁 5 据此校验。
 - 超限失败 → publish 到 `dl.{consumerCode}.{event_type}` + 写 `{code}_dead_letter`；管理台按服务查看并人工重放（重放即原样重新入队，走同一幂等键）。
-- `event_dedupe` 留存期取 **365 天 + 30 天余量**，每日清理更早的行。**留存的地板由「最宽的重新入队路径」决定，不是由热流 `max_age=90d` 决定**：死信重放（90 天内）、`HC_HOMEOS`/`HC_FINANCE` 的 90 天窗口、**`HC_ARCHIVE` 的 `max_age=365d` 回放**三条里最长的是最后一条，取 90 天或 7 天都会让「回放一年前的归档事件」重复建业务对象（18.2#5 判「重放新增对象 = 0」）。表按 `created_at` 月度分区，清理即 `DROP PARTITION`，不产生大事务 DELETE。
+- `event_dedupe` 留存期取 **365 天 + 30 天余量**，每日清理更早的行。**留存的地板由「最宽的重新入队路径」决定，不是由热流 `max_age=90d` 决定**：死信重放（90 天内）、`HC_HOMEOS`/`HC_FINANCE` 的 90 天窗口、**`HC_ARCHIVE` 的 `max_age=365d` 回放**三条里最长的是最后一条，取 90 天或 7 天都会让「回放一年前的归档事件」重复建业务对象（18.2#5 判「重放新增对象 = 0」）。**P1 去分区**：去重表改为普通表，`(event_type, business_id)` 做全局唯一索引，跨月插入不重复；清理口径改为**每日对账 + 滚动删除 >90 天记录**（`DELETE FROM {code}_event_dedupe WHERE created_at < now() - interval '90 days'`），不产生大事务 DELETE。
 
 ### 3.5 跨服务只读调用：声明式客户端（16.3、14.7）
 
@@ -374,7 +412,11 @@ make rollback    # 只切回上一版本镜像 tag，校验备份完整性并打
 - **不允许只恢复单个 schema**：跨面逻辑引用会立刻失配（21.3 恢复顺序行）。
 - M1 必须完成**首次真实恢复演练**（含全栈 Compose 重建）并记录耗时——14.5 第 9 项的门禁；**此后每季度一次**（12.3 数据备份行），演练记录经 `GET /api/homeos/data/backup-status` 可查、经 `POST /api/homeos/data/restore` 触发（PRD 3.7 的管理台口）。**只做首次不做季度 = 12.3 的「每季度 1 次」是一句没有载体的话**。
 - 回滚刻意保持薄：数据库向后兼容由迁移纪律保证，不执行 down 迁移；**部署包上传与目标机执行由人手动完成**，脚本不做远程编排。
-- 健康检查：每服务 `/healthz` 报告「本 schema 可连 + JetStream 已连」，`/metrics` 带常量标签 `code`（22.2 第 10 条）；当期两个服务都要可拉，每新增一个服务即在期末复验这一条（14.5 第 9 项）。
+- 健康检查：每服务 `/healthz` 报告「本 schema 可连 + JetStream 已连」，`/metrics` 带常量标签 `code`（22.2 第 10 条）；当期两个服务都要可拉，每新增一个服务即在期末复验这一条（14.5 第 9 项）。S1 落地的形态（在 `packages/obs`，只登记代码里已有的）：
+  - 两项探针各是一次真往返。**schema 项** = 连得上 + `current_schema()` 等于本域 schema（证明 §2.1 的 `search_path` 真生效、该账号确实看得见自己的 schema）+ `information_schema.tables` 里至少有一张本域前缀的表（空 schema 意味着序列没重放或 §2.1 的 GRANT 没落）。**JetStream 项** = 连接仍在 + 向服务端要一次账户级 JetStream 状态（这比 ping 多证明「服务端开了 JetStream 且本账号可用」）。两项都**不要求本域的流已存在**——流的创建是 S2 的载体（§3.1 的「建」是流规划，`deploy/env.local.example` 也写明流的创建与 subject 授权不在 env 侧），要求一条还没人建的流会让正确的检出永远回 503。
+  - `/healthz` **两处都挂**：本域前缀下的 `/api/{code}/healthz` 与文档字面写的根 `/healthz`。原因是 22.2 第 10 条与本节末条都写裸 `/healthz`，而 22.2 第 8 条要求路由分域并禁止根路径业务接口——两种读法同时兑现，不在实现里择一。`/metrics` 只挂根路径这一处：它同样被 22.2 第 10 条写成裸名，且不是业务路由。
+  - 失败语义：全绿 → 200；任一项失败 → 503 并逐项给出失败原因。不存在「降级仍回 200」——那会让 compose 健康检查与 14.5 第 9 项的「可被拉取」跟健康态无法区分；单项探针超时即计为失败。
+  - 启动时同一批检查先跑一轮（preflight），未通过即进程退出、码非零：§2.1 的「账号即边界」与本节的健康门都预设一个没带病起来的进程，不留一个永远回 503 的服务。
 
 ### 10.2 CI 五道门禁（22.5）
 
@@ -390,7 +432,12 @@ make rollback    # 只切回上一版本镜像 tag，校验备份完整性并打
 
 ### 10.3 可观测与合规素材（14.5 第 9 项）
 
-- 指标最小集（全部带 `family_id` 与 `code`，当期各服务分别出图）：接口 P95/P99、错误率、`/healthz` 存活、outbox 积压、死信数、事件端到端收敛时间、跨服务调用耗时与降级次数、同步冲突数、投递回执率、依赖调用量（未定版项为 0，OCR/ASR 有真实调用量）。告警阈值写进 `deploy/alerts.yml`（21.5）。
+- 指标最小集（全部带 `family_id` 与 `code`，当期各服务分别出图）：接口 P95/P99、错误率、`/healthz` 存活、outbox 积压、死信数、事件端到端收敛时间、跨服务调用耗时与降级次数、同步冲突数、投递回执率、依赖调用量（未定版项为 0，OCR/ASR 有真实调用量）。告警阈值写进 `deploy/alerts.yml`（21.5）。S1 落地的形态（代码在 `packages/obs`）：
+  - `code` 是**构造期绑定的常量标签**：注册器在装配服务时用 `prometheus.WrapRegistererWith` 把 `code` 绑上去，值取自 registry 行——与本服务的路由前缀、schema 同源，不可能各说一遍。因此本包注册的每一条序列都自带 `code`，调用点既不需要传也**没法漏**，也拿不出一条无标签的序列。
+  - 每服务一个独立指标 Registry，`/metrics` 只吐自己的数字（22.2 第 10 条「每服务可独立运维」、21.5「每服务分别出图」）。
+  - 上面那一条清单里，**当期只有三项有真数据**：接口延迟直方图（P95/P99 由查询层对桶算）、错误率（按状态码打标签的计数器，5xx 占比即错误率）、以及进程收集器。`route` 标签取的是匹配到的路由模板而不是 URL，未被任何路由接受的请求落一个固定占位值——用 URL 会让标签基数失控。其余各项（outbox 积压、死信数、端到端收敛、跨服务调用耗时与降级、同步冲突、投递回执率、依赖调用量）**今天不注册 collector**：它们的数值来自 S2/S5/S6/S13，而一个没人测的零值 gauge 在仪表盘上会被当成数据。
+  - **`family_id` 维度当期没有出**。本条开头那句「全部指标带 `family_id` 与 `code`」里的 `code` 已由上面的常量标签兑现；`family_id` 的唯一权威来源是 S4 的 authz 中间件从 JWT claim 里取（14.5 第 3 项），当期那个中间件还不存在，用一个空值去注册一条任何代码路径都填不满的维度属假维度，因此按「未实现」登记在这里，而不是写成已满足。
+  - 本包的职责里**没有审计上报**（见 §1.2 的落盘补充）：本节下一条的九类落库路径整条待 S2 的 outbox 与 S4/S5 的审计事件，代码里没有占位函数。
 - 审计事件按 21.5 的**九类**落 `homeos_audit_log`（P1 可测八类，「规则启停」随 P6 规则引擎出生），各服务在**自己**的流上发 `{code}.audit.recorded`（P1 = `homeos.audit.recorded` + `finance.audit.recorded`，与业务写同一 outbox 事务落盘），`svc-homeos` 消费后统一落 `homeos_audit_log`——因此 homeos 不可达时审计不丢，只延后收敛；连续 5 次越权通知管理员。
 - **合规素材底稿四项**：L2/L3 字段清单（**由 `contracts/data-levels.yaml` 生成，该文件是 20.1 的机器可读形态、由 20.1 派生而非手写，定版 ㉔**；18.2#7 的逐字段抽检与门禁共用这一份源）、埋点字典（19.5）、保留期表（21.4）、第三方 SDK 与数据出境清单（P1 含 OCR/ASR 两家，其余为空表 + `adapter/` 接口清单）。P1 末附加门禁①只判文本定版，不判素材收集（11.9）。
 
@@ -440,7 +487,9 @@ make rollback    # 只切回上一版本镜像 tag，校验备份完整性并打
 
 ## 十三、联调与环境
 
-- 本地：`make up` 起全栈，`make dev-{code}` 把某服务跑出容器外调试（`dev-homeos` / `dev-finance`），端口与 env 在 `deploy/env.local.example`。
+- 本地：`make up` 起全栈，`make dev-{code}` 把某服务跑出容器外调试（`dev-homeos` / `dev-finance`），端口与 env 在 `deploy/env.local.example`。**这句里的「端口」半句现在有落盘对价**：该文件登记 `HOMEOS_ADDR=":8080"` 与 `FINANCE_ADDR=":8081"` 两个监听地址键（同一文件另有 nginx 的宿主端口与两个上游地址键，属 S1-D 侧登记的口），键名与取值口径的源头就是下面这条三层解析。
+  - **监听地址的三层解析（S1 已落，代码在 `packages/obs`）**：优先级恒为 cmd 的 `-addr` flag > 本服务的可选环境键（形态 `{CODE}_ADDR`，当期即 `HOMEOS_ADDR` / `FINANCE_ADDR`）> 按 `registry.Implemented()` 的**登记序**派生的默认端口（基数 8080 + 下标）。当期解析结果即 `svc-homeos` → `:8080`、`svc-finance` → `:8081`，两个 dev 目标可同时跑而不撞号。`make dev-homeos` / `make dev-finance` 都不传 `-addr`（配方只有 `go -C server run <pkg>`，env 由 `set -a` + `source deploy/env.local` 注入），所以实际生效的是第二层、第三层是兜底，两层取值相同——改端口只改那一个文件。`make up` 下每服务各自一个容器（§10.1），进程绑的监听端口与 nginx 拨号的上游端口要成对一致（`*_UPSTREAM` 的端口段跟着 `*_ADDR` 走）。
+  - 第三层那条规则（**基数 8080 + `registry.Implemented()` 登记序**）此前只写在代码里，文档从未登记，本节登记其存在。它**刻意不进域表**（§1.3「端口、env 键名、镜像名不存字段」），也不是一条要人记住的口诀：后续面出生即自动占下一格，无需在这里加行；写成未登记为实建的 code 会被拒绝启动，而不是与谁撞号。第二层那个键名同理来自代码的 `addrEnvKey`，如今两边都已落盘。
 - **可用性长压环境（18.2#13）**：一套与家庭实例**同构但独立**的 Compose 栈（同编排、同资源规格、同迁移序列），`make soak` 起；负载由栈内容器打持续请求流，**不经真机、不占 18.1 的客户端测试环境口径**，写流量只进专用压测家庭。**窗口排他**：一次 ≥24 小时的连续窗口内不得做首次恢复演练（`make restore` 会全栈重建）、不得做故障注入（杀容器即断开该前缀），这两项排在窗口之外；两个服务可各起一套压测栈**并行跑**，墙钟 +1 天而非 +2 天。
 - 契约测试：`test/contract/` 用事件目录与 OpenAPI 做双端断言——提供方改动若破坏消费方，CI 在合并前失败，不靠联调期发现。
 - 事件回放：`make replay?stream=HC_ARCHIVE&from=<时间>&subject=<前缀>`，仅运维口，回放走同一幂等键，不产生重复对象（18.2#5）。
@@ -470,7 +519,7 @@ make rollback    # 只切回上一版本镜像 tag，校验备份完整性并打
 
 ## 十五、技术决定的定版口径
 
-以下十七处是 P1 契约的一部分：底座段口径冻结至 **P1-M1 末**（22.2 第 7 条），财务面口径冻结至 **P1-M2 末**；变更须走 22.1 第 2 条偏离评审。标 ★ 的三处是「服务随面出生」模型带来的口径修订，与七服务目标形态并存而非替代。
+以下十八处是 P1 契约的一部分：底座段口径冻结至 **P1-M1 末**（22.2 第 7 条），财务面口径冻结至 **P1-M2 末**；变更须走 22.1 第 2 条偏离评审。标 ★ 的三处是「服务随面出生」模型带来的口径修订，与七服务目标形态并存而非替代。
 
 | # | 决定 | 内容 | 已接受的代价 |
 |---|---|---|---|
@@ -491,3 +540,6 @@ make rollback    # 只切回上一版本镜像 tag，校验备份完整性并打
 | O | 面集合的权威源 | 挂载集合 = `registry`（面目录）∩ `homeos_family_module`（家庭选择）∩ 服务已出生，三源在 `svc-homeos` 一处合成，同时供给 `family/modules` 与 `home/summary.faces[]`；客户端五个消费位（首页矩阵、＋ 目标、搜索分组、到期中心注册项、动态流筛选）同源读它，**不再有顶栏这一处（⑫）**；`Family.feature_flags` 不再承载面开关 | 两个接口必须同源否则契约测试失败；多一张配置表与一次传播（P95 ≤2s）；「停用不改统计口径」要专门断言 |
 | P | 前端分包下发 | 每面一分包 + `app/bundles` 清单（`version`/`url`/`sha256`/`size`/`min_compat`）+ 客户端校验与失败回退；**P1 只落契约与代码路径，真实远程下发链路自 P2 起启用**；iOS 侧只用 wgt 资源包，**不引入动态代码执行** | 清单与校验是 P1 就得维护的一条路径；包体积与兼容性判断由服务端配置承担，出包流程随 P2 变重 |
 | Q | 主题与未读的单一源 | **主题 = 主包一份 CSS 变量（亮/暗两套值，三态含跟随系统）**，分包只引用变量；**未读 = shell 一份 `unread` store**，服务端一个聚合口径（`read_at IS NULL` 按 `member_id`）、两个出口（`home/summary` 首屏、`notifications` 列表与已读），顶栏红点与 D 行红点共读它。两者都由门禁 4 做静态检查（17.1、17.9、18.2#10） | UI 规格必须先出两态色板并逐屏走查（M1 即 120 屏，是新增的固定成本）；首页聚合接口因此承担通知计数，`home/summary` 多一次按 `member_id` 的聚合查询；主题不进服务端意味着换设备要重设 |
+| R | 宿主 Go 工具链 | **只认本机已有的那一个工具链，构建期绝不静默下载**：宿主 `go1.27.1 darwin/amd64`，装在 `~/sdk/go`，**不在默认 PATH 上**（交互使用先 `export PATH=~/sdk/go/bin:$PATH`）。取 go 的口径按消费者不同：`Makefile` 的变量口是 `$(HOME)/sdk/go/bin/go`（可用 `GO=` 覆盖），找不到就**打印归属并以非零码退出，不回落到 PATH**——make 配方走 `/bin/sh`，用户级 shell rc 里的 PATH 对它无效；两个 Node 侧调用点先探 `~/sdk/go/bin/go`、不存在才回落 `go`，另有 `HC_GO`（指 go）、`HC_REGISTRYD_BIN`（直接给预构建二进制）、`HC_SERVER_DIR` 三个覆盖口。`server/go.mod` 声明 `go 1.27` 且**不带 `toolchain` 指令**；每个 go 调用点显式传 `GOTOOLCHAIN=local`（用户级 go env 文件里该值也已是 `local`，显式传参是第二重保险）。CI 侧的 Go 安装方式属尚未交付的项——§1.2 登记的 `.github/workflows/` 今天是占位目录，五道门禁的接驳还没进 CI | 换机器或换 CI 环境要先自备 1.27.x，否则命令口以非零码退出并打印归属提示；`go.mod` 的 `go 1.27` 与宿主实际版本靠人工对齐，工具链升级是一次显式动作而不是自动发生 |
+
+**R 行同时登记一处错引（已登记、Makefile 修正待另一卡）**：`Makefile` 里解释「构建期不许静默下载工具链」的那句注释，把这个策略的定版口径指向 §十五 的 **B 行**，而 B 行是会话与权限载体（JWT + JWKS），与工具链无关；正确的指向是上面新增的 R 行。`Makefile` 归另一张卡持有，**本节只登记这条错引与其修正方向，不改那个文件**。
