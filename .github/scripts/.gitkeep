@@ -1,0 +1,1 @@
+占位空目录。CI 静态检查脚本（门禁 1/2/4 的路由 AST、表前缀、分包三查、check-no-emoji 等）；由 S1 的 CI 卡交付。依据 docs/p1-tech-plan.md 10.2、PRD 22.5、14.7。

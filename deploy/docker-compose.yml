@@ -1,0 +1,238 @@
+# =============================================================================
+# HomeCube · 本地 Docker Compose —— S1-D-b：全栈联调载体
+#
+# 条款权威源：docs/p1-tech-plan.md §1.1（同机 Compose 常驻 7 容器的当期拓扑：
+# nginx + svc-homeos + svc-finance + postgres16 + nats + web + admin，另加一次性 migrate
+# 容器，:33-34 说明静态容器与 migrate 不计入常驻数）、§10.1（deploy/ 内 compose 的服务清单与
+# 健康检查判据）、§2.1（单集群、每服务一 schema 一账号；建 schema/建账号只发生在 make up 与
+# 迁移容器里）、§3.1（NATS JetStream 四条流的载体）、§十三（本地 make up 起全栈、
+# make dev-{code} 把某服务跑出容器外调试，端口与 env 在 deploy/env.local.example）；
+# PRD 22.1 第 1 条（Go + Gin + GORM + PostgreSQL 单集群 + NATS JetStream，属既定选型）。
+#
+# 本文件**当前起 7 个常驻容器 + 2 个静态容器**，这是 D-b 的完整交付态：
+#   常驻容器（5个）：
+#     postgres16  单集群（§2.1）
+#     nats        JetStream 已开（§3.1）
+#     nginx       前缀反代 + H5 静态（§1.1「不设网关」）
+#     svc-homeos  homeos 服务容器
+#     svc-finance finance 服务容器
+#   静态容器（2个）：
+#     web         H5 前端静态容器
+#     admin       管理后台静态容器
+#   一次性容器：
+#     migrate     数据库迁移容器（执行完即退出）
+#
+# env：所有 ${...} 由 `docker compose --env-file deploy/env.local` 供给（Makefile 的
+# COMPOSE 配方已经带这个口）。键的清单、形态与出处逐条写在 deploy/env.local.example。
+# 本机 deploy/env.local 已被根 .gitignore 忽略；origin 是 PUBLIC 仓库，任何真实口令不落仓。
+#
+# 生命周期（本卡不新增 make 口，§10.1 的六个口之外不加东西）：
+#   起：make up            （= compose up -d + --wait 收敛）
+#   停：docker compose --env-file deploy/env.local -f deploy/docker-compose.yml stop
+#   拆：docker compose --env-file deploy/env.local -f deploy/docker-compose.yml down -v
+#       （判据 A 的干净起点就是这条：down -v 连卷一起删，下一次 up 从空盘起）
+# =============================================================================
+
+# 显式项目名：不给 name 时 compose 用目录名推断（这里是 deploy），会与本机的其它
+# homecube 之外的项目共用命名空间；容器/卷因此叫 homecube-postgres16-1、homecube_pgdata。
+name: homecube
+
+services:
+  # ---- postgres16：单集群（§2.1、PRD 22.1 第 1 条）--------------------------
+  # 服务名 postgres16 是 §10.1 原文点名的名字，不改。
+  # 镜像 tag 16-alpine：文档只写「postgres16」，未登记 tag，本卡取 16 主版本的 alpine 变体
+  # （体积小、pg_isready/psql 都在），属卡片级选择，已进回写清单。
+  # 当期只有 homecube 这一个库（§2.1 的 DSN 示例 dbname=homecube）；两 schema 与两专属账号
+  # 属 D-b，本卡不建。
+  # 宿主端口只绑 127.0.0.1：宿主 make dev-{code}（§十三）要连它，但局域网里的家庭设备没有
+  # 理由直接连数据库；§2.1 的账号边界之外不再多开一个暴露面。
+  # 口令：POSTGRES_PASSWORD 是本卡新键（官方镜像无口令不起容器），值在本机 env.local。
+  postgres16:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?deploy/env.local 缺 POSTGRES_DB（§2.1 的 dbname，P1 是 homecube）}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?deploy/env.local 缺 POSTGRES_PASSWORD（官方镜像要求超级用户口令）}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Schema & role provisioning script (executed on first init by docker-entrypoint)
+      - ./init-schema.sql:/docker-entrypoint-initdb.d/init-schema.sql:ro
+    healthcheck:
+      # §10.1 末条的健康检查是「每服务 /healthz」，指的是 svc-{code} 容器；基础容器这里
+      # 用镜像自带的 pg_isready 探，作用是让 make up 的 --wait 有可收敛的 healthy 判据。
+      # $$ 是给 compose 的转义：这一段由容器内的 shell 展开 $POSTGRES_DB。
+      test: ["CMD-SHELL", "pg_isready -U postgres -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      start_period: 10s
+      retries: 12
+    restart: unless-stopped
+
+  # ---- nats：JetStream 已开（§3.1 四条流的载体，PRD 10.4）-------------------
+  # 单节点、R=1，不做集群（PRD 14.6 与技术方案卷首「明确不做」都列了 JetStream 集群）。
+  # 流的创建（HC_HOMEOS / HC_FINANCE / HC_ARCHIVE / HC_DL）与 subject 授权属 S2 总线卡，
+  # 本卡只把「能开 JetStream、能建流」的载体交付出来（判据 C）。
+  # --http_port 8222（nats-server 的监控口，CLI 上没有 --http 这个长写法）只给容器内的健康
+  # 检查用：镜像里没有 curl/nats CLI，用 busybox wget 探 /healthz。
+  # 宿主端口同样只绑 127.0.0.1，理由与 postgres16 一致。
+  nats:
+    image: nats:2.10-alpine
+    command: ["--jetstream", "--store_dir=/data", "--http_port=8222"]
+    ports:
+      - "127.0.0.1:4222:4222"
+    volumes:
+      - natsdata:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8222/healthz"]
+      interval: 5s
+      timeout: 5s
+      start_period: 5s
+      retries: 12
+    restart: unless-stopped
+
+  # ---- nginx：前缀反代 + 静态（§1.1 不鉴权）--------------------------------
+  # 上游地址是 env 变量（HOMEOS_UPSTREAM / FINANCE_UPSTREAM），本卡只有这一处声明，
+  # 换容器名时只改 deploy/env.local，不改 deploy/nginx.conf。
+  # 宿主侧端口来自 NGINX_HTTP_PORT（本机 80）；容器内固定 listen 80。
+  # TLS/443 本卡不交付：文档没登记证书与密钥的来源与配置项名（§10.1 只说「TLS」），
+  # 与 §10.1 的「加密口令未登记」是同一类未定版项，交由 S1-E/部署卡提出后定版。
+  nginx:
+    image: nginx:1.27-alpine
+    environment:
+      HOMEOS_UPSTREAM: ${HOMEOS_UPSTREAM:?deploy/env.local 缺 HOMEOS_UPSTREAM（svc-homeos 的 host:port）}
+      FINANCE_UPSTREAM: ${FINANCE_UPSTREAM:?deploy/env.local 缺 FINANCE_UPSTREAM（svc-finance 的 host:port）}
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+    volumes:
+      # basename 必须是 default.conf.template：生成的 default.conf 顶掉镜像自带的默认 server
+      # （详见 deploy/nginx.conf 头部说明）。
+      - ./nginx.conf:/etc/nginx/templates/default.conf.template:ro
+      # 未出生面的 location 清单，由 deploy/gen-nginx-unborn.mjs 从 registry 现取覆写；
+      # 缺这个文件 nginx 起不来（include 失败），不会静默变成「没有即将上线」。
+      - ./nginx.unborn.conf:/etc/nginx/homecube/unborn.conf:ro
+    depends_on:
+      svc-homeos:
+        condition: service_healthy
+      svc-finance:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+      admin:
+        condition: service_healthy
+    healthcheck:
+      # 探静态根：命中即同时证明 nginx 活着 + web 容器可访问。
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 5s
+      timeout: 5s
+      start_period: 5s
+      retries: 12
+    restart: unless-stopped
+
+  # ---- svc-homeos：homeos 底座服务容器 --------------------------------------
+  # 出处：PRD 22.2 第 1 条、tech plan §1.1（当期两个服务之一）。
+  # 依赖 postgres16 和 nats 健康后才启动（service_healthy），确保迁移已完成且基础设施就绪。
+  # 健康检查通过 /api/homeos/healthz 验证（§10.1 末条「本 schema 可连 + JetStream 已连」）。
+  svc-homeos:
+    build:
+      context: ..
+      dockerfile: server/services/svc-homeos/Dockerfile
+    environment:
+      HOMEOS_DSN: ${HOMEOS_DSN_CONTAINER:?deploy/env.local 缺 HOMEOS_DSN_CONTAINER（容器内连接串，host=postgres16）}
+      NATS_URL: ${NATS_URL_CONTAINER:?deploy/env.local 缺 NATS_URL_CONTAINER（容器内 NATS 地址，nats://nats:4222）}
+      UPLOAD_DIR: ${UPLOAD_DIR:-/app/uploads}
+      HOMEOS_ADDR: ":8080"
+    depends_on:
+      postgres16:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/api/homeos/healthz"]
+      interval: 5s
+      timeout: 5s
+      start_period: 10s
+      retries: 12
+    restart: unless-stopped
+
+  # ---- svc-finance：财务面服务容器 ------------------------------------------
+  # 出处：PRD 22.2 第 1 条、tech plan §1.1（当期两个服务之一）。
+  # 依赖 postgres16 和 nats 健康后才启动。
+  # 健康检查通过 /api/finance/healthz 验证。
+  svc-finance:
+    build:
+      context: ..
+      dockerfile: server/services/svc-finance/Dockerfile
+    environment:
+      FINANCE_DSN: ${FINANCE_DSN_CONTAINER:?deploy/env.local 缺 FINANCE_DSN_CONTAINER（容器内连接串，host=postgres16）}
+      NATS_URL: ${NATS_URL_CONTAINER:?deploy/env.local 缺 NATS_URL_CONTAINER（容器内 NATS 地址，nats://nats:4222）}
+      FINANCE_ADDR: ":8081"
+    depends_on:
+      postgres16:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8081/api/finance/healthz"]
+      interval: 5s
+      timeout: 5s
+      start_period: 10s
+      retries: 12
+    restart: unless-stopped
+
+  # ---- migrate：一次性数据库迁移容器 ----------------------------------------
+  # 出处：tech plan §2.2（每服务一条独立序列）、§10.1（一次性 migrate 容器逐服务重放迁移）。
+  # 使用 golang-migrate CLI 镜像，挂载 migrations 目录，执行完后退出。
+  # 依赖 postgres16 健康，在 svc-homeos/svc-finance 之前运行。
+  migrate:
+    image: migrate/migrate:latest
+    command: >
+      sh -c "
+        echo 'Running migrations for homeos...' &&
+        migrate -path /migrations/homeos -database 'postgres://postgres:${POSTGRES_PASSWORD}@postgres16:5432/${POSTGRES_DB}?sslmode=disable&search_path=homeos' up &&
+        echo 'Running migrations for finance...' &&
+        migrate -path /migrations/finance -database 'postgres://postgres:${POSTGRES_PASSWORD}@postgres16:5432/${POSTGRES_DB}?sslmode=disable&search_path=finance' up &&
+        echo 'All migrations completed successfully!'
+      "
+    volumes:
+      - ../server/migrations:/migrations:ro
+    depends_on:
+      postgres16:
+        condition: service_healthy
+    restart: "no"
+
+  # ---- web：H5 前端静态容器 -------------------------------------------------
+  # 出处：tech plan §10.1（web 静态容器）、§1.1（H5 静态资源）。
+  # 基于 nginx:alpine，提供编译后的 H5 前端应用。
+  web:
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 5s
+      timeout: 5s
+      start_period: 5s
+      retries: 12
+    restart: unless-stopped
+
+  # ---- admin：管理后台静态容器 ----------------------------------------------
+  # 出处：tech plan §10.1（admin 静态容器）。
+  # 基于 nginx:alpine，提供编译后的管理后台应用。
+  admin:
+    build:
+      context: ../admin
+      dockerfile: Dockerfile
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 5s
+      timeout: 5s
+      start_period: 5s
+      retries: 12
+    restart: unless-stopped
+
+volumes:
+  # 命名卷（实际名 homecube_pgdata / homecube_natsdata）：判据 A 的 down -v 连卷删，
+  # 干净起点因此是真的空盘，不是复用上一次的库。
+  pgdata:
+  natsdata:
