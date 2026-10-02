@@ -86,6 +86,12 @@ func Open(cfg Config) (*Service, error) {
 	}, nil
 }
 
+// DB returns the GORM database connection for this service.
+// Services use this to access their schema-scoped database.
+func (s *Service) DB() *gorm.DB {
+	return s.db
+}
+
 // Run performs the startup preflight, then serves until ctx is cancelled, then shuts down.
 func (s *Service) Run(ctx context.Context) error {
 	if err := s.Health.Preflight(ctx); err != nil {

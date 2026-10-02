@@ -19,8 +19,12 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/xueshuaihui/HomeCube/server/packages/adapter/asr"
+	"github.com/xueshuaihui/HomeCube/server/packages/bus"
 	"github.com/xueshuaihui/HomeCube/server/packages/obs"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/handler"
+	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/repo"
+	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/service"
 )
 
 // code is this process's identity: one registry row, looked up rather than assumed.
@@ -72,9 +76,81 @@ func run(addr string) error {
 	}
 	defer svc.Close()
 
+	// Initialize finance repository, services, and handler
+	financeRepo := repo.NewFinanceRepo(svc.DB())
+	balanceService := service.NewBalanceService(svc.DB(), financeRepo)
+	statisticsService := service.NewStatisticsService(svc.DB())
+	exportService := service.NewExportService(svc.DB())
+
+	// Initialize ASR adapter (stub for now)
+	asrAdapter := asr.NewStubAdapter()
+
+	// Initialize outbox deliverer for async event publishing
+	outboxDeliverer := bus.NewOutboxDeliverer(
+		svc.DB(),
+		nil, // JetStream wrapper - would be initialized in production
+		bus.OutboxConfig{Code: code},
+		func(msg string) { slog.Warn("outbox alert", "msg", msg) },
+	)
+	defer outboxDeliverer.Stop()
+
+	// Start the outbox deliverer
+	outboxDeliverer.Start(context.Background())
+
+	// Initialize budget alert service
+	budgetAlertService := service.NewBudgetAlertService(financeRepo, svc.DB())
+	financeHandler := handler.NewFinanceHandler(financeRepo, balanceService, statisticsService, budgetAlertService, exportService)
+	voiceHandler := handler.NewVoiceHandler(financeRepo, asrAdapter)
+
 	// Register business routes under the finance domain's route prefix (/api/finance)
 	group := svc.Engine.Group(d.RoutePrefix)
+
+	// Existing flow list endpoint (mock)
 	group.GET("/flow/list", handler.FlowListHandler)
+
+	// Account endpoints
+	group.POST("/accounts", financeHandler.CreateAccount)
+	group.GET("/accounts", financeHandler.ListAccounts)
+	group.PUT("/accounts/:id/archive", financeHandler.ArchiveAccount)
+
+	// Category endpoints
+	group.POST("/categories", financeHandler.CreateCategory)
+	group.GET("/categories", financeHandler.ListCategories)
+	group.PUT("/categories/:id/deactivate", financeHandler.DeactivateCategory)
+
+	// Transaction endpoints
+	group.POST("/transactions", financeHandler.CreateTransaction)
+	group.GET("/transactions", financeHandler.ListTransactions)
+	group.PUT("/transactions/:id", financeHandler.UpdateTransaction)
+	group.DELETE("/transactions/:id", financeHandler.DeleteTransaction)
+
+	// Ledger endpoints
+	group.POST("/ledgers", financeHandler.CreateLedger)
+	group.GET("/ledgers", financeHandler.ListLedgers)
+
+	// Balance endpoints
+	group.GET("/accounts/:id/balance", financeHandler.GetAccountBalance)
+
+	// Statistics endpoints
+	group.GET("/statistics/overview", financeHandler.GetOverviewStats)
+	group.GET("/statistics/trend", financeHandler.GetTrendStats)
+	group.GET("/statistics/category", financeHandler.GetCategoryStats)
+	group.GET("/statistics/member", financeHandler.GetMemberStats)
+
+	// Budget endpoints
+	group.POST("/budgets", financeHandler.CreateBudget)
+	group.GET("/budgets", financeHandler.ListBudgets)
+
+	// Bill endpoints
+	group.POST("/bills", financeHandler.CreateBill)
+	group.GET("/bills", financeHandler.ListBills)
+	group.PUT("/bills/:id/pay", financeHandler.PayBill)
+
+	// Export endpoint
+	group.GET("/export", financeHandler.ExportTransactions)
+
+	// Voice entry endpoint
+	group.POST("/voice-entry", voiceHandler.VoiceEntry)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
