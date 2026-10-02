@@ -1,5 +1,9 @@
 package push
 
+// STUB IMPLEMENTATION: P1 uses in-app notification only
+// Real push credentials (JPush/GeTui/Umeng) will be configured before P2 commercial launch
+// See packages/adapter/DEPENDENCIES.md for vendor selection timeline
+
 import (
 	"context"
 	"fmt"

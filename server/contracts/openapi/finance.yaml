@@ -1,4 +1,8 @@
 # Finance OpenAPI 契约
+# CONTRACT FROZEN: P1-M2 closeout (S19)
+# Any breaking change requires version bump and deprecation period per PRD 10.4
+frozen_at: "2026-10-03"
+version: "1.0.0"
 # 路由前缀: /api/finance/*
 # 服务: svc-finance
 # 版本: 1.0

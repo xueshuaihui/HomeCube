@@ -1,6 +1,8 @@
 {
   "pages": [
-    { "path": "pages/homeos/home/index" }
+    { "path": "pages/homeos/home/index" },
+    { "path": "pages/homeos/legal/privacy-policy" },
+    { "path": "pages/homeos/legal/user-agreement" }
   ],
   "subPackages": [
     {

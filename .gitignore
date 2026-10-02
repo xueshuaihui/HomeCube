@@ -47,6 +47,8 @@ deploy/data/
 .env.*
 !.env.example
 /deploy/env.local
+/deploy/*.env
+!/deploy/*.example.env
 
 # ---- 编辑器与系统（本机 macOS，Finder 遍历目录会不断生成 .DS_Store）----------
 .DS_Store

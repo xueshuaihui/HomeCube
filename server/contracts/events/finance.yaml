@@ -1,4 +1,8 @@
 # Finance 事件目录
+# CONTRACT FROZEN: P1-M2 closeout (S19)
+# Any breaking change requires version bump and deprecation period per PRD 10.4
+frozen_at: "2026-10-03"
+version: "1.0.0"
 # 主题域: finance.*
 # 发布方: svc-finance
 # 启用期: P1-M1 (2026-Q3)

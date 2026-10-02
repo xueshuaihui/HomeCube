@@ -21,6 +21,7 @@ import (
 	"syscall"
 
 	"github.com/xueshuaihui/HomeCube/server/packages/obs"
+	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/handler"
 )
 
 // code is this process's identity: one registry row, looked up rather than assumed --
@@ -75,6 +76,11 @@ func run(addr string) error {
 		return err
 	}
 	defer svc.Close()
+
+	// Register legal endpoints under the homeos domain's route prefix (/api/homeos)
+	group := svc.Engine.Group(d.RoutePrefix)
+	group.GET("/legal/privacy-policy", handler.GetPrivacyPolicy)
+	group.GET("/legal/user-agreement", handler.GetUserAgreement)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
