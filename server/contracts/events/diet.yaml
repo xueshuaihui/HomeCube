@@ -1,0 +1,15 @@
+# Diet 事件目录（空壳）
+# 主题域: diet.*
+# 发布方: svc-diet
+# 启用期: P3 (饮食面出生期)
+
+domain: diet
+version: "1.0"
+publisher: svc-diet
+enablement_period: P3
+
+events: []
+
+note: >
+  饮食面的事件将在P3出生期登记。
+  当前仅保留主题域声明与启用期字段，无生产者/消费者声明。

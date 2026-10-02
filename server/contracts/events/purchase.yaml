@@ -1,0 +1,15 @@
+# Purchase 事件目录（空壳）
+# 主题域: purchase.*
+# 发布方: svc-purchase
+# 启用期: P2 (采购面出生期)
+
+domain: purchase
+version: "1.0"
+publisher: svc-purchase
+enablement_period: P2
+
+events: []
+
+note: >
+  采购面的事件将在P2出生期登记。
+  当前仅保留主题域声明与启用期字段，无生产者/消费者声明。

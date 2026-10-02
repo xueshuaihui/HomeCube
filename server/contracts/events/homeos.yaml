@@ -1,0 +1,194 @@
+# HomeOS 事件目录
+# 主题域: homeos.*
+# 发布方: svc-homeos
+# 启用期: P1-M1 (2026-Q3)
+
+domain: homeos
+version: "1.0"
+publisher: svc-homeos
+enablement_period: P1-M1
+
+events:
+  # === 成员管理事件 ===
+  - event_type: homeos.member.created
+    description: 成员被创建（含无账号成员由监护人代管建档）
+    business_id: "{member_id}"
+    enablement_period: P1-M1
+    publisher: svc-homeos
+    consumers:
+      - svc-finance
+      - svc-purchase
+      - svc-diet
+      - svc-trip
+      - svc-kin
+      - svc-growth
+    payload_schema:
+      member_id: uuid
+      family_id: uuid
+      name: string
+      relation: string
+      role: enum(owner|member|ward|guest)
+      on_behalf_of: uuid | null
+
+  - event_type: homeos.member.updated
+    description: 成员信息被更新（name/relation/avatar等）
+    business_id: "{member_id}"
+    enablement_period: P1-M1
+    publisher: svc-homeos
+    consumers:
+      - svc-finance
+      - svc-purchase
+      - svc-diet
+      - svc-trip
+      - svc-kin
+      - svc-growth
+    payload_schema:
+      member_id: uuid
+      family_id: uuid
+      updated_fields: object
+
+  - event_type: homeos.member.deleted
+    description: 成员被移除（软删）
+    business_id: "{member_id}"
+    enablement_period: P1-M1
+    publisher: svc-homeos
+    consumers:
+      - svc-finance
+      - svc-purchase
+      - svc-diet
+      - svc-trip
+      - svc-kin
+      - svc-growth
+    payload_schema:
+      member_id: uuid
+      family_id: uuid
+      deleted_by: uuid
+
+  # === 家庭管理事件 ===
+  - event_type: homeos.family.created
+    description: 新家庭被创建
+    business_id: "{family_id}"
+    enablement_period: P1-M1
+    publisher: svc-homeos
+    consumers: []
+    payload_schema:
+      family_id: uuid
+      name: string
+      timezone: string
+      currency: string
+
+  - event_type: homeos.family.updated
+    description: 家庭信息被更新
+    business_id: "{family_id}"
+    enablement_period: P1-M1
+    publisher: svc-homeos
+    consumers: []
+    payload_schema:
+      family_id: uuid
+      updated_fields: object
+
+  - event_type: homeos.family.dissolved
+    description: 家庭被解散（进入30天冷存窗口）
+    business_id: "{family_id}"
+    enablement_period: P1-M1
+    publisher: svc-homeos
+    consumers: []
+    payload_schema:
+      family_id: uuid
+      dissolved_at: timestamp
+      dissolved_by: uuid
+
+  # === 权限变更事件 ===
+  - event_type: homeos.permission.updated
+    description: 权限版本变更（角色/面配置变更触发pver+1）
+    business_id: "{family_id}:{pver}"
+    enablement_period: P1-M1
+    publisher: svc-homeos
+    consumers:
+      - svc-finance
+      - svc-purchase
+      - svc-diet
+      - svc-trip
+      - svc-kin
+      - svc-growth
+    payload_schema:
+      family_id: uuid
+      pver: bigint
+      changed_by: uuid
+      change_type: enum(role|module|member)
+
+  # === 面配置变更事件（定版㉖） ===
+  - event_type: homeos.family.module.updated
+    description: 家庭的面配置变更（开通/停用某个面）
+    business_id: "{family_id}:{code}:{version}"
+    enablement_period: P1-M1
+    publisher: svc-homeos
+    consumers:
+      - svc-finance
+      - svc-purchase
+      - svc-diet
+      - svc-trip
+      - svc-kin
+      - svc-growth
+    payload_schema:
+      family_id: uuid
+      code: string
+      enabled: boolean
+      version: bigint
+      enabled_by: uuid
+      enabled_at: timestamp
+
+  # === 到期与提醒事件 ===
+  - event_type: homeos.todo.completed
+    description: 待办完成回写（业务源对象状态更新）
+    business_id: "{todo_id}"
+    enablement_period: P1-M1
+    publisher: svc-homeos
+    consumers:
+      - svc-finance
+      - svc-purchase
+      - svc-diet
+      - svc-trip
+      - svc-kin
+      - svc-growth
+    payload_schema:
+      todo_id: uuid
+      source_system: string
+      source_id: uuid
+      completed_at: timestamp
+      completed_by: uuid
+
+  - event_type: homeos.reminder.fired
+    description: 提醒触发器（到点下发）
+    business_id: "{reminder_id}:{fire_date}"
+    enablement_period: P1-M1
+    publisher: svc-homeos
+    consumers:
+      - svc-finance
+      - svc-purchase
+      - svc-diet
+      - svc-trip
+      - svc-kin
+      - svc-growth
+    payload_schema:
+      reminder_id: uuid
+      fire_date: date
+      source_system: string
+      source_id: uuid
+      type: enum(budget_alert|system|reminder)
+
+  # === 审计日志事件 ===
+  - event_type: homeos.audit.recorded
+    description: 审计日志记录（九类审计事实）
+    business_id: "{audit_id}"
+    enablement_period: P1-M1
+    publisher: svc-homeos
+    consumers: []
+    payload_schema:
+      audit_id: uuid
+      family_id: uuid
+      actor_id: uuid
+      action: string
+      resource: string
+      outcome: enum(success|failure)
+      recorded_at: timestamp

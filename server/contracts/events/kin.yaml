@@ -1,0 +1,15 @@
+# Kin 事件目录（空壳）
+# 主题域: kin.*
+# 发布方: svc-kin
+# 启用期: P4 (家人面出生期)
+
+domain: kin
+version: "1.0"
+publisher: svc-kin
+enablement_period: P4
+
+events: []
+
+note: >
+  家人面的事件将在P4出生期登记。
+  当前仅保留主题域声明与启用期字段，无生产者/消费者声明。

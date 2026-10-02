@@ -1,0 +1,730 @@
+# HomeOS OpenAPI 契约
+# 路由前缀: /api/homeos/*
+# 服务: svc-homeos
+# 版本: 1.0
+
+openapi: "3.0.3"
+info:
+  title: HomeOS API
+  version: "1.0"
+  description: >
+    HomeOS 底座服务接口，负责身份、家庭、权限、通知、同步、搜索等基础能力。
+    所有接口均需携带 JWT token（除健康检查与 JWKS 分发外）。
+
+servers:
+  - url: /api/homeos
+
+paths:
+  # === 健康检查与公钥分发 ===
+  /healthz:
+    get:
+      summary: 健康检查
+      description: 报告本服务的 schema 连接状态与 JetStream 连接状态
+      operationId: getHealthz
+      tags:
+        - system
+      responses:
+        '200':
+          description: 服务健康
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy]
+                  checks:
+                    type: object
+                    properties:
+                      schema:
+                        type: object
+                        properties:
+                          connected:
+                            type: boolean
+                          current_schema:
+                            type: string
+                          tables_exist:
+                            type: boolean
+                      jetstream:
+                        type: object
+                        properties:
+                          connected:
+                            type: boolean
+                          account_info:
+                            type: object
+        '503':
+          description: 服务不健康
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [unhealthy]
+                  failures:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        check:
+                          type: string
+                        reason:
+                          type: string
+
+  /.well-known/jwks.json:
+    get:
+      summary: JWKS 公钥分发
+      description: 提供 RS256 JWT 验证所需的公钥集合，供业务面服务启动时拉取并定时轮换
+      operationId: getJwks
+      tags:
+        - auth
+      security: []
+      responses:
+        '200':
+          description: JWKS 公钥集合
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kty:
+                          type: string
+                        kid:
+                          type: string
+                        use:
+                          type: string
+                        alg:
+                          type: string
+                        n:
+                          type: string
+                        e:
+                          type: string
+
+  # === 认证接口 ===
+  /auth/login:
+    post:
+      summary: 登录换 token
+      description: 验证码登录后换取 JWT access token + refresh token
+      operationId: login
+      tags:
+        - auth
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, code]
+              properties:
+                phone:
+                  type: string
+                code:
+                  type: string
+                family_id:
+                  type: string
+                  format: uuid
+                  description: 可选，指定登录后的当前会话家庭
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+                  expires_in:
+                    type: integer
+                  family_id:
+                    type: string
+                    format: uuid
+                  role:
+                    type: string
+                    enum: [owner, member, ward, guest]
+                  pver:
+                    type: integer
+        '401':
+          description: 验证码错误或过期
+
+  /auth/refresh:
+    post:
+      summary: Refresh token 轮换
+      description: 使用 refresh token 换取新的 access token + refresh token 对
+      operationId: refreshToken
+      tags:
+        - auth
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: 刷新成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+                  expires_in:
+                    type: integer
+        '401':
+          description: Refresh token 无效或已撤销
+
+  # === 成员与权限快照（跨服务只读） ===
+  /members/snapshot:
+    get:
+      summary: 成员快照
+      description: >
+        供 authz SDK 与各服务投影使用的成员与权限快照。
+        支持 If-None-Match: pver 命中 304。
+        P1 期间 family_overrides 与 object_acls 恒返回空数组（㉖）。
+      operationId: getMembersSnapshot
+      tags:
+        - internal
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fid
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: If-None-Match
+          in: header
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成员与权限快照
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pver:
+                    type: integer
+                  members:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        member_id:
+                          type: string
+                          format: uuid
+                        user_id:
+                          type: string
+                          format: uuid
+                          nullable: true
+                        name:
+                          type: string
+                        relation:
+                          type: string
+                        role:
+                          type: string
+                          enum: [owner, member, ward, guest]
+                        avatar:
+                          type: string
+                          nullable: true
+                  permissions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        scope:
+                          type: string
+                          enum: [module, data, operation]
+                        resource:
+                          type: string
+                        action:
+                          type: string
+                        condition:
+                          type: string
+                  family_overrides:
+                    type: array
+                    items: {}
+                    description: P1 恒为空数组
+                  object_acls:
+                    type: array
+                    items: {}
+                    description: P1 恒为空数组
+        '304':
+          description: 未修改（pver 匹配）
+
+  # === 面配置管理 ===
+  /family/modules:
+    get:
+      summary: 获取家庭面配置与全量面目录
+      description: >
+        每项含 code/name/icon/enabled（家庭口径）/visible（当前成员角色口径）/born/availability。
+        开通页直接读它；首页矩阵渲染数据取自 home/summary 的 faces[]。
+      operationId: getFamilyModules
+      tags:
+        - family
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 面配置列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  modules:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        code:
+                          type: string
+                        name:
+                          type: string
+                        icon:
+                          type: string
+                        enabled:
+                          type: boolean
+                        visible:
+                          type: boolean
+                          description: 当前成员角色是否可见
+                        born:
+                          type: boolean
+                          description: 服务是否已出生
+                        availability:
+                          type: string
+                          enum: [available, unavailable]
+                  version:
+                    type: integer
+
+    put:
+      summary: 管理员开通/停用某个面
+      description: >
+        仅管理员可调用。落审计、pver+1、发 homeos.family.module.updated 事件。
+        开通只写配置，不创建该面任何业务数据；停用不删数据。
+        仅剩最后一个已启用面时停用被拒。
+      operationId: updateFamilyModules
+      tags:
+        - family
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, enabled, version]
+              properties:
+                code:
+                  type: string
+                enabled:
+                  type: boolean
+                version:
+                  type: integer
+                  description: 乐观锁版本号
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version:
+                    type: integer
+                  pver:
+                    type: integer
+        '403':
+          description: 非管理员无权调用
+        '409':
+          description: 版本冲突或仅剩最后一面不允许停用
+
+  # === 首页聚合 ===
+  /home/summary:
+    get:
+      summary: 首页四区聚合数据
+      description: >
+        单请求返回家庭区、今日区、服务矩阵、动态流四区数据。
+        接受 period 参数（月/季/年三档编码），非法值返回 400 且不回落为当前月。
+      operationId: getHomeSummary
+      tags:
+        - home
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: period
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: '^\\d{4}-(\\d{2}|Q[1-4])$'
+            description: YYYY-MM / YYYY-Qn / YYYY
+      responses:
+        '200':
+          description: 首页聚合数据
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  family:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      name:
+                        type: string
+                      members:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            member_id:
+                              type: string
+                              format: uuid
+                            name:
+                              type: string
+                            relation:
+                              type: string
+                            avatar:
+                              type: string
+                              nullable: true
+                      member_count:
+                        type: integer
+                  due_today:
+                    type: object
+                    properties:
+                      count:
+                        type: integer
+                        description: 当日全量到期项数
+                      items:
+                        type: array
+                        maxItems: 3
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                            title:
+                              type: string
+                            due_at:
+                              type: string
+                              format: date-time
+                            source_system:
+                              type: string
+                  faces:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        code:
+                          type: string
+                        name:
+                          type: string
+                        availability:
+                          type: string
+                          enum: [available, unavailable]
+                        headline:
+                          type: string
+                        badge:
+                          type: integer
+                        as_of:
+                          type: string
+                          format: date-time
+                  dynamics:
+                    type: object
+                    properties:
+                      items:
+                        type: array
+                        maxItems: 20
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                            code:
+                              type: string
+                            actor_name:
+                              type: string
+                            action:
+                              type: string
+                            summary:
+                              type: string
+                            at:
+                              type: string
+                              format: date-time
+                  unread:
+                    type: integer
+                    description: 未读消息计数
+        '400':
+          description: period 参数格式非法
+
+  # === 通知管理 ===
+  /notifications:
+    get:
+      summary: 通知列表
+      description: 按 type 分组返回通知列表与未读计数
+      operationId: getNotifications
+      tags:
+        - notifications
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [budget_alert, system, reminder]
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 通知列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        type:
+                          type: string
+                          enum: [budget_alert, system, reminder]
+                        content:
+                          type: string
+                        read_at:
+                          type: string
+                          format: date-time
+                          nullable: true
+                        created_at:
+                          type: string
+                          format: date-time
+                  unread:
+                    type: integer
+                  next_cursor:
+                    type: string
+                    nullable: true
+
+  /notifications/read:
+    post:
+      summary: 标记通知已读
+      description: 支持单个通知已读与全部已读
+      operationId: markNotificationsRead
+      tags:
+        - notifications
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notification_ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  description: 为空则标记全部已读
+                all:
+                  type: boolean
+                  default: false
+      responses:
+        '200':
+          description: 标记成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  marked_count:
+                    type: integer
+                  unread:
+                    type: integer
+
+  # === 全局搜索 ===
+  /search:
+    get:
+      summary: 全局搜索
+      description: 跨六面的全局搜索，P1 为关键词搜索，P6 升级为自然语言搜索
+      operationId: search
+      tags:
+        - search
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: ref_domain
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [homeos, finance, purchase, diet, trip, kin, growth]
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 搜索结果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ref_domain:
+                          type: string
+                        ref_id:
+                          type: string
+                          format: uuid
+                        title:
+                          type: string
+                        summary:
+                          type: string
+                        score:
+                          type: number
+                  groups:
+                    type: object
+                    description: 按 ref_domain 分组的计数
+        '404':
+          description: 未出生域查询返回空并提示「即将上线」
+
+  # === 分包管理 ===
+  /app/bundles:
+    get:
+      summary: 前端分包清单
+      description: >
+        按 codes 与客户端 installed 返回每面分包的 version/url/sha256/size/min_compat。
+        供按需加载与远程下发使用。
+      operationId: getAppBundles
+      tags:
+        - app
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: codes
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 逗号分隔的 code 列表
+        - name: installed
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 客户端已安装的分包版本 JSON
+      responses:
+        '200':
+          description: 分包清单
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bundles:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        code:
+                          type: string
+                        version:
+                          type: string
+                        url:
+                          type: string
+                        sha256:
+                          type: string
+                        size:
+                          type: integer
+                        min_compat:
+                          type: string
+
+  /app/version:
+    get:
+      summary: 版本检查
+      description: >
+        登录后静默检查更新。返回当前版本 + 更新说明 + min_compat。
+        仍走服务中间件鉴权（带 token），只是响应不含任何家庭数据与 family_id。
+        检查失败不阻断首屏。
+      operationId: getAppVersion
+      tags:
+        - app
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 版本信息
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  current_version:
+                    type: string
+                  update_notes:
+                    type: string
+                  min_compat:
+                    type: string
+                  force_update:
+                    type: boolean
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

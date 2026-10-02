@@ -1,0 +1,15 @@
+# Trip 事件目录（空壳）
+# 主题域: trip.*
+# 发布方: svc-trip
+# 启用期: P6 (出行面出生期)
+
+domain: trip
+version: "1.0"
+publisher: svc-trip
+enablement_period: P6
+
+events: []
+
+note: >
+  出行面的事件将在P6出生期登记。
+  当前仅保留主题域声明与启用期字段，无生产者/消费者声明。

@@ -1,0 +1,1 @@
+占位空目录。JWT 校验 + 权限判定 + pver 缓存（语义由 svc-homeos 维护，PRD 15.6）；S4 交付。依据 docs/p1-tech-plan.md 1.2。

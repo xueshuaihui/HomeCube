@@ -1,0 +1,134 @@
+# Finance 事件目录
+# 主题域: finance.*
+# 发布方: svc-finance
+# 启用期: P1-M1 (2026-Q3)
+
+domain: finance
+version: "1.0"
+publisher: svc-finance
+enablement_period: P1-M1
+
+events:
+  # === 交易流水事件 ===
+  - event_type: finance.transaction.created
+    description: 新流水被创建（收支/转账）
+    business_id: "{transaction_id}"
+    enablement_period: P1-M1
+    publisher: svc-finance
+    consumers:
+      - svc-homeos
+    payload_schema:
+      transaction_id: uuid
+      family_id: uuid
+      type: enum(income|expense|transfer)
+      amount_cents: bigint
+      category_id: uuid
+      account_id: uuid
+      occurred_at: timestamp
+      created_by: uuid
+
+  - event_type: finance.transaction.updated
+    description: 流水被编辑
+    business_id: "{transaction_id}"
+    enablement_period: P1-M1
+    publisher: svc-finance
+    consumers:
+      - svc-homeos
+    payload_schema:
+      transaction_id: uuid
+      family_id: uuid
+      updated_fields: object
+      version: bigint
+
+  - event_type: finance.transaction.deleted
+    description: 流水被软删（进入回收站）
+    business_id: "{transaction_id}"
+    enablement_period: P1-M1
+    publisher: svc-finance
+    consumers:
+      - svc-homeos
+    payload_schema:
+      transaction_id: uuid
+      family_id: uuid
+      deleted_at: timestamp
+      deleted_by: uuid
+
+  # === 预算超支事件 ===
+  - event_type: finance.budget.exceeded
+    description: 预算超支（同一预算可逐月/逐季超支）
+    business_id: "{budget_id}:{period}"
+    enablement_period: P1-M1
+    publisher: svc-finance
+    consumers:
+      - svc-homeos
+    payload_schema:
+      budget_id: uuid
+      family_id: uuid
+      period: string
+      budget_amount_cents: bigint
+      actual_amount_cents: bigint
+      exceeded_at: timestamp
+
+  # === 到期注册事件 ===
+  - event_type: finance.due.registered
+    description: 到期对象注册到HomeOS日历/提醒中心
+    business_id: "{source_id}:{due_at}"
+    enablement_period: P1-M1
+    publisher: svc-finance
+    consumers:
+      - svc-homeos
+    payload_schema:
+      source_system: finance
+      source_id: uuid
+      family_id: uuid
+      due_at: timestamp
+      kind: enum(bill|budget|goal|repayment)
+      title: string
+      members: array[uuid]
+
+  - event_type: finance.due.revoked
+    description: 到期对象撤销（业务对象删除或完成）
+    business_id: "{source_id}:{due_at}"
+    enablement_period: P1-M1
+    publisher: svc-finance
+    consumers:
+      - svc-homeos
+    payload_schema:
+      source_system: finance
+      source_id: uuid
+      family_id: uuid
+      revoked_at: timestamp
+      reason: enum(completed|deleted|expired)
+
+  # === 账单支付事件 ===
+  - event_type: finance.bill.paid
+    description: 账单标记已付（生成流水并回写账单状态）
+    business_id: "{bill_id}"
+    enablement_period: P1-M1
+    publisher: svc-finance
+    consumers:
+      - svc-homeos
+    payload_schema:
+      bill_id: uuid
+      family_id: uuid
+      paid_at: timestamp
+      paid_by: uuid
+      transaction_id: uuid
+
+  # === Demo表事件（P1跨服务五步验证用） ===
+  - event_type: finance.demo_item.created
+    description: Demo项创建（P1跨服务链路验证，M2收口时删除）
+    business_id: "{demo_item_id}"
+    enablement_period: P1-M1
+    publisher: svc-finance
+    consumers:
+      - svc-homeos
+    payload_schema:
+      demo_item_id: uuid
+      family_id: uuid
+      title: string
+      due_at: timestamp
+      created_by: uuid
+    note: >
+      此事件仅用于P1-M1跨服务五步验证（注册→写→只读→事件→提醒）。
+      M2收口（S19）时必须删除demo表及相关接口与事件。

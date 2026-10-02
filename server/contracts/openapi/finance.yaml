@@ -1,0 +1,778 @@
+# Finance OpenAPI 契约
+# 路由前缀: /api/finance/*
+# 服务: svc-finance
+# 版本: 1.0
+
+openapi: "3.0.3"
+info:
+  title: Finance API
+  version: "1.0"
+  description: >
+    财务面服务接口，负责记账、账户、分类、预算、账单等财务管理能力。
+    所有接口均需携带 JWT token（除健康检查外）。
+
+servers:
+  - url: /api/finance
+
+paths:
+  # === 健康检查 ===
+  /healthz:
+    get:
+      summary: 健康检查
+      description: 报告本服务的 schema 连接状态与 JetStream 连接状态
+      operationId: getHealthz
+      tags:
+        - system
+      responses:
+        '200':
+          description: 服务健康
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy]
+                  checks:
+                    type: object
+                    properties:
+                      schema:
+                        type: object
+                        properties:
+                          connected:
+                            type: boolean
+                          current_schema:
+                            type: string
+                          tables_exist:
+                            type: boolean
+                      jetstream:
+                        type: object
+                        properties:
+                          connected:
+                            type: boolean
+                          account_info:
+                            type: object
+        '503':
+          description: 服务不健康
+
+  # === 流水管理 ===
+  /transactions:
+    get:
+      summary: 流水列表
+      description: 游标分页的流水列表，支持按 period/type/category/account 筛选
+      operationId: listTransactions
+      tags:
+        - transactions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: period
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: '^\\d{4}-(\\d{2}|Q[1-4])$'
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [income, expense, transfer]
+        - name: category_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: account_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 流水列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Transaction'
+                  next_cursor:
+                    type: string
+                    nullable: true
+
+    post:
+      summary: 记账
+      description: >
+        创建新流水（收支/转账）。带 client_request_id 实现幂等。
+        金额以分为单位（amount_cents），禁止浮点。
+      operationId: createTransaction
+      tags:
+        - transactions
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, amount_cents, account_id, occurred_at]
+              properties:
+                type:
+                  type: string
+                  enum: [income, expense, transfer]
+                amount_cents:
+                  type: integer
+                account_id:
+                  type: string
+                  format: uuid
+                target_account_id:
+                  type: string
+                  format: uuid
+                  description: 转账时必填
+                category_id:
+                  type: string
+                  format: uuid
+                occurred_at:
+                  type: string
+                  format: date-time
+                note:
+                  type: string
+                receipt_file_ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  maxItems: 3
+                client_request_id:
+                  type: string
+                  description: 幂等键
+                ledger_id:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '409':
+          description: 幂等冲突（返回首次响应）
+
+  /transactions/{id}:
+    get:
+      summary: 单条流水查询
+      operationId: getTransaction
+      tags:
+        - transactions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 流水详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '404':
+          description: 流水不存在或已删除
+
+    put:
+      summary: 编辑流水
+      description: 乐观锁更新，version 不匹配返回 409 + 双版本 payload
+      operationId: updateTransaction
+      tags:
+        - transactions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                version:
+                  type: integer
+                amount_cents:
+                  type: integer
+                category_id:
+                  type: string
+                  format: uuid
+                occurred_at:
+                  type: string
+                  format: date-time
+                note:
+                  type: string
+                receipt_file_ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '409':
+          description: 版本冲突
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  server_version:
+                    type: integer
+                  client_version:
+                    type: integer
+                  server_payload:
+                    $ref: '#/components/schemas/Transaction'
+                  client_payload:
+                    $ref: '#/components/schemas/Transaction'
+
+    delete:
+      summary: 软删流水
+      description: 进入回收站，30天内可恢复
+      operationId: deleteTransaction
+      tags:
+        - transactions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: 删除成功
+        '404':
+          description: 流水不存在
+
+  # === 账户管理 ===
+  /accounts:
+    get:
+      summary: 账户列表
+      description: 返回预置账户与自定义账户，含余额（派生值）
+      operationId: listAccounts
+      tags:
+        - accounts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: include_archived
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: 账户列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Account'
+
+    post:
+      summary: 创建账户
+      operationId: createAccount
+      tags:
+        - accounts
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, type]
+              properties:
+                name:
+                  type: string
+                type:
+                  type: string
+                  enum: [cash, bank, third_party, credit_card]
+                initial_balance_cents:
+                  type: integer
+                  default: 0
+                icon:
+                  type: string
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+
+  # === 分类管理 ===
+  /categories:
+    get:
+      summary: 分类列表
+      description: 系统预置字典 + 家庭自定义二级分类
+      operationId: listCategories
+      tags:
+        - categories
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [income, expense]
+        - name: include_inactive
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: 分类列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+
+    post:
+      summary: 创建自定义分类
+      operationId: createCategory
+      tags:
+        - categories
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, type]
+              properties:
+                name:
+                  type: string
+                type:
+                  type: string
+                  enum: [income, expense]
+                parent_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+                icon:
+                  type: string
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+
+  # === 预算管理 ===
+  /budgets:
+    get:
+      summary: 预算列表
+      description: 按 period 过滤的预算列表
+      operationId: listBudgets
+      tags:
+        - budgets
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: period
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: '^\\d{4}-(\\d{2}|Q[1-4])$'
+      responses:
+        '200':
+          description: 预算列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Budget'
+
+    post:
+      summary: 创建预算
+      description: 月度 + 分类 + 固定/周期预算
+      operationId: createBudget
+      tags:
+        - budgets
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [category_id, amount_cents, period]
+              properties:
+                category_id:
+                  type: string
+                  format: uuid
+                amount_cents:
+                  type: integer
+                period:
+                  type: string
+                recurring:
+                  type: boolean
+                  default: false
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Budget'
+
+  # === 账单管理 ===
+  /bills:
+    get:
+      summary: 账单列表
+      description: 按 due_at/period/status 筛选
+      operationId: listBills
+      tags:
+        - bills
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, paid, overdue]
+        - name: period
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 账单列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Bill'
+
+    post:
+      summary: 创建账单
+      description: 新建账单并注册到期中心
+      operationId: createBill
+      tags:
+        - bills
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, amount_cents, due_at]
+              properties:
+                title:
+                  type: string
+                amount_cents:
+                  type: integer
+                due_at:
+                  type: string
+                  format: date-time
+                category_id:
+                  type: string
+                  format: uuid
+                recurring:
+                  type: boolean
+                  default: false
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bill'
+
+  # === 数据导出 ===
+  /export:
+    get:
+      summary: 数据导出
+      description: >
+        三参数必须全生效：type（导出类型）、days（时间范围）、format（文件格式）。
+        非法参数组合返回 400。
+      operationId: exportData
+      tags:
+        - export
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [transactions, budget, full]
+        - name: days
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 365
+        - name: format
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [csv, excel, pdf]
+      responses:
+        '200':
+          description: 导出文件
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: 参数格式非法
+
+components:
+  schemas:
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        family_id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [income, expense, transfer]
+        amount_cents:
+          type: integer
+        account_id:
+          type: string
+          format: uuid
+        target_account_id:
+          type: string
+          format: uuid
+          nullable: true
+        category_id:
+          type: string
+          format: uuid
+          nullable: true
+        occurred_at:
+          type: string
+          format: date-time
+        note:
+          type: string
+          nullable: true
+        receipt_file_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        version:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+        deleted_by:
+          type: string
+          format: uuid
+          nullable: true
+
+    Account:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        family_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+          enum: [cash, bank, third_party, credit_card]
+        balance_cents:
+          type: integer
+          description: 派生值，按 amount_cents 累计
+        icon:
+          type: string
+        is_archived:
+          type: boolean
+        archived_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        family_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: 可空 = 系统预置
+        name:
+          type: string
+        type:
+          type: string
+          enum: [income, expense]
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+        icon:
+          type: string
+        is_active:
+          type: boolean
+          default: true
+        sort_order:
+          type: integer
+        version:
+          type: integer
+
+    Budget:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        family_id:
+          type: string
+          format: uuid
+        category_id:
+          type: string
+          format: uuid
+        amount_cents:
+          type: integer
+        period:
+          type: string
+        spent_cents:
+          type: integer
+        remaining_cents:
+          type: integer
+        exceeded:
+          type: boolean
+        recurring:
+          type: boolean
+
+    Bill:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        family_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        amount_cents:
+          type: integer
+        due_at:
+          type: string
+          format: date-time
+        paid_at:
+          type: string
+          format: date-time
+          nullable: true
+        transaction_id:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          type: string
+          enum: [pending, paid, overdue]
+        recurring:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

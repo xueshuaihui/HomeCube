@@ -1,0 +1,1 @@
+占位空目录。服务骨架（cmd/ + handler/service/repo/model/dto + 本服务订阅器）由 S1-C 交付。依据 docs/p1-tech-plan.md 1.2 与 PRD 22.4（每服务一个 cmd、一个镜像、一条发布线）。

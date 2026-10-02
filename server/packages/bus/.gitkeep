@@ -1,0 +1,1 @@
+占位空目录。outbox 投递器、JetStream 封装、durable consumer、死信；S2 交付。依据 docs/p1-tech-plan.md 1.2。

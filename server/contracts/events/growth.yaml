@@ -1,0 +1,15 @@
+# Growth 事件目录（空壳）
+# 主题域: growth.*
+# 发布方: svc-growth
+# 启用期: P5 (成长面出生期)
+
+domain: growth
+version: "1.0"
+publisher: svc-growth
+enablement_period: P5
+
+events: []
+
+note: >
+  成长面的事件将在P5出生期登记。
+  当前仅保留主题域声明与启用期字段，无生产者/消费者声明。
