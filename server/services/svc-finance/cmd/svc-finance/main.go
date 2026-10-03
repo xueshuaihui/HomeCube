@@ -13,6 +13,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -29,7 +30,23 @@ import (
 	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/handler"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/repo"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/service"
+
+	"gorm.io/gorm"
 )
+
+// outboxPublisher adapts bus.InsertOutboxMessageWithFamily to service.BusPublisher.
+type outboxPublisher struct {
+	code string
+}
+
+func (p *outboxPublisher) Publish(ctx context.Context, db *gorm.DB, subject string, envelope map[string]any) error {
+	data, err := json.Marshal(envelope)
+	if err != nil {
+		return fmt.Errorf("marshal envelope: %w", err)
+	}
+	familyID, _ := envelope["family_id"].(string)
+	return bus.InsertOutboxMessageWithFamily(db, p.code, familyID, subject, string(data))
+}
 
 // code is this process's identity: one registry row, looked up rather than assumed.
 const code = "finance"
@@ -134,6 +151,9 @@ func run(addr string) error {
 	}
 	defer svc.Close()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Initialize finance repository, services, and handler
 	financeRepo := repo.NewFinanceRepo(svc.DB())
 	balanceService := service.NewBalanceService(svc.DB(), financeRepo)
@@ -181,8 +201,32 @@ func run(addr string) error {
 	// The bill service owns the transaction that commits the bill row together with its
 	// finance.due.registered outbox row (PRD 卷首第 3 条: 带时间语义的业务对象一律注册到 HomeOS).
 	billService := service.NewBillService(financeRepo, svc.DB(), code)
+
+	// Initialize recurring service for automatic periodic transaction posting
+	recurringService := service.NewRecurringService(financeRepo, &outboxPublisher{code: code}, code)
+
 	financeHandler := handler.NewFinanceHandler(financeRepo, balanceService, statisticsService, budgetAlertService, exportService, billService)
 	voiceHandler := handler.NewVoiceHandler(financeRepo, asrAdapter)
+
+	// Start background worker to execute due recurring rules every minute
+	go func(ctx context.Context) {
+		ticker := time.NewTicker(1 * time.Minute)
+		defer ticker.Stop()
+
+		svc.Logger.Info("recurring_worker_started", "interval", "1m")
+
+		for {
+			select {
+			case <-ticker.C:
+				if err := recurringService.ExecuteDueRecurringRules(ctx, svc.DB()); err != nil {
+					svc.Logger.Error("recurring_execution_failed", "err", err.Error())
+				}
+			case <-ctx.Done():
+				svc.Logger.Info("recurring_worker_stopped")
+				return
+			}
+		}
+	}(ctx)
 
 	// Register business routes under the finance domain's route prefix (/api/finance)
 	group := svc.Engine.Group(d.RoutePrefix)
@@ -203,6 +247,7 @@ func run(addr string) error {
 	// Transaction endpoints
 	group.POST("/transactions", financeHandler.CreateTransaction)
 	group.GET("/transactions", financeHandler.ListTransactions)
+	group.GET("/transactions/:id", financeHandler.GetTransaction)
 	group.PUT("/transactions/:id", financeHandler.UpdateTransaction)
 	group.DELETE("/transactions/:id", financeHandler.DeleteTransaction)
 
@@ -268,6 +313,12 @@ func run(addr string) error {
 	// Asset-liability report endpoints (S17-S18)
 	group.POST("/reports/asset-liability", financeHandler.GenerateAssetLiabilityReport)
 	group.GET("/reports/asset-liability", financeHandler.GetAssetLiabilityReport)
+
+	// Recurring rule endpoints (P1-M1: 周期记账规则)
+	group.GET("/recurring", financeHandler.ListRecurringRules)
+	group.POST("/recurring", financeHandler.CreateRecurringRule)
+	group.PUT("/recurring/:id", financeHandler.UpdateRecurringRule)
+	group.DELETE("/recurring/:id", financeHandler.DeleteRecurringRule)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
