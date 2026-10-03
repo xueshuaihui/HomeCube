@@ -49,7 +49,10 @@ const error = ref<string | null>(null)
 const cursor = ref<string | null>(null)
 const hasMore = ref(true)
 const filters = ref<FilterState>({})
-const period = ref<'month' | 'quarter' | 'year'>('month')
+
+// Use period from home store (shell-level state, §1.3 第 19 条)
+import { useHomeStore } from '@/stores/home'
+const homeStore = useHomeStore()
 
 // Computed: total expense and income for current period
 const totalExpense = computed(() => {
@@ -77,7 +80,7 @@ async function fetchTransactions(loadMore = false) {
   try {
     const params: any = {
       limit: 50,
-      period: period.value,
+      period: homeStore.period,
     }
 
     if (loadMore && cursor.value) {
@@ -291,7 +294,7 @@ onMounted(() => {
   margin-top: 16rpx;
   padding: 16rpx 48rpx;
   background-color: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-white);
   border-radius: var(--radius-md);
   font-size: 28rpx;
 }
@@ -327,7 +330,7 @@ onMounted(() => {
   height: 48rpx;
   border-radius: var(--radius-sm);
   background-color: var(--color-primary-light);
-  color: #ffffff;
+  color: var(--color-white);
   font-size: 24rpx;
   display: flex;
   align-items: center;
@@ -401,7 +404,7 @@ onMounted(() => {
   height: 96rpx;
   border-radius: 50%;
   background-color: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-white);
   display: flex;
   align-items: center;
   justify-content: center;

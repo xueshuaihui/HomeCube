@@ -347,7 +347,7 @@ onMounted(() => {
 
 .type-btn.active {
   background-color: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-white);
   font-weight: 600;
 }
 
@@ -410,7 +410,7 @@ onMounted(() => {
 
 .category-item.selected {
   background-color: var(--color-primary-light);
-  color: #ffffff;
+  color: var(--color-white);
 }
 
 .cat-icon {
@@ -425,7 +425,7 @@ onMounted(() => {
 }
 
 .category-item.selected .cat-icon {
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: var(--overlay-light);
 }
 
 .cat-name {
@@ -479,8 +479,8 @@ onMounted(() => {
   width: 40rpx;
   height: 40rpx;
   border-radius: 50%;
-  background-color: rgba(0, 0, 0, 0.6);
-  color: #ffffff;
+  background-color: var(--overlay-dark);
+  color: var(--color-white);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -514,7 +514,7 @@ onMounted(() => {
   width: 100%;
   padding: 28rpx 0;
   background-color: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-white);
   border-radius: var(--radius-md);
   font-size: 32rpx;
   font-weight: 600;

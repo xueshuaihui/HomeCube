@@ -37,6 +37,13 @@
   --badge-unread: #ff4d4f;
   --badge-pending: #faad14;
 
+  /* White color for text on colored backgrounds */
+  --color-white: #ffffff;
+
+  /* Overlay colors */
+  --overlay-dark: rgba(0, 0, 0, 0.5);
+  --overlay-light: rgba(255, 255, 255, 0.3);
+
   /* Shadow */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -97,6 +104,13 @@
   /* Badge and indicator colors */
   --badge-unread: #ff7875;
   --badge-pending: #ffc53d;
+
+  /* White color for text on colored backgrounds */
+  --color-white: #ffffff;
+
+  /* Overlay colors */
+  --overlay-dark: rgba(0, 0, 0, 0.5);
+  --overlay-light: rgba(255, 255, 255, 0.3);
 
   /* Shadow - lighter for dark mode */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);

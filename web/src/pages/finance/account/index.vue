@@ -262,7 +262,7 @@ onMounted(() => {
   margin-top: 16rpx;
   padding: 16rpx 48rpx;
   background-color: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-white);
   border-radius: var(--radius-md);
   font-size: 28rpx;
 }
@@ -302,7 +302,7 @@ onMounted(() => {
 .acc-badge {
   padding: 4rpx 12rpx;
   background-color: var(--color-primary-light);
-  color: #ffffff;
+  color: var(--color-white);
   font-size: 20rpx;
   border-radius: var(--radius-sm);
 }
@@ -347,7 +347,7 @@ onMounted(() => {
   height: 96rpx;
   border-radius: 50%;
   background-color: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-white);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -364,7 +364,7 @@ onMounted(() => {
 .dialog-mask {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: var(--overlay-dark);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -446,6 +446,6 @@ onMounted(() => {
 
 .dialog-confirm {
   background-color: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-white);
 }
 </style>

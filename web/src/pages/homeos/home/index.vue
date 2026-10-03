@@ -62,20 +62,17 @@ function goToCalendar() {
 // Navigate to face detail
 function goToFace(faceCode: string) {
   if (!faceCode) return
-  // Map face code to route path
+  // Only navigate to faces that are registered in pages.json
+  // P1: only finance is born, others will be added in future phases
   const routeMap: Record<string, string> = {
     finance: '/pages/finance/flow/index',
-    purchase: '/pages/purchase/list/index',
-    diet: '/pages/diet/menu/index',
-    trip: '/pages/trip/itinerary/index',
-    kin: '/pages/kin/member/index',
-    growth: '/pages/growth/record/index',
   }
   const path = routeMap[faceCode]
   if (path) {
     router.push(path)
   } else {
-    console.warn(`Unknown face code: ${faceCode}`)
+    // For faces not yet implemented, show a toast
+    uni.showToast({ title: '该面功能开发中', icon: 'none' })
   }
 }
 

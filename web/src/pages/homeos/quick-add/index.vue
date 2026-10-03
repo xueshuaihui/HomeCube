@@ -190,22 +190,17 @@ async function handleSubmit() {
     }
 
     // Route to appropriate service based on face_code
+    // P1: only finance is born, others use homeos todos as fallback
     let apiUrl = ''
-    switch (selectedFace.value) {
-      case 'finance':
-        apiUrl = '/api/finance/transactions'
-        // Transform to transaction format
-        payload.type = 'expense'
-        payload.amount_cents = 0 // TODO: Parse amount from content
-        break
-      case 'purchase':
-        apiUrl = '/api/purchase/items'
-        break
-      default:
-        // For other faces, save as todo in homeos
-        apiUrl = '/api/homeos/todos'
-        payload.title = payload.content || '快速添加'
-        break
+    if (selectedFace.value === 'finance') {
+      apiUrl = '/api/finance/transactions'
+      // Transform to transaction format
+      payload.type = 'expense'
+      payload.amount_cents = 0 // TODO: Parse amount from content
+    } else {
+      // For other faces (not yet born), save as todo in homeos
+      apiUrl = '/api/homeos/todos'
+      payload.title = payload.content || '快速添加'
     }
 
     await request.post(apiUrl, payload)
