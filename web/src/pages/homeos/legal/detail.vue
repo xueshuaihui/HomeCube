@@ -1,28 +1,43 @@
 <script setup lang="ts">
-// pages/homeos/legal/privacy/detail —— 隐私政策页面
-import { ref, onMounted } from 'vue'
+// pages/homeos/legal/detail —— 法律文本页面（隐私政策/用户协议）
+// 通过查询参数 type=privacy 或 type=agreement 区分
+import { ref, computed, onMounted } from 'vue'
 import { request } from '@/utils/request'
 
-interface PolicyData {
+interface LegalData {
   title: string
   content: string
   version: string
   updated_at: string
 }
 
-const policy = ref<PolicyData | null>(null)
+const data = ref<LegalData | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
-async function fetchPolicy() {
+// Get type from URL query params
+const type = computed(() => {
+  // In uni-app, get query params from current page options
+  const pages = getCurrentPages()
+  const currentPage = pages[pages.length - 1] as any
+  return currentPage.options?.type || 'privacy'
+})
+
+const pageTitle = computed(() => type.value === 'agreement' ? '用户协议' : '隐私政策')
+
+async function fetchData() {
   loading.value = true
   error.value = null
 
   try {
-    const response = await request.get('/api/homeos/legal/privacy-policy')
-    policy.value = response.data
+    const endpoint = type.value === 'agreement'
+      ? '/api/homeos/legal/user-agreement'
+      : '/api/homeos/legal/privacy-policy'
+
+    const response = await request.get(endpoint)
+    data.value = response.data
   } catch (err: any) {
-    console.error('Failed to fetch privacy policy:', err)
+    console.error('Failed to fetch legal document:', err)
     error.value = err.message || '加载失败'
   } finally {
     loading.value = false
@@ -30,7 +45,7 @@ async function fetchPolicy() {
 }
 
 onMounted(() => {
-  fetchPolicy()
+  fetchData()
 })
 </script>
 
@@ -43,14 +58,14 @@ onMounted(() => {
 
       <view v-else-if="error" class="hc-error">
         <text>{{ error }}</text>
-        <button @click="fetchPolicy">重试</button>
+        <button @click="fetchData">重试</button>
       </view>
 
-      <view v-else-if="policy" class="policy-content">
-        <text class="policy-title">{{ policy.title }}</text>
-        <text class="policy-version">版本：{{ policy.version }}</text>
-        <text class="policy-updated">更新日期：{{ policy.updated_at }}</text>
-        <text class="policy-text">{{ policy.content }}</text>
+      <view v-else-if="data" class="legal-content">
+        <text class="legal-title">{{ data.title }}</text>
+        <text class="legal-version">版本：{{ data.version }}</text>
+        <text class="legal-updated">更新日期：{{ data.updated_at }}</text>
+        <text class="legal-text">{{ data.content }}</text>
       </view>
     </scroll-view>
   </view>
@@ -88,13 +103,13 @@ onMounted(() => {
   font-size: 28rpx;
 }
 
-.policy-content {
+.legal-content {
   padding: 24rpx;
   background-color: var(--bg-primary);
   border-radius: var(--radius-lg);
 }
 
-.policy-title {
+.legal-title {
   display: block;
   font-size: 36rpx;
   font-weight: 600;
@@ -103,8 +118,8 @@ onMounted(() => {
   text-align: center;
 }
 
-.policy-version,
-.policy-updated {
+.legal-version,
+.legal-updated {
   display: block;
   font-size: 24rpx;
   color: var(--text-secondary);
@@ -112,7 +127,7 @@ onMounted(() => {
   text-align: center;
 }
 
-.policy-text {
+.legal-text {
   display: block;
   font-size: 28rpx;
   color: var(--text-primary);

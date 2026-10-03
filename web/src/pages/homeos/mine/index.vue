@@ -220,8 +220,8 @@ const menuSections = [
   {
     title: '其他',
     items: [
-      { label: '隐私政策', action: () => router.push('/pages/homeos/legal/detail') },
-      { label: '用户协议', action: () => router.push('/pages/homeos/legal/agreement') },
+      { label: '隐私政策', action: () => uni.navigateTo({ url: '/pages/homeos/legal/detail?type=privacy' }) },
+      { label: '用户协议', action: () => uni.navigateTo({ url: '/pages/homeos/legal/detail?type=agreement' }) },
       { label: '帮助与关于', action: () => {} },
     ],
   },

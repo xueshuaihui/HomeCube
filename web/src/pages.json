@@ -7,8 +7,7 @@
     { "path": "pages/homeos/messages/index" },
     { "path": "pages/homeos/mine/index" },
     { "path": "pages/homeos/quick-add/index" },
-    { "path": "pages/homeos/legal/detail" },
-    { "path": "pages/homeos/legal/agreement" }
+    { "path": "pages/homeos/legal/detail" }
   ],
   "subPackages": [
     {
