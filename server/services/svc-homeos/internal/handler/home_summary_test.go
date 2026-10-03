@@ -26,11 +26,24 @@
 // 0001-0009 has all three applied. homeos_due_registration (0008) is the one table the B 区 tests add
 // selectively -- see TestHomeSummaryDueTodayOmitsCountWhenProjectionCannotAnswer for what its absence
 // means now that 0008 has landed.
+//
+// BZ-1 adds the two B 区 read-side judgments and, with them, a rule about how the fixtures are built:
+// the rows B 区 reads are written by this service's own consumer (registerDue ->
+// consumer.DueRegisteredHandler and revokeDue -> consumer.DueRevokedHandler, the two ends of the 到期
+// chain), so a red test below says something about the read path rather than about a shape this file
+// invented. The one hand-written row is seedBaseDue's 底座-sourced registration, and its doc says why
+// (P1 has no producer of one). TestHomeSummaryDueTodayDropsRevokedRegistrations pins the 软删 predicate
+// -- which is also 0008:58-60's index predicate -- and
+// TestHomeSummaryDueTodayIsFilteredToTheMemberMountedFaces pins PRD 17.8's 「聚合…一律按本家庭的已挂载面
+// 集合过滤」 across three legs (挂载 / 角色不可见 / 停用后重新启用), the set being the same mountedFaces
+// output C 区 is drawn from.
 package handler
 
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -42,8 +55,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 
+	"github.com/xueshuaihui/HomeCube/server/packages/bus"
 	"github.com/xueshuaihui/HomeCube/server/packages/registry"
 	svcauth "github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/auth"
+	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/consumer"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/model"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/repo"
 )
@@ -111,7 +126,10 @@ func addSummaryReadTables(t *testing.T, db *gorm.DB) {
 }
 
 // addDueRegistrationTable is 0008's homeos_due_registration -- the table repo.HomeSummaryDueToday
-// treats as the switch between 「数过了」 and 「无从数起」.
+// treats as the switch between 「数过了」 and 「无从数起」. Both of 0008's indexes are reproduced, the
+// partial unique upsert anchor (0008:52-54) and the partial 到期索引 (0008:58-60), because a fixture
+// that omitted the first would let two live rows for one object pass unseen and the second is the
+// predicate the read side is now required to match (deleted_at IS NULL).
 func addDueRegistrationTable(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	require.NoError(t, db.Exec(
@@ -122,6 +140,115 @@ func addDueRegistrationTable(t *testing.T, db *gorm.DB) {
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			deleted_at DATETIME, deleted_by TEXT)`).Error)
+	require.NoError(t, db.Exec(
+		`CREATE UNIQUE INDEX homeos_due_registration_source_uidx
+		 ON homeos_due_registration (source_system, source_id, kind)
+		 WHERE deleted_at IS NULL`).Error)
+	require.NoError(t, db.Exec(
+		`CREATE INDEX homeos_due_registration_family_due_idx
+		 ON homeos_due_registration (family_id, due_at ASC)
+		 WHERE deleted_at IS NULL`).Error)
+}
+
+// registerDue writes one due registration through this service's OWN consumer path --
+// consumer.DueRegisteredHandler is production's writer of homeos_due_registration (§3.6「消费
+// finance.due.registered 并按 (source_system, source_id, kind) upsert」, bus_runtime.go subscribes it),
+// so the rows B 区 reads are rows the shipped write path produced rather than rows this file
+// hand-inserted. The payload's field set is contracts/events/finance.yaml's payload_schema, verbatim.
+// Returns the registration row id AND the source_id the revoke half of the chain keys on.
+func registerDue(t *testing.T, db *gorm.DB, familyID, sourceSystem, title string, dueAt time.Time) (string, string) {
+	t.Helper()
+
+	sourceID := uuid.NewString()
+	require.NoError(t, consumer.DueRegisteredHandler(db)(t.Context(), bus.Message{
+		Subject: consumer.DueRegisteredEventType,
+		Envelope: bus.Envelope{
+			EventType:  consumer.DueRegisteredEventType,
+			BusinessID: sourceID + ":" + dueAt.UTC().Format(time.RFC3339),
+			FamilyID:   familyID,
+			Version:    "1.0",
+			Timestamp:  time.Now().UTC().Format(time.RFC3339Nano),
+			Payload: map[string]any{
+				"source_system": sourceSystem,
+				"source_id":     sourceID,
+				"family_id":     familyID,
+				"due_at":        dueAt.UTC().Format(time.RFC3339),
+				"kind":          "bill",
+				"title":         title,
+			},
+		},
+	}))
+
+	var id string
+	require.NoError(t, db.Raw(`SELECT id FROM homeos_due_registration WHERE source_id = ?`, sourceID).Scan(&id).Error)
+	require.NotEmpty(t, id, "消费路径写完就查不回，B 区也就无从读起")
+	return id, sourceID
+}
+
+// revokeDue revokes that registration through the other half of the same chain:
+// consumer.DueRevokedHandler, i.e. the effect 0008:43-45 call 「本表唯一的删除路径」 (finance.due.revoked
+// -> 打 deleted_at，不删行). Nothing in TestHomeSummaryDueTodayDropsRevokedRegistrations is a hand-stamped
+// column: 注册行来自 registered 消费路径，deleted_at 来自 revoked 消费路径，被测的是读侧那条谓词。
+// The payload is contracts/events/finance.yaml:93-105's revoked payload_schema (reason 取
+// enum(completed|deleted|expired) 的 completed = 账单结清)。The discard logger only silences that
+// handler's own info line; the 撤销效果 itself is asserted on the 首屏 response.
+//
+// dueAt is the 注册时那一期 the caller passed to registerDue, NOT the撤销时刻: the contract fixes
+// business_id at 「"{source_id}:{due_at}"」 (finance.yaml:95), 与注册事件写下的同一段文本，而
+// due_revoked_handler.go 的撤销锚点是 (source_system, source_id, family_id, due_at) WHERE deleted_at
+// IS NULL —— due_at 就是从这段 business_id 里切出来的。拿 revoked_at 顶替它，锚点指的是一个从未注册过
+// 的期，handler 会 0 行返回（契约形态错了也不报，因为「撤销那一期没注册过」本来就是合法结局），B 区于是
+// 继续显示那条已结清的账单。revoked_at 本身仍然是「结清时刻」= now()，那是 deleted_at 的值。
+func revokeDue(t *testing.T, db *gorm.DB, familyID, sourceSystem, sourceID string, dueAt time.Time) {
+	t.Helper()
+
+	revokedAt := time.Now().UTC().Format(time.RFC3339)
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	require.NoError(t, consumer.DueRevokedHandler(db, log)(t.Context(), bus.Message{
+		Subject: consumer.DueRevokedEventType,
+		Envelope: bus.Envelope{
+			EventType:  consumer.DueRevokedEventType,
+			BusinessID: sourceID + ":" + dueAt.UTC().Format(time.RFC3339),
+			FamilyID:   familyID,
+			Version:    "1.0",
+			Timestamp:  revokedAt,
+			Payload: map[string]any{
+				"source_system": sourceSystem,
+				"source_id":     sourceID,
+				"family_id":     familyID,
+				"revoked_at":    revokedAt,
+				"reason":        "completed",
+			},
+		},
+	}))
+}
+
+// seedBaseDue writes a 底座-sourced registration directly. It is a fixture rather than a code path
+// because P1 has no producer of one: the only due event published is finance's (16.4's 注册契约 lists
+// the 面 registrations; 底座's own 待办 arrive with TIME-1's homeos_todos, which has no due-registration
+// writer yet -- reported). The read side's face filter is what is under test, and it reads the
+// source_system column regardless of who wrote it. kind is 'goal' because 0008:36 pins the four values
+// finance's frozen enum declares -- a 底座 kind outside that CHECK cannot be expressed in this table
+// today, which is the same 上报项.
+func seedBaseDue(t *testing.T, db *gorm.DB, familyID, title string, dueAt time.Time) string {
+	t.Helper()
+	id := uuid.NewString()
+	require.NoError(t, db.Exec(
+		`INSERT INTO homeos_due_registration (id, family_id, source_system, source_id, kind, title, due_at, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, 'goal', ?, ?, datetime('now'), datetime('now'))`,
+		id, familyID, registry.HomeosCode, uuid.NewString(), title, dueAt).Error)
+	return id
+}
+
+// setFaceEnabled flips homeos_family_module.enabled, the column repo.SetFamilyModuleEnabled writes on
+// 停用/启用. The PUT path cannot express 「停用本家庭唯一一个面」 in P1 -- 17.8 第 4 条「不允许出现 0 面
+// 家庭」 makes it a 409 (faces_test.go ④ pins that refusal) and P1 has exactly one born face -- so the
+// 停用 state this test needs is seeded here while the read under test stays the real one:
+// composeFaceEntries reads this very column into FaceEntry.Enabled.
+func setFaceEnabled(t *testing.T, db *gorm.DB, familyID, code string, enabled bool) {
+	t.Helper()
+	require.NoError(t, db.Exec(
+		`UPDATE homeos_family_module SET enabled = ? WHERE family_id = ? AND code = ?`, enabled, familyID, code).Error)
 }
 
 func insertNotification(t *testing.T, db *gorm.DB, familyID, memberID, typ string, read bool) {
@@ -653,6 +780,11 @@ func TestHomeSummaryDueTodayOmitsCountWhenProjectionCannotAnswer(t *testing.T) {
 	t.Run("registration_table_gives_full_count_and_three_items", func(t *testing.T) {
 		addDueRegistrationTable(t, db)
 		setFamilyTimezoneUTC(t, db, familyID)
+		// The rows below are 'finance' registrations, so the family has to have 财务 mounted: since
+		// BZ-1 the due read is filtered by the member's 已挂载面集合 (PRD 17.8 定版 ⑯「聚合与触发一律按
+		// 本家庭的已挂载面集合过滤」), and an unmounted face's registrations must answer 0 rather than
+		// 4. TestHomeSummaryDueTodayIsFilteredToTheMemberMountedFaces pins the filtered side.
+		mountFace(t, db, familyID, firstBornFace(t).Code, 1)
 
 		today := time.Now().UTC().Truncate(24 * time.Hour)
 		for i := 0; i < 4; i++ {
@@ -702,4 +834,165 @@ func TestHomeSummaryDueTodayOmitsCountWhenProjectionCannotAnswer(t *testing.T) {
 		require.Contains(t, due, "count", "数过了，就必须报数")
 		assert.Equal(t, "0", string(due["count"]))
 	})
+}
+
+// ==================== B 区判据 3：撤销（软删）的注册项不再是事实 ====================
+
+// summaryAt drives the one 首屏 request and hands back the decoded body plus its raw text, so a
+// failure message always carries what the endpoint actually said.
+func summaryAt(t *testing.T, r *gin.Engine, token, query string) (HomeSummaryResponse, string) {
+	t.Helper()
+	w := getSummary(t, r, token, query)
+	require.Equal(t, http.StatusOK, w.Code, "%s：%s", query, w.Body.String())
+	var got HomeSummaryResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+	return got, w.Body.String()
+}
+
+// dueSources is the B 区 item list reduced to the face each entry came from -- the observable form of
+// 「哪一面的注册项进了待办」.
+func dueSources(items []repo.DueTodayItem) []string {
+	out := make([]string, 0, len(items))
+	for _, it := range items {
+		out = append(out, it.SourceSystem)
+	}
+	return out
+}
+
+// TestHomeSummaryDueTodayDropsRevokedRegistrations is the read side of 0008's soft delete. Two
+// registrations for one family and one day are written by this service's own consumer
+// (registerDue -> consumer.DueRegisteredHandler), and one of them is then revoked by the other half of
+// the same chain (revokeDue -> consumer.DueRevokedHandler, 0008:43-45「finance.due.revoked 是本表唯一的
+// 删除路径」). Nothing in this case is a hand-stamped column: the state the read side must reject is
+// produced by the production写路径 that produces it in the field. Before/after on the same two rows is
+// asserted so the guard cannot pass because the revoked row never landed.
+func TestHomeSummaryDueTodayDropsRevokedRegistrations(t *testing.T) {
+	db, ownerAccount, familyID, _ := setupIdentityDB(t)
+	addSummaryReadTables(t, db)
+	addDueRegistrationTable(t, db)
+	setFamilyTimezoneUTC(t, db, familyID)
+
+	born := firstBornFace(t)
+	mountFace(t, db, familyID, born.Code, 1)
+
+	s := newServices(t, db)
+	r := newSummaryRouter(t, s)
+	token := sessionToken(t, s, ownerAccount, familyID, "owner")
+
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	// revokedDue is named once and given to BOTH legs: registerDue writes it into the payload's due_at
+	// and into business_id, revokeDue has to put the SAME 期 into the revoked event's business_id
+	// (finance.yaml:95「"{source_id}:{due_at}"」), because that is where撤销锚点 reads due_at from.
+	revokedDue := today.Add(10 * time.Hour)
+	liveID, _ := registerDue(t, db, familyID, born.Code, "房贷 10 月", today.Add(9*time.Hour))
+	revokedID, revokedSourceID := registerDue(t, db, familyID, born.Code, "房贷 9 月已结清", revokedDue)
+
+	before, body := summaryAt(t, r, token, "period=2026-10")
+	require.NotNil(t, before.DueToday.Count, "表在且数过 -> count 必须给（判据 4 的 Answerable 取舍不受本改动影响）")
+	require.EqualValues(t, 2, *before.DueToday.Count, "撤销前的对照：两条活注册都进了 count：%s", body)
+	require.Len(t, before.DueToday.Items, 2, "撤销前的对照：两条活注册都进了 items：%s", body)
+
+	revokeDue(t, db, familyID, born.Code, revokedSourceID, revokedDue)
+
+	after, body := summaryAt(t, r, token, "period=2026-10")
+	require.NotNil(t, after.DueToday.Count, "数过了就必须报数，过滤不改变 Answerable 的含义")
+	assert.EqualValues(t, 1, *after.DueToday.Count, "count 只数未撤销的注册项")
+	require.Len(t, after.DueToday.Items, 1)
+	assert.Equal(t, liveID, after.DueToday.Items[0].ID)
+	assert.Equal(t, "房贷 10 月", after.DueToday.Items[0].Title)
+	assert.NotContains(t, body, "房贷 9 月已结清", "已撤销的注册项不得出现在 B 区（撤销不是「排到第 4 条之后」）")
+	assert.NotContains(t, body, revokedID, "撤销行的 id 也不得下发")
+
+	// 软删而不是物理删除：读侧过滤掉了它，表里那一行仍然是历史（0008:49-54 的部分唯一索引正是为它留的槽位）。
+	var rows int64
+	require.NoError(t, db.Raw(`SELECT COUNT(*) FROM homeos_due_registration`).Scan(&rows).Error)
+	assert.EqualValues(t, 2, rows, "撤销行留在表里，只是不再被 B 区读出来")
+}
+
+// ==================== B 区判据 4：一律按已挂载面集合过滤 ====================
+
+// TestHomeSummaryDueTodayIsFilteredToTheMemberMountedFaces pins PRD 17.8 定版 ⑯'s 聚合 rule on B 区:
+// 「聚合与触发一律按本家庭的已挂载面集合过滤——被停用面的注册项不消失也不触发、不出现在日历与待办里，
+// 重新启用后按其自身时间规则照常恢复」. The set is the SAME mountedFaces output C 区 is drawn from
+// (faces.go's composition, role 裁剪 already applied per 定版 ⑯), so three legs share one fixture:
+//
+//   - 挂载 + 底座 -> 两条都在;
+//   - 角色不可见（15.3 的 scope=module 为「-」，ward）-> 面那条不进 B 区，底座那条照常 —— this is the
+//     leg that distinguishes 「该成员该次请求的已挂载面」 from 「家庭全部 enabled 的 code」，两者对非
+//     owner 角色不同；
+//   - 家庭停用该面 -> owner 的请求里也只剩底座那条；重新启用 -> 原来那条按自己的 due_at 回来（不是新行、
+//     不是复活，表里 deleted_at 一直为空）。
+//
+// The 底座 code is in the filter set because composeFaceEntries subtracts it from the matrix on purpose
+// (PRD 17.1「首页自身不进矩阵」) while it is not a face a family can 停用 —— homeos.go's dueFaceCodes
+// states that reasoning; the 底座 leg below is what pins it.
+func TestHomeSummaryDueTodayIsFilteredToTheMemberMountedFaces(t *testing.T) {
+	db, ownerAccount, familyID, _ := setupIdentityDB(t)
+	addSummaryReadTables(t, db)
+	addDueRegistrationTable(t, db)
+	setFamilyTimezoneUTC(t, db, familyID)
+
+	born := firstBornFace(t)
+	mountFace(t, db, familyID, born.Code, 1)
+	wardAccount := addAccountWithRole(t, db, familyID, "13800000044", "被记录成员", "ward")
+
+	s := newServices(t, db)
+	r := newSummaryRouter(t, s)
+	ownerToken := sessionToken(t, s, ownerAccount, familyID, "owner")
+	wardToken := sessionToken(t, s, wardAccount, familyID, "ward")
+
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	financeID, _ := registerDue(t, db, familyID, born.Code, "本月账单到期", today.Add(9*time.Hour))
+	baseID := seedBaseDue(t, db, familyID, "底座待办：给爸爸打电话", today.Add(10*time.Hour))
+
+	// ① 面已挂载（且该角色可见）+ 底座：两条都进 B 区，顺序仍是 due_at 升序。
+	got, body := summaryAt(t, r, ownerToken, "period=2026-10")
+	require.NotNil(t, got.DueToday.Count)
+	require.EqualValues(t, 2, *got.DueToday.Count, "挂载面与底座的注册都该数进来：%s", body)
+	assert.Equal(t, []string{born.Code, registry.HomeosCode}, dueSources(got.DueToday.Items),
+		"items 按 due_at 升序（17.2），且两个来源都因为「在已挂载集合里」而存在")
+	assert.Equal(t, baseID, got.DueToday.Items[1].ID)
+
+	// ② 同一家庭、同一次数据，换一个对该面不可见的角色：面来源的注册项消失，底座那条照常。
+	ward, body := summaryAt(t, r, wardToken, "period=2026-10")
+	require.Empty(t, ward.Faces, "前提：ward 在 C 区就是 0 格（同一份合成），B 区必须给出同一个答案")
+	require.NotNil(t, ward.DueToday.Count)
+	assert.EqualValues(t, 1, *ward.DueToday.Count, "角色看不到的面，其注册项也不进该成员看到的待办（定版 ⑯ 的裁剪）")
+	assert.Equal(t, []string{registry.HomeosCode}, dueSources(ward.DueToday.Items))
+	assert.NotContains(t, body, "本月账单到期", "C 区没有那一格，B 区却显示那一面的到期 —— 一个响应里的两个答案")
+	assert.NotContains(t, body, financeID)
+
+	// ③ 家庭停用该面（homeos_family_module.enabled=false，即 PUT /family/modules 写的那一列）：
+	// owner 的请求也只剩底座那条。
+	setFaceEnabled(t, db, familyID, born.Code, false)
+	off, body := summaryAt(t, r, ownerToken, "period=2026-10")
+	require.NotNil(t, off.DueToday.Count)
+	assert.EqualValues(t, 1, *off.DueToday.Count, "停掉财务面之后，财务的账单到期不得还显示在 B 区（17.8）")
+	assert.Equal(t, []string{registry.HomeosCode}, dueSources(off.DueToday.Items))
+	assert.NotContains(t, body, financeID, "「不消失」指的是表里的行，不是首页还把它发出去")
+
+	// 注册项在停用期间「不消失也不触发」：读侧过滤不动表，行仍是活的。
+	var liveRows int64
+	require.NoError(t, db.Raw(`SELECT COUNT(*) FROM homeos_due_registration WHERE deleted_at IS NULL`).Scan(&liveRows).Error)
+	assert.EqualValues(t, 2, liveRows, "停用不删数据（17.8）：过滤发生在读侧而不是表上")
+
+	// 重新启用后按其自身时间规则照常恢复：同一条行、同一个 due_at，今日窗口内重新出现。
+	setFaceEnabled(t, db, familyID, born.Code, true)
+	back, _ := summaryAt(t, r, ownerToken, "period=2026-10")
+	require.NotNil(t, back.DueToday.Count)
+	assert.EqualValues(t, 2, *back.DueToday.Count, "重新启用 -> 两条都在（17.8「重新启用后按其自身时间规则照常恢复」）")
+	assert.Equal(t, []string{born.Code, registry.HomeosCode}, dueSources(back.DueToday.Items))
+	assert.Equal(t, financeID, back.DueToday.Items[0].ID, "恢复的是同一条注册行，不是重注册出来的新行")
+	assert.True(t, back.DueToday.Items[0].DueAt.Equal(financeDueAtOf(t, db, financeID)),
+		"恢复按对象自己的时间规则：due_at 一个字段都没被动过")
+}
+
+// financeDueAtOf reads a registration's stored due_at back from the table -- the「自身时间规则」half of
+// the 重新启用 leg, asserted against the stored value rather than against a value the test remembers.
+func financeDueAtOf(t *testing.T, db *gorm.DB, id string) time.Time {
+	t.Helper()
+	var at time.Time
+	require.NoError(t, db.Raw(`SELECT due_at FROM homeos_due_registration WHERE id = ?`, id).Scan(&at).Error)
+	require.False(t, at.IsZero(), "注册行读不回 due_at")
+	return at
 }
