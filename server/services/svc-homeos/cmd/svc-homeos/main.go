@@ -20,6 +20,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/gin-gonic/gin"
 	"github.com/xueshuaihui/HomeCube/server/packages/obs"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/handler"
 )
@@ -79,6 +80,44 @@ func run(addr string) error {
 
 	// Register legal endpoints under the homeos domain's route prefix (/api/homeos)
 	group := svc.Engine.Group(d.RoutePrefix)
+	
+	// Auth routes (no middleware required for these)
+	authGroup := group.Group("/auth")
+	{
+		authGroup.POST("/sms-code", func(c *gin.Context) {
+			handler.SendSMSCode(c, svc.DB)
+		})
+		authGroup.POST("/login", func(c *gin.Context) {
+			handler.Login(c, svc.DB)
+		})
+		authGroup.POST("/refresh", func(c *gin.Context) {
+			handler.Refresh(c, svc.DB)
+		})
+		authGroup.POST("/logout", func(c *gin.Context) {
+			handler.Logout(c, svc.DB)
+		})
+	}
+	
+	// Family management routes (require auth middleware in production)
+	familyGroup := group.Group("/families")
+	{
+		familyGroup.POST("", func(c *gin.Context) {
+			handler.CreateFamily(c, svc.DB)
+		})
+		familyGroup.GET("", func(c *gin.Context) {
+			handler.ListFamilies(c, svc.DB)
+		})
+	}
+	
+	group.POST("/family/invite/accept", func(c *gin.Context) {
+		handler.AcceptInvite(c, svc.DB)
+	})
+	
+	group.POST("/family/switch", func(c *gin.Context) {
+		handler.SwitchFamily(c, svc.DB)
+	})
+	
+	// Existing routes
 	group.GET("/legal/privacy-policy", handler.GetPrivacyPolicy)
 	group.GET("/legal/user-agreement", handler.GetUserAgreement)
 	group.GET("/search", handler.GetSearch) // Per PRD 14.5 #7: global keyword search
