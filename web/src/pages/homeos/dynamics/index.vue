@@ -1,137 +1,154 @@
 <script setup lang="ts">
-// pages/homeos/dynamics/index —— 动态流页面
+// pages/homeos/dynamics/index —— 动态流页（§4.3 ①「动态流」）
 //
-// 实现 PRD 3.4.2 + 17.5 规格：
-//   · 动态流分页：按天分组、按面筛选、游标分页
-//   · 条目 = 归属面图标 + 人名 + 一句动作描述（含对象摘要）+ 相对时间
-//   · 进入即读（清空未读红点）
-//   · 「全部已读」确认弹层
+// 能力：按天分组、按面筛选、游标分页。条目五要素 = 面图标 + 发起人 + 动作句 + 对象摘要 + 相对时间
+// （§3.3 D 区口径，首页 D 区与本页共用同一份字段名）。
+//
+// 字段名以冻结契约与服务端表为准：`dynamics.items[]` = `{id, code, actor_name, action, summary, at}`。
+// 旧客户端读的 `face_code / member_name / headline / created_at` 都是自造名，本轮整体改齐；
+// TS 接口直接复用 `@/stores/home` 的 `DynamicItem`，不再在本页声明第二份形状。
+//
+// 筛选 chips 的集合**不来自本页响应**：面集合的五个消费位（首页矩阵、「＋」目标、搜索分组、
+// 到期中心注册项、动态流筛选）同源于 shell store 的 `faces`（§1.3 第 6/8 条、17.8）。
+// 从返回条目里现攒一份面清单会造出第二个集合 —— 翻页少一条就少一个 chip，
+// 而且「这一面有没有被启用」会变成由列表长度决定，正是同源检查②要拦的形状。
 
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { request } from '@/utils/request'
+import { request, unwrapBody } from '@/utils/request'
 import { formatRelativeTime } from '@/utils/format'
-import { useHomeStore } from '@/stores/home'
+import { useHomeStore, type DynamicItem } from '@/stores/home'
 
 const { t } = useI18n({ useScope: 'global' })
 const homeStore = useHomeStore()
 
-interface DynamicItem {
-  id: string
-  face_code: string
-  face_name?: string
-  member_name: string
-  headline: string // 服务端拼好的整句
-  relative_time?: string
-  created_at: string
-}
+const PAGE_SIZE = 20
 
 const dynamics = ref<DynamicItem[]>([])
 const loading = ref(false)
-const error = ref<string | null>(null)
+const error = ref('')
 const cursor = ref<string | null>(null)
 const hasMore = ref(true)
-const selectedFace = ref<string>('')
-const availableFaces = ref<Array<{ code: string; name: string }>>([])
+const selectedFace = ref('')
+const marking = ref(false)
 
-// Fetch dynamics with pagination
+/** 筛选集合 = shell 的同一份 faces（服务端已按角色裁好，客户端不得二次裁剪，⑯）。 */
+const filterFaces = computed(() => homeStore.faces.map((f) => ({ code: f.code, name: f.name })))
+
+/** 面图标取 C 区同一个 face 的名首字，不在本页另建第二套缩写（§3.3 第 295 行）。 */
+function faceInitial(code: string): string {
+  const face = homeStore.faces.find((f) => f.code === code)
+  return face ? face.name.charAt(0) : code.charAt(0)
+}
+
+function dayKey(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+}
+
+/** 按天分组：组标题取「今天 / 昨天 / M月D日」，分组在渲染层做，不改服务端给的顺序。 */
+const groups = computed<Array<{ key: string; label: string; items: DynamicItem[] }>>(() => {
+  const todayKey = dayKey(new Date().toISOString())
+  const yesterday = new Date()
+  yesterday.setDate(yesterday.getDate() - 1)
+  const yesterdayKey = dayKey(yesterday.toISOString())
+
+  const out: Array<{ key: string; label: string; items: DynamicItem[] }> = []
+  for (const item of dynamics.value) {
+    const key = dayKey(item.at)
+    const last = out[out.length - 1]
+    if (last && last.key === key) {
+      last.items.push(item)
+      continue
+    }
+    const date = new Date(item.at)
+    let label = ''
+    if (key === todayKey) label = t('homeos.dynamics.day_today')
+    else if (key === yesterdayKey) label = t('homeos.dynamics.day_yesterday')
+    else if (!Number.isNaN(date.getTime())) label = `${date.getMonth() + 1}月${date.getDate()}日`
+    out.push({ key: `${key}|${item.id}`, label, items: [item] })
+  }
+  return out
+})
+
 async function fetchDynamics(loadMore = false) {
   if (loading.value) return
-  if (!loadMore && !hasMore.value) return
-
   loading.value = true
-  error.value = null
+  error.value = ''
 
   try {
-    const params: any = {
-      limit: 20,
-    }
-
-    if (loadMore && cursor.value) {
-      params.cursor = cursor.value
-    }
-
-    if (selectedFace.value) {
-      params.face_code = selectedFace.value
-    }
-
-    const response = await request.get('/api/homeos/dynamics', { params })
-
-    if (loadMore) {
-      dynamics.value.push(...response.data.items)
-    } else {
-      dynamics.value = response.data.items
-    }
-
-    cursor.value = response.data.next_cursor || null
-    hasMore.value = !!response.data.next_cursor
-
-    // Extract available faces for filter
-    const faceSet = new Map<string, string>()
-    response.data.items.forEach((item: DynamicItem) => {
-      if (!faceSet.has(item.face_code)) {
-        faceSet.set(item.face_code, item.face_name || item.face_code)
-      }
+    const res = await request.get('/api/homeos/dynamics', {
+      params: {
+        limit: PAGE_SIZE,
+        cursor: loadMore && cursor.value ? cursor.value : undefined,
+        // 筛选参数名与条目字段名一致：`code`（旧的 face_code 是自造名）
+        code: selectedFace.value || undefined,
+        period: homeStore.period,
+      },
     })
-    availableFaces.value = Array.from(faceSet.entries()).map(([code, name]) => ({
-      code,
-      name,
-    }))
+    const body = unwrapBody<{
+      items?: DynamicItem[]
+      next_cursor?: string | null
+      unread?: number
+    }>(res)
+
+    const page = Array.isArray(body?.items) ? body.items : []
+    dynamics.value = loadMore ? [...dynamics.value, ...page] : page
+    cursor.value = body?.next_cursor ?? null
+    hasMore.value = !!body?.next_cursor
   } catch (err: any) {
-    console.error('Failed to fetch dynamics:', err)
-    error.value = err.message || '加载失败'
+    error.value = err?.message || t('homeos.dynamics.load_failed')
   } finally {
     loading.value = false
   }
 }
 
-// Load more on scroll
 function loadMore() {
-  if (hasMore.value && !loading.value) {
-    fetchDynamics(true)
-  }
+  if (!hasMore.value || loading.value) return
+  fetchDynamics(true)
 }
 
-// Handle face filter change
-function handleFaceChange(code: string) {
+async function handleFaceChange(code: string) {
+  if (selectedFace.value === code) return
   selectedFace.value = code
   cursor.value = null
   hasMore.value = true
-  fetchDynamics()
+  await fetchDynamics()
 }
 
-// Mark all as read
+/**
+ * 「全部已读」：`POST /api/homeos/dynamics/read` `{dynamic_ids:[], all:true}`
+ * → `{marked_count, unread}`。回执里的 `unread` 就是顶栏与 D 行共用的那一个数，
+ * 由 store 覆盖写入，本页不自算、不清零（17.1）。
+ */
 function markAllAsRead() {
   uni.showModal({
-    title: '确认',
-    content: '确定要将所有动态标记为已读吗？',
+    title: t('homeos.dynamics.all_read'),
+    content: t('homeos.dynamics.all_read_confirm'),
+    confirmText: t('homeos.common.confirm'),
+    cancelText: t('homeos.common.cancel'),
     success: async (res) => {
-      if (res.confirm) {
-        try {
-          await request.put('/api/homeos/dynamics/read-all')
-          // Clear unread count in home store
-          homeStore.unreadCount = 0
-          uni.showToast({ title: '已全部标记为已读', icon: 'success' })
-        } catch (err: any) {
-          console.error('Failed to mark all as read:', err)
-          uni.showToast({ title: '操作失败', icon: 'none' })
-        }
+      if (!res.confirm || marking.value) return
+      marking.value = true
+      try {
+        const body = await homeStore.markDynamicsRead({ all: true })
+        const marked = typeof body?.marked_count === 'number' ? body.marked_count : 0
+        uni.showToast({
+          title: marked > 0 ? t('homeos.dynamics.all_read_done', { count: marked }) : t('homeos.dynamics.all_read_none'),
+          icon: 'none',
+        })
+      } catch (err: any) {
+        uni.showToast({ title: err?.message || t('homeos.dynamics.mark_failed'), icon: 'none' })
+      } finally {
+        marking.value = false
       }
     },
   })
 }
 
-// Get face icon (first character for now)
-function getFaceIcon(faceCode: string): string {
-  const face = availableFaces.value.find(f => f.code === faceCode)
-  return face?.name.charAt(0) || faceCode.charAt(0)
-}
-
 onMounted(() => {
   fetchDynamics()
-
-  // Mark as read when entering this page
-  // The unread badge will be cleared by the home store update
 })
 </script>
 
@@ -140,20 +157,20 @@ onMounted(() => {
     <!-- Header with filter -->
     <view class="page-header">
       <text class="header-title">{{ t('homeos.nav.dynamics') }}</text>
-      <text class="header-action" @click="markAllAsRead">全部已读</text>
+      <text class="header-action" @click="markAllAsRead">{{ t('homeos.dynamics.all_read') }}</text>
     </view>
 
-    <!-- Face filter -->
-    <view v-if="availableFaces.length > 0" class="face-filter">
+    <!-- Face filter：与首页矩阵同源，只有一个 chip 时不渲染整条筛选栏 -->
+    <view v-if="filterFaces.length > 1" class="face-filter">
       <view
         class="filter-item"
         :class="{ active: selectedFace === '' }"
         @click="handleFaceChange('')"
       >
-        <text>全部</text>
+        <text>{{ t('homeos.dynamics.filter_all') }}</text>
       </view>
       <view
-        v-for="face in availableFaces"
+        v-for="face in filterFaces"
         :key="face.code"
         class="filter-item"
         :class="{ active: selectedFace === face.code }"
@@ -165,41 +182,41 @@ onMounted(() => {
 
     <!-- Loading state -->
     <view v-if="loading && dynamics.length === 0" class="hc-loading">
-      <text>加载中...</text>
+      <text>{{ t('homeos.dynamics.loading') }}</text>
     </view>
 
     <!-- Error state -->
     <view v-else-if="error" class="hc-error">
       <text>{{ error }}</text>
-      <button @click="fetchDynamics">重试</button>
+      <button @click="fetchDynamics()">{{ t('homeos.common.retry') }}</button>
     </view>
 
     <!-- Dynamics list -->
     <scroll-view v-else class="hc-scroll" scroll-y @scrolltolower="loadMore">
       <view v-if="dynamics.length === 0" class="hc-empty">
-        <text>暂无动态</text>
+        <text>{{ t('homeos.dynamics.empty') }}</text>
       </view>
 
-      <!-- Group by day -->
-      <view v-for="(item, idx) in dynamics" :key="item.id" class="dyn-item">
-        <view class="dyn-face-icon">
-          <text>{{ getFaceIcon(item.face_code) }}</text>
-        </view>
-        <view class="dyn-content">
-          <text class="dyn-member">{{ item.member_name }}</text>
-          <text class="dyn-headline">{{ item.headline }}</text>
-          <text class="dyn-time">{{ item.relative_time || formatRelativeTime(item.created_at) }}</text>
+      <view v-for="group in groups" :key="group.key" class="dyn-group">
+        <text v-if="group.label" class="dyn-day">{{ group.label }}</text>
+        <view v-for="item in group.items" :key="item.id" class="dyn-item">
+          <view class="dyn-face-icon">
+            <text>{{ faceInitial(item.code) }}</text>
+          </view>
+          <view class="dyn-content">
+            <text class="dyn-member">{{ item.actor_name }}</text>
+            <text class="dyn-action">{{ item.action }}</text>
+            <text v-if="item.summary" class="dyn-summary">{{ item.summary }}</text>
+            <text class="dyn-time">{{ formatRelativeTime(item.at) }}</text>
+          </view>
         </view>
       </view>
 
-      <!-- Loading more indicator -->
       <view v-if="loading && dynamics.length > 0" class="hc-loading-more">
-        <text>加载更多...</text>
+        <text>{{ t('homeos.dynamics.loading') }}</text>
       </view>
-
-      <!-- No more data -->
       <view v-if="!hasMore && dynamics.length > 0" class="hc-no-more">
-        <text>没有更多了</text>
+        <text>{{ t('homeos.dynamics.no_more') }}</text>
       </view>
     </scroll-view>
   </view>
@@ -255,10 +272,10 @@ onMounted(() => {
 
 .filter-item.active {
   background-color: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-on-primary);
 }
 
-/* Loading and empty states */
+/* Loading / error / empty */
 .hc-loading,
 .hc-error,
 .hc-empty {
@@ -268,13 +285,14 @@ onMounted(() => {
   justify-content: center;
   padding: 96rpx 48rpx;
   gap: 24rpx;
+  color: var(--text-tertiary);
 }
 
 .hc-error button {
   margin-top: 16rpx;
   padding: 16rpx 48rpx;
   background-color: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-on-primary);
   border-radius: var(--radius-md);
   font-size: 28rpx;
 }
@@ -282,6 +300,14 @@ onMounted(() => {
 .hc-scroll {
   flex: 1;
   padding: 24rpx;
+}
+
+/* Day group */
+.dyn-day {
+  display: block;
+  font-size: 24rpx;
+  color: var(--text-tertiary);
+  margin: 16rpx 0 12rpx;
 }
 
 /* Dynamic item */
@@ -299,7 +325,7 @@ onMounted(() => {
   height: 64rpx;
   border-radius: var(--radius-sm);
   background-color: var(--color-primary-light);
-  color: #ffffff;
+  color: var(--color-on-primary);
   font-size: 28rpx;
   display: flex;
   align-items: center;
@@ -320,10 +346,16 @@ onMounted(() => {
   color: var(--text-primary);
 }
 
-.dyn-headline {
+.dyn-action {
   font-size: 26rpx;
   color: var(--text-secondary);
-  line-height: 1.5;
+  line-height: var(--line-height-tight);
+}
+
+.dyn-summary {
+  font-size: 24rpx;
+  color: var(--text-tertiary);
+  line-height: var(--line-height-normal);
 }
 
 .dyn-time {
@@ -331,7 +363,7 @@ onMounted(() => {
   color: var(--text-tertiary);
 }
 
-/* Loading more and no more indicators */
+/* Pagination indicators */
 .hc-loading-more,
 .hc-no-more {
   padding: 24rpx 0;

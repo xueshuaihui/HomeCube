@@ -9,107 +9,105 @@
 //   · 时间窗条：月/季/年三档切换
 //   · 底部导航：Home/Dynamics/+/Messages/My 五项
 
-import { ref, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
-import { useHomeStore, type PeriodType } from '@/stores/home'
-import { request } from '@/utils/request'
+import { useHomeStore, type PeriodGrain, type FaceStatus, type MemberInfo } from '@/stores/home'
+import { formatRelativeTime, formatDate } from '@/utils/format'
 
-const PAGE_PATH = 'pages/homeos/home/index'
+const PAGE_PATH = '/pages/homeos/home/index'
 const { t } = useI18n({ useScope: 'global' })
-const router = useRouter()
 const homeStore = useHomeStore()
 
-const loading = ref(false)
-const error = ref<string | null>(null)
+/** 时间窗条恒三档（§1.3 第 19 条：没有「周」也没有「全部」）。 */
+const PERIOD_GRAINS: PeriodGrain[] = ['month', 'quarter', 'year']
 
-// Fetch home summary data
+// D 行五项之间、首页矩阵 → 某面 list 页 = 无栈互切（栈深恒为 1，§2.3）
+function switchEntry(path: string) {
+  uni.reLaunch({ url: path })
+}
+
+// 首屏**只有一个请求**（§3.1）：四区与 unread 全部从 home/summary 那一份派生，
+// 本页不并行打第二个服务、也不自算任何计数。
 async function fetchHomeSummary() {
-  loading.value = true
-  error.value = null
-
   try {
-    const response = await request.get('/api/homeos/home/summary', {
-      params: { period: homeStore.period },
-    })
-    homeStore.updateSummary(response.data)
-  } catch (err: any) {
-    console.error('Failed to fetch home summary:', err)
-    error.value = err.message || '加载失败'
-  } finally {
-    loading.value = false
+    await homeStore.fetchSummary()
+  } catch {
+    // 错误态由 store 的 summaryError 承载（第八章同一套状态组件）
   }
 }
 
-// Handle period change
-async function handlePeriodChange(p: PeriodType) {
-  homeStore.setPeriod(p)
+// 时间窗条：档位写进 shell store，`period` 的三档编码（YYYY-MM / YYYY-Qn / YYYY）
+// 也由 store 按家庭时区算 —— 首页不自己拼一个 'month' 塞进查询串（§1.3 第 19 条、§6.4）。
+async function handlePeriodChange(grain: PeriodGrain) {
+  homeStore.setPeriodGrain(grain)
   await fetchHomeSummary()
 }
 
-// Navigate to member management page
+// A 区头像排整行 → 成员管理列表（§2.3 一级页 → 二级页 = 压栈；§4.6 路由 homeos/family/index）
+// 溢出「+N」圆圈不是邀请入口（spec ⑮），它是整行点击的一部分，故不加独立 handler。
 function goToMembers() {
-  // TODO: implement member management page
-  console.log('Navigate to member management')
+  uni.navigateTo({ url: '/pages/homeos/family/index' })
 }
 
-// Navigate to calendar/due center
+// B 区「日历 ›」= 到期中心入口（§1.3 第 13 条：入口 = 首页 B 区 + 我的 → 时间与提醒）。
+// 到期中心的 9 页（§4.4 homeos/calendar|todo|reminder/*）随 S6 出生，P1 当期未注册任何一条路由，
+// 所以这里不压栈、也不为未出生的域注册路由位（CI 三查②与未出生域零痕迹检查）：
+// 与 goToFace 对未出生面做的是同一种处置 —— 显式回话，不给静默 no-op。
 function goToCalendar() {
-  // TODO: implement calendar page
-  console.log('Navigate to calendar')
+  uni.showToast({ title: t('homeos.home.calendar_coming_soon'), icon: 'none' })
 }
 
 // Navigate to face detail
 function goToFace(faceCode: string) {
   if (!faceCode) return
-  // Only navigate to faces that are registered in pages.json
-  // P1: only finance is born, others will be added in future phases
+  // 只跳 pages.json 里已注册的路由：P1 只有 finance 出生，其余面随各自期次注册
+  // （未出生域零痕迹，CI 三查②），故这里未命中时同样走「显式回话」。
   const routeMap: Record<string, string> = {
     finance: '/pages/finance/flow/index',
   }
   const path = routeMap[faceCode]
   if (path) {
-    router.push(path)
+    switchEntry(path)
   } else {
-    // For faces not yet implemented, show a toast
-    uni.showToast({ title: '该面功能开发中', icon: 'none' })
+    uni.showToast({ title: t('homeos.home.face_coming_soon'), icon: 'none' })
   }
 }
 
 // Navigate to dynamics page
 function goToDynamics() {
-  router.push('/pages/homeos/dynamics/index')
+  switchEntry('/pages/homeos/dynamics/index')
 }
 
-// Format relative time for dynamic items
-function formatRelativeTime(isoString: string): string {
-  const now = new Date()
-  const target = new Date(isoString)
-  const diffMs = now.getTime() - target.getTime()
-  const diffSec = Math.floor(diffMs / 1000)
-  const diffMin = Math.floor(diffSec / 60)
-  const diffHour = Math.floor(diffMin / 60)
-  const diffDay = Math.floor(diffHour / 24)
+/** C 区格子可用性：契约的 `availability` 是二元位，不是旧的 `available` 布尔。 */
+function isFaceAvailable(face: FaceStatus): boolean {
+  return face.availability === 'available'
+}
 
-  if (diffMin < 1) return '刚刚'
-  if (diffMin < 60) return `${diffMin} 分钟前`
-  if (diffHour < 24) return `${diffHour} 小时前`
-  if (diffDay < 7) return `${diffDay} 天前`
+/** B 区条目的来系统标签（`source_system` 只用来标来源，不当颜色变量名用）。 */
+function sourceLabel(source: string): string {
+  const map: Record<string, string> = {
+    finance: t('homeos.home.source_finance'),
+    health: t('homeos.home.source_health'),
+    schedule: t('homeos.home.source_schedule'),
+    elder: t('homeos.home.source_elder'),
+    child: t('homeos.home.source_child'),
+    iot: t('homeos.home.source_iot'),
+  }
+  return map[source] || source
+}
 
-  // Format as MM-DD HH:MM for older items
-  const month = target.getMonth() + 1
-  const day = target.getDate()
-  const hours = target.getHours().toString().padStart(2, '0')
-  const minutes = target.getMinutes().toString().padStart(2, '0')
-  return `${month}月${day}日 ${hours}:${minutes}`
+/** D 行前的面标记取面名首字，矩阵里没有这个 code 时退回 code 本身。 */
+function faceInitial(code: string): string {
+  const face = homeStore.faces.find((f) => f.code === code)
+  return face ? face.name.charAt(0) : code
 }
 
 // Get avatar URL or fallback to first character
-function getAvatarUrl(member: any): string | null {
+function getAvatarUrl(member: MemberInfo): string | null {
   return member.avatar || null
 }
 
-function getAvatarText(member: any): string {
+function getAvatarText(member: MemberInfo): string {
   if (member.avatar) return ''
   return member.name?.charAt(0) || '?'
 }
@@ -129,15 +127,16 @@ onMounted(() => {
 
 <template>
   <view class="hc-page">
-    <!-- Loading state -->
-    <view v-if="loading" class="hc-loading">
-      <text>加载中...</text>
+    <!-- Loading state：loading/error 两个状态位归 shell store（首屏唯一请求的成败），
+         本页不再自持一份，也不自算任何计数 -->
+    <view v-if="homeStore.summaryLoading && !homeStore.family" class="hc-loading">
+      <text>{{ t('homeos.home.loading') }}</text>
     </view>
 
     <!-- Error state -->
-    <view v-else-if="error" class="hc-error">
-      <text>{{ error }}</text>
-      <button @click="fetchHomeSummary">重试</button>
+    <view v-else-if="homeStore.summaryError" class="hc-error">
+      <text>{{ homeStore.summaryError }}</text>
+      <button @click="fetchHomeSummary">{{ t('homeos.home.retry') }}</button>
     </view>
 
     <!-- Main content -->
@@ -147,13 +146,13 @@ onMounted(() => {
         <text class="twb-label">{{ t('homeos.home.period_label') }}</text>
         <view class="twb-segments">
           <view
-            v-for="p in ['month', 'quarter', 'year']"
-            :key="p"
+            v-for="grain in PERIOD_GRAINS"
+            :key="grain"
             class="twb-segment"
-            :class="{ active: homeStore.period === p }"
-            @click="handlePeriodChange(p as PeriodType)"
+            :class="{ active: homeStore.periodGrain === grain }"
+            @click="handlePeriodChange(grain)"
           >
-            <text>{{ t(`homeos.home.period_${p}`) }}</text>
+            <text>{{ t(`homeos.home.period_${grain}`) }}</text>
           </view>
         </view>
       </view>
@@ -166,8 +165,8 @@ onMounted(() => {
         <!-- Member avatar row -->
         <view class="za-avatar-row" @click="goToMembers">
           <view
-            v-for="(member, idx) in (homeStore.family?.members || []).slice(0, 3)"
-            :key="member.user_id"
+            v-for="member in (homeStore.family?.members || []).slice(0, 3)"
+            :key="member.member_id"
             class="za-avatar"
           >
             <image
@@ -189,9 +188,10 @@ onMounted(() => {
       <!-- Zone B: Today's due & todo -->
       <view class="zone-b">
         <view class="zb-header">
-          <text class="zb-title">今日 {{ homeStore.dueToday.count }} 项 · 到期与待办</text>
+          <text class="zb-title">{{ t('homeos.home.today_title', { count: homeStore.dueToday.count }) }}</text>
           <view class="zb-calendar-link" @click="goToCalendar">
-            <text>日历 ›</text>
+            <text>{{ t('homeos.home.calendar_entry') }}</text>
+            <text class="zb-soon">{{ t('homeos.common.not_open') }}</text>
           </view>
         </view>
 
@@ -200,22 +200,22 @@ onMounted(() => {
             v-for="item in homeStore.dueToday.items.slice(0, 3)"
             :key="item.id"
             class="zb-card"
-            :style="{ borderLeftColor: `var(--color-${item.source_code}, var(--color-primary))` }"
           >
             <text class="zb-time">{{ extractTime(item.due_at) }}</text>
-            <text class="zb-headline">{{ item.headline }}</text>
+            <text class="zb-headline">{{ item.title }}</text>
+            <text class="zb-source">{{ sourceLabel(item.source_system) }}</text>
           </view>
         </view>
         <view v-else class="zb-empty">
-          <text>今日暂无事项</text>
+          <text>{{ t('homeos.home.today_empty') }}</text>
         </view>
       </view>
 
       <!-- Zone C: Face matrix -->
       <view class="zone-c">
         <view class="zc-header">
-          <text class="zc-title">已启用 {{ homeStore.faces.length }} 面</text>
-          <text class="zc-hint">开通在「我的」</text>
+          <text class="zc-title">{{ t('homeos.home.matrix_title', { count: homeStore.faces.length }) }}</text>
+          <text class="zc-hint">{{ t('homeos.home.matrix_hint') }}</text>
         </view>
 
         <view
@@ -231,27 +231,29 @@ onMounted(() => {
             v-for="face in homeStore.faces"
             :key="face.code"
             class="zc-cell"
-            :class="{ unavailable: !face.available }"
+            :class="{ unavailable: !isFaceAvailable(face) }"
             @click="goToFace(face.code)"
           >
-            <!-- Badge for pending count -->
-            <view v-if="face.badge_count && face.badge_count > 0" class="zc-badge">
-              <text>{{ face.badge_count > 99 ? '99+' : face.badge_count }}</text>
+            <!-- 待处理角标（badge 语义 = 待处理，与顶栏/D 行的「未读」不是一个数，17.1 第 3 条） -->
+            <view v-if="face.badge > 0" class="zc-badge">
+              <text>{{ face.badge > 99 ? '99+' : face.badge }}</text>
             </view>
 
-            <!-- Face icon placeholder (using text for now, should be icon font) -->
             <view class="zc-icon">
               <text>{{ face.name.charAt(0) }}</text>
             </view>
 
             <text class="zc-name">{{ face.name }}</text>
-            <text class="zc-status">{{ face.status_sentence }}</text>
+            <text class="zc-status">{{ face.headline }}</text>
 
-            <!-- Unavailable overlay -->
-            <view v-if="!face.available" class="zc-unavailable">
-              <text class="zc-unavail-text">{{ face.unavailable_reason || '暂不可用' }}</text>
-              <text v-if="face.last_updated_at" class="zc-unavail-time">截至 {{ face.last_updated_at }}</text>
-              <button class="zc-retry-btn" @click.stop="fetchHomeSummary">重试</button>
+            <!-- Unavailable overlay：契约只有 availability 二元位 + 数据时点 as_of，
+                 没有 unavailable_reason 字段，故文案走 i18n、不编造原因 -->
+            <view v-if="!isFaceAvailable(face)" class="zc-unavailable">
+              <text class="zc-unavail-text">{{ t('homeos.home.face_unavailable') }}</text>
+              <text v-if="face.as_of" class="zc-unavail-time">
+                {{ t('homeos.home.face_as_of', { time: formatDate(face.as_of) }) }}
+              </text>
+              <button class="zc-retry-btn" @click.stop="fetchHomeSummary">{{ t('homeos.home.retry') }}</button>
             </view>
           </view>
         </view>
@@ -260,9 +262,9 @@ onMounted(() => {
       <!-- Zone D: Dynamics feed -->
       <view class="zone-d">
         <view class="zd-header">
-          <text class="zd-title">家庭动态</text>
+          <text class="zd-title">{{ t('homeos.home.dynamics_title') }}</text>
           <view class="zd-view-all" @click="goToDynamics">
-            <text>查看全部 ›</text>
+            <text>{{ t('homeos.home.dynamics_view_all') }}</text>
           </view>
         </view>
 
@@ -273,43 +275,43 @@ onMounted(() => {
             class="zd-item"
           >
             <view class="zd-face-icon">
-              <text>{{ item.face_code }}</text>
+              <text>{{ faceInitial(item.code) }}</text>
             </view>
             <view class="zd-content">
-              <text class="zd-member">{{ item.member_name }}</text>
-              <text class="zd-headline">{{ item.headline }}</text>
-              <text class="zd-time">{{ formatRelativeTime(item.created_at) }}</text>
+              <text class="zd-member">{{ item.actor_name }}</text>
+              <text class="zd-headline">{{ item.summary }}</text>
+              <text class="zd-time">{{ formatRelativeTime(item.at) }}</text>
             </view>
           </view>
         </view>
         <view v-else class="zd-empty">
-          <text>暂无动态</text>
+          <text>{{ t('homeos.home.dynamics_empty') }}</text>
         </view>
       </view>
     </scroll-view>
 
     <!-- Bottom navigation -->
     <view class="bottom-nav">
-      <view class="bn-item" @click="router.push('/pages/homeos/home/index')">
+      <view class="bn-item" @click="switchEntry(PAGE_PATH)">
         <text class="bn-icon">🏠</text>
         <text class="bn-label bn-active">{{ t('homeos.nav.home') }}</text>
       </view>
       <view class="bn-item" @click="goToDynamics">
         <text class="bn-icon">💬</text>
         <text class="bn-label">{{ t('homeos.nav.dynamics') }}</text>
-        <view v-if="homeStore.unreadCount > 0" class="bn-badge">
-          <text>{{ homeStore.unreadCount > 99 ? '99+' : homeStore.unreadCount }}</text>
+        <view v-if="homeStore.unread > 0" class="bn-badge">
+          <text>{{ homeStore.unread > 99 ? '99+' : homeStore.unread }}</text>
         </view>
       </view>
-      <view class="bn-item bn-plus" @click="router.push('/pages/homeos/quick-add/index')">
+      <view class="bn-item bn-plus" @click="switchEntry('/pages/homeos/quick-add/index')">
         <text class="bn-plus-icon">＋</text>
       </view>
-      <view class="bn-item" @click="router.push('/pages/homeos/messages/index')">
+      <view class="bn-item" @click="switchEntry('/pages/homeos/messages/index')">
         <text class="bn-icon">🔔</text>
         <text class="bn-label">{{ t('homeos.nav.messages') }}</text>
-        <view v-if="homeStore.unreadCount > 0" class="bn-dot" />
+        <view v-if="homeStore.unread > 0" class="bn-dot" />
       </view>
-      <view class="bn-item" @click="router.push('/pages/homeos/mine/index')">
+      <view class="bn-item" @click="switchEntry('/pages/homeos/mine/index')">
         <text class="bn-icon">👤</text>
         <text class="bn-label">{{ t('homeos.nav.mine') }}</text>
       </view>
@@ -371,7 +373,7 @@ onMounted(() => {
 
 .twb-segment.active {
   background-color: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-on-primary);
 }
 
 /* Zone A: Family area */
@@ -411,7 +413,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   background-color: var(--color-primary-light);
-  color: #ffffff;
+  color: var(--color-on-primary);
   font-size: 28rpx;
   font-weight: 600;
 }
@@ -453,8 +455,20 @@ onMounted(() => {
 }
 
 .zb-calendar-link {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
   font-size: 28rpx;
-  color: var(--color-primary);
+  color: var(--text-secondary);
+}
+
+/* 到期中心未出生时的显式标注：不假装可跳转（不带「›」箭头） */
+.zb-soon {
+  font-size: 20rpx;
+  color: var(--text-tertiary);
+  background-color: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: 2rpx 10rpx;
 }
 
 .zb-timeline {
@@ -483,6 +497,13 @@ onMounted(() => {
 .zb-headline {
   font-size: 26rpx;
   color: var(--text-secondary);
+}
+
+/* B 区条目的来系统标记：契约的 source_system 只作文字标注，
+   不用它拼出 `var(--color-${source_system})` 这类动态变量名（未定义即静默失效）。 */
+.zb-source {
+  font-size: 22rpx;
+  color: var(--text-tertiary);
 }
 
 .zb-empty {
@@ -561,7 +582,7 @@ onMounted(() => {
   height: 32rpx;
   border-radius: 16rpx;
   background-color: var(--badge-unread);
-  color: #ffffff;
+  color: var(--color-on-badge);
   font-size: 20rpx;
   display: flex;
   align-items: center;
@@ -574,7 +595,7 @@ onMounted(() => {
   height: 80rpx;
   border-radius: var(--radius-md);
   background-color: var(--color-primary-light);
-  color: #ffffff;
+  color: var(--color-on-primary);
   font-size: 40rpx;
   display: flex;
   align-items: center;
@@ -598,7 +619,7 @@ onMounted(() => {
 .zc-unavailable {
   position: absolute;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: var(--overlay-dark);
   border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
@@ -610,19 +631,19 @@ onMounted(() => {
 
 .zc-unavail-text {
   font-size: 28rpx;
-  color: #ffffff;
+  color: var(--color-on-overlay);
   font-weight: 600;
 }
 
 .zc-unavail-time {
   font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--color-on-overlay-muted);
 }
 
 .zc-retry-btn {
   margin-top: 12rpx;
   padding: 12rpx 32rpx;
-  background-color: #ffffff;
+  background-color: var(--bg-primary);
   color: var(--text-primary);
   border-radius: var(--radius-sm);
   font-size: 26rpx;
@@ -671,7 +692,7 @@ onMounted(() => {
   height: 48rpx;
   border-radius: var(--radius-sm);
   background-color: var(--color-primary-light);
-  color: #ffffff;
+  color: var(--color-on-primary);
   font-size: 20rpx;
   display: flex;
   align-items: center;
@@ -757,7 +778,7 @@ onMounted(() => {
   height: 80rpx;
   border-radius: 50%;
   background-color: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-on-primary);
   font-size: 56rpx;
   display: flex;
   align-items: center;
@@ -775,7 +796,7 @@ onMounted(() => {
   height: 32rpx;
   border-radius: 16rpx;
   background-color: var(--badge-unread);
-  color: #ffffff;
+  color: var(--color-on-badge);
   font-size: 20rpx;
   display: flex;
   align-items: center;

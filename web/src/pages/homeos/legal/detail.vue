@@ -34,8 +34,10 @@ async function fetchData() {
       ? '/api/homeos/legal/user-agreement'
       : '/api/homeos/legal/privacy-policy'
 
-    const response = await request.get(endpoint)
-    data.value = response.data
+    const response = await request.get<LegalData>(endpoint)
+    // 请求层 resolve 的就是裸响应体（svc-homeos `GetPrivacyPolicy` / `GetUserAgreement`
+    // 直接 `c.JSON(200, gin.H{"title","content","version","updated_at"})`），不再 `.data`。
+    data.value = response
   } catch (err: any) {
     console.error('Failed to fetch legal document:', err)
     error.value = err.message || '加载失败'

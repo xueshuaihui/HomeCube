@@ -1,23 +1,35 @@
 <script setup lang="ts">
-// pages/homeos/mine/index —— "我的"页面
+// pages/homeos/mine/index —— 「我的」（§4.6）
 //
 // 实现 PRD 17.5 规格：
 //   · 账号：个人信息展示
 //   · 家庭管理（成员/邀请/角色/权限，见十五章）
-//   · 开通更多面（全量面目录与本家庭的启用配置，仅管理员可变更，17.8）
+//   · 开通更多面：本页只放一个**入口行**，跳 `homeos/family/modules`（17.8）
 //   · 设置（主题/时区/货币/日期格式/语言，主题三态见 17.9）
 //   · 数据（导出/备份/迁移，见 3.4.4）
 //   · 隐私与紧急卡开关（见 15.4）
 //   · 帮助与关于
+//
+// 三条同源约束（本轮改齐的重点）：
+//   1. **角色不硬编码**：`role` 与 `isAdmin` 都取自主包 shell store 的会话快照
+//      （唯一源 `GET /api/homeos/families` 的 `{families:[{id,name,role}]}`，经 `ensureSession()`），
+//      本页与 `family/index`、`family/invite`、`family/modules` 共用同一份判定（15.1），
+//      不在本页二次推导、也不把未知角色猜成「member」——未知即最小权限，管理入口不渲染。
+//   2. **本页不写面配置**：面挂载配置的**唯一入口**是 `homeos/family/modules`
+//      （§4.6 row ① + 17.8；§6.11「管理员开通：me/index → family/modules」）。
+//      本页此前自己渲染了一份开关列表，那是同一 App 里的第二个面入口 ——
+//      22.5 第 4 道同源⑦拦的正是这个形态，但同源⑦只扫分包、「我的」在主包，所以它不会被自动发现。
+//      改完之后本页不再请求面目录、也不再发出任何面配置写入：
+//      面清单、`enabled`、乐观锁 `version` 三样都不进本页（17.8）。
+//   3. **定版路由未出生的行不留死点**：`homeos/settings/index`、`homeos/data/index`、
+//      `homeos/about/index` 是 P1 定版但未出生，对应行一律标「未开放」并显式回话。
 
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
 import { request } from '@/utils/request'
-import { useHomeStore } from '@/stores/home'
+import { useHomeStore, type MemberRole } from '@/stores/home'
 
 const { t } = useI18n({ useScope: 'global' })
-const router = useRouter()
 const homeStore = useHomeStore()
 
 type ThemeMode = 'light' | 'dark' | 'system'
@@ -29,207 +41,162 @@ interface UserInfo {
   avatar?: string
 }
 
-interface FamilyInfo {
-  id: string
-  name: string
-  role: 'owner' | 'member' | 'ward' | 'guest'
-}
-
-interface ModuleInfo {
-  code: string
-  name: string
-  enabled: boolean
-  service_born: boolean // 服务已出生
-}
-
 const userInfo = ref<UserInfo | null>(null)
-const currentFamily = ref<FamilyInfo | null>(null)
-const modules = ref<ModuleInfo[]>([])
 const themeMode = ref<ThemeMode>('system')
-const loading = ref(false)
+const sessionError = ref('')
 
-// All available modules (registry order)
-const allModules: Array<{ code: string; name: string }> = [
-  { code: 'finance', name: '财务' },
-  { code: 'purchase', name: '采购' },
-  { code: 'diet', name: '饮食' },
-  { code: 'trip', name: '出行' },
-  { code: 'kin', name: '家人' },
-  { code: 'growth', name: '成长' },
-]
+const role = computed<MemberRole | ''>(() => homeStore.role)
+const isAdmin = computed(() => homeStore.isAdmin)
 
-// Load user and family info
+function roleLabel(value: MemberRole | ''): string {
+  if (!value) return t('homeos.mine.role_unknown')
+  return t(`homeos.family.role_${value}`)
+}
+
+// 账号信息来自本地登录态（token 由请求层持有，App 侧只有 id/手机号两份展示字段）
 async function loadUserInfo() {
-  try {
-    // Get user info from token or API
-    const userId = uni.getStorageSync('user_id')
-    const phone = uni.getStorageSync('phone')
-
-    userInfo.value = {
-      id: userId || '',
-      phone: phone || '未登录',
-      name: '用户',
-    }
-
-    // Get current family from home store
-    if (homeStore.family) {
-      currentFamily.value = {
-        id: homeStore.family.id,
-        name: homeStore.family.name,
-        role: 'member', // TODO: get from token claims
-      }
-    }
-  } catch (err: any) {
-    console.error('Failed to load user info:', err)
+  const userId = uni.getStorageSync('user_id')
+  const phone = uni.getStorageSync('phone')
+  userInfo.value = {
+    id: userId || '',
+    phone: phone || t('homeos.mine.not_logged_in'),
+    name: t('homeos.mine.default_nickname'),
   }
 }
 
-// Load module status
-async function loadModules() {
+/**
+ * 会话角色：`ensureSession()` 打的就是 `GET /api/homeos/families`。
+ * 失败时 `role` 仍是空串、`isAdmin` 仍是 false —— 角色未知即按最小权限渲染，
+ * 不把未知角色猜成「member」，也不给一个点不动的管理入口（15.1、§七「不渲染不是置灰」）。
+ */
+async function loadSession() {
+  sessionError.value = ''
   try {
-    const response = await request.get('/api/homeos/home/summary', {
-      params: { period: 'month' },
-    })
-
-    const enabledFaces = response.data.faces || []
-
-    modules.value = allModules.map(mod => {
-      const face = enabledFaces.find((f: any) => f.code === mod.code)
-      return {
-        code: mod.code,
-        name: mod.name,
-        enabled: !!face,
-        service_born: face ? face.available : false,
-      }
-    })
+    await homeStore.ensureSession()
   } catch (err: any) {
-    console.error('Failed to load modules:', err)
-    // Fallback
-    modules.value = allModules.map(mod => ({
-      code: mod.code,
-      name: mod.name,
-      enabled: mod.code === 'finance', // Only finance is born in P1
-      service_born: mod.code === 'finance',
-    }))
+    sessionError.value = err?.message || t('homeos.mine.session_failed')
   }
 }
 
-// Toggle module enablement (admin only)
-async function toggleModule(moduleCode: string, enabled: boolean) {
-  if (currentFamily.value?.role !== 'owner') {
-    uni.showToast({ title: '仅管理员可开通/停用面', icon: 'none' })
+/**
+ * 主题三态（17.9）：把 `data-theme` 写到文档根节点，theme.css 的两套变量值随之切换。
+ * H5 运行期全站共用同一个 document，因此本页写入后对全站生效、切页不回落；
+ * 冷启动时的初值在「我的」页 onMounted 读回并重新写入（未进过本页即为跟随系统档）。
+ */
+function applyTheme(mode: ThemeMode) {
+  const doc = (globalThis as any).document
+  if (!doc?.documentElement) return
+  if (mode === 'system') {
+    doc.documentElement.removeAttribute('data-theme')
     return
   }
-
-  try {
-    await request.put(`/api/homeos/family/modules/${moduleCode}`, {
-      enabled,
-    })
-
-    // Update local state
-    const mod = modules.value.find(m => m.code === moduleCode)
-    if (mod) {
-      mod.enabled = enabled
-    }
-
-    uni.showToast({ title: enabled ? '已开通' : '已停用', icon: 'success' })
-
-    // Reload home summary to update faces
-    await homeStore.updateSummary(
-      (await request.get('/api/homeos/home/summary', { params: { period: 'month' } })).data
-    )
-  } catch (err: any) {
-    console.error('Failed to toggle module:', err)
-    uni.showToast({ title: err.message || '操作失败', icon: 'none' })
-  }
+  doc.documentElement.setAttribute('data-theme', mode)
 }
 
-// Change theme
 function changeTheme(mode: ThemeMode) {
   themeMode.value = mode
-
-  // Apply theme
   if (mode === 'system') {
-    // Remove explicit theme attribute, let system preference take over
     uni.removeStorageSync('theme')
   } else {
     uni.setStorageSync('theme', mode)
-    // Apply to document
-    // Note: In uni-app, this would be done differently
   }
+  applyTheme(mode)
+}
 
-  uni.showToast({ title: '主题已切换', icon: 'success' })
+function restoreTheme() {
+  const stored = uni.getStorageSync('theme')
+  const mode: ThemeMode = stored === 'light' || stored === 'dark' ? stored : 'system'
+  themeMode.value = mode
+  applyTheme(mode)
 }
 
 // Logout
 function handleLogout() {
   uni.showModal({
-    title: '确认退出',
-    content: '确定要退出登录吗？',
+    title: t('homeos.mine.logout'),
+    content: t('homeos.mine.logout_confirm'),
+    confirmText: t('homeos.common.confirm'),
+    cancelText: t('homeos.common.cancel'),
     success: async (res) => {
-      if (res.confirm) {
-        try {
-          await request.post('/api/homeos/auth/logout')
-        } catch (e) {
-          // Ignore logout API errors
-        }
-
-        // Clear storage
-        uni.removeStorageSync('access_token')
-        uni.removeStorageSync('refresh_token')
-        uni.removeStorageSync('user_id')
-        uni.removeStorageSync('phone')
-
-        // Navigate to login
-        uni.reLaunch({ url: '/pages/homeos/auth/login' })
+      if (!res.confirm) return
+      try {
+        await request.post('/api/homeos/auth/logout')
+      } catch {
+        // 退出接口的失败不阻断清本地态：令牌留在服务端也只是下一次 401 时被清掉
       }
+
+      uni.removeStorageSync('access_token')
+      uni.removeStorageSync('refresh_token')
+      uni.removeStorageSync('user_id')
+      uni.removeStorageSync('phone')
+      homeStore.clearData()
+
+      uni.reLaunch({ url: '/pages/homeos/auth/login' })
     },
   })
 }
 
-// Menu items
-const menuSections = [
-  {
-    title: '家庭',
-    items: [
-      { label: '家庭成员', action: () => router.push('/pages/homeos/family/members') },
-      { label: '邀请成员', action: () => router.push('/pages/homeos/family/invite') },
-    ],
-  },
-  {
-    title: '开通更多面',
-    items: [], // Rendered dynamically
-  },
-  {
-    title: '设置',
-    items: [
-      { label: '主题切换', action: () => {} }, // Handled inline
-      { label: '时区设置', action: () => {} },
-      { label: '货币设置', action: () => {} },
-      { label: '日期格式', action: () => {} },
-      { label: '语言', action: () => {} },
-    ],
-  },
-  {
-    title: '数据',
-    items: [
-      { label: '导出数据', action: () => {} },
-      { label: '备份状态', action: () => {} },
-    ],
-  },
-  {
-    title: '其他',
-    items: [
-      { label: '隐私政策', action: () => uni.navigateTo({ url: '/pages/homeos/legal/detail?type=privacy' }) },
-      { label: '用户协议', action: () => uni.navigateTo({ url: '/pages/homeos/legal/detail?type=agreement' }) },
-      { label: '帮助与关于', action: () => {} },
-    ],
-  },
+// 定版路由尚未出生的行（§4.6 的 homeos/settings/index、homeos/data/index、homeos/about/index）：
+// 显式回话 + 行上标「未开放」，不留 `() => {}` 这种点了没反应的死行（同首页对未出生面的处置）。
+function notifyUnavailable(feature: string) {
+  uni.showToast({ title: t('homeos.mine.pending', { feature }), icon: 'none' })
+}
+
+interface MenuRow {
+  label: string
+  action: () => void
+  /** true = 目标页未出生，行上显式标「未开放」 */
+  pending?: boolean
+}
+
+const familySection = computed<MenuRow[]>(() => [
+  { label: t('homeos.mine.row_members'), action: () => uni.navigateTo({ url: '/pages/homeos/family/index' }) },
+  { label: t('homeos.mine.row_invite'), action: () => uni.navigateTo({ url: '/pages/homeos/family/invite' }) },
+])
+
+/**
+ * 「开通更多面」= 面挂载配置的**唯一入口行**（§4.6 row ①、17.8、§6.11）：
+ * 与上面两行同构，只有跳转、没有任何写操作，开通/停用与二次确认都在 `family/modules` 里发生。
+ *
+ * 只给管理员看（`isAdmin` 就是 shell 会话快照那一份，本页不自己判角色）：
+ * 非管理员进了开通页也只有只读态，这一行对他是个不能成立的动作（15.2、§七「按钮不渲染，不是置灰」）。
+ * 跳转方式按 §2.3：一级页 → 具名页 = 压栈 `uni.navigateTo`，返回即出栈回本页。
+ */
+const mountSection = computed<MenuRow[]>(() =>
+  isAdmin.value
+    ? [{ label: t('homeos.mine.row_modules'), action: () => uni.navigateTo({ url: '/pages/homeos/family/modules' }) }]
+    : []
+)
+
+// 设置组：主题在本页内联渲染，其余四项属 homeos/settings/index（未出生）
+const otherSettingRows = computed<MenuRow[]>(() => [
+  { label: t('homeos.mine.row_timezone'), pending: true, action: () => notifyUnavailable(t('homeos.mine.row_timezone')) },
+  { label: t('homeos.mine.row_currency'), pending: true, action: () => notifyUnavailable(t('homeos.mine.row_currency')) },
+  { label: t('homeos.mine.row_date_format'), pending: true, action: () => notifyUnavailable(t('homeos.mine.row_date_format')) },
+  { label: t('homeos.mine.row_language'), pending: true, action: () => notifyUnavailable(t('homeos.mine.row_language')) },
+])
+
+const dataRows = computed<MenuRow[]>(() => [
+  { label: t('homeos.mine.row_export'), pending: true, action: () => notifyUnavailable(t('homeos.mine.row_export')) },
+  { label: t('homeos.mine.row_backup'), pending: true, action: () => notifyUnavailable(t('homeos.mine.row_backup')) },
+])
+
+const otherRows = computed<MenuRow[]>(() => [
+  { label: t('homeos.mine.row_privacy'), action: () => uni.navigateTo({ url: '/pages/homeos/legal/detail?type=privacy' }) },
+  { label: t('homeos.mine.row_agreement'), action: () => uni.navigateTo({ url: '/pages/homeos/legal/detail?type=agreement' }) },
+  { label: t('homeos.mine.row_about'), pending: true, action: () => notifyUnavailable(t('homeos.mine.row_about')) },
+])
+
+const themeOptions: Array<{ mode: ThemeMode; label: string }> = [
+  { mode: 'light', label: t('homeos.mine.theme_light') },
+  { mode: 'dark', label: t('homeos.mine.theme_dark') },
+  { mode: 'system', label: t('homeos.mine.theme_system') },
 ]
 
 onMounted(() => {
+  restoreTheme()
   loadUserInfo()
-  loadModules()
+  loadSession()
 })
 </script>
 
@@ -239,70 +206,94 @@ onMounted(() => {
       <!-- User profile card -->
       <view class="profile-card">
         <view class="profile-avatar">
-          <text>{{ userInfo?.name?.charAt(0) || '用' }}</text>
+          <text>{{ (userInfo?.name || t('homeos.mine.default_nickname')).charAt(0) }}</text>
         </view>
         <view class="profile-info">
-          <text class="profile-name">{{ userInfo?.name || '未命名用户' }}</text>
+          <text class="profile-name">{{ userInfo?.name || t('homeos.mine.default_nickname') }}</text>
           <text class="profile-phone">{{ userInfo?.phone }}</text>
         </view>
       </view>
 
-      <!-- Current family -->
-      <view v-if="currentFamily" class="family-card">
-        <text class="family-label">当前家庭</text>
-        <text class="family-name">{{ currentFamily.name }}</text>
-        <text class="family-role">{{ currentFamily.role === 'owner' ? '管理员' : '成员' }}</text>
+      <!-- Current family + 会话角色（唯一的角色源：GET /api/homeos/families） -->
+      <view v-if="homeStore.family" class="family-card">
+        <text class="family-label">{{ t('homeos.mine.current_family') }}</text>
+        <text class="family-name">{{ homeStore.family.name }}</text>
+        <text class="family-role">{{ roleLabel(role) }}</text>
+      </view>
+      <view v-else-if="sessionError" class="family-card">
+        <text class="family-label">{{ sessionError }}</text>
       </view>
 
-      <!-- Menu sections -->
-      <view v-for="section in menuSections" :key="section.title" class="menu-section">
-        <text class="section-title">{{ section.title }}</text>
-
-        <!-- Dynamic module list for "开通更多面" section -->
-        <view v-if="section.title === '开通更多面'" class="module-list">
-          <view v-for="mod in modules" :key="mod.code" class="module-item">
-            <view class="module-info">
-              <text class="module-name">{{ mod.name }}</text>
-              <text v-if="!mod.service_born" class="module-badge">即将上线</text>
-            </view>
-            <switch
-              :checked="mod.enabled"
-              :disabled="!mod.service_born || currentFamily?.role !== 'owner'"
-              @change="(e: any) => toggleModule(mod.code, e.detail.value)"
-            />
-          </view>
-        </view>
-
-        <!-- Theme selector inline -->
-        <view v-else-if="section.title === '设置' && section.items.some(i => i.label === '主题切换')" class="theme-selector">
-          <view
-            v-for="mode in ['light', 'dark', 'system']"
-            :key="mode"
-            class="theme-item"
-            :class="{ active: themeMode === mode }"
-            @click="changeTheme(mode as ThemeMode)"
-          >
-            <text>{{ mode === 'light' ? '浅色' : mode === 'dark' ? '深色' : '跟随系统' }}</text>
-          </view>
-        </view>
-
-        <!-- Regular menu items -->
-        <view v-else class="menu-list">
-          <view
-            v-for="item in section.items"
-            :key="item.label"
-            class="menu-item"
-            @click="item.action"
-          >
+      <!-- 家庭 -->
+      <view class="menu-section">
+        <text class="section-title">{{ t('homeos.mine.section_family') }}</text>
+        <view class="menu-list">
+          <view v-for="item in familySection" :key="item.label" class="menu-item" @click="item.action">
             <text class="menu-label">{{ item.label }}</text>
             <text class="menu-arrow">›</text>
           </view>
         </view>
       </view>
 
-      <!-- Logout button -->
+      <!-- 开通更多面（17.8）：一个入口行，跳治理页。本页不渲染开关、不读写面配置 -->
+      <view v-if="mountSection.length > 0" class="menu-section">
+        <view class="menu-list">
+          <view v-for="item in mountSection" :key="item.label" class="menu-item" @click="item.action">
+            <text class="menu-label">{{ item.label }}</text>
+            <text class="menu-arrow">›</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 设置：主题三态内联，其余四项标注未开放 -->
+      <view class="menu-section">
+        <text class="section-title">{{ t('homeos.mine.section_settings') }}</text>
+        <view class="theme-selector">
+          <view
+            v-for="option in themeOptions"
+            :key="option.mode"
+            class="theme-item"
+            :class="{ active: themeMode === option.mode }"
+            @click="changeTheme(option.mode)"
+          >
+            <text>{{ option.label }}</text>
+          </view>
+        </view>
+        <view class="menu-list settings-list">
+          <view v-for="item in otherSettingRows" :key="item.label" class="menu-item" @click="item.action">
+            <text class="menu-label">{{ item.label }}</text>
+            <text v-if="item.pending" class="menu-soon">{{ t('homeos.common.not_open') }}</text>
+            <text class="menu-arrow">›</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 数据 -->
+      <view class="menu-section">
+        <text class="section-title">{{ t('homeos.mine.section_data') }}</text>
+        <view class="menu-list">
+          <view v-for="item in dataRows" :key="item.label" class="menu-item" @click="item.action">
+            <text class="menu-label">{{ item.label }}</text>
+            <text v-if="item.pending" class="menu-soon">{{ t('homeos.common.not_open') }}</text>
+            <text class="menu-arrow">›</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 其他 -->
+      <view class="menu-section">
+        <text class="section-title">{{ t('homeos.mine.section_other') }}</text>
+        <view class="menu-list">
+          <view v-for="item in otherRows" :key="item.label" class="menu-item" @click="item.action">
+            <text class="menu-label">{{ item.label }}</text>
+            <text v-if="item.pending" class="menu-soon">{{ t('homeos.common.not_open') }}</text>
+            <text class="menu-arrow">›</text>
+          </view>
+        </view>
+      </view>
+
       <view class="logout-section">
-        <button class="logout-btn" @click="handleLogout">退出登录</button>
+        <button class="logout-btn" @click="handleLogout">{{ t('homeos.mine.logout') }}</button>
       </view>
     </scroll-view>
   </view>
@@ -318,7 +309,7 @@ onMounted(() => {
 
 .hc-scroll {
   flex: 1;
-  padding: 24rpx;
+  padding: 24rpx 24rpx 0;
 }
 
 /* Profile card */
@@ -337,7 +328,7 @@ onMounted(() => {
   height: 96rpx;
   border-radius: 50%;
   background-color: var(--color-primary-light);
-  color: #ffffff;
+  color: var(--color-on-primary);
   font-size: 40rpx;
   display: flex;
   align-items: center;
@@ -385,10 +376,9 @@ onMounted(() => {
 
 .family-role {
   font-size: 24rpx;
-  color: var(--color-primary);
   padding: 4rpx 12rpx;
   background-color: var(--color-primary-light);
-  color: #ffffff;
+  color: var(--color-on-primary);
   border-radius: var(--radius-sm);
 }
 
@@ -403,44 +393,6 @@ onMounted(() => {
   color: var(--text-secondary);
   margin-bottom: 12rpx;
   padding-left: 8rpx;
-}
-
-/* Module list */
-.module-list {
-  background-color: var(--bg-primary);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.module-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 24rpx 32rpx;
-  border-bottom: 1rpx solid var(--divider-color);
-}
-
-.module-item:last-child {
-  border-bottom: none;
-}
-
-.module-info {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-
-.module-name {
-  font-size: 28rpx;
-  color: var(--text-primary);
-}
-
-.module-badge {
-  font-size: 22rpx;
-  color: var(--text-tertiary);
-  padding: 4rpx 12rpx;
-  background-color: var(--bg-tertiary);
-  border-radius: var(--radius-sm);
 }
 
 /* Theme selector */
@@ -464,7 +416,7 @@ onMounted(() => {
 
 .theme-item.active {
   background-color: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-on-primary);
 }
 
 /* Menu list */
@@ -496,6 +448,21 @@ onMounted(() => {
   color: var(--text-tertiary);
 }
 
+/* 目标页未出生的行：显式标注，不假装可跳转 */
+.menu-soon {
+  flex-shrink: 0;
+  margin-right: 12rpx;
+  padding: 2rpx 12rpx;
+  font-size: 20rpx;
+  color: var(--text-tertiary);
+  background-color: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+}
+
+.settings-list {
+  margin-top: 16rpx;
+}
+
 /* Logout section */
 .logout-section {
   padding: 32rpx 0;
@@ -505,7 +472,7 @@ onMounted(() => {
   width: 100%;
   padding: 28rpx 0;
   background-color: var(--color-error);
-  color: #ffffff;
+  color: var(--color-on-primary);
   border-radius: var(--radius-md);
   font-size: 32rpx;
   font-weight: 600;

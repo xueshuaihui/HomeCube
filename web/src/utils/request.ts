@@ -7,10 +7,48 @@ interface RequestOptions {
   header?: Record<string, string>
 }
 
+/**
+ * 只在 `unwrapBody` 里出现：工程早期的响应形状 `{code,message,data}`。
+ * 请求层的**出口契约不是它** —— 见下方 `request` 的返回类型。
+ */
 interface ResponseData<T = any> {
   code?: number
   message?: string
   data: T
+}
+
+/**
+ * 带 HTTP 状态码的请求错误：调用方需要区分 409（乐观锁冲突）与 403/400 之类，
+ * 单靠 message 里的「HTTP 409」字符串判状态等于把状态码再解析一遍。
+ */
+export class RequestError extends Error {
+  readonly status: number
+  readonly body: unknown
+
+  constructor(status: number, message: string, body?: unknown) {
+    super(message)
+    this.name = 'RequestError'
+    this.status = status
+    this.body = body
+  }
+}
+
+/**
+ * 取响应体。
+ *
+ * 冻结契约（`server/contracts/openapi/*.yaml`）里 200 的 schema **就是业务对象本身**
+ * （`home/summary` 直接是 `{family, due_today, faces, dynamics, unread}`），
+ * 服务端 handler 也是 `c.JSON(200, XxxResponse{...})` 裸回，不套信封；
+ * 但工程早期的请求层类型把响应声明成了 `{code,message,data}`。两种形状都收、
+ * 由调用方按契约字段取值，而不是赌某一种信封（同 family/invite 页的 unwrap 口径）。
+ */
+export function unwrapBody<T = any>(res: any): T {
+  if (res && typeof res === 'object' && 'data' in res) {
+    const inner = (res as ResponseData).data
+    // 只有 inner 真是业务对象时才剥一层；`{data: null}` 之类不剥，避免把空响应当成对象根。
+    if (inner && typeof inner === 'object') return inner as T
+  }
+  return res as T
 }
 
 /**
@@ -49,10 +87,14 @@ async function refreshAccessToken(): Promise<boolean> {
       })
     })
 
-    if (response.statusCode === 200 && response.data?.data?.access_token) {
-      uni.setStorageSync('access_token', response.data.data.access_token)
-      if (response.data.data.refresh_token) {
-        uni.setStorageSync('refresh_token', response.data.data.refresh_token)
+    // 契约与服务端一致地**裸回** `{access_token, refresh_token}`（svc-homeos handler
+    // `c.JSON(200, RefreshResponse{...})`）；早前的实现只认 `{data:{access_token}}`，
+    // 于是 refresh 永远「失败」→ 清 token → 弹回登录页。两种形状都收。
+    const body = unwrapBody<any>(response?.statusCode === 200 ? response.data : null)
+    if (body?.access_token) {
+      uni.setStorageSync('access_token', body.access_token)
+      if (body.refresh_token) {
+        uni.setStorageSync('refresh_token', body.refresh_token)
       }
       return true
     }
@@ -66,11 +108,19 @@ async function refreshAccessToken(): Promise<boolean> {
 
 /**
  * Main request function
+ *
+ * **出口契约（唯一的信封判定处）**：resolve 出来的是 `res.data`，即**裸响应体本身**。
+ * 冻结契约 `server/contracts/openapi/*.yaml` 里 200 的 schema 就是业务对象
+ * （列表是 `{items, next_cursor}`、详情是对象本体），服务端 handler 也一律
+ * `c.JSON(200, gin.H{"items": ...})` 裸回，不套 `{code,message,data}`。
+ * 因此调用方**直接读 `body.items`**，不得再 `.data` 剥一层 —— 那读到的是 `undefined`
+ * （旧代码这么写过，于是财务列表恒空、记账保存被自己卡死）。
+ * 需要兼容早期两种形状的历史调用点用 `unwrapBody`，它对本契约是恒等变换。
  */
 export async function request<T = any>(
   url: string,
   options: RequestOptions = {}
-): Promise<ResponseData<T>> {
+): Promise<T> {
   const {
     method = 'GET',
     params,
@@ -133,9 +183,15 @@ export async function request<T = any>(
                 data: data || undefined,
                 success: (retryRes) => {
                   if (retryRes.statusCode >= 200 && retryRes.statusCode < 300) {
-                    resolve(retryRes.data as ResponseData<T>)
+                    resolve(retryRes.data as T)
                   } else {
-                    reject(new Error(`Request failed: HTTP ${retryRes.statusCode}`))
+                    reject(
+                      new RequestError(
+                        retryRes.statusCode,
+                        (retryRes.data as any)?.message || `Request failed: HTTP ${retryRes.statusCode}`,
+                        retryRes.data
+                      )
+                    )
                   }
                 },
                 fail: (err) => reject(new Error(err.errMsg)),
@@ -154,14 +210,16 @@ export async function request<T = any>(
 
         // Handle other status codes
         if (statusCode >= 200 && statusCode < 300) {
-          resolve(res.data as ResponseData<T>)
+          resolve(res.data as T)
         } else {
-          const errorMsg = (res.data as any)?.message || `Request failed: HTTP ${statusCode}`
-          reject(new Error(errorMsg))
+          const body = res.data as { code?: string; message?: string; error?: string } | undefined
+          const errorMsg =
+            body?.message || body?.error || `Request failed: HTTP ${statusCode}`
+          reject(new RequestError(statusCode, errorMsg, res.data))
         }
       },
       fail: (err) => {
-        reject(new Error(err.errMsg || 'Network error'))
+        reject(new RequestError(0, err.errMsg || 'Network error'))
       },
     })
   })

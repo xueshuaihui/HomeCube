@@ -1,42 +1,73 @@
 <script setup lang="ts">
-// pages/finance/account/index —— 账户管理页
+// pages/finance/account/index —— 账户管理页（§5.1 财务面末位「账户与设置」的账户维护部分，
+// 由流水页工具栏「账户管理」进入；settings 页本身本期未建，见本轮上报的未实现项）。
 //
-// 实现：
-//   · 账户列表展示（名称、类型、余额）
-//   · 添加账户
-//   · 编辑账户
-//   · 删除账户
+// 口径全部对齐 svc-finance 的路由表与 JSON tag（`cmd/svc-finance/main.go` +
+// `internal/model/finance.go`），不猜字段名：
+//   · 列表  GET  /api/finance/accounts?family_id=   → 裸回 `{items:[FinanceAccount]}`
+//     （family_id 是 ListAccounts 的必填 query，缺它即 400）
+//   · 新建  POST /api/finance/accounts              body `{family_id, name, type}`
+//     （服务端 CreateAccount 只收这三个字段，余额恒为 0，故表单不放「初始余额」）
+//   · 归档  PUT  /api/finance/accounts/:id/archive  （余额非 0 时服务端回 409 + error 文案）
+//   服务端**没有** `PUT /accounts/:id` 与 `DELETE /accounts/:id` 两条路由，因此本页不提供
+//   「编辑 / 删除」两个动作 —— 挂上去就是必定 404 的按钮。
+//   · 余额字段是 `balance`（整数分；契约 Account 里叫 `balance_cents`，已作为定版冲突上报）
+//   · 类型枚举取契约的 cash / bank / third_party / credit_card
 
 import { ref, onMounted } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { request } from '@/utils/request'
 import { formatAmount } from '@/utils/format'
+import { useHomeStore } from '@/stores/home'
 
-const { t } = useI18n({ useScope: 'global' })
-
+/** 服务端 model.FinanceAccount 的 JSON 形状。`balance` 单位：整数分。 */
 interface Account {
   id: string
   family_id: string
   name: string
-  type: string // cash/bank/card/virtual/investment
-  balance_cents: number
-  icon?: string
-  remark?: string
-  is_default: boolean
+  type: string
+  balance: number
+  is_archived: boolean
+  archived_at?: string | null
+  version: number
+  created_at: string
+  updated_at: string
+}
+
+/** 契约 `/accounts` 200 体。 */
+interface AccountListBody {
+  items?: Account[]
+}
+
+/** 账户类型枚举与文案（顺序即 picker 顺序）。 */
+const ACCOUNT_TYPES = ['cash', 'bank', 'third_party', 'credit_card']
+const TYPE_LABELS: Record<string, string> = {
+  cash: '现金',
+  bank: '银行卡',
+  third_party: '第三方支付',
+  credit_card: '信用卡',
 }
 
 const accounts = ref<Account[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const showAddDialog = ref(false)
-const editingAccount = ref<Account | null>(null)
 
 // Form state
 const formName = ref('')
 const formType = ref('cash')
-const formBalance = ref('')
-const formRemark = ref('')
-const formIsDefault = ref(false)
+
+const homeStore = useHomeStore()
+
+/** family_id 读 shell store 的会话快照：分包不自存一份、不在本页重拉 `/families`。 */
+async function resolveSessionFamilyId(): Promise<string> {
+  if (homeStore.sessionFamilyId) return homeStore.sessionFamilyId
+  try {
+    await homeStore.ensureSession()
+  } catch {
+    return ''
+  }
+  return homeStore.sessionFamilyId || ''
+}
 
 // Fetch accounts
 async function fetchAccounts() {
@@ -44,8 +75,18 @@ async function fetchAccounts() {
   error.value = null
 
   try {
-    const response = await request.get('/api/finance/accounts')
-    accounts.value = response.data.items || []
+    const familyId = await resolveSessionFamilyId()
+    if (!familyId) {
+      accounts.value = []
+      error.value = '还没有可用的家庭，请先在首页创建或加入家庭'
+      return
+    }
+
+    // 请求层 resolve 的就是裸响应体：直接读 items。
+    const body = await request.get<AccountListBody>('/api/finance/accounts', {
+      params: { family_id: familyId },
+    })
+    accounts.value = Array.isArray(body?.items) ? body.items : []
   } catch (err: any) {
     console.error('Failed to fetch accounts:', err)
     error.value = err.message || '加载失败'
@@ -56,49 +97,31 @@ async function fetchAccounts() {
 
 // Open add dialog
 function openAddDialog() {
-  editingAccount.value = null
   formName.value = ''
   formType.value = 'cash'
-  formBalance.value = ''
-  formRemark.value = ''
-  formIsDefault.value = false
   showAddDialog.value = true
 }
 
-// Open edit dialog
-function openEditDialog(account: Account) {
-  editingAccount.value = account
-  formName.value = account.name
-  formType.value = account.type
-  formBalance.value = (account.balance_cents / 100).toFixed(2)
-  formRemark.value = account.remark || ''
-  formIsDefault.value = account.is_default
-  showAddDialog.value = true
-}
-
-// Submit account (add or update)
+// Submit account（服务端只有创建与归档，没有更新，因此这里只有「新建」一条路）
 async function handleSubmit() {
   if (!formName.value.trim()) {
     uni.showToast({ title: '请输入账户名称', icon: 'none' })
     return
   }
 
+  const familyId = await resolveSessionFamilyId()
+  if (!familyId) {
+    uni.showToast({ title: error.value || '缺少家庭，无法新建账户', icon: 'none' })
+    return
+  }
+
   try {
-    const payload = {
+    await request.post('/api/finance/accounts', {
+      family_id: familyId,
       name: formName.value.trim(),
       type: formType.value,
-      balance_cents: Math.round(parseFloat(formBalance.value || '0') * 100),
-      remark: formRemark.value.trim(),
-      is_default: formIsDefault.value,
-    }
-
-    if (editingAccount.value) {
-      await request.put(`/api/finance/accounts/${editingAccount.value.id}`, payload)
-      uni.showToast({ title: '更新成功', icon: 'success' })
-    } else {
-      await request.post('/api/finance/accounts', payload)
-      uni.showToast({ title: '添加成功', icon: 'success' })
-    }
+    })
+    uni.showToast({ title: '添加成功', icon: 'success' })
 
     showAddDialog.value = false
     await fetchAccounts()
@@ -108,21 +131,20 @@ async function handleSubmit() {
   }
 }
 
-// Delete account
-async function handleDelete(account: Account) {
+// Archive account（4.5.9 的停用口径：余额非 0 时服务端以 409 拒绝）
+function archiveAccount(account: Account) {
   uni.showModal({
-    title: '确认删除',
-    content: `确定要删除账户"${account.name}"吗？`,
+    title: '确认归档',
+    content: `确定要归档账户「${account.name}」吗？归档后不再出现在记账与流水的账户名里。`,
     success: async (res) => {
-      if (res.confirm) {
-        try {
-          await request.delete(`/api/finance/accounts/${account.id}`)
-          uni.showToast({ title: '删除成功', icon: 'success' })
-          await fetchAccounts()
-        } catch (err: any) {
-          console.error('Failed to delete account:', err)
-          uni.showToast({ title: err.message || '删除失败', icon: 'none' })
-        }
+      if (!res.confirm) return
+      try {
+        await request.put(`/api/finance/accounts/${account.id}/archive`)
+        uni.showToast({ title: '归档成功', icon: 'success' })
+        await fetchAccounts()
+      } catch (err: any) {
+        console.error('Failed to archive account:', err)
+        uni.showToast({ title: err.message || '归档失败', icon: 'none' })
       }
     },
   })
@@ -130,14 +152,7 @@ async function handleDelete(account: Account) {
 
 // Get account type label
 function getTypeLabel(type: string): string {
-  const map: Record<string, string> = {
-    cash: '现金',
-    bank: '银行卡',
-    card: '信用卡',
-    virtual: '虚拟账户',
-    investment: '投资账户',
-  }
-  return map[type] || type
+  return TYPE_LABELS[type] || type
 }
 
 onMounted(() => {
@@ -169,15 +184,14 @@ onMounted(() => {
         <view class="acc-header">
           <view class="acc-info">
             <text class="acc-name">{{ account.name }}</text>
-            <text v-if="account.is_default" class="acc-badge">默认</text>
+            <text v-if="account.is_archived" class="acc-badge">已归档</text>
           </view>
-          <text class="acc-balance">{{ formatAmount(account.balance_cents) }}</text>
+          <text class="acc-balance">{{ formatAmount(account.balance) }}</text>
         </view>
         <view class="acc-footer">
           <text class="acc-type">{{ getTypeLabel(account.type) }}</text>
           <view class="acc-actions">
-            <text class="acc-action" @click="openEditDialog(account)">编辑</text>
-            <text class="acc-action acc-delete" @click="handleDelete(account)">删除</text>
+            <text v-if="!account.is_archived" class="acc-action" @click="archiveAccount(account)">归档</text>
           </view>
         </view>
       </view>
@@ -191,7 +205,7 @@ onMounted(() => {
     <!-- Add/Edit dialog -->
     <view v-if="showAddDialog" class="dialog-mask" @click="showAddDialog = false">
       <view class="dialog-content" @click.stop>
-        <text class="dialog-title">{{ editingAccount ? '编辑账户' : '添加账户' }}</text>
+        <text class="dialog-title">添加账户</text>
 
         <view class="dialog-form">
           <view class="form-row">
@@ -203,29 +217,14 @@ onMounted(() => {
             <text class="form-label">账户类型</text>
             <picker
               mode="selector"
-              :range="['现金', '银行卡', '信用卡', '虚拟账户', '投资账户']"
-              :value="['cash', 'bank', 'card', 'virtual', 'investment'].indexOf(formType)"
-              @change="(e: any) => formType = ['cash', 'bank', 'card', 'virtual', 'investment'][e.detail.value]"
+              :range="ACCOUNT_TYPES.map(getTypeLabel)"
+              :value="ACCOUNT_TYPES.indexOf(formType)"
+              @change="(e: any) => formType = ACCOUNT_TYPES[e.detail.value]"
             >
               <view class="form-picker">
                 <text>{{ getTypeLabel(formType) }}</text>
               </view>
             </picker>
-          </view>
-
-          <view class="form-row">
-            <text class="form-label">初始余额</text>
-            <input v-model="formBalance" class="form-input" type="digit" placeholder="0.00" />
-          </view>
-
-          <view class="form-row">
-            <text class="form-label">备注</text>
-            <textarea v-model="formRemark" class="form-textarea" placeholder="选填" maxlength="200" />
-          </view>
-
-          <view class="form-row form-checkbox">
-            <checkbox :checked="formIsDefault" @click="formIsDefault = !formIsDefault" />
-            <text>设为默认账户</text>
           </view>
         </view>
 
@@ -334,10 +333,6 @@ onMounted(() => {
   color: var(--color-primary);
 }
 
-.acc-delete {
-  color: var(--color-error);
-}
-
 /* FAB */
 .fab {
   position: fixed;
@@ -405,24 +400,11 @@ onMounted(() => {
 }
 
 .form-input,
-.form-textarea,
 .form-picker {
   width: 100%;
   padding: 16rpx;
   background-color: var(--bg-tertiary);
   border-radius: var(--radius-sm);
-  font-size: 28rpx;
-  color: var(--text-primary);
-}
-
-.form-textarea {
-  min-height: 120rpx;
-}
-
-.form-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
   font-size: 28rpx;
   color: var(--text-primary);
 }

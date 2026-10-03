@@ -1,7 +1,11 @@
 {
   "pages": [
     { "path": "pages/homeos/auth/login" },
+    { "path": "pages/homeos/auth/family-join" },
     { "path": "pages/homeos/family/create" },
+    { "path": "pages/homeos/family/index" },
+    { "path": "pages/homeos/family/invite" },
+    { "path": "pages/homeos/family/modules" },
     { "path": "pages/homeos/home/index" },
     { "path": "pages/homeos/dynamics/index" },
     { "path": "pages/homeos/messages/index" },

@@ -40,6 +40,15 @@
   /* White color for text on colored backgrounds */
   --color-white: #ffffff;
 
+  /* On-color foregrounds —— 文字落在**实色填充面**（主色按钮、角标、遮罩）上时的字色。
+     页面里不允许直接写 #ffffff / rgba(...)，一律取这组 token（PRD 17.9 第 3 行）。
+     深色态下主色本身是浅蓝（#40a9ff），白字对比不足 4.5:1，故 on-primary 在深色态翻转为深字。 */
+  --color-on-primary: #ffffff;
+  --color-on-primary-muted: rgba(255, 255, 255, 0.8);
+  --color-on-badge: #ffffff;
+  --color-on-overlay: #ffffff;
+  --color-on-overlay-muted: rgba(255, 255, 255, 0.8);
+
   /* Overlay colors */
   --overlay-dark: rgba(0, 0, 0, 0.5);
   --overlay-light: rgba(255, 255, 255, 0.3);
@@ -108,6 +117,14 @@
   /* White color for text on colored backgrounds */
   --color-white: #ffffff;
 
+  /* On-color foregrounds：深色态主色/角标/待处理色都是浅色，
+     白字在其上不足 4.5:1，因此翻转为深字；遮罩仍落在暗背景上，维持白字。 */
+  --color-on-primary: #141414;
+  --color-on-primary-muted: rgba(20, 20, 20, 0.8);
+  --color-on-badge: #141414;
+  --color-on-overlay: #ffffff;
+  --color-on-overlay-muted: rgba(255, 255, 255, 0.8);
+
   /* Overlay colors */
   --overlay-dark: rgba(0, 0, 0, 0.5);
   --overlay-light: rgba(255, 255, 255, 0.3);
@@ -144,6 +161,19 @@
 
     --badge-unread: #ff7875;
     --badge-pending: #ffc53d;
+
+    /* 与 [data-theme='dark'] 逐条镜像：缺一条就会在「跟随系统且系统为深色」时
+       露出浅色态的值，深色卡上出现浅灰字（对比不足）。 */
+    --color-white: #ffffff;
+
+    --color-on-primary: #141414;
+    --color-on-primary-muted: rgba(20, 20, 20, 0.8);
+    --color-on-badge: #141414;
+    --color-on-overlay: #ffffff;
+    --color-on-overlay-muted: rgba(255, 255, 255, 0.8);
+
+    --overlay-dark: rgba(0, 0, 0, 0.5);
+    --overlay-light: rgba(255, 255, 255, 0.3);
 
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
     --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.3);

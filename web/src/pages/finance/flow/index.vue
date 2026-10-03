@@ -2,45 +2,53 @@
 // pages/finance/flow/index —— 财务面「流水」列表页（§5.1 Tab 流水、§5.2 首行）。
 //
 // 完整实现：
-//   · 对接 /api/finance/transactions，支持 period 参数（月/季/年三档）
-//   · 游标分页（cursor-based pagination）
-//   · 筛选器：账户、分类、成员、金额范围
-//   · 流水列表渲染：金额（分转元）、分类图标、时间、备注、账户
-//   · 记账入口：跳转到记账表单页
+//   · 对接 GET /api/finance/transactions?family_id=&period=&cursor=
+//     （family_id 是服务端 ListTransactions 的必填 query，缺它即 400，见 handler/finance.go；
+//      该 handler 不读 `limit`，每页固定 50 条，所以本页不发送 `limit`）
+//   · 游标分页：响应体 `{items, next_cursor}`，请求层裸回、不再 `.data` 剥壳
+//   · 行内的分类名/账户名：服务端 FinanceTransaction **只有** category_id / account_id
+//     （无 join、无任何 *_name 字段），因此本页另取本家庭的两份字典在前端解析
+//   · 面内维护入口：分类管理 / 账户管理（§5.1 末位 Tab「账户与设置」`finance/settings/index`
+//     本期未建，先由本栏承载这两个已注册路由，不让它们成为孤儿）
+//   · 记账入口：navigateTo 压栈到记账表单页（§2.3）
 
 import { ref, computed, onMounted } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
 import { request } from '@/utils/request'
 import { formatAmount } from '@/utils/format'
+// period 与家庭快照都是 shell 级状态（§1.3 第 16/19 条），分包只读、不自存、不自拉。
+import { useHomeStore } from '@/stores/home'
 
-const PAGE_PATH = 'pages/finance/flow/index'
-const { t } = useI18n({ useScope: 'global' })
-const router = useRouter()
-
+/** 服务端 model.FinanceTransaction 的 JSON 形状。金额单位：整数分；支出存**负数**。 */
 interface Transaction {
   id: string
   family_id: string
-  type: 'expense' | 'income' | 'transfer'
+  type: 'income' | 'expense' | 'transfer'
   amount_cents: number
-  category_id: string
-  category_name: string
+  category_id?: string
   account_id: string
-  account_name: string
-  member_id?: string
-  member_name?: string
   occurred_at: string
-  remark?: string
-  attachments?: string[]
+  description?: string
+  receipt_file_id?: string
+  transfer_group_id?: string
   client_request_id?: string
+  tag_ids?: string[]
+  version: number
+  created_at: string
+  updated_at: string
 }
 
-interface FilterState {
-  account_id?: string
-  category_id?: string
-  member_id?: string
-  min_amount_cents?: number
-  max_amount_cents?: number
+/** 契约 `/transactions` 的 200 体：`{items:[Transaction], next_cursor?}`。 */
+interface TransactionListBody {
+  items?: Transaction[]
+  next_cursor?: string | null
+}
+
+/** 分类/账户字典行（只取解析名字要用的字段，两者都带 id/name）。 */
+interface DictRow {
+  id: string
+  name?: string
+  is_active?: boolean
+  is_archived?: boolean
 }
 
 const transactions = ref<Transaction[]>([])
@@ -48,26 +56,82 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const cursor = ref<string | null>(null)
 const hasMore = ref(true)
-const filters = ref<FilterState>({})
+const categoryNames = ref<Record<string, string>>({})
+const accountNames = ref<Record<string, string>>({})
 
-// Use period from home store (shell-level state, §1.3 第 19 条)
-import { useHomeStore } from '@/stores/home'
 const homeStore = useHomeStore()
 
+/**
+ * 取当前家庭 id：读 shell store 的那一份，分包不持有跨路由的会话状态、
+ * 也不在此重新拉 `/families`（`ensureSession` 内部已经拉过并缓存）。
+ */
+async function resolveSessionFamilyId(): Promise<string> {
+  if (homeStore.sessionFamilyId) return homeStore.sessionFamilyId
+  try {
+    await homeStore.ensureSession()
+  } catch {
+    return ''
+  }
+  return homeStore.sessionFamilyId || ''
+}
+
 // Computed: total expense and income for current period
+// 服务端的 expense 行 amount_cents 本身就是负数（CreateTransaction 会取负），
+// 求和取绝对值，才不会出现「支出 = ¥-1234.00」。
 const totalExpense = computed(() => {
   return transactions.value
     .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + t.amount_cents, 0)
+    .reduce((sum, t) => sum + Math.abs(t.amount_cents), 0)
 })
 
 const totalIncome = computed(() => {
   return transactions.value
     .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount_cents, 0)
+    .reduce((sum, t) => sum + Math.abs(t.amount_cents), 0)
 })
 
 const netAmount = computed(() => totalIncome.value - totalExpense.value)
+
+/** 行的金额文案：符号由 type 决定，数字取绝对值（避免出现「-¥-299.50」）。 */
+function amountText(item: Transaction): string {
+  const text = formatAmount(Math.abs(item.amount_cents))
+  if (item.type === 'expense') return `-${text}`
+  if (item.type === 'income') return `+${text}`
+  return text
+}
+
+function categoryName(id?: string): string {
+  if (!id) return ''
+  return categoryNames.value[id] || ''
+}
+
+function accountName(id: string): string {
+  return accountNames.value[id] || ''
+}
+
+/**
+ * 取本家庭的分类与账户字典，用来把行内的 id 解析成名字。
+ * 停用分类（is_active=false）与已归档账户不进字典：历史流水仍显示行，只是不标名字。
+ */
+async function loadNameDicts(familyId: string) {
+  const catBody = await request.get<{ items?: DictRow[] }>('/api/finance/categories', {
+    params: { family_id: familyId },
+  })
+  const nextCats: Record<string, string> = {}
+  for (const row of catBody?.items ?? []) {
+    if (row?.id && row.name && row.is_active !== false) nextCats[row.id] = row.name
+  }
+  categoryNames.value = nextCats
+
+  const accBody = await request.get<{ items?: DictRow[] }>('/api/finance/accounts', {
+    params: { family_id: familyId },
+  })
+  const nextAccounts: Record<string, string> = {}
+  for (const row of accBody?.items ?? []) {
+    if (row?.id && row.name && row.is_archived !== true) nextAccounts[row.id] = row.name
+  }
+  accountNames.value = nextAccounts
+}
 
 // Fetch transactions with cursor pagination
 async function fetchTransactions(loadMore = false) {
@@ -78,8 +142,22 @@ async function fetchTransactions(loadMore = false) {
   error.value = null
 
   try {
-    const params: any = {
-      limit: 50,
+    const familyId = await resolveSessionFamilyId()
+    if (!familyId) {
+      transactions.value = []
+      cursor.value = null
+      hasMore.value = false
+      error.value = '还没有可用的家庭，请先在首页创建或加入家庭'
+      return
+    }
+
+    // 每页尺寸由服务端 handler 写死 50，本页不发送 `limit`（发了也被忽略）。
+    // `period` 只读 shell store 的时间窗编码，分包不自造（同源④）。
+    const params: Record<string, any> = {
+      family_id: familyId,
+      // `period` 只读 shell 级那一份时间窗编码（§1.3 第 19 条），本页不造第二个 period。
+      // 服务端按 `TO_CHAR(occurred_at,'YYYY-MM') = ?` 精确匹配：`YYYY-MM` 档有效，
+      // `YYYY-Qn` / `YYYY` 两档服务端没有季/年粒度实现，会返回空列表（已作为服务端缺陷上报）。
       period: homeStore.period,
     }
 
@@ -87,23 +165,15 @@ async function fetchTransactions(loadMore = false) {
       params.cursor = cursor.value
     }
 
-    // Add filters
-    if (filters.value.account_id) params.account_id = filters.value.account_id
-    if (filters.value.category_id) params.category_id = filters.value.category_id
-    if (filters.value.member_id) params.member_id = filters.value.member_id
-    if (filters.value.min_amount_cents) params.min_amount_cents = filters.value.min_amount_cents
-    if (filters.value.max_amount_cents) params.max_amount_cents = filters.value.max_amount_cents
+    // 请求层 resolve 的就是裸响应体：直接读 items / next_cursor。
+    const body = await request.get<TransactionListBody>('/api/finance/transactions', { params })
+    const page = Array.isArray(body?.items) ? body.items : []
 
-    const response = await request.get('/api/finance/transactions', { params })
+    transactions.value = loadMore ? [...transactions.value, ...page] : page
+    cursor.value = body?.next_cursor ?? null
+    hasMore.value = !!body?.next_cursor
 
-    if (loadMore) {
-      transactions.value.push(...response.data.items)
-    } else {
-      transactions.value = response.data.items
-    }
-
-    cursor.value = response.data.next_cursor || null
-    hasMore.value = !!response.data.next_cursor
+    await loadNameDicts(familyId)
   } catch (err: any) {
     console.error('Failed to fetch transactions:', err)
     error.value = err.message || '加载失败'
@@ -119,9 +189,18 @@ function loadMore() {
   }
 }
 
-// Navigate to create transaction page
+// Navigate to create transaction page（一级页 → 面内二级页 = 压栈，§2.3）
 function goToCreate() {
-  router.push('/pages/finance/transaction/create')
+  uni.navigateTo({ url: '/pages/finance/transaction/create' })
+}
+
+/** 面内维护：分类管理 / 账户管理（同分包内压栈，§2.3、17.7 第 4 条）。 */
+function goToCategories() {
+  uni.navigateTo({ url: '/pages/finance/category/index' })
+}
+
+function goToAccounts() {
+  uni.navigateTo({ url: '/pages/finance/account/index' })
 }
 
 // Format date for display
@@ -132,16 +211,6 @@ function formatDate(isoString: string): string {
   const hours = date.getHours().toString().padStart(2, '0')
   const minutes = date.getMinutes().toString().padStart(2, '0')
   return `${month}月${day}日 ${hours}:${minutes}`
-}
-
-// Get transaction type label
-function getTypeLabel(type: string): string {
-  const map: Record<string, string> = {
-    expense: '支出',
-    income: '收入',
-    transfer: '转账',
-  }
-  return map[type] || type
 }
 
 onMounted(() => {
@@ -169,6 +238,12 @@ onMounted(() => {
       </view>
     </view>
 
+    <!-- 面内维护入口（§5.1 的「账户与设置」未建，先挂在本面首屏的工具栏上） -->
+    <view class="maintain-bar">
+      <text class="maintain-item" @click="goToCategories">分类管理</text>
+      <text class="maintain-item" @click="goToAccounts">账户管理</text>
+    </view>
+
     <!-- Loading state -->
     <view v-if="loading && transactions.length === 0" class="hc-loading">
       <text>加载中...</text>
@@ -177,7 +252,7 @@ onMounted(() => {
     <!-- Error state -->
     <view v-else-if="error" class="hc-error">
       <text>{{ error }}</text>
-      <button @click="fetchTransactions">重试</button>
+      <button @click="fetchTransactions()">重试</button>
     </view>
 
     <!-- Transaction list -->
@@ -190,22 +265,23 @@ onMounted(() => {
       <view v-for="item in transactions" :key="item.id" class="tx-item">
         <view class="tx-header">
           <view class="tx-category">
-            <text class="tx-cat-icon">{{ item.category_name.charAt(0) }}</text>
-            <text class="tx-cat-name">{{ item.category_name }}</text>
+            <text v-if="categoryName(item.category_id)" class="tx-cat-icon">
+              {{ categoryName(item.category_id).charAt(0) }}
+            </text>
+            <text v-if="categoryName(item.category_id)" class="tx-cat-name">
+              {{ categoryName(item.category_id) }}
+            </text>
           </view>
           <text class="tx-amount" :class="{ 'tx-expense': item.type === 'expense', 'tx-income': item.type === 'income' }">
-            {{ item.type === 'expense' ? '-' : '+' }}{{ formatAmount(item.amount_cents) }}
+            {{ amountText(item) }}
           </text>
         </view>
         <view class="tx-footer">
           <text class="tx-time">{{ formatDate(item.occurred_at) }}</text>
-          <text class="tx-account">{{ item.account_name }}</text>
+          <text v-if="accountName(item.account_id)" class="tx-account">{{ accountName(item.account_id) }}</text>
         </view>
-        <view v-if="item.remark" class="tx-remark">
-          <text>{{ item.remark }}</text>
-        </view>
-        <view v-if="item.member_name" class="tx-member">
-          <text>{{ item.member_name }}</text>
+        <view v-if="item.description" class="tx-remark">
+          <text>{{ item.description }}</text>
         </view>
       </view>
 
@@ -275,6 +351,20 @@ onMounted(() => {
 
 .sb-negative {
   color: var(--color-error);
+}
+
+/* 面内维护入口栏 */
+.maintain-bar {
+  display: flex;
+  gap: 32rpx;
+  padding: 20rpx 32rpx;
+  background-color: var(--bg-primary);
+  border-bottom: 1rpx solid var(--divider-color);
+}
+
+.maintain-item {
+  font-size: 26rpx;
+  color: var(--color-primary);
 }
 
 /* Loading and error states */
@@ -378,12 +468,6 @@ onMounted(() => {
   color: var(--text-secondary);
   margin-top: 8rpx;
   line-height: 1.5;
-}
-
-.tx-member {
-  font-size: 24rpx;
-  color: var(--text-tertiary);
-  margin-top: 8rpx;
 }
 
 /* Loading more and no more indicators */
