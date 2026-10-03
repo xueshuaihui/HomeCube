@@ -1,5 +1,7 @@
 {
   "pages": [
+    { "path": "pages/homeos/auth/login" },
+    { "path": "pages/homeos/family/create" },
     { "path": "pages/homeos/home/index" },
     { "path": "pages/homeos/legal/privacy-policy" },
     { "path": "pages/homeos/legal/user-agreement" }
