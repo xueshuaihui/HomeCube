@@ -1,0 +1,52 @@
+# Data Level Classification for HomeCube P1
+# Source of truth for field-level encryption and export filtering
+# Per PRD 20.1 and 18.2#7
+
+version: "1.0.0"
+generated_at: "2026-10-03"
+
+levels:
+  L1:
+    description: "公开数据，可明文存储和导出"
+    fields:
+      - table: finance_account
+        columns: [id, family_id, name, type]
+      - table: finance_category
+        columns: [id, family_id, name, icon, sort_order, is_active]
+      - table: finance_transaction
+        columns: [id, family_id, type, amount_cents, occurred_at, account_id, category_id]
+      - table: finance_ledger
+        columns: [id, family_id, period_start, period_end, sort_order]
+
+  L2:
+    description: "敏感数据，字段级加密存储，DTO 层过滤"
+    fields:
+      # Note: homeos_members table structure not yet defined in migrations
+      # These are placeholder entries based on PRD requirements
+      - table: homeos_members
+        columns: [name, phone, email, avatar_url]
+      - table: finance_ledger
+        columns: [name, description]
+      - table: finance_transaction
+        columns: [description]
+      - table: finance_account
+        columns: [balance]
+
+  L3:
+    description: "端到端加密数据，不进默认导出与埋点"
+    fields:
+      - table: homeos_members
+        columns: [blood_type, allergies, emergency_contact, size, gift_preferences, wishes, color_brand, body_data, growth_photos]
+      - table: finance_transaction
+        columns: [receipt_file_id]  # 可能包含隐私照片/票据
+      - table: homeos_files
+        columns: [url, metadata]  # 文件元数据可能包含敏感信息
+
+# Field-level visibility rules per PRD 15.4
+visibility_rules:
+  default_export:
+    exclude_levels: [L3]
+  telemetry:
+    exclude_levels: [L3]
+  admin_view:
+    include_levels: [L1, L2, L3]  # Admin can view all with proper authorization

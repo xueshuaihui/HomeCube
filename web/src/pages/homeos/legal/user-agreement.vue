@@ -26,7 +26,7 @@ export default {
 .container {
   padding: 40rpx;
   min-height: 100vh;
-  background-color: #f5f5f5;
+  background-color: var(--bg-secondary, #f5f5f5);
 }
 
 .header {
@@ -37,19 +37,19 @@ export default {
 .title {
   font-size: 48rpx;
   font-weight: bold;
-  color: #333;
+  color: var(--text-primary, #262626);
 }
 
 .content {
-  background-color: #fff;
+  background-color: var(--bg-primary, #ffffff);
   padding: 40rpx;
   border-radius: 16rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md, 0 2rpx 8rpx rgba(0, 0, 0, 0.08));
 }
 
 .placeholder-text {
   font-size: 32rpx;
-  color: #666;
+  color: var(--text-secondary, #595959);
   line-height: 1.8;
   display: block;
   margin-bottom: 20rpx;
@@ -58,7 +58,7 @@ export default {
 .version-info,
 .update-info {
   font-size: 28rpx;
-  color: #999;
+  color: var(--text-tertiary, #8c8c8c);
   display: block;
   margin-top: 10rpx;
 }

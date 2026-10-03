@@ -1,0 +1,171 @@
+/* Theme Tokens for HomeCube P1-M1
+ * Per PRD 17.9 and 18.2#10: Light/Dark two-state theme with WCAG AA compliance
+ * Contrast requirements: text on background ≥4.5:1, large text/graphics ≥3:1
+ *
+ * This is the single source of truth for colors. Sub-packages must reference these
+ * variables only — no hardcoded color values allowed (PRD 17.9 row 3).
+ */
+
+/* Light Mode (Default) */
+:root {
+  /* Primary colors */
+  --color-primary: #1890ff;
+  --color-primary-dark: #096dd9;
+  --color-primary-light: #40a9ff;
+
+  /* Background colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --bg-tertiary: #fafafa;
+
+  /* Text colors - All meet ≥4.5:1 contrast ratio on white background */
+  --text-primary: #262626;      /* ~15.1:1 on white */
+  --text-secondary: #595959;    /* ~7.0:1 on white */
+  --text-tertiary: #757575;     /* ~4.6:1 on white - minimum for body text */
+
+  /* Border and divider colors */
+  --border-color: #d9d9d9;
+  --divider-color: #f0f0f0;
+
+  /* Status colors */
+  --color-success: #52c41a;
+  --color-warning: #faad14;
+  --color-error: #ff4d4f;
+  --color-info: #1890ff;
+
+  /* Badge and indicator colors */
+  --badge-unread: #ff4d4f;
+  --badge-pending: #faad14;
+
+  /* Shadow */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.12);
+
+  /* Border radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* Font sizes */
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 24px;
+
+  /* Line heights */
+  --line-height-tight: 1.4;
+  --line-height-normal: 1.6;
+  --line-height-loose: 1.8;
+}
+
+/* Dark Mode */
+[data-theme='dark'] {
+  /* Primary colors - adjusted for dark background */
+  --color-primary: #40a9ff;
+  --color-primary-dark: #1890ff;
+  --color-primary-light: #69c0ff;
+
+  /* Background colors */
+  --bg-primary: #1f1f1f;
+  --bg-secondary: #262626;
+  --bg-tertiary: #2d2d2d;
+
+  /* Text colors - All meet ≥4.5:1 contrast ratio on dark background (#1f1f1f) */
+  --text-primary: #f0f0f0;      /* ~14.5:1 on #1f1f1f */
+  --text-secondary: #bfbfbf;    /* ~8.9:1 on #1f1f1f */
+  --text-tertiary: #a6a6a6;     /* ~4.7:1 on #1f1f1f - minimum for body text */
+
+  /* Border and divider colors */
+  --border-color: #434343;
+  --divider-color: #303030;
+
+  /* Status colors - desaturated for better readability on dark */
+  --color-success: #73d13d;
+  --color-warning: #ffc53d;
+  --color-error: #ff7875;
+  --color-info: #40a9ff;
+
+  /* Badge and indicator colors */
+  --badge-unread: #ff7875;
+  --badge-pending: #ffc53d;
+
+  /* Shadow - lighter for dark mode */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* System preference detection (for "follow system" mode) */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    /* Apply dark mode when system prefers dark and user hasn't explicitly set light */
+    --color-primary: #40a9ff;
+    --color-primary-dark: #1890ff;
+    --color-primary-light: #69c0ff;
+
+    --bg-primary: #1f1f1f;
+    --bg-secondary: #262626;
+    --bg-tertiary: #2d2d2d;
+
+    --text-primary: #f0f0f0;
+    --text-secondary: #bfbfbf;
+    --text-tertiary: #a6a6a6;
+
+    --border-color: #434343;
+    --divider-color: #303030;
+
+    --color-success: #73d13d;
+    --color-warning: #ffc53d;
+    --color-error: #ff7875;
+    --color-info: #40a9ff;
+
+    --badge-unread: #ff7875;
+    --badge-pending: #ffc53d;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* Global styles using theme tokens */
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-normal);
+}
+
+/* Utility classes for common patterns */
+.text-primary {
+  color: var(--text-primary);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-tertiary {
+  color: var(--text-tertiary);
+}
+
+.bg-primary {
+  background-color: var(--bg-primary);
+}
+
+.bg-secondary {
+  background-color: var(--bg-secondary);
+}
+
+.border-default {
+  border-color: var(--border-color);
+}

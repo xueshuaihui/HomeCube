@@ -81,6 +81,7 @@ func run(addr string) error {
 	group := svc.Engine.Group(d.RoutePrefix)
 	group.GET("/legal/privacy-policy", handler.GetPrivacyPolicy)
 	group.GET("/legal/user-agreement", handler.GetUserAgreement)
+	group.GET("/search", handler.GetSearch) // Per PRD 14.5 #7: global keyword search
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

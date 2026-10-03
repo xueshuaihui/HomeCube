@@ -10,5 +10,6 @@ export default { name: 'App' }
 </script>
 
 <style>
-/* 见文件头：全局样式（含主题令牌）归 S2，本卡留空。 */
+/* Per PRD 17.9 and 18.2#10: Theme tokens for light/dark two-state mode */
+@import './styles/theme.css';
 </style>
