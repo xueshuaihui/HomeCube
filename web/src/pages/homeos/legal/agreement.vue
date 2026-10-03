@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// pages/homeos/legal/agreement/detail —— 用户协议页面
+// pages/homeos/legal/agreement —— 用户协议页面
 import { ref, onMounted } from 'vue'
 import { request } from '@/utils/request'
 
