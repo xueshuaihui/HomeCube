@@ -2,6 +2,7 @@ package repo_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -26,28 +27,59 @@ func setupTestRepo(t *testing.T) (*repo.FinanceRepo, *gorm.DB) {
 	db.Exec("PRAGMA journal_mode=WAL;")
 	db.Exec("PRAGMA foreign_keys=ON;")
 
-	// Create change_log and idempotency tables that sync.Repo expects
-	db.Exec(`CREATE TABLE IF NOT EXISTS finance_change_log (
-		lsn INTEGER PRIMARY KEY AUTOINCREMENT,
-		family_id TEXT NOT NULL,
-		entity TEXT NOT NULL,
-		entity_id TEXT NOT NULL,
-		op TEXT NOT NULL,
-		version INTEGER NOT NULL,
-		data BLOB,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-	)`)
-
-	db.Exec(`CREATE TABLE IF NOT EXISTS finance_idempotency (
-		key TEXT PRIMARY KEY,
-		family_id TEXT NOT NULL,
-		request_hash TEXT NOT NULL,
-		response_snapshot BLOB,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-	)`)
-
-	db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS uk_request_hash ON finance_idempotency(request_hash)")
-	db.Exec("CREATE INDEX IF NOT EXISTS idx_family_lsn ON finance_change_log(family_id, lsn)")
+	// The two 同步底座 runtime tables sync.Repo writes, created exactly as the published
+	// migration does (migrations/finance/finance_0003_change_log_idempotency.up.sql):
+	// finance_change_log holds the six columns §五 names -- lsn, family_id, entity,
+	// entity_id, op, version -- with no data / created_at payload column, and
+	// finance_idempotency holds key, family_id, request_hash, response_snapshot, created_at
+	// with no primary key and ONE unique index over (family_id, key).
+	// It used to declare `key TEXT PRIMARY KEY` plus a UNIQUE(request_hash) index named
+	// uk_request_hash; that is not the shipped DDL, and the difference is load-bearing:
+	// under key-as-primary-key a second family reusing a client_request_id fails with a
+	// constraint error, and a replayed request_hash for two different keys was rejected
+	// even though the migration never asked for that.
+	// lsn is a bigserial in Postgres; INTEGER PRIMARY KEY AUTOINCREMENT is the sqlite
+	// equivalent that lets the database mint it (the base never sends lsn).
+	for _, stmt := range []string{
+		// finance_outbox, column-for-column the shipped DDL of
+		// migrations/finance/finance_0002_outbox_dedupe_dead_letter.up.sql: (id, family_id, subject,
+		// envelope, status, attempts, created_at), status CHECK('pending','sent') only, and no
+		// updated_at / sent_at / error column. repo.MarkAsPaid writes one finance.due.revoked row here
+		// inside the bill's own transaction (bus.InsertOutboxMessageWithFamily), so the fixture has to
+		// exist for that path to run at all -- and keeping it on the migration's exact shape is what
+		// makes a producer that invented an eighth column fail here instead of on the real database.
+		// Same sqlite shape as internal/service/bill_test.go's ddlFinanceOutbox.
+		`CREATE TABLE IF NOT EXISTS finance_outbox (
+			id         INTEGER PRIMARY KEY AUTOINCREMENT,
+			family_id  TEXT,
+			subject    TEXT NOT NULL,
+			envelope   TEXT NOT NULL,
+			status     TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'sent')),
+			attempts   INTEGER NOT NULL DEFAULT 0,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS finance_change_log (
+			lsn INTEGER PRIMARY KEY AUTOINCREMENT,
+			family_id TEXT NOT NULL,
+			entity TEXT NOT NULL,
+			entity_id TEXT NOT NULL,
+			op TEXT NOT NULL,
+			version INTEGER NOT NULL
+		)`,
+		`CREATE TABLE IF NOT EXISTS finance_idempotency (
+			key TEXT NOT NULL,
+			family_id TEXT NOT NULL,
+			request_hash TEXT NOT NULL,
+			response_snapshot BLOB,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS finance_idempotency_family_key_uidx ON finance_idempotency(family_id, key)`,
+		`CREATE INDEX IF NOT EXISTS finance_change_log_family_lsn_idx ON finance_change_log(family_id, lsn)`,
+	} {
+		if err := db.Exec(stmt).Error; err != nil {
+			t.Fatalf("fixture DDL rejected: %v", err)
+		}
+	}
 
 	// Migrate all finance models
 	err = db.AutoMigrate(
@@ -293,10 +325,20 @@ func TestCreateAndGetTransaction(t *testing.T) {
 	}
 }
 
+// TestIdempotentTransaction replays one client_request_id through CreateTransaction and demands the
+// duplicate answer both ways the repo can get there: the sync base's request_hash hit, and the
+// database unique index on client_request_id that catches a replay whose body changed.
+//
+// The skip that used to sit here claimed idempotency "requires proper transaction isolation in
+// SQLite". It never did: the two calls below are sequential, and the fixture creates
+// finance_idempotency exactly as migrations/finance/finance_0003 does (one unique index over
+// (family_id, key)), while finance_transaction carries uk_client_request_id from the model tag. What
+// the skip was hiding is that the second call's INSERT fails on that index with a driver error the
+// repo merely wrapped -- so the sentinel never reached the caller, and the HTTP layer served 500 for
+// a duplicate submission. See internal/handler/finance_transaction_test.go for the same defect at
+// the request boundary.
 func TestIdempotentTransaction(t *testing.T) {
-	t.Skip("Idempotency test requires proper transaction isolation in SQLite")
-
-	r, _ := setupTestRepo(t)
+	r, db := setupTestRepo(t)
 	ctx := context.Background()
 
 	now := time.Now()
@@ -346,8 +388,33 @@ func TestIdempotentTransaction(t *testing.T) {
 	}
 
 	err = r.CreateTransaction(ctx, input2)
-	if err != repo.ErrDuplicateRequest {
+	// errors.Is, not ==: the repo now reaches this duplicate through the database's
+	// uk_client_request_id, which it wraps onto the sentinel (repo/finance.go
+	// isDuplicateClientRequestKey). A == here would only ever accept the unwrapped branch and would
+	// fail on every run where the two request bodies differ -- which is exactly what this fixture
+	// does, since RequestData is the entity pointer whose server-generated fields change on insert.
+	if !errors.Is(err, repo.ErrDuplicateRequest) {
 		t.Errorf("expected ErrDuplicateRequest, got %v", err)
+	}
+
+	// A rejected replay must leave exactly one row -- both the business write and its idempotency
+	// record share the transaction, so a partial commit would show up here as a second row.
+	var rowCount int64
+	if err := db.Model(&model.FinanceTransaction{}).
+		Where("client_request_id = ?", clientReqID).
+		Count(&rowCount).Error; err != nil {
+		t.Fatalf("count rows for the replayed key: %v", err)
+	}
+	if rowCount != 1 {
+		t.Errorf("committed rows for client_request_id %q = %d, want exactly 1", clientReqID, rowCount)
+	}
+
+	var idemCount int64
+	if err := db.Table("finance_idempotency").Where("key = ?", clientReqID).Count(&idemCount).Error; err != nil {
+		t.Fatalf("count idempotency rows: %v", err)
+	}
+	if idemCount != 1 {
+		t.Errorf("finance_idempotency rows for the replayed key = %d, want the first request's only", idemCount)
 	}
 }
 

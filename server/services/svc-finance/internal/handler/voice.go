@@ -16,7 +16,7 @@ import (
 
 // VoiceHandler holds dependencies for voice-related handlers.
 type VoiceHandler struct {
-	repo      *repo.FinanceRepo
+	repo       *repo.FinanceRepo
 	asrAdapter asr.ASRAdapter
 }
 
@@ -29,17 +29,26 @@ func NewVoiceHandler(repo *repo.FinanceRepo, asrAdapter asr.ASRAdapter) *VoiceHa
 }
 
 // VoiceEntryRequest represents the request body for voice entry.
+//
+// Two binding shapes, one type: the same endpoint takes a JSON body (no audio part, the manual
+// draft path) and a multipart/form-data body (audio part + text fields, the ASR path). gin picks
+// the mapper from Content-Type, and the form mapper reads the `form` tag -- falling back to the Go
+// field name when there is none (gin@v1.12.0/binding/form_mapping.go:149-154). Without the `form`
+// tags below a real multipart client, which sends the documented family_id / account_id, would bind
+// nothing, fail `required,uuid` and get 400 before c.FormFile("audio") is ever reached: the whole
+// ASR branch would be unreachable over HTTP. The json and form names are kept identical so both
+// shapes carry the same field names.
 type VoiceEntryRequest struct {
-	FamilyID    string `json:"family_id" binding:"required,uuid"`
-	AccountID   string `json:"account_id" binding:"required,uuid"`
-	Description string `json:"description,omitempty"` // Optional manual description override
+	FamilyID    string `json:"family_id" form:"family_id" binding:"required,uuid"`
+	AccountID   string `json:"account_id" form:"account_id" binding:"required,uuid"`
+	Description string `json:"description,omitempty" form:"description"` // Optional manual description override
 }
 
 // VoiceEntryResponse represents the response for voice entry.
 type VoiceEntryResponse struct {
-	Draft     *model.FinanceTransaction `json:"draft"`
+	Draft      *model.FinanceTransaction `json:"draft"`
 	Transcript string                    `json:"transcript"`
-	Source    string                    `json:"source"` // "asr" or "manual"
+	Source     string                    `json:"source"` // "asr" or "manual"
 }
 
 // VoiceEntry handles POST /api/finance/voice-entry.

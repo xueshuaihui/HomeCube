@@ -6,8 +6,10 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/xueshuaihui/HomeCube/server/packages/bus"
 	"github.com/xueshuaihui/HomeCube/server/packages/sync"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/model"
 	"gorm.io/gorm"
@@ -17,6 +19,58 @@ var (
 	ErrAccountBalanceNonZero = errors.New("account balance must be zero before archiving")
 	ErrOptimisticLock        = errors.New("optimistic lock conflict: record was modified by another request")
 	ErrDuplicateRequest      = errors.New("duplicate request: this transaction has already been processed")
+)
+
+// isUniqueViolation reports a unique-index collision in an engine-neutral way, the same shape as
+// svc-homeos's helper (services/svc-homeos/internal/repo/homeos.go:218). This repo runs on
+// PostgreSQL in production and on SQLite in the tests, and neither driver's error type is imported
+// here for one check:
+//
+//   - postgres/pgx: 「duplicate key value violates unique constraint "uk_finance_..." (SQLSTATE 23505)」
+//   - sqlite:       「UNIQUE constraint failed: finance_transaction.client_request_id」
+func isUniqueViolation(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "duplicate key") ||
+		strings.Contains(msg, "violates unique constraint") ||
+		strings.Contains(msg, "unique constraint") ||
+		strings.Contains(msg, "sqlstate 23505")
+}
+
+// isDuplicateClientRequestKey narrows that collision down to the idempotency key. Both engines name
+// the key in the message -- sqlite the column, postgres the index built on it
+// (uk_finance_transaction_client_request_id) -- so a unique violation on some other index, above all
+// a generated primary key, stays an ordinary server fault instead of telling the client its request
+// was already processed.
+func isDuplicateClientRequestKey(err error) bool {
+	if !isUniqueViolation(err) {
+		return false
+	}
+	return strings.Contains(strings.ToLower(err.Error()), "client_request_id")
+}
+
+// The 到期撤销 half of PRD 卷首第 3 条（「带时间语义的业务对象一律注册到 HomeOS 的日历/待办/提醒」）:
+// a registration needs a counter-event, otherwise a paid bill's 到期 row stays in 首页 B 区 and in
+// 到期中心 forever. contracts/events/finance.yaml:93-105 (FROZEN, v1.0.0) names it
+// finance.due.revoked, and the identifiers below are that entry's own words, not new ones:
+//
+//   - subject == event name（§3.1「subject 命名即事件名：{code}.{object}.{action}」）
+//   - business_id == "{source_id}:{due_at}"（finance.yaml:95 + contracts/README.md:29 的幂等键口径）
+//   - payload == source_system / source_id / family_id / revoked_at / reason（finance.yaml:100-105）
+//   - reason ∈ enum(completed|deleted|expired)（finance.yaml:105）；账单结清是 completed。
+//
+// financeDomainCode is both the outbox table prefix（bus.OutboxTableName → finance_outbox,
+// finance_0002）and the contract's payload source_system —— homeos_0008:29 defines source_system as
+// 「注册该到期对象的域 code（PRD 16.1）」, and registry's finance row is the same string.
+const (
+	subjectDueRevoked      = "finance.due.revoked"
+	financeDomainCode      = "finance"
+	revokedReasonCompleted = "completed"
+	// dueEventSchemaVersion mirrors the version the due-registration producer stamps
+	// (svc-finance internal/service/bill.go) per §3.1「版本不进 subject 而进信封 version 字段」.
+	dueEventSchemaVersion = "1.0"
 )
 
 // generateUUID generates a UUID v4 using crypto/rand.
@@ -218,6 +272,18 @@ func (r *FinanceRepo) CreateTransaction(ctx context.Context, input CreateTransac
 
 		// Create transaction
 		if err := tx.Create(input.Transaction).Error; err != nil {
+			// The database's own replay guard: uk_client_request_id (model/finance.go:74,
+			// migrations/finance/finance_0001:83) rejects a second row for a key that was already
+			// processed. The idempotency check above does NOT catch every replay -- when the retry
+			// carries the same key but a changed body, sync.CheckIdempotency declines it as
+			// "not a replay" (packages/sync/repo.go:196-198, request_hash mismatch) and the flow
+			// arrives here. Returning the driver error as "failed to create transaction: %w" makes
+			// the HTTP layer answer 500 for what is a duplicate submission; classify it onto the
+			// sentinel so CreateTransaction has one duplicate-request answer whichever guard fired.
+			if input.ClientReqID != "" && isDuplicateClientRequestKey(err) {
+				return fmt.Errorf("client_request_id %q was already processed: %w: %w",
+					input.ClientReqID, ErrDuplicateRequest, err)
+			}
 			return fmt.Errorf("failed to create transaction: %w", err)
 		}
 
@@ -505,6 +571,11 @@ func (r *FinanceRepo) ListBillsByFamily(ctx context.Context, familyID string, st
 }
 
 // MarkAsPaid marks a bill as paid and increments version.
+//
+// 结清同时撤销它的到期注册（PRD 卷首第 3 条的反向半边）：账单行、finance.due.revoked 的 outbox 行、
+// 同步底座的 change log 共用一个事务，任一步失败整体回滚（§3.4.6、PRD 3.4「发布前落盘」）。没有这一步，
+// 已付账单的到期行会永久留在首页 B 区与到期中心里 —— homeos_0008:43-44 写明 finance.due.revoked 是
+// homeos_due_registration 唯一的删除路径（软删 deleted_at，不是删行），而撤销只能由持有账单的这边发出。
 func (r *FinanceRepo) MarkAsPaid(ctx context.Context, id string) (*model.FinanceBill, error) {
 	var updatedBill *model.FinanceBill
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -527,6 +598,10 @@ func (r *FinanceRepo) MarkAsPaid(ctx context.Context, id string) (*model.Finance
 			return fmt.Errorf("failed to mark bill as paid: %w", result.Error)
 		}
 
+		if err := writeDueRevokedEvent(ctx, tx, &bill, now, revokedReasonCompleted); err != nil {
+			return err
+		}
+
 		updatedBill = &bill
 		return r.sync.AppendChangeLog(ctx, tx, bill.FamilyID, "bill", bill.ID, "UPDATE", bill.Version, bill)
 	})
@@ -536,6 +611,63 @@ func (r *FinanceRepo) MarkAsPaid(ctx context.Context, id string) (*model.Finance
 	}
 
 	return updatedBill, nil
+}
+
+// writeDueRevokedEvent writes one finance.due.revoked row into finance_outbox on the caller's
+// transaction handle `tx`, so the business write and the event commit together or not at all.
+//
+// The envelope is the底座's own type (bus.Envelope) marshalled by bus.MarshalEnvelope: the payload
+// therefore sits under the "payload" key (packages/bus/interface.go:53 `json:"payload"`), which is
+// what the consuming half reads -- bus.DurableConsumer unmarshals into bus.Envelope and
+// svc-homeos's handlers refuse an empty Payload (due_registered_handler.go's ErrNoPayload). A
+// hand-written map with the contract fields at the TOP level (the shape bill.go's registration still
+// emits, and the defect ENV-1 is fixing there) would be rejected as 缺 payload here, so this producer
+// does not repeat it.
+func writeDueRevokedEvent(ctx context.Context, tx *gorm.DB, bill *model.FinanceBill, revokedAt time.Time, reason string) error {
+	if bill == nil {
+		return errors.New("finance repo: bill is nil, cannot revoke its due registration")
+	}
+	if tx == nil {
+		return errors.New("finance repo: no transaction handle for the due revocation outbox write")
+	}
+
+	// due_at is a timestamptz instant on both ends of the wire (homeos_0008:40) and the consumer parses
+	// these stamps with time.RFC3339, so both the business_id suffix and revoked_at render in UTC.
+	dueAt := bill.DueAt.UTC().Format(time.RFC3339)
+
+	// business_id per contracts/events/finance.yaml:95「"{source_id}:{due_at}"」 -- the same anchor the
+	// registration used, so a bill re-dated after being paid and re-dated again revokes under a key of
+	// its own instead of being swallowed as a duplicate of the earlier撤销.
+	envelope := bus.Envelope{
+		EventType:  subjectDueRevoked,
+		BusinessID: fmt.Sprintf("%s:%s", bill.ID, dueAt),
+		FamilyID:   bill.FamilyID,
+		Version:    dueEventSchemaVersion,
+		Timestamp:  time.Now().UTC().Format(time.RFC3339Nano),
+		Payload: map[string]any{
+			// ---- 契约 payload_schema（finance.yaml:100-105，FROZEN v1.0.0），逐字段、无多余键 ----
+			"source_system": financeDomainCode,                    //   source_system: finance
+			"source_id":     bill.ID,                              //   source_id: uuid
+			"family_id":     bill.FamilyID,                        //   family_id: uuid
+			"revoked_at":    revokedAt.UTC().Format(time.RFC3339), // revoked_at: timestamp
+			"reason":        reason,                               //   reason: enum(completed|deleted|expired)
+		},
+	}
+
+	raw, err := bus.MarshalEnvelope(envelope)
+	if err != nil {
+		return fmt.Errorf("failed to marshal %s envelope: %w", subjectDueRevoked, err)
+	}
+
+	// The one outbox INSERT implementation in this repository is packages/bus's writer: it owns the
+	// {code}_outbox table name and finance_0002's seven-column set with status='pending' (§3.3
+	// 「INSERT finance_outbox(subject, envelope, status=pending)」, §10.3「指标最小集」).
+	if err := bus.InsertOutboxMessageWithFamily(tx.WithContext(ctx), financeDomainCode,
+		bill.FamilyID, subjectDueRevoked, string(raw)); err != nil {
+		return fmt.Errorf("failed to insert outbox message for due revocation: %w", err)
+	}
+
+	return nil
 }
 
 // ==================== Loan Operations ====================

@@ -3,6 +3,7 @@ package handler
 
 import (
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -20,16 +21,18 @@ type FinanceHandler struct {
 	statisticsService  *service.StatisticsService
 	budgetAlertService *service.BudgetAlertService
 	exportService      *service.ExportService
+	billService        *service.BillService
 }
 
 // NewFinanceHandler creates a new finance handler instance.
-func NewFinanceHandler(repo *repo.FinanceRepo, balanceService *service.BalanceService, statisticsService *service.StatisticsService, budgetAlertService *service.BudgetAlertService, exportService *service.ExportService) *FinanceHandler {
+func NewFinanceHandler(repo *repo.FinanceRepo, balanceService *service.BalanceService, statisticsService *service.StatisticsService, budgetAlertService *service.BudgetAlertService, exportService *service.ExportService, billService *service.BillService) *FinanceHandler {
 	return &FinanceHandler{
 		repo:               repo,
 		balanceService:     balanceService,
 		statisticsService:  statisticsService,
 		budgetAlertService: budgetAlertService,
 		exportService:      exportService,
+		billService:        billService,
 	}
 }
 
@@ -228,7 +231,13 @@ func (h *FinanceHandler) CreateTransaction(c *gin.Context) {
 	}
 
 	if err := h.repo.CreateTransaction(c.Request.Context(), input); err != nil {
-		if err == repo.ErrDuplicateRequest {
+		// errors.Is, not ==: the repo returns the sentinel bare on an idempotency hit
+		// (repo/finance.go:233) but wrapped with the driver's own words when the reused
+		// client_request_id is caught by the database unique index instead
+		// (repo/finance.go:243 -> isDuplicateClientRequestKey). With == the wrapped half fell
+		// through to the 500 branch below, telling a retrying client "the server broke" about a
+		// submission the server had already processed.
+		if errors.Is(err, repo.ErrDuplicateRequest) {
 			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 			return
 		}
@@ -646,7 +655,12 @@ func (h *FinanceHandler) CreateBill(c *gin.Context) {
 		Version:     1,
 	}
 
-	if err := h.repo.CreateBill(c.Request.Context(), bill); err != nil {
+	// The bill row and its finance.due.registered outbox row commit in ONE transaction
+	// (BillService.CreateBillWithDueRegistration). PRD 卷首第 3 条 forbids a business surface from
+	// keeping its own timer/push path: an 到期日 that is never registered is a due date that never
+	// reaches 首页 B 区 / 到期中心. So a failed registration fails the whole write -- returning 201
+	// here would leave a bill whose due date silently never got registered.
+	if err := h.billService.CreateBillWithDueRegistration(c.Request.Context(), bill); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create bill: " + err.Error()})
 		return
 	}
