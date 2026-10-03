@@ -48,6 +48,14 @@ var (
 	consumerBackOff    = []time.Duration{1 * time.Second, 10 * time.Second, 60 * time.Second}
 )
 
+// Due-trigger scanner configuration: how often to scan for upcoming dues and the time window
+// around now() within which items are considered "due". These defaults match the PRD intent
+// of 「到点下发」 without overwhelming the database or producing too many events at once.
+const (
+	scannerScanInterval     = 1 * time.Minute  // scan every minute
+	scannerReminderLeadTime = 5 * time.Minute  // fire reminders for items due within ±5 minutes
+)
+
 // pump decorates a bus.JetStreamWrapper. CreateStream and Publish stay the底座's (so the outbox
 // deliverer keeps talking to packages/bus), while Subscribe -- the one method the底座's real
 // implementation leaves unimplemented -- gets a working pump with its own connection.

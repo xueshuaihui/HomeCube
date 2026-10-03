@@ -10,5 +10,17 @@ const uni = (uniPlugin as unknown as { default?: typeof uniPlugin }).default ?? 
 // uni-app(Vue3 + Vite) 的工程约定：页面路由表在 src/pages.json（由 uni 插件读取），
 // 构建目标由 uni 命令的 UNI_PLATFORM 决定（本卡只出 H5，见 package.json 的 build:h5）。
 export default defineConfig({
-  plugins: [uni()]
+  plugins: [uni()],
+  server: {
+    proxy: {
+      '/api/homeos': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/api/finance': {
+        target: 'http://localhost:8081',
+        changeOrigin: true,
+      },
+    },
+  },
 })

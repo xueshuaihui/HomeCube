@@ -320,6 +320,16 @@ func run(addr string) error {
 	group.PUT("/recurring/:id", financeHandler.UpdateRecurringRule)
 	group.DELETE("/recurring/:id", financeHandler.DeleteRecurringRule)
 
+	// Trash/Recycle bin endpoints (回收站功能)
+	group.GET("/trash", financeHandler.ListTrash)
+	group.POST("/trash/:id/restore", financeHandler.RestoreTrashItem)
+	group.DELETE("/trash/:id", financeHandler.PermanentlyDeleteTrashItem)
+	group.POST("/trash/clear-expired", financeHandler.ClearExpiredTrash)
+
+	// Finance settings endpoints (PRD 4.8)
+	group.GET("/settings", financeHandler.GetFinanceSettings)
+	group.PUT("/settings", financeHandler.UpdateFinanceSettings)
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 

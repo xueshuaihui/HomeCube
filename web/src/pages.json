@@ -20,7 +20,16 @@
         { "path": "flow/index" },
         { "path": "transaction/create" },
         { "path": "account/index" },
-        { "path": "category/index" }
+        { "path": "category/index" },
+        { "path": "budget/index" },
+        { "path": "report/index" },
+        { "path": "ledger/index" },
+        { "path": "bill/index" },
+        { "path": "loan/index" },
+        { "path": "goal/index" },
+        { "path": "split/index" },
+        { "path": "trash/index" },
+        { "path": "settings/index" }
       ]
     }
   ]

@@ -286,8 +286,10 @@ type FamilyMembership struct {
 // stored form yet and that gap is reported, not papered over here.
 func ListFamiliesForAccount(ctx context.Context, db *gorm.DB, accountID string) ([]FamilyMembership, error) {
 	var rows []FamilyMembership
+	// Use explicit column aliases to avoid GORM ambiguity when both tables have 'id' columns.
+	// The aliases match the gorm:"column:xxx" tags in FamilyMembership struct.
 	err := db.WithContext(ctx).Table("homeos_families AS f").
-		Select("f.id, f.name, m.role, f.timezone, m.id AS member_id, f.pver").
+		Select("f.id AS id, f.name AS name, m.role AS role, f.timezone AS timezone, m.id AS member_id, f.pver AS pver").
 		Joins("JOIN homeos_members AS m ON m.family_id = f.id").
 		Where("m.user_id = ? AND m.deleted_at IS NULL", accountID).
 		Order("f.created_at ASC").

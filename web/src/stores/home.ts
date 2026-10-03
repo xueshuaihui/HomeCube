@@ -122,6 +122,31 @@ export interface MarkReadResponse {
  */
 const FALLBACK_TIMEZONE = 'Asia/Shanghai'
 
+/** localStorage key for persisting period value across sessions. */
+const STORAGE_KEY_PERIOD = 'finance_period'
+
+/** 从 localStorage 读取保存的 period 档位，非法值回落 'month'。 */
+function loadStoredGrain(): PeriodGrain {
+  try {
+    const stored = uni.getStorageSync(STORAGE_KEY_PERIOD)
+    if (stored === 'month' || stored === 'quarter' || stored === 'year') {
+      return stored
+    }
+  } catch {
+    // 读取失败：静默回落默认档
+  }
+  return 'month'
+}
+
+/** 将 period 档位持久化到 localStorage。 */
+function saveStoredGrain(grain: PeriodGrain) {
+  try {
+    uni.setStorageSync(STORAGE_KEY_PERIOD, grain)
+  } catch {
+    // 写入失败：不阻断主流程
+  }
+}
+
 /** 取家庭时区下的「现在」分量，避免用设备时区造出跨日的档（§6.4）。 */
 function nowInTimezone(tz: string): { year: number; month: number } {
   try {
@@ -150,10 +175,12 @@ export function encodePeriod(grain: PeriodGrain, year: number, month: number): P
 
 export const useHomeStore = defineStore('home', () => {
   // ---------------------------------------------------------------- 时间窗条
-  const periodGrain = ref<PeriodGrain>('month')
+  // 从 localStorage 恢复档位，跨会话记住最后一窗（PRD 4.5.3）。
+  const storedGrain = loadStoredGrain()
+  const periodGrain = ref<PeriodGrain>(storedGrain)
   // 缺省档 = 家庭时区的当前月（§6.4「缺省为家庭时区的当前月」），不是设备当月。
   const initial = nowInTimezone(FALLBACK_TIMEZONE)
-  const period = ref<PeriodCode>(encodePeriod('month', initial.year, initial.month))
+  const period = ref<PeriodCode>(encodePeriod(storedGrain, initial.year, initial.month))
 
   // ---------------------------------------------------------------- 会话快照
   const role = ref<MemberRole | ''>('')
@@ -226,8 +253,10 @@ export const useHomeStore = defineStore('home', () => {
   const mountedModules = computed(() => modules.value.filter((m) => m.enabled && m.born && m.visible))
 
   // ---------------------------------------------------------------- 时间窗
+  /** 切换时间窗档位并持久化到 localStorage（PRD 4.5.3：会话内一致 + 跨会话记住）。 */
   function setPeriodGrain(grain: PeriodGrain) {
     periodGrain.value = grain
+    saveStoredGrain(grain)
     const { year, month } = nowInTimezone(FALLBACK_TIMEZONE)
     period.value = encodePeriod(grain, year, month)
   }
@@ -239,6 +268,7 @@ export const useHomeStore = defineStore('home', () => {
     else if (/^\d{4}-\d{2}$/.test(code)) periodGrain.value = 'month'
     else return // 不在三档之内：不静默改参（§6.4「非法值 400 且不回落」的客户端侧对齐）
     period.value = code
+    saveStoredGrain(periodGrain.value)
   }
 
   // ---------------------------------------------------------------- home/summary

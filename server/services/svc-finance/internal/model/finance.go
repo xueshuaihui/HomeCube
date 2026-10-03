@@ -382,3 +382,24 @@ type FinanceBudgetPeriod struct {
 func (FinanceBudgetPeriod) TableName() string {
 	return setTableName("finance_budget_periods")
 }
+
+// FinanceSettings represents per-family finance settings (finance_settings table).
+type FinanceSettings struct {
+	ID                    string         `gorm:"type:uuid;primaryKey" json:"id"`
+	FamilyID              string         `gorm:"type:uuid;not null;uniqueIndex:uk_finance_settings_family_id,where:deleted_at IS NULL" json:"family_id"`
+	CurrencyUnit          string         `gorm:"type:varchar(10);not null;default:'CNY'" json:"currency_unit"`
+	DecimalPlaces         int32          `gorm:"type:integer;not null;default:2" json:"decimal_places"`
+	BudgetAlertThreshold  float64        `gorm:"type:numeric(5,2);not null;default:0.80" json:"budget_alert_threshold"`
+	AutoCategorizeEnabled bool           `gorm:"type:boolean;not null;default:false" json:"auto_categorize_enabled"`
+	ReceiptOCREnabled     bool           `gorm:"type:boolean;not null;default:false" json:"receipt_ocr_enabled"`
+	VoiceInputEnabled     bool           `gorm:"type:boolean;not null;default:false" json:"voice_input_enabled"`
+	Version               int64          `gorm:"type:bigint;not null;default:1" json:"version"`
+	CreatedAt             time.Time      `json:"created_at"`
+	UpdatedAt             time.Time      `json:"updated_at"`
+	DeletedAt             gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
+// TableName returns the table name for FinanceSettings.
+func (FinanceSettings) TableName() string {
+	return setTableName("finance_settings")
+}

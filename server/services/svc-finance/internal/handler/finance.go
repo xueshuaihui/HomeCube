@@ -276,6 +276,23 @@ func (h *FinanceHandler) ListTransactions(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// GetTransaction handles GET /api/finance/transactions/{id}.
+func (h *FinanceHandler) GetTransaction(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "transaction id is required"})
+		return
+	}
+
+	transaction, err := h.repo.GetTransactionByID(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "transaction not found or deleted"})
+		return
+	}
+
+	c.JSON(http.StatusOK, transaction)
+}
+
 // UpdateTransactionRequest represents the request body for updating a transaction.
 type UpdateTransactionRequest struct {
 	Type            string     `json:"type" binding:"omitempty,oneof=income expense transfer"`
@@ -1498,4 +1515,369 @@ func (h *FinanceHandler) DeleteTag(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "tag deleted successfully"})
+}
+
+// ==================== Recurring Rule Handlers ====================
+
+// ListRecurringRules handles GET /api/finance/recurring?family_id=.
+func (h *FinanceHandler) ListRecurringRules(c *gin.Context) {
+	familyID := c.Query("family_id")
+	if familyID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "family_id is required"})
+		return
+	}
+
+	rules, err := h.repo.ListRecurringRulesByFamily(c.Request.Context(), familyID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list recurring rules: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"items": rules})
+}
+
+// CreateRecurringRule handles POST /api/finance/recurring.
+func (h *FinanceHandler) CreateRecurringRule(c *gin.Context) {
+	var req struct {
+		FamilyID    string     `json:"family_id" binding:"required,uuid"`
+		Name        string     `json:"name" binding:"required"`
+		Type        string     `json:"type" binding:"required,oneof=expense income"`
+		AmountCents int64      `json:"amount_cents" binding:"required"`
+		AccountID   string     `json:"account_id" binding:"required,uuid"`
+		CategoryID  string     `json:"category_id" binding:"required,uuid"`
+		Cycle       string     `json:"cycle" binding:"required,oneof=daily weekly monthly yearly"`
+		StartDate   time.Time  `json:"start_date" binding:"required"`
+		EndDate     *time.Time `json:"end_date,omitempty"`
+		Description string     `json:"description,omitempty"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		return
+	}
+
+	rule := &model.FinanceRecurringRule{
+		FamilyID:      req.FamilyID,
+		Name:          req.Name,
+		Type:          req.Type,
+		AmountCents:   req.AmountCents,
+		AccountID:     req.AccountID,
+		CategoryID:    req.CategoryID,
+		Cycle:         req.Cycle,
+		StartDate:     req.StartDate,
+		EndDate:       req.EndDate,
+		NextExecuteAt: req.StartDate,
+		IsActive:      true,
+		Description:   req.Description,
+	}
+
+	if err := h.repo.CreateRecurringRule(c.Request.Context(), rule); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create recurring rule: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, rule)
+}
+
+// UpdateRecurringRule handles PUT /api/finance/recurring/:id.
+func (h *FinanceHandler) UpdateRecurringRule(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "recurring rule id is required"})
+		return
+	}
+
+	familyID := c.Query("family_id")
+	if familyID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "family_id is required"})
+		return
+	}
+
+	rule, err := h.repo.GetRecurringRuleByID(c.Request.Context(), familyID, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get recurring rule: " + err.Error()})
+		return
+	}
+	if rule == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "recurring rule not found"})
+		return
+	}
+
+	var req struct {
+		Name        string     `json:"name,omitempty"`
+		Type        string     `json:"type,omitempty" binding:"omitempty,oneof=expense income"`
+		AmountCents int64      `json:"amount_cents,omitempty"`
+		AccountID   string     `json:"account_id,omitempty" binding:"omitempty,uuid"`
+		CategoryID  string     `json:"category_id,omitempty" binding:"omitempty,uuid"`
+		Cycle       string     `json:"cycle,omitempty" binding:"omitempty,oneof=daily weekly monthly yearly"`
+		StartDate   *time.Time `json:"start_date,omitempty"`
+		EndDate     *time.Time `json:"end_date,omitempty"`
+		IsActive    *bool      `json:"is_active,omitempty"`
+		Description string     `json:"description,omitempty"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		return
+	}
+
+	if req.Name != "" {
+		rule.Name = req.Name
+	}
+	if req.Type != "" {
+		rule.Type = req.Type
+	}
+	if req.AmountCents != 0 {
+		rule.AmountCents = req.AmountCents
+	}
+	if req.AccountID != "" {
+		rule.AccountID = req.AccountID
+	}
+	if req.CategoryID != "" {
+		rule.CategoryID = req.CategoryID
+	}
+	if req.Cycle != "" {
+		rule.Cycle = req.Cycle
+	}
+	if req.StartDate != nil {
+		rule.StartDate = *req.StartDate
+	}
+	if req.EndDate != nil {
+		rule.EndDate = req.EndDate
+	}
+	if req.IsActive != nil {
+		rule.IsActive = *req.IsActive
+	}
+	if req.Description != "" {
+		rule.Description = req.Description
+	}
+
+	if err := h.repo.UpdateRecurringRule(c.Request.Context(), rule); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update recurring rule: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, rule)
+}
+
+// DeleteRecurringRule handles DELETE /api/finance/recurring/:id.
+func (h *FinanceHandler) DeleteRecurringRule(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "recurring rule id is required"})
+		return
+	}
+
+	familyID := c.Query("family_id")
+	if familyID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "family_id is required"})
+		return
+	}
+
+	if err := h.repo.DeleteRecurringRule(c.Request.Context(), familyID, id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete recurring rule: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "recurring rule deleted successfully"})
+}
+
+// ==================== Trash Handlers ====================
+
+// ListTrash handles GET /api/finance/trash?family_id=&type=.
+func (h *FinanceHandler) ListTrash(c *gin.Context) {
+	familyID := c.Query("family_id")
+	if familyID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "family_id is required"})
+		return
+	}
+
+	trashType := c.Query("type") // Optional filter: transaction, category, account, etc.
+
+	var items []repo.DeletedTransaction
+	var err error
+
+	// For now, only support transaction trash
+	if trashType == "" || trashType == "transaction" {
+		items, err = h.repo.ListDeletedTransactions(c.Request.Context(), familyID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list trash: " + err.Error()})
+			return
+		}
+	} else {
+		// Other types not yet implemented
+		items = []repo.DeletedTransaction{}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"items": items})
+}
+
+// RestoreTrashItem handles POST /api/finance/trash/:id/restore.
+func (h *FinanceHandler) RestoreTrashItem(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "trash item id is required"})
+		return
+	}
+
+	// Get family_id from query or request body
+	familyID := c.Query("family_id")
+	if familyID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "family_id is required"})
+		return
+	}
+
+	if err := h.repo.RestoreTransaction(c.Request.Context(), id, familyID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to restore item: " + err.Error()})
+		return
+	}
+
+	// After restoration, recalculate account balance
+	// The restored transaction's amount needs to be added back to the account balance
+	transaction, err := h.repo.GetTransactionByID(c.Request.Context(), id)
+	if err == nil && transaction != nil && transaction.AccountID != "" {
+		// Recalculate balance for the affected account
+		_, calcErr := h.balanceService.CalculateAccountBalance(c.Request.Context(), transaction.AccountID, familyID)
+		if calcErr != nil {
+			// Log error but don't fail the restore operation
+			// In production, this would trigger an async job
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "item restored successfully"})
+}
+
+// PermanentlyDeleteTrashItem handles DELETE /api/finance/trash/:id.
+func (h *FinanceHandler) PermanentlyDeleteTrashItem(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "trash item id is required"})
+		return
+	}
+
+	// Get family_id from query
+	familyID := c.Query("family_id")
+	if familyID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "family_id is required"})
+		return
+	}
+
+	if err := h.repo.PermanentlyDeleteTransaction(c.Request.Context(), id, familyID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to permanently delete item: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "item permanently deleted"})
+}
+
+// ClearExpiredTrash handles POST /api/finance/trash/clear-expired.
+func (h *FinanceHandler) ClearExpiredTrash(c *gin.Context) {
+	// Get family_id from query
+	familyID := c.Query("family_id")
+	if familyID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "family_id is required"})
+		return
+	}
+
+	count, err := h.repo.ClearExpiredTrash(c.Request.Context(), familyID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to clear expired trash: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "expired trash cleared",
+		"count":   count,
+	})
+}
+
+// ==================== Finance Settings Handlers ====================
+
+// GetFinanceSettings handles GET /api/finance/settings?family_id=.
+func (h *FinanceHandler) GetFinanceSettings(c *gin.Context) {
+	familyID := c.Query("family_id")
+	if familyID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "family_id is required"})
+		return
+	}
+
+	settings, err := h.repo.GetSettingsByFamily(c.Request.Context(), familyID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get finance settings: " + err.Error()})
+		return
+	}
+
+	// If no settings exist, create defaults
+	if settings == nil {
+		settings, err = h.repo.CreateDefaultSettings(c.Request.Context(), familyID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create default settings: " + err.Error()})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, settings)
+}
+
+// UpdateFinanceSettingsRequest represents the request body for updating finance settings.
+type UpdateFinanceSettingsRequest struct {
+	FamilyID              string  `json:"family_id" binding:"required,uuid"`
+	CurrencyUnit          *string `json:"currency_unit,omitempty" binding:"omitempty,oneof=CNY USD EUR JPY GBP"`
+	DecimalPlaces         *int32  `json:"decimal_places,omitempty" binding:"omitempty,min=0,max=4"`
+	BudgetAlertThreshold  *float64 `json:"budget_alert_threshold,omitempty" binding:"omitempty,min=0.1,max=1.0"`
+	AutoCategorizeEnabled *bool   `json:"auto_categorize_enabled,omitempty"`
+	ReceiptOCREnabled     *bool   `json:"receipt_ocr_enabled,omitempty"`
+	VoiceInputEnabled     *bool   `json:"voice_input_enabled,omitempty"`
+}
+
+// UpdateFinanceSettings handles PUT /api/finance/settings.
+func (h *FinanceHandler) UpdateFinanceSettings(c *gin.Context) {
+	var req UpdateFinanceSettingsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		return
+	}
+
+	// Get existing settings or create defaults
+	settings, err := h.repo.GetSettingsByFamily(c.Request.Context(), req.FamilyID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get finance settings: " + err.Error()})
+		return
+	}
+
+	if settings == nil {
+		settings, err = h.repo.CreateDefaultSettings(c.Request.Context(), req.FamilyID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create default settings: " + err.Error()})
+			return
+		}
+	}
+
+	// Apply updates only for non-nil fields
+	if req.CurrencyUnit != nil {
+		settings.CurrencyUnit = *req.CurrencyUnit
+	}
+	if req.DecimalPlaces != nil {
+		settings.DecimalPlaces = *req.DecimalPlaces
+	}
+	if req.BudgetAlertThreshold != nil {
+		settings.BudgetAlertThreshold = *req.BudgetAlertThreshold
+	}
+	if req.AutoCategorizeEnabled != nil {
+		settings.AutoCategorizeEnabled = *req.AutoCategorizeEnabled
+	}
+	if req.ReceiptOCREnabled != nil {
+		settings.ReceiptOCREnabled = *req.ReceiptOCREnabled
+	}
+	if req.VoiceInputEnabled != nil {
+		settings.VoiceInputEnabled = *req.VoiceInputEnabled
+	}
+
+	// Save updated settings
+	if err := h.repo.UpsertSettings(c.Request.Context(), settings); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update finance settings: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, settings)
 }

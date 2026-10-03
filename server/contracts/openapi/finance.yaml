@@ -603,6 +603,157 @@ paths:
         '400':
           description: 参数格式非法
 
+  # === 回收站管理 ===
+  /trash:
+    get:
+      summary: 回收站列表
+      description: 查询已删除但未过期的记录（保留30天）
+      operationId: listTrash
+      tags:
+        - trash
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: family_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [transaction, category, account, budget, bill]
+      responses:
+        '200':
+          description: 回收站列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TrashItem'
+
+  /trash/{id}/restore:
+    post:
+      summary: 恢复回收站记录
+      description: 将已删除的记录恢复到正常状态
+      operationId: restoreTrashItem
+      tags:
+        - trash
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: 恢复成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: 记录不存在或已过期
+        '500':
+          description: 恢复失败
+
+  /trash/{id}:
+    delete:
+      summary: 彻底删除回收站记录
+      description: 永久删除记录，不可恢复
+      operationId: permanentlyDeleteTrashItem
+      tags:
+        - trash
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: 永久删除成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: 记录不存在
+        '500':
+          description: 删除失败
+
+  /trash/clear-expired:
+    post:
+      summary: 清空过期回收站记录
+      description: 清除所有已过期的回收站记录（超过30天）
+      operationId: clearExpiredTrash
+      tags:
+        - trash
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: 清空成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  count:
+                    type: integer
+                    description: 清空的记录数量
+
 components:
   schemas:
     Transaction:
@@ -774,6 +925,40 @@ components:
         created_at:
           type: string
           format: date-time
+
+    TrashItem:
+      type: object
+      description: 回收站中的已删除记录
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 原始记录ID
+        family_id:
+          type: string
+          format: uuid
+        original_type:
+          type: string
+          enum: [transaction, category, account, budget, bill]
+          description: 原始记录类型
+        original_id:
+          type: string
+          format: uuid
+          description: 原始记录的UUID
+        deleted_at:
+          type: string
+          format: date-time
+          description: 删除时间
+        expires_at:
+          type: string
+          format: date-time
+          description: 过期时间（删除后30天）
+        data:
+          type: object
+          description: 原始记录的完整数据快照
+        can_restore:
+          type: boolean
+          description: 是否可恢复（未过期）
 
   securitySchemes:
     bearerAuth:

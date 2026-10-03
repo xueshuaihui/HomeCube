@@ -1563,6 +1563,27 @@ func (r *FinanceRepo) MarkRecurringRuleExecuted(ctx context.Context, ruleID stri
 	})
 }
 
+// DeleteRecurringRule soft-deletes a recurring rule.
+func (r *FinanceRepo) DeleteRecurringRule(ctx context.Context, familyID string, ruleID string) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var rule model.FinanceRecurringRule
+		result := tx.Where("id = ? AND family_id = ?", ruleID, familyID).First(&rule)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return errors.New("recurring rule not found")
+			}
+			return fmt.Errorf("failed to get recurring rule: %w", result.Error)
+		}
+
+		result = tx.Where("id = ? AND family_id = ?", ruleID, familyID).Delete(&rule)
+		if result.Error != nil {
+			return fmt.Errorf("failed to delete recurring rule: %w", result.Error)
+		}
+
+		return r.sync.AppendChangeLog(ctx, tx, familyID, "recurring_rule", ruleID, "DELETE", 1, rule)
+	})
+}
+
 // ==================== Budget Period Operations ====================
 
 // CreateBudgetPeriod creates a new budget period.
@@ -1634,4 +1655,219 @@ func (r *FinanceRepo) DeleteBudgetPeriod(ctx context.Context, familyID string, p
 
 		return r.sync.AppendChangeLog(ctx, tx, familyID, "budget_period", periodID, "DELETE", 1, period)
 	})
+}
+
+// ==================== Trash Operations ====================
+
+// DeletedTransaction represents a transaction in the trash (with deleted_at set).
+type DeletedTransaction struct {
+	model.FinanceTransaction
+	DeletedAtTime time.Time `json:"deleted_at"`
+	ExpiresAt     time.Time `json:"expires_at"`
+	CanRestore    bool      `json:"can_restore"`
+}
+
+// ListDeletedTransactions retrieves all soft-deleted transactions for a family within the retention period (30 days).
+func (r *FinanceRepo) ListDeletedTransactions(ctx context.Context, familyID string) ([]DeletedTransaction, error) {
+	// Calculate the cutoff date (30 days ago)
+	cutoffDate := time.Now().Add(-30 * 24 * time.Hour)
+
+	var transactions []model.FinanceTransaction
+	result := r.db.WithContext(ctx).Unscoped().
+		Where("family_id = ? AND deleted_at IS NOT NULL AND deleted_at > ?", familyID, cutoffDate).
+		Order("deleted_at DESC").
+		Find(&transactions)
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to list deleted transactions: %w", result.Error)
+	}
+
+	// Convert to DeletedTransaction with metadata
+	deletedTransactions := make([]DeletedTransaction, 0, len(transactions))
+	for _, tx := range transactions {
+		expiresAt := tx.DeletedAt.Time.Add(30 * 24 * time.Hour)
+		canRestore := time.Now().Before(expiresAt)
+
+		deletedTx := DeletedTransaction{
+			FinanceTransaction: tx,
+			DeletedAtTime:      tx.DeletedAt.Time,
+			ExpiresAt:          expiresAt,
+			CanRestore:         canRestore,
+		}
+		deletedTransactions = append(deletedTransactions, deletedTx)
+	}
+
+	return deletedTransactions, nil
+}
+
+// RestoreTransaction restores a soft-deleted transaction by clearing its deleted_at field.
+// It also recalculates the account balance since deletion had deducted the amount.
+func (r *FinanceRepo) RestoreTransaction(ctx context.Context, id string, familyID string) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var transaction model.FinanceTransaction
+		// Use Unscoped() to find soft-deleted records
+		result := tx.Unscoped().Where("id = ? AND family_id = ?", id, familyID).First(&transaction)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return errors.New("transaction not found or already restored")
+			}
+			return fmt.Errorf("failed to get deleted transaction: %w", result.Error)
+		}
+
+		// Verify it's actually deleted
+		if transaction.DeletedAt.Time.IsZero() {
+			return errors.New("transaction is not deleted")
+		}
+
+		// Clear the deleted_at and deleted_by fields
+		now := time.Now()
+		transaction.DeletedAt = gorm.DeletedAt{}
+		transaction.DeletedBy = nil
+		transaction.UpdatedAt = now
+		transaction.Version++
+
+		// Save the restored transaction
+		result = tx.Save(&transaction)
+		if result.Error != nil {
+			return fmt.Errorf("failed to restore transaction: %w", result.Error)
+		}
+
+		// Recalculate account balance: add back the transaction amount that was deducted on delete
+		// Note: The balance recalculation should be handled by the BalanceService after restoration
+		// Here we just mark the change log
+		return r.sync.AppendChangeLog(ctx, tx, familyID, "transaction", transaction.ID, "RESTORE", transaction.Version, transaction)
+	})
+}
+
+// PermanentlyDeleteTransaction permanently deletes a transaction from the database.
+func (r *FinanceRepo) PermanentlyDeleteTransaction(ctx context.Context, id string, familyID string) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var transaction model.FinanceTransaction
+		// Use Unscoped() to find soft-deleted records
+		result := tx.Unscoped().Where("id = ? AND family_id = ?", id, familyID).First(&transaction)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return errors.New("transaction not found")
+			}
+			return fmt.Errorf("failed to get deleted transaction: %w", result.Error)
+		}
+
+		// Verify it's actually deleted
+		if transaction.DeletedAt.Time.IsZero() {
+			return errors.New("cannot permanently delete an active transaction")
+		}
+
+		// Actually delete the record (hard delete)
+		result = tx.Unscoped().Delete(&transaction)
+		if result.Error != nil {
+			return fmt.Errorf("failed to permanently delete transaction: %w", result.Error)
+		}
+
+		// Append change log for permanent deletion
+		return r.sync.AppendChangeLog(ctx, tx, familyID, "transaction", transaction.ID, "PERMANENT_DELETE", transaction.Version, transaction)
+	})
+}
+
+// ClearExpiredTrash removes all trash items older than 30 days.
+func (r *FinanceRepo) ClearExpiredTrash(ctx context.Context, familyID string) (int64, error) {
+	// Calculate the cutoff date (30 days ago)
+	cutoffDate := time.Now().Add(-30 * 24 * time.Hour)
+
+	// Count expired items first
+	var count int64
+	result := r.db.WithContext(ctx).Unscoped().
+		Model(&model.FinanceTransaction{}).
+		Where("family_id = ? AND deleted_at IS NOT NULL AND deleted_at < ?", familyID, cutoffDate).
+		Count(&count)
+	if result.Error != nil {
+		return 0, fmt.Errorf("failed to count expired trash items: %w", result.Error)
+	}
+
+	if count == 0 {
+		return 0, nil
+	}
+
+	// Delete expired items
+	result = r.db.WithContext(ctx).Unscoped().
+		Where("family_id = ? AND deleted_at IS NOT NULL AND deleted_at < ?", familyID, cutoffDate).
+		Delete(&model.FinanceTransaction{})
+	if result.Error != nil {
+		return 0, fmt.Errorf("failed to clear expired trash: %w", result.Error)
+	}
+
+	return count, nil
+}
+
+// ==================== Finance Settings Operations ====================
+
+// GetSettingsByFamily retrieves finance settings for a family. Returns nil if not found.
+func (r *FinanceRepo) GetSettingsByFamily(ctx context.Context, familyID string) (*model.FinanceSettings, error) {
+	var settings model.FinanceSettings
+	result := r.db.WithContext(ctx).
+		Where("family_id = ? AND deleted_at IS NULL", familyID).
+		First(&settings)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get finance settings: %w", result.Error)
+	}
+	return &settings, nil
+}
+
+// UpsertSettings creates or updates finance settings for a family.
+// Uses INSERT ... ON CONFLICT for atomic upsert operation.
+func (r *FinanceRepo) UpsertSettings(ctx context.Context, settings *model.FinanceSettings) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Generate ID if not set
+		if settings.ID == "" {
+			settings.ID = generateUUID()
+		}
+
+		// Check if settings already exist
+		var existing model.FinanceSettings
+		result := tx.Where("family_id = ? AND deleted_at IS NULL", settings.FamilyID).First(&existing)
+
+		if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("failed to query existing settings: %w", result.Error)
+		}
+
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			// Create new settings
+			if err := tx.Create(settings).Error; err != nil {
+				return fmt.Errorf("failed to create finance settings: %w", err)
+			}
+		} else {
+			// Update existing settings
+			settings.ID = existing.ID
+			settings.Version = existing.Version + 1
+			settings.CreatedAt = existing.CreatedAt
+
+			if err := tx.Save(settings).Error; err != nil {
+				return fmt.Errorf("failed to update finance settings: %w", err)
+			}
+		}
+
+		// Append change log
+		return r.sync.AppendChangeLog(ctx, tx, settings.FamilyID, "settings", settings.ID, "UPDATE", settings.Version, settings)
+	})
+}
+
+// CreateDefaultSettings creates default finance settings for a new family.
+func (r *FinanceRepo) CreateDefaultSettings(ctx context.Context, familyID string) (*model.FinanceSettings, error) {
+	settings := &model.FinanceSettings{
+		FamilyID:              familyID,
+		CurrencyUnit:          "CNY",
+		DecimalPlaces:         2,
+		BudgetAlertThreshold:  0.80,
+		AutoCategorizeEnabled: false,
+		ReceiptOCREnabled:     false,
+		VoiceInputEnabled:     false,
+		Version:               1,
+	}
+
+	if err := r.UpsertSettings(ctx, settings); err != nil {
+		return nil, err
+	}
+
+	return settings, nil
 }

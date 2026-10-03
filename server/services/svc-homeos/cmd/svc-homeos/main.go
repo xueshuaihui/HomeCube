@@ -268,6 +268,17 @@ func run(addr string) error {
 		protected.GET("/search", func(c *gin.Context) {
 			handler.GetSearch(c, svc.DB())
 		})
+
+		// Internal endpoints for authz SDK and cross-service read-only access (PRD 15.6).
+		// Not in svcauth's onboarding allowlist: requires a family context.
+		protected.GET("/members/snapshot", func(c *gin.Context) {
+			handler.GetMembersSnapshot(c, svc.DB())
+		})
+
+		// App bundle management and version check (PRD 3.4.8, tech plan §9.2).
+		// Still goes through middleware auth but returns no family data.
+		protected.GET("/app/bundles", handler.GetAppBundles)
+		protected.GET("/app/version", handler.GetAppVersion)
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

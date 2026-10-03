@@ -67,8 +67,9 @@ type BusRuntime struct {
 	log             *slog.Logger
 	pump            *pump
 	deliverer       *bus.OutboxDeliverer
-	consumer        *bus.DurableConsumer // finance.due.registered
-	revokedConsumer *bus.DurableConsumer // finance.due.revoked
+	consumer        *bus.DurableConsumer  // finance.due.registered
+	revokedConsumer *bus.DurableConsumer  // finance.due.revoked
+	scanner         *DueTriggerScanner    // due-trigger scanner (homeos.reminder.fired)
 	db              *gorm.DB
 }
 
@@ -180,6 +181,19 @@ func SetupBus(ctx context.Context, cfg BusConfig) (*BusRuntime, error) {
 		}
 	}
 
+	// 到期触发扫描仪：定期扫描 homeos_due_registration，对即将到期的对象发布 homeos.reminder.fired
+	// 事件（contracts/events/homeos.yaml:161）。这是「到期中心可触发」的另一半（PRD 14.5 第 4 项）：
+	// 消费方负责把到期对象写进表，扫描仪负责在到点时发提醒。幂等由 homeos_reminder_sent 表保障
+	// （migration 0011），outbox 模式保障可靠投递（§3.3）。
+	rt.scanner = NewDueTriggerScanner(ScannerConfig{
+		Logger:           log,
+		DB:               rt.db,
+		Code:             cfg.Own.Code,
+		ScanInterval:     scannerScanInterval,
+		ReminderLeadTime: scannerReminderLeadTime,
+	})
+	rt.scanner.Start(ctx)
+
 	log.Info("event_side_started",
 		"own_stream", cfg.Own.StreamName(),
 		"source_stream", cfg.Source.StreamName(),
@@ -188,6 +202,7 @@ func SetupBus(ctx context.Context, cfg BusConfig) (*BusRuntime, error) {
 			durableName(cfg.Own.Code + "-" + DueRegisteredEventType),
 			durableName(cfg.Own.Code + "-" + DueRevokedEventType),
 		}, ","),
+		"scanner", "due_trigger_scanner",
 	)
 
 	return rt, nil
@@ -199,6 +214,9 @@ func SetupBus(ctx context.Context, cfg BusConfig) (*BusRuntime, error) {
 func (r *BusRuntime) Stop() {
 	if r == nil {
 		return
+	}
+	if r.scanner != nil {
+		r.scanner.Stop()
 	}
 	if r.consumer != nil {
 		r.consumer.Stop()
