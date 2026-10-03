@@ -11,5 +11,13 @@
     "dynamics": "动态",
     "messages": "消息",
     "mine": "我的"
+  },
+  "quickadd": {
+    "mode": {
+      "text": "文字",
+      "voice": "语音",
+      "photo": "拍照",
+      "template": "模板"
+    }
   }
 }

@@ -1,5 +1,14 @@
 {
   "tab": {
-    "flow": "流水"
+    "flow": "流水",
+    "report": "报表",
+    "budget": "预算",
+    "ledger": "账本",
+    "settings": "账户与设置"
+  },
+  "tx_type": {
+    "expense": "支出",
+    "income": "收入",
+    "transfer": "转账"
   }
 }
