@@ -484,6 +484,121 @@ paths:
         '400':
           description: period 参数格式非法
 
+  # === 动态流 ===
+  /dynamics:
+    get:
+      summary: 家庭动态流列表
+      description: >
+        按时间倒序返回会话家庭的动态流分页，可用 code 按面筛选（PRD 3.7 动态流、17.2 D 区、17.8 动态流筛选）。
+        items[] 字段与 /home/summary 的 dynamics.items[] 同源（同一个服务端投影），两个消费位不会各说各话。
+        游标为不透明令牌，本项目不使用 offset 分页；非法 cursor 返回 400，不回落首页。
+      operationId: getDynamics
+      tags:
+        - dynamics
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >
+            面 code（registry 面目录，PRD 16.1 命名唯一真源）。缺省返回全部面。
+            可选筛选项一律取 /home/summary 的 faces[].code（服务端合成的已挂载且可见面），
+            未出生面与未挂载面不会作为选项出现；已停用面的历史动态仍可筛选（17.8 停用不删数据）。
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 动态流分页
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        code:
+                          type: string
+                        actor_name:
+                          type: string
+                        action:
+                          type: string
+                        summary:
+                          type: string
+                        at:
+                          type: string
+                          format: date-time
+                  next_cursor:
+                    type: string
+                    nullable: true
+        '400':
+          description: code 未登记在 registry 面目录、cursor 非法（不回落首页）、或 limit 非正整数
+    # 说明：动态未读按成员隔离（homeos_dynamic_read 回执表，PRD 17.1 第 2 条、15.2）。
+    # 一个成员的「全部已读」不得清掉其他成员的未读，故 member_id 取自会话令牌，不接受请求参数。
+
+  /dynamics/read:
+    post:
+      summary: 标记动态已读
+      description: >
+        为「当前会话成员」写入动态已读回执；支持单条/多条与全部已读。
+        all:false 且 dynamic_ids 为空时返回 400 且不做任何写入（不接受「隐式全部已读」）。
+      operationId: markDynamicsRead
+      tags:
+        - dynamics
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dynamic_ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  description: 要标记的动态 id 列表（须属于会话家庭）；与 all 二选一显式给出
+                all:
+                  type: boolean
+                  default: false
+      responses:
+        '200':
+          description: 标记成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  marked_count:
+                    type: integer
+                    description: 本次真正新增回执的条数（已有回执的条目不重复计数）
+                  unread:
+                    type: integer
+                    description: 本成员标记后的动态未读数，服务端重新统计，不接受客户端上传计数
+        '400':
+          description: all 与 dynamic_ids 皆空（未显式指定范围）、dynamic_ids 超出上限、或请求体非法 JSON
+        '404':
+          description: dynamic_ids 含不存在或不属于当前家庭的动态 id（整次请求回滚，不写入任何回执）
+
   # === 通知管理 ===
   /notifications:
     get:
@@ -542,6 +657,20 @@ paths:
                           format: date-time
                   unread:
                     type: integer
+                  unread_by_type:
+                    type: object
+                    description: >
+                      本次新增的附加字段（消息页三个 type 页签的计数，服务端已由同一 GROUP BY 算出）。
+                      三个键恒在，无未读的类型为 0；其值与同级 unread 一样按当前会话成员统计，
+                      不受 ?type= 筛选影响（unread 亦为全量总数，PRD 17.1 第 2 条口径唯一，
+                      页签筛选不得改动顶栏/首页红点读数）。计数一律服务端计算，请求不接受客户端上传。
+                    properties:
+                      budget_alert:
+                        type: integer
+                      system:
+                        type: integer
+                      reminder:
+                        type: integer
                   next_cursor:
                     type: string
                     nullable: true

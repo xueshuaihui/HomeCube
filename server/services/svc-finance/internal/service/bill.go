@@ -35,11 +35,15 @@ func (s *BillService) RegisterBillDue(ctx context.Context, db *gorm.DB, bill *mo
 	envelope := map[string]any{
 		"source_system": "finance",
 		"source_id":     bill.ID,
-		"kind":          "bill_payment",
-		"due_at":        bill.DueAt.Format("2006-01-02T15:04:05Z"),
-		"title":         fmt.Sprintf("账单到期: %s", bill.ID), // In production, this would use bill.Title if available
-		"family_id":     bill.FamilyID,
-		"amount_cents":  bill.AmountCents,
+		// kind 的取值是「被注册的到期对象属于哪一类」，受控枚举的权威源是
+		// contracts/events/finance.yaml finance.due.registered 的 kind: enum(bill|budget|goal|repayment)（已冻结）。
+		// 与 homeos_0008 迁移的 CHECK 同四值。账单的到期注册只能是 "bill"；
+		// 「账单已付」是另一条事件 finance.bill.paid，不带 kind（PRD 658、1298）。
+		"kind":         "bill",
+		"due_at":       bill.DueAt.Format("2006-01-02T15:04:05Z"),
+		"title":        fmt.Sprintf("账单到期: %s", bill.ID), // In production, this would use bill.Title if available
+		"family_id":    bill.FamilyID,
+		"amount_cents": bill.AmountCents,
 	}
 
 	envelopeJSON, err := json.Marshal(envelope)

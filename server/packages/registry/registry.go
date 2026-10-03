@@ -31,6 +31,11 @@
 // # Clause map for every field (nothing here is invented)
 //
 //   - Code          -- PRD 16.1 table column「code」; PRD 16.1 命名说明「code 是全文唯一命名权威」.
+//   - Title         -- PRD 16.1 table column「系统」(the row's display name), required as a
+//     registry-provided value by navigation doc §1.4 面矩阵 row「声明本面图标与标题（registry 域表提
+//     供）」and §3.3「图标 + 面名 …… 来自 registry，不硬编码」。
+//   - Icon          -- PRD 17.6「图标使用图标集名称，禁止 emoji」plus the same two navigation rows;
+//     the cell is a 图标集名, glyph binding stays in the shell's token map.
 //   - ServiceName   -- naming class 1 svc-{code}: PRD 16.1 命名说明, 22.2 第 1 条, §1.3 row 1
 //     (校验点：镜像名、Compose 服务名、容器名).
 //   - Schema        -- naming class 2 {code}: PRD 16.1 命名说明, §1.3 row 2, §2.1.
@@ -171,6 +176,27 @@ type Domain struct {
 	// Code is the naming authority for the whole stack (PRD 16.1).
 	Code string `json:"code"`
 
+	// Title is the face's display name, cell-for-cell the PRD 16.1 「系统」 column
+	// (家庭操作系统 / 财务 / 采购 / 饮食 / 出行 / 家人 / 成长).
+	//
+	// It exists because two documents refuse a client-side copy: navigation doc §1.4 表「首页 C 区
+	// 面矩阵」行 says the cell「声明本面图标与标题（registry 域表提供）」and §3.3 的格子元素表 repeats
+	// it as「来自 registry，不硬编码」; the same section then judges a hard-coded face list a 门禁 4
+	// failure. Since faces[] and family/modules are composed server-side (PRD 17.8 定版 ⑯), the
+	// title has to come out of this table rather than a web constant.
+	//
+	// This is NOT one of PRD 16.1's seven naming classes -- it is the row's 系统 name column, which
+	// the same table already carries. See the package doc's「Fields deliberately NOT stored」for what
+	// stays out.
+	Title string `json:"title"`
+
+	// Icon is the face's 图标集名称, per PRD 17.6「图标使用图标集名称，禁止 emoji」and its
+	// check-no-emoji gate. Which glyphs a given 图标集名 renders to is the shell's token map and
+	// belongs to the design 定版, so this cell is the name only -- never an emoji, never a path.
+	// Same justification as Title: navigation doc §1.4 与 §3.3 require 图标 to come from registry, and
+	// PRD 17.2 makes the D-row entry icon「与 C 区同一套 registry 图标，不另建第二套缩写符号」.
+	Icon string `json:"icon"`
+
 	// ServiceName is svc-{code}: image name, Compose service name, container name (§1.3 row 1).
 	ServiceName string `json:"serviceName"`
 
@@ -258,6 +284,8 @@ const CurrentPhase = "P1"
 var table = []Domain{
 	{
 		Code:          "homeos",
+		Title:         "家庭操作系统",
+		Icon:          "home",
 		ServiceName:   "svc-homeos",
 		Schema:        "homeos",
 		DBAccount:     "hc_homeos",
@@ -271,6 +299,8 @@ var table = []Domain{
 	},
 	{
 		Code:          "finance",
+		Title:         "财务",
+		Icon:          "wallet",
 		ServiceName:   "svc-finance",
 		Schema:        "finance",
 		DBAccount:     "hc_finance",
@@ -284,6 +314,8 @@ var table = []Domain{
 	},
 	{
 		Code:          "purchase",
+		Title:         "采购",
+		Icon:          "shopping-cart",
 		ServiceName:   "svc-purchase",
 		Schema:        "purchase",
 		DBAccount:     "hc_purchase",
@@ -297,6 +329,8 @@ var table = []Domain{
 	},
 	{
 		Code:          "diet",
+		Title:         "饮食",
+		Icon:          "utensils",
 		ServiceName:   "svc-diet",
 		Schema:        "diet",
 		DBAccount:     "hc_diet",
@@ -313,6 +347,8 @@ var table = []Domain{
 		// 财务/采购/饮食/出行/家人/成长; its BirthPhase is P6 (PRD 11.4 出行面 row, navigation doc
 		// §3.5). Registration order and birth order differ on purpose -- do not "fix" it.
 		Code:          "trip",
+		Title:         "出行",
+		Icon:          "map",
 		ServiceName:   "svc-trip",
 		Schema:        "trip",
 		DBAccount:     "hc_trip",
@@ -326,6 +362,8 @@ var table = []Domain{
 	},
 	{
 		Code:          "kin",
+		Title:         "家人",
+		Icon:          "users",
 		ServiceName:   "svc-kin",
 		Schema:        "kin",
 		DBAccount:     "hc_kin",
@@ -339,6 +377,8 @@ var table = []Domain{
 	},
 	{
 		Code:          "growth",
+		Title:         "成长",
+		Icon:          "sprout",
 		ServiceName:   "svc-growth",
 		Schema:        "growth",
 		DBAccount:     "hc_growth",

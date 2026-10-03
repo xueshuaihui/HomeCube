@@ -5,10 +5,12 @@
 // `go -C server run ./services/svc-homeos/cmd/svc-homeos` (docs/p1-tech-plan.md §十三). The process
 // therefore lives at server/services/svc-homeos/cmd/svc-homeos and its cwd is server/.
 //
-// What is delivered here is the runnable skeleton only: config validation, the two §10.1 health
-// checks, the /api/homeos/ route group and /metrics. Business handlers are S3 onwards, the authz
-// middleware is S4 (§1.1「鉴权在每个服务的中间件里由同一 SDK 完成」 -- that SDK does not exist yet),
-// and the outbox 投递器 with its durable consumers is S2.
+// What is delivered here is the runnable skeleton plus its identity boundary: config validation, the
+// two §10.1 health checks, the /api/homeos/ route group and /metrics, the token issuer (internal/auth)
+// and the request authenticator mounted on every route that reads a family or a member. §1.1 states
+// 「鉴权在每个服务的中间件里由同一 SDK 完成」, so the middleware installed below calls
+// packages/authz for the claim rules and puts the resolved session into the gin context; the business
+// handlers contain no family judgement of their own. The outbox 投递器 with its durable consumers is S2.
 package main
 
 import (
@@ -18,10 +20,12 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/gin-gonic/gin"
 	"github.com/xueshuaihui/HomeCube/server/packages/obs"
+	svcauth "github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/auth"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/handler"
 )
 
@@ -37,6 +41,18 @@ const code = "homeos"
 // service and svc-finance (:8081) no longer collide under `make dev-homeos` + `make dev-finance`.
 const addrEnvKey = "HOMEOS_ADDR"
 
+// Identity env keys, named by the same {CODE}_ convention as HOMEOS_DSN / NATS_URL / UPLOAD_DIR /
+// HOMEOS_ADDR above and declared here because this process is the one that consumes them (through
+// svcauth.NewSigner, which reads them and refuses to start without the private half):
+//
+//	svcauth.EnvPrivateKeyPEMPath = "HOMEOS_JWT_PRIVATE_KEY_PEM"  RS256 私钥 PEM 的文件路径
+//	svcauth.EnvPrivateKeyPEM     = "HOMEOS_JWT_PRIVATE_KEY"      同一个 PEM 的内联形式（compose env 用）
+//	svcauth.EnvKeyID             = "HOMEOS_JWT_KEY_ID"           jwks 里该密钥的 kid（可缺省，取指纹）
+//
+// deploy/env.local.example and deploy/docker-compose.yml register none of the three today -- that is
+// a reported回写项 for the deploy card. The absence is a startup failure, never an in-process key:
+// an ephemeral pair would invalidate every token on restart and change the public half that
+// /.well-known/jwks.json publishes (PRD 15.6, tech plan §4.1).
 func main() {
 	addr := flag.String("addr", "", "监听地址（host:port）；缺省时取 $HOMEOS_ADDR，仍无则按 registry.Implemented() 登记序派生默认端口")
 	flag.Parse()
@@ -78,49 +94,170 @@ func run(addr string) error {
 	}
 	defer svc.Close()
 
-	// Register legal endpoints under the homeos domain's route prefix (/api/homeos)
+	// The RS256 key pair is this process's own secret (tech plan §4.1「svc-homeos 是唯一签发方与 RS256
+	// 私钥持有者」). Loading it happens before any route is mounted, and a missing key aborts the
+	// start: obs.Open has already connected Postgres and NATS by now, so a key-less service would
+	// otherwise come up healthy and answer 401 to every session it issued before the restart.
+	signer, err := svcauth.NewSigner(svc.Logger)
+	if err != nil {
+		return err
+	}
+
+	// services bundles what the identity handlers need beyond the handle: the signer above, the SMS
+	// channel behind its seam (P1's local implementation is the documented fixed test code, see
+	// packages/adapter/DEPENDENCIES.md 短信行) and the logger the audit sink degrades to.
+	//
+	// RoutePrefix is passed to the SAME string the router is grouped by (trimmed of registry's trailing
+	// slash, which is what a gin FullPath never carries): it is what builds the onboarding allowlist, so
+	// the set of routes a family-less token may reach is derived from the mount, not from a copy.
+	services := &handler.Services{
+		DB:          svc.DB(),
+		Signer:      signer,
+		SMS:         svcauth.NewLocalFixedCodeProvider(),
+		Logger:      svc.Logger,
+		RoutePrefix: strings.TrimSuffix(d.RoutePrefix, "/"),
+	}
+	// The authenticator resolves the caller's member row per request (PRD 15.2「判定以 family_id 为
+	// 界」) and audits every refusal (15.5「越权尝试全部落审计」), both through the repo layer.
+	mw, err := services.Middleware()
+	if err != nil {
+		return err
+	}
+
 	group := svc.Engine.Group(d.RoutePrefix)
-	
-	// Auth routes (no middleware required for these)
+
+	// Public routes, exactly the three families PRD 22.2 第 8 条 and §1.1 leave unauthenticated:
+	// /auth/* (the code, login, refresh and logout themselves), /legal/* (the P1 placeholder texts),
+	// the key-set endpoint other services verify against, and the two operational endpoints, which obs
+	// mounts at /healthz and /metrics.
+	//
+	// /.well-known/jwks.json is mounted UNDER the domain prefix and there is no root-level twin, for two
+	// reasons that are both documentary: contracts/openapi/homeos.yaml declares `servers: - url:
+	// /api/homeos`, so its /.well-known/jwks.json line IS /api/homeos/.well-known/jwks.json; and
+	// deploy/env.local.example:129 hands the verifying side exactly that URL
+	// (FINANCE_JWKS_URL="…/api/homeos/.well-known/jwks.json"), which is the path nginx proxies here at
+	// all -- a root route would be unreachable through the one base URL PRD 17.7 第 5 条 allows clients
+	// and peers to use, and 22.2 第 8 条 forbids a root business route.
 	authGroup := group.Group("/auth")
 	{
 		authGroup.POST("/sms-code", func(c *gin.Context) {
-			handler.SendSMSCode(c, svc.DB)
+			handler.SendSMSCode(c, services)
 		})
 		authGroup.POST("/login", func(c *gin.Context) {
-			handler.Login(c, svc.DB)
+			handler.Login(c, services)
 		})
 		authGroup.POST("/refresh", func(c *gin.Context) {
-			handler.Refresh(c, svc.DB)
+			handler.Refresh(c, services)
 		})
 		authGroup.POST("/logout", func(c *gin.Context) {
-			handler.Logout(c, svc.DB)
+			handler.Logout(c, services)
 		})
 	}
-	
-	// Family management routes (require auth middleware in production)
-	familyGroup := group.Group("/families")
-	{
-		familyGroup.POST("", func(c *gin.Context) {
-			handler.CreateFamily(c, svc.DB)
-		})
-		familyGroup.GET("", func(c *gin.Context) {
-			handler.ListFamilies(c, svc.DB)
-		})
-	}
-	
-	group.POST("/family/invite/accept", func(c *gin.Context) {
-		handler.AcceptInvite(c, svc.DB)
+	group.GET("/.well-known/jwks.json", func(c *gin.Context) {
+		handler.GetJWKS(c, services)
 	})
-	
-	group.POST("/family/switch", func(c *gin.Context) {
-		handler.SwitchFamily(c, svc.DB)
-	})
-	
-	// Existing routes
+
 	group.GET("/legal/privacy-policy", handler.GetPrivacyPolicy)
 	group.GET("/legal/user-agreement", handler.GetUserAgreement)
-	group.GET("/search", handler.GetSearch) // Per PRD 14.5 #7: global keyword search
+
+	// Identity-scoped routes: every one of these reads user_id / family_id / member_id from the gin
+	// context, so all of them run behind mw.Handler(). Leaving any of them on `group` would put an
+	// empty subject in front of a family query -- the shape this card was opened for.
+	//
+	// svcauth.Require is deliberately not called on /families, /family/switch, /family/invite/accept or
+	// /search, and that is a fact about those routes rather than an omission: the authz matrix keys are
+	// homeos:governance (成员/权限管理), homeos:module_config (面配置) and homeos:time_collab, and none of
+	// them is one of those resources -- 「创建家庭」和「加入家庭」 are account-level acts, not governance
+	// acts inside the family being created. The two /family/modules routes below ARE the gated kind
+	// (PRD 15.3 「面配置」: R for member/ward/guest, A for owner), so each of them calls
+	// svcauth.Require with homeos:module_config -- read on GET, update on PUT -- and the middleware is
+	// only the first half of the gate.
+	//
+	// Which of these an ONBOARDING (family-less) token may reach is decided by svcauth's allowlist,
+	// built from services.RoutePrefix above: POST/GET /families and GET /auth/me are in it, every other
+	// route here answers 403 insufficient_scope. That is the gate, not this list's ordering.
+	protected := group.Group("", mw.Handler())
+	{
+		familyGroup := protected.Group("/families")
+		{
+			familyGroup.POST("", func(c *gin.Context) {
+				handler.CreateFamily(c, services)
+			})
+			familyGroup.GET("", func(c *gin.Context) {
+				handler.ListFamilies(c, services)
+			})
+		}
+
+		// Session introspection: the one read a family-less caller needs to see its own state, and the
+		// only /auth/* route behind the middleware (the four login-side routes above must stay public).
+		protected.GET("/auth/me", func(c *gin.Context) {
+			handler.Me(c, services)
+		})
+
+		protected.POST("/family/invite/accept", func(c *gin.Context) {
+			handler.AcceptInvite(c, services)
+		})
+		protected.POST("/family/switch", func(c *gin.Context) {
+			handler.SwitchFamily(c, services)
+		})
+
+		// 面配置 pair (contracts/openapi/homeos.yaml /family/modules, PRD 3.4.1 面配置 row, 17.8, 15.3).
+		// These two handlers take the middleware as a third argument because svcauth.Require writes the
+		// 15.5 denied-audit row through its OnDenied sink -- the role gate is therefore the same
+		// authz call every other service makes, with the same refusal recorder, and it runs on the
+		// session's role rather than on anything the request claims. They get `services` (DB + logger +
+		// prefix) rather than the bare `svc.DB()` that /search passes, because one composition reads
+		// homeos_family_module and the other writes audit + outbox rows in the same transaction.
+		protected.GET("/family/modules", func(c *gin.Context) {
+			handler.GetFamilyModules(c, services, mw)
+		})
+		protected.PUT("/family/modules", func(c *gin.Context) {
+			handler.UpdateFamilyModule(c, services, mw)
+		})
+
+		// 首页四区聚合 (contracts/openapi/homeos.yaml /home/summary, PRD 17.2 「首页首屏只有一个业务请求」).
+		// Third consumer of faces.go's composition, and mounted with the SAME (c, services, mw) shape and
+		// the SAME read gate (homeos:module_config + read) as GET /family/modules above -- PRD 15.3 面配置
+		// row grants that R 「只读，用于渲染首页矩阵…」, and 17.8 定版 ⑯ then裁剪 the set per role inside the
+		// composition, so the two endpoints cannot answer one household differently (asserted in
+		// home_summary_test.go). Not in svcauth's onboarding allowlist: it reads a family, so a family-less
+		// token gets 403 insufficient_scope from the middleware rather than an empty family boundary.
+		protected.GET("/home/summary", func(c *gin.Context) {
+			handler.GetHomeSummary(c, services, mw)
+		})
+
+		// 消息中心 pair (contracts/openapi/homeos.yaml /notifications + /notifications/read, PRD 3.6
+		// Notification row, 17.1 未读口径). Both handlers take (c, services, mw) like the three routes
+		// above, and both gate on PRD 15.3 row 3 「homeos:time_collab」 -- the row whose comment enumerates
+		// reminder/board/vote/DYNAMIC -- read on GET, update on POST, so member/ward/guest (M, which
+		// permits read+update) can read and clear their own inbox while nothing on either route accepts a
+		// family or member id from the request. Not in svcauth's onboarding allowlist either: a family-less
+		// token has no inbox, and 403 insufficient_scope is the honest answer rather than an empty one.
+		protected.GET("/notifications", func(c *gin.Context) {
+			handler.GetNotifications(c, services, mw)
+		})
+		protected.POST("/notifications/read", func(c *gin.Context) {
+			handler.MarkNotificationsRead(c, services, mw)
+		})
+
+		// 动态流 pair (contracts/openapi/homeos.yaml /dynamics + /dynamics/read, PRD 3.7 动态流, 17.2 D 区).
+		// Same row of the matrix and the same (c, services, mw) shape: GET /home/summary's D 区 and this
+		// route are two pages over ONE stream, and home_summary.go's DynamicCell is the type both
+		// serialize, so the 首页 strip and the full feed cannot start describing the same event
+		// differently (定版 ⑯'s 同源 rule applied to the fifth consumer, 17.8's 动态流筛选). Read state is
+		// per member through homeos_dynamic_read, keyed by the session's member id.
+		protected.GET("/dynamics", func(c *gin.Context) {
+			handler.GetDynamics(c, services, mw)
+		})
+		protected.POST("/dynamics/read", func(c *gin.Context) {
+			handler.MarkDynamicsRead(c, services, mw)
+		})
+
+		// Per PRD 14.5 #7: global keyword search, scoped to the session family by GetSearch.
+		protected.GET("/search", func(c *gin.Context) {
+			handler.GetSearch(c, svc.DB())
+		})
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
