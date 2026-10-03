@@ -1363,3 +1363,125 @@ func (h *FinanceHandler) GetAssetLiabilityReport(c *gin.Context) {
 
 	c.JSON(http.StatusOK, report)
 }
+
+// ==================== Tag Handlers ====================
+
+// CreateTagRequest represents the request body for creating a tag.
+type CreateTagRequest struct {
+	FamilyID string `json:"family_id" binding:"required,uuid"`
+	Name     string `json:"name" binding:"required,max=50"`
+	Color    string `json:"color" binding:"omitempty"` // hex color like #FF5733
+}
+
+// CreateTag handles POST /api/finance/tags.
+func (h *FinanceHandler) CreateTag(c *gin.Context) {
+	var req CreateTagRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		return
+	}
+
+	tag := &model.FinanceTag{
+		FamilyID: req.FamilyID,
+		Name:     req.Name,
+		Color:    req.Color,
+	}
+
+	if err := h.repo.CreateTag(c.Request.Context(), tag); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create tag: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, tag)
+}
+
+// ListTags handles GET /api/finance/tags?family_id=.
+func (h *FinanceHandler) ListTags(c *gin.Context) {
+	familyID := c.Query("family_id")
+	if familyID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "family_id is required"})
+		return
+	}
+
+	tags, err := h.repo.ListTagsByFamily(c.Request.Context(), familyID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list tags: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"items": tags})
+}
+
+// UpdateTagRequest represents the request body for updating a tag.
+type UpdateTagRequest struct {
+	Name  string `json:"name" binding:"omitempty,max=50"`
+	Color string `json:"color" binding:"omitempty"`
+}
+
+// UpdateTag handles PUT /api/finance/tags/:id.
+func (h *FinanceHandler) UpdateTag(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "tag id is required"})
+		return
+	}
+
+	familyID := c.Query("family_id")
+	if familyID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "family_id is required"})
+		return
+	}
+
+	tag, err := h.repo.GetTagByID(c.Request.Context(), familyID, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get tag: " + err.Error()})
+		return
+	}
+
+	if tag == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "tag not found"})
+		return
+	}
+
+	var req UpdateTagRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		return
+	}
+
+	if req.Name != "" {
+		tag.Name = req.Name
+	}
+	if req.Color != "" {
+		tag.Color = req.Color
+	}
+
+	if err := h.repo.UpdateTag(c.Request.Context(), tag); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update tag: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, tag)
+}
+
+// DeleteTag handles DELETE /api/finance/tags/:id.
+func (h *FinanceHandler) DeleteTag(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "tag id is required"})
+		return
+	}
+
+	familyID := c.Query("family_id")
+	if familyID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "family_id is required"})
+		return
+	}
+
+	if err := h.repo.DeleteTag(c.Request.Context(), familyID, id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete tag: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "tag deleted successfully"})
+}

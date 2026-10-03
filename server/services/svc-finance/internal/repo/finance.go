@@ -1274,3 +1274,232 @@ func (r *FinanceRepo) AddParticipantDirectly(ctx context.Context, participant *m
 		return r.sync.AppendChangeLog(ctx, tx, "test-family-001", "participant", participant.ID, "CREATE", participant.Version, participant)
 	})
 }
+
+// ==================== Tag Operations ====================
+
+// CreateTag creates a new finance tag.
+func (r *FinanceRepo) CreateTag(ctx context.Context, tag *model.FinanceTag) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if tag.ID == "" {
+			tag.ID = generateUUID()
+		}
+		if err := tx.Create(tag).Error; err != nil {
+			return fmt.Errorf("failed to create tag: %w", err)
+		}
+		return r.sync.AppendChangeLog(ctx, tx, tag.FamilyID, "tag", tag.ID, "CREATE", 1, tag)
+	})
+}
+
+// GetTagByID retrieves a tag by its ID.
+func (r *FinanceRepo) GetTagByID(ctx context.Context, familyID string, tagID string) (*model.FinanceTag, error) {
+	var tag model.FinanceTag
+	result := r.db.WithContext(ctx).Where("id = ? AND family_id = ?", tagID, familyID).First(&tag)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get tag: %w", result.Error)
+	}
+	return &tag, nil
+}
+
+// ListTagsByFamily retrieves all tags for a family.
+func (r *FinanceRepo) ListTagsByFamily(ctx context.Context, familyID string) ([]model.FinanceTag, error) {
+	var tags []model.FinanceTag
+	result := r.db.WithContext(ctx).
+		Where("family_id = ? AND deleted_at IS NULL", familyID).
+		Order("created_at DESC").
+		Find(&tags)
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to list tags: %w", result.Error)
+	}
+	return tags, nil
+}
+
+// UpdateTag updates a tag.
+func (r *FinanceRepo) UpdateTag(ctx context.Context, tag *model.FinanceTag) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		result := tx.Save(tag)
+		if result.Error != nil {
+			return fmt.Errorf("failed to update tag: %w", result.Error)
+		}
+		return r.sync.AppendChangeLog(ctx, tx, tag.FamilyID, "tag", tag.ID, "UPDATE", 1, tag)
+	})
+}
+
+// DeleteTag soft-deletes a tag.
+func (r *FinanceRepo) DeleteTag(ctx context.Context, familyID string, tagID string) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var tag model.FinanceTag
+		result := tx.Where("id = ? AND family_id = ?", tagID, familyID).First(&tag)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return errors.New("tag not found")
+			}
+			return fmt.Errorf("failed to get tag: %w", result.Error)
+		}
+
+		result = tx.Where("id = ? AND family_id = ?", tagID, familyID).Delete(&tag)
+		if result.Error != nil {
+			return fmt.Errorf("failed to delete tag: %w", result.Error)
+		}
+
+		return r.sync.AppendChangeLog(ctx, tx, familyID, "tag", tagID, "DELETE", 1, tag)
+	})
+}
+
+// ==================== Recurring Rule Operations ====================
+
+// CreateRecurringRule creates a new recurring rule.
+func (r *FinanceRepo) CreateRecurringRule(ctx context.Context, rule *model.FinanceRecurringRule) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if rule.ID == "" {
+			rule.ID = generateUUID()
+		}
+		if err := tx.Create(rule).Error; err != nil {
+			return fmt.Errorf("failed to create recurring rule: %w", err)
+		}
+		return r.sync.AppendChangeLog(ctx, tx, rule.FamilyID, "recurring_rule", rule.ID, "CREATE", 1, rule)
+	})
+}
+
+// GetRecurringRuleByID retrieves a recurring rule by its ID.
+func (r *FinanceRepo) GetRecurringRuleByID(ctx context.Context, familyID string, ruleID string) (*model.FinanceRecurringRule, error) {
+	var rule model.FinanceRecurringRule
+	result := r.db.WithContext(ctx).Where("id = ? AND family_id = ?", ruleID, familyID).First(&rule)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get recurring rule: %w", result.Error)
+	}
+	return &rule, nil
+}
+
+// ListRecurringRulesByFamily retrieves all recurring rules for a family.
+func (r *FinanceRepo) ListRecurringRulesByFamily(ctx context.Context, familyID string) ([]model.FinanceRecurringRule, error) {
+	var rules []model.FinanceRecurringRule
+	result := r.db.WithContext(ctx).
+		Where("family_id = ? AND deleted_at IS NULL", familyID).
+		Order("next_execute_at ASC").
+		Find(&rules)
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to list recurring rules: %w", result.Error)
+	}
+	return rules, nil
+}
+
+// ListDueRecurringRules retrieves all recurring rules that are due for execution.
+func (r *FinanceRepo) ListDueRecurringRules(ctx context.Context, now time.Time) ([]model.FinanceRecurringRule, error) {
+	var rules []model.FinanceRecurringRule
+	result := r.db.WithContext(ctx).
+		Where("is_active = true AND next_execute_at <= ? AND deleted_at IS NULL", now).
+		Order("next_execute_at ASC").
+		Find(&rules)
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to list due recurring rules: %w", result.Error)
+	}
+	return rules, nil
+}
+
+// UpdateRecurringRule updates a recurring rule.
+func (r *FinanceRepo) UpdateRecurringRule(ctx context.Context, rule *model.FinanceRecurringRule) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		result := tx.Save(rule)
+		if result.Error != nil {
+			return fmt.Errorf("failed to update recurring rule: %w", result.Error)
+		}
+		return r.sync.AppendChangeLog(ctx, tx, rule.FamilyID, "recurring_rule", rule.ID, "UPDATE", 1, rule)
+	})
+}
+
+// MarkRecurringRuleExecuted marks a rule as executed and calculates the next execution time.
+func (r *FinanceRepo) MarkRecurringRuleExecuted(ctx context.Context, ruleID string, nextExecuteAt time.Time) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		now := time.Now()
+		result := tx.Model(&model.FinanceRecurringRule{}).
+			Where("id = ?", ruleID).
+			Updates(map[string]any{
+				"last_executed_at": now,
+				"next_execute_at":  nextExecuteAt,
+				"updated_at":       now,
+			})
+		if result.Error != nil {
+			return fmt.Errorf("failed to mark recurring rule as executed: %w", result.Error)
+		}
+		return nil
+	})
+}
+
+// ==================== Budget Period Operations ====================
+
+// CreateBudgetPeriod creates a new budget period.
+func (r *FinanceRepo) CreateBudgetPeriod(ctx context.Context, period *model.FinanceBudgetPeriod) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if period.ID == "" {
+			period.ID = generateUUID()
+		}
+		if err := tx.Create(period).Error; err != nil {
+			return fmt.Errorf("failed to create budget period: %w", err)
+		}
+		return r.sync.AppendChangeLog(ctx, tx, period.FamilyID, "budget_period", period.ID, "CREATE", 1, period)
+	})
+}
+
+// GetBudgetPeriodByID retrieves a budget period by its ID.
+func (r *FinanceRepo) GetBudgetPeriodByID(ctx context.Context, familyID string, periodID string) (*model.FinanceBudgetPeriod, error) {
+	var period model.FinanceBudgetPeriod
+	result := r.db.WithContext(ctx).Where("id = ? AND family_id = ?", periodID, familyID).First(&period)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get budget period: %w", result.Error)
+	}
+	return &period, nil
+}
+
+// ListBudgetPeriodsByFamily retrieves all budget periods for a family.
+func (r *FinanceRepo) ListBudgetPeriodsByFamily(ctx context.Context, familyID string) ([]model.FinanceBudgetPeriod, error) {
+	var periods []model.FinanceBudgetPeriod
+	result := r.db.WithContext(ctx).
+		Where("family_id = ? AND deleted_at IS NULL", familyID).
+		Order("start_date DESC").
+		Find(&periods)
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to list budget periods: %w", result.Error)
+	}
+	return periods, nil
+}
+
+// UpdateBudgetPeriod updates a budget period.
+func (r *FinanceRepo) UpdateBudgetPeriod(ctx context.Context, period *model.FinanceBudgetPeriod) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		result := tx.Save(period)
+		if result.Error != nil {
+			return fmt.Errorf("failed to update budget period: %w", result.Error)
+		}
+		return r.sync.AppendChangeLog(ctx, tx, period.FamilyID, "budget_period", period.ID, "UPDATE", 1, period)
+	})
+}
+
+// DeleteBudgetPeriod soft-deletes a budget period.
+func (r *FinanceRepo) DeleteBudgetPeriod(ctx context.Context, familyID string, periodID string) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var period model.FinanceBudgetPeriod
+		result := tx.Where("id = ? AND family_id = ?", periodID, familyID).First(&period)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return errors.New("budget period not found")
+			}
+			return fmt.Errorf("failed to get budget period: %w", result.Error)
+		}
+
+		result = tx.Where("id = ? AND family_id = ?", periodID, familyID).Delete(&period)
+		if result.Error != nil {
+			return fmt.Errorf("failed to delete budget period: %w", result.Error)
+		}
+
+		return r.sync.AppendChangeLog(ctx, tx, familyID, "budget_period", periodID, "DELETE", 1, period)
+	})
+}

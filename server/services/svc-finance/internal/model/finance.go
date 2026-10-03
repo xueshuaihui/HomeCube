@@ -72,6 +72,7 @@ type FinanceTransaction struct {
 	ReceiptFileID   *string        `json:"receipt_file_id,omitempty"`
 	TransferGroupID *string        `gorm:"index:idx_finance_transaction_transfer_group_id" json:"transfer_group_id,omitempty"`
 	ClientRequestID *string        `gorm:"uniqueIndex:uk_client_request_id" json:"client_request_id,omitempty"`
+	TagIDs          []string       `gorm:"type:jsonb" json:"tag_ids,omitempty"` // 关联的标签 ID 数组
 	Version         int64          `gorm:"type:bigint;not null;default:1" json:"version"`
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`
@@ -317,4 +318,67 @@ type FinanceAssetLiabilityReport struct {
 // TableName returns the table name for FinanceAssetLiabilityReport.
 func (FinanceAssetLiabilityReport) TableName() string {
 	return setTableName("finance_asset_liability_report")
+}
+
+// FinanceTag represents a financial transaction tag (finance_tags table).
+type FinanceTag struct {
+	ID        string         `gorm:"type:uuid;primaryKey" json:"id"`
+	FamilyID  string         `gorm:"type:uuid;not null;index:idx_finance_tag_family" json:"family_id"`
+	Name      string         `gorm:"type:varchar(50);not null" json:"name"`
+	Color     string         `gorm:"type:varchar(7)" json:"color"` // hex color like #FF5733
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
+	DeletedBy string         `gorm:"type:uuid" json:"deleted_by,omitempty"`
+}
+
+// TableName returns the table name for FinanceTag.
+func (FinanceTag) TableName() string {
+	return setTableName("finance_tags")
+}
+
+// FinanceRecurringRule represents a recurring transaction rule (finance_recurring_rules table).
+type FinanceRecurringRule struct {
+	ID             string         `gorm:"type:uuid;primaryKey" json:"id"`
+	FamilyID       string         `gorm:"type:uuid;not null;index:idx_finance_recurring_family" json:"family_id"`
+	Name           string         `gorm:"type:varchar(100);not null" json:"name"`
+	Type           string         `gorm:"type:varchar(20);not null;check:type IN ('expense','income')" json:"type"`
+	AmountCents    int64          `gorm:"type:bigint;not null" json:"amount_cents"`
+	AccountID      string         `gorm:"type:uuid;not null" json:"account_id"`
+	CategoryID     string         `gorm:"type:uuid;not null" json:"category_id"`
+	Cycle          string         `gorm:"type:varchar(20);not null;check:cycle IN ('daily','weekly','monthly','yearly')" json:"cycle"`
+	StartDate      time.Time      `gorm:"not null" json:"start_date"`
+	EndDate        *time.Time     `json:"end_date,omitempty"` // nil 表示无限期
+	LastExecutedAt *time.Time     `json:"last_executed_at,omitempty"`
+	NextExecuteAt  time.Time      `gorm:"not null;index:idx_finance_recurring_next" json:"next_execute_at"`
+	IsActive       bool           `gorm:"not null;default:true" json:"is_active"`
+	Description    string         `json:"description,omitempty"`
+	CreatedAt      time.Time      `json:"created_at"`
+	UpdatedAt      time.Time      `json:"updated_at"`
+	DeletedAt      gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
+	DeletedBy      string         `gorm:"type:uuid" json:"deleted_by,omitempty"`
+}
+
+// TableName returns the table name for FinanceRecurringRule.
+func (FinanceRecurringRule) TableName() string {
+	return setTableName("finance_recurring_rules")
+}
+
+// FinanceBudgetPeriod represents a budget period configuration (finance_budget_periods table).
+type FinanceBudgetPeriod struct {
+	ID        string         `gorm:"type:uuid;primaryKey" json:"id"`
+	FamilyID  string         `gorm:"type:uuid;not null;index:idx_finance_budget_period_family" json:"family_id"`
+	Name      string         `gorm:"type:varchar(50);not null" json:"name"` // e.g., "2024-01", "Q1 2024"
+	StartDate time.Time      `gorm:"type:date;not null" json:"start_date"`
+	EndDate   time.Time      `gorm:"type:date;not null" json:"end_date"`
+	IsActive  bool           `gorm:"not null;default:true" json:"is_active"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
+	DeletedBy string         `gorm:"type:uuid" json:"deleted_by,omitempty"`
+}
+
+// TableName returns the table name for FinanceBudgetPeriod.
+func (FinanceBudgetPeriod) TableName() string {
+	return setTableName("finance_budget_periods")
 }

@@ -15,11 +15,11 @@ import (
 // Request defines a cross-service read request.
 // All three elements must be explicitly declared - no defaults.
 type Request struct {
-	Target  string        // Service name only (no URL)
-	Path    string        // GET path only
-	Timeout time.Duration // Required timeout
-	Retry   int           // Number of retries
-	Degrade bool          // Whether to allow degradation on failure
+	Target  string                             // Service name only (no URL)
+	Path    string                             // GET path only
+	Timeout time.Duration                      // Required timeout
+	Retry   int                                // Number of retries
+	Degrade func(context.Context, error) any   // Degradation function: returns fallback value on failure
 }
 
 // Response is the result from a cross-service call.
@@ -138,12 +138,18 @@ func (c *Client) Call(ctx context.Context, req Request) (*Response, error) {
 	// All attempts failed
 	crossserviceCallSeconds.With(labels).Observe(time.Since(start).Seconds())
 
-	if req.Degrade {
+	if req.Degrade != nil {
 		degradeCounter.With(labels).Inc()
-		// Return empty degraded response instead of error
+		// Call degradation function to get fallback value
+		fallback := req.Degrade(ctx, lastErr)
+		// Return degraded response with fallback data
+		fallbackJSON, err := json.Marshal(fallback)
+		if err != nil {
+			return nil, fmt.Errorf("rclient: failed to marshal fallback: %w", err)
+		}
 		return &Response{
 			StatusCode: 200,
-			Body:       []byte(`{"degraded":true}`),
+			Body:       fallbackJSON,
 			Headers:    make(http.Header),
 		}, nil
 	}
