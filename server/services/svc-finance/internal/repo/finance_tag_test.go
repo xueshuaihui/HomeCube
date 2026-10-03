@@ -16,6 +16,27 @@ func setupTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
 
+	// Every repo write appends a row to the 同步底座 change log (packages/sync.Repo.
+	// AppendChangeLog), so the fixture has to hold finance_change_log or the transaction
+	// rolls back with "no such table". Column set is exactly the published DDL of
+	// migrations/finance/finance_0003_change_log_idempotency.up.sql:12-22 -- the six
+	// columns (lsn, family_id, entity, entity_id, op, version) plus the (family_id, lsn)
+	// index. No data / created_at column: FS1 removed them, the object body stays in the
+	// business table and the delta reader re-fetches it by (entity, entity_id).
+	// lsn is a bigserial in Postgres; INTEGER PRIMARY KEY AUTOINCREMENT is the sqlite
+	// equivalent that lets the database mint it, which is what the repo relies on.
+	require.NoError(t, db.Exec(`
+CREATE TABLE finance_change_log (
+	lsn       INTEGER PRIMARY KEY AUTOINCREMENT,
+	family_id TEXT    NOT NULL,
+	entity    TEXT    NOT NULL,
+	entity_id TEXT    NOT NULL,
+	op        TEXT    NOT NULL,
+	version   INTEGER NOT NULL
+)`).Error)
+	require.NoError(t, db.Exec(`
+CREATE INDEX finance_change_log_family_lsn_idx ON finance_change_log (family_id, lsn)`).Error)
+
 	// Auto migrate test tables
 	err = db.AutoMigrate(
 		&model.FinanceTag{},
@@ -239,7 +260,12 @@ func TestMarkRecurringRuleExecuted(t *testing.T) {
 	updated, err := repo.GetRecurringRuleByID(ctx, "test-family-001", rule.ID)
 	assert.NoError(t, err)
 	assert.NotNil(t, updated.LastExecutedAt)
-	assert.Equal(t, nextExecuteAt, updated.NextExecuteAt)
+	// The column is written and read back through the driver, which returns the instant
+	// with a fixed-offset Location instead of time.Local, so compare instants (same
+	// convention as bill_test.go's due_at check). Same point in time is the requirement:
+	// a different instant, or the old value still sitting there, still fails here.
+	assert.True(t, nextExecuteAt.Equal(updated.NextExecuteAt),
+		"next_execute_at 没有被持久化成传入的时刻: want %s, got %s", nextExecuteAt, updated.NextExecuteAt)
 }
 
 func TestCreateBudgetPeriod(t *testing.T) {
@@ -270,8 +296,8 @@ func TestListBudgetPeriodsByFamily(t *testing.T) {
 		period := &model.FinanceBudgetPeriod{
 			FamilyID:  "test-family-001",
 			Name:      "2024-" + string(rune('0'+i)),
-			StartDate: time.Date(2024, i, 1, 0, 0, 0, 0, time.UTC),
-			EndDate:   time.Date(2024, i, 31, 0, 0, 0, 0, time.UTC),
+			StartDate: time.Date(2024, time.Month(i), 1, 0, 0, 0, 0, time.UTC),
+			EndDate:   time.Date(2024, time.Month(i), 28, 0, 0, 0, 0, time.UTC),
 			IsActive:  true,
 		}
 		err := repo.CreateBudgetPeriod(ctx, period)

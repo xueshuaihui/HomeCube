@@ -182,20 +182,31 @@ services:
 
   # ---- migrate：一次性数据库迁移容器 ----------------------------------------
   # 出处：tech plan §2.2（每服务一条独立序列）、§10.1（一次性 migrate 容器逐服务重放迁移）。
-  # 使用 golang-migrate CLI 镜像，挂载 migrations 目录，执行完后退出。
   # 依赖 postgres16 健康，在 svc-homeos/svc-finance 之前运行。
+  #
+  # 为什么不是「直接调 migrate 二进制」（FBR1 修掉的缺陷）：
+  #   镜像的 ENTRYPOINT 是 ["migrate"]（inspect 实测；镜像内另带 busybox），服务里给的
+  #   command 会被当作 migrate 的子命令参数，因此本服务把 entrypoint 覆盖成
+  #   sh /migrate-runner.sh，逐序列跑 deploy/migrate.sh —— 脚本会在临时目录里为
+  #   golang-migrate 生成「去掉 {code}_ 前缀」的软链视图，并把版本表指向
+  #   <schema>.schema_migrations_{code}（0001 建的那张）。
+  #   仓库里的迁移文件名一个字不改（前缀是 CI 归属门禁的校验对象）。
+  #   旧写法 `command: sh -c "migrate ... && migrate ..."` 实测只打印 usage 就以 0 退出
+  #   —— 迁移其实一步没跑。
   migrate:
     image: migrate/migrate:v4.20.1
-    command: >
-      sh -c "
-        echo 'Running migrations for homeos...' &&
-        migrate -path /migrations/homeos -database 'postgres://postgres:${POSTGRES_PASSWORD}@postgres16:5432/${POSTGRES_DB}?sslmode=disable&search_path=homeos' up &&
-        echo 'Running migrations for finance...' &&
-        migrate -path /migrations/finance -database 'postgres://postgres:${POSTGRES_PASSWORD}@postgres16:5432/${POSTGRES_DB}?sslmode=disable&search_path=finance' up &&
-        echo 'All migrations completed successfully!'
-      "
+    entrypoint: ["/bin/sh", "/migrate-runner.sh"]
+    command: ["up"]
+    environment:
+      MIGRATE_DB_HOST: postgres16
+      MIGRATE_DB_PORT: "5432"
+      MIGRATE_DB_NAME: ${POSTGRES_DB:?deploy/env.local 缺 POSTGRES_DB（§2.1 的 dbname，P1 是 homecube）}
+      MIGRATE_DB_USER: postgres
+      MIGRATE_DB_PASSWORD: ${POSTGRES_PASSWORD:?deploy/env.local 缺 POSTGRES_PASSWORD（迁移容器连库用）}
+      MIGRATE_MIGRATIONS_DIR: /migrations
     volumes:
       - ../server/migrations:/migrations:ro
+      - ./migrate.sh:/migrate-runner.sh:ro
     depends_on:
       postgres16:
         condition: service_healthy

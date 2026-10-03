@@ -35,7 +35,7 @@ func TestCall_Success(t *testing.T) {
 		Path:    "/api/test",
 		Timeout: 5 * time.Second,
 		Retry:   2,
-		Degrade: false,
+		Degrade: nil,
 	})
 
 	if err != nil {
@@ -105,13 +105,23 @@ func TestCall_Degradation(t *testing.T) {
 	resolver := &mockResolver{urls: map[string]string{"unreachable": "http://127.0.0.1:1"}}
 	client := NewClient(resolver, "homeos")
 
+	// Degrade is a fallback function, not a flag: it must only run once every attempt
+	// has failed, and it receives the last transport error.
+	degraded := false
+	var sawErr error
+	fallback := map[string]any{"items": []any{}, "degraded": true}
+
 	ctx := context.Background()
 	resp, err := client.Call(ctx, Request{
 		Target:  "unreachable",
 		Path:    "/api/test",
 		Timeout: 100 * time.Millisecond,
 		Retry:   0,
-		Degrade: true,
+		Degrade: func(_ context.Context, err error) any {
+			degraded = true
+			sawErr = err
+			return fallback
+		},
 	})
 
 	if err != nil {
@@ -119,6 +129,53 @@ func TestCall_Degradation(t *testing.T) {
 	}
 	if resp.StatusCode != 200 {
 		t.Errorf("expected status 200 for degraded response, got %d", resp.StatusCode)
+	}
+	if !degraded {
+		t.Error("expected the degrade function to be invoked on total failure")
+	}
+	if sawErr == nil {
+		t.Error("expected the degrade function to receive the last transport error")
+	}
+
+	var got map[string]any
+	if err := resp.DecodeJSON(&got); err != nil {
+		t.Fatalf("failed to decode degraded body: %v", err)
+	}
+	if got["degraded"] != true {
+		t.Errorf("expected degraded body %v, got %v", fallback, got)
+	}
+}
+
+// A call that succeeds must not run the degrade function: the fallback is for failures
+// only, and silently degrading a 200 would hide real payloads.
+func TestCall_DegradeNotInvokedOnSuccess(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok"}`))
+	}))
+	defer server.Close()
+
+	resolver := &mockResolver{urls: map[string]string{"test-service": server.URL}}
+	client := NewClient(resolver, "homeos")
+
+	called := false
+	resp, err := client.Call(context.Background(), Request{
+		Target:  "test-service",
+		Path:    "/api/test",
+		Timeout: 5 * time.Second,
+		Degrade: func(_ context.Context, _ error) any {
+			called = true
+			return map[string]any{}
+		},
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if called {
+		t.Error("degrade function must not run for a successful call")
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected status 200, got %d", resp.StatusCode)
 	}
 }
 

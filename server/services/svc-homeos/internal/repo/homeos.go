@@ -791,6 +791,17 @@ type financeBucketSummary struct {
 
 // HomeSummaryDueToday builds home/summary's due_today block.
 //
+// faceCodes is the caller's 已挂载面集合 for THIS member and THIS request, spelled as the registry
+// codes that homeos_due_registration.source_system carries (0008:29-30 「来源域的 code（16.1），
+// home/summary 的 due_today.items[].source_system 直接下发本列」). It is a required argument rather
+// than an optional filter because PRD 17.8 定版 ⑯'s rule is a conjunction, not a hint:
+// 「聚合与触发一律按本家庭的已挂载面集合过滤 —— 被停用面的注册项不消失也不触发、不出现在日历与待办
+// 里，重新启用后按其自身时间规则照常恢复」. An empty set is refused with ErrInvalidArgument: a member
+// with no face is an honest state the caller expresses by passing the 底座 code alone (PRD 17.1
+// 「首页自身不进矩阵」 keeps homeos out of the mounted set without ever making it 停用), while an empty
+// list here can only mean the composition was never wired in -- and answering 「今日 0 项」 for that
+// would be the invented number the same clause refuses. See homeos_due_test.go.
+//
 // What the projection can and cannot answer: homeos.homeos_proj_finance (0004) carries
 // (family_id, bucket_month, income_cents, expense_cents, budget_remaining_cents, updated_at)
 // only -- monthly buckets with no per-day date, and svc-homeos may not read finance's own
@@ -798,8 +809,8 @@ type financeBucketSummary struct {
 // 订阅器全量重建). So 「今日到期」 is NOT derivable from the projection and this function does
 // not invent it: it takes the due items from homeos_due_registration when that table exists
 // (the columns are the ones internal/consumer/finance_consumer.go already writes --
-// id/source_system/source_id/kind/due_at/title/family_id -- but no migration creates it yet;
-// the S5 到期中心 card owns it), and otherwise reports Answerable=false.
+// id/source_system/source_id/kind/due_at/title/family_id -- the shape 0008_due_registration's DDL
+// creates), and otherwise reports Answerable=false.
 //
 // In both branches it returns the one period number the projection really can give: how many
 // month buckets inside the period are already over budget (CASE WHEN on
@@ -810,12 +821,16 @@ func HomeSummaryDueToday(
 	db *gorm.DB,
 	familyID string,
 	window DueWindow,
+	faceCodes []string,
 ) (DueToday, error) {
 	if familyID == "" {
 		return DueToday{}, fmt.Errorf("%w: family_id is required", ErrInvalidArgument)
 	}
 	if window.DayStart.IsZero() || window.DayEnd.IsZero() || !window.DayEnd.After(window.DayStart) {
 		return DueToday{}, fmt.Errorf("%w: DayStart/DayEnd must bound a positive range", ErrInvalidArgument)
+	}
+	if len(faceCodes) == 0 {
+		return DueToday{}, fmt.Errorf("%w: the mounted face set is required", ErrInvalidArgument)
 	}
 
 	result := DueToday{}
@@ -864,8 +879,24 @@ func HomeSummaryDueToday(
 	}
 	result.Answerable = true
 
+	// Two predicates, both from documents, both binding the count AND the items query:
+	//
+	//   - `deleted_at IS NULL` -- 0008:43-45 names finance.due.revoked as this table's only deletion
+	//     path and stores the effect as a soft delete, so a revoked registration is not a fact about
+	//     the family's day any more. It is also the predicate 0008:58-60's 到期索引 carries
+	//     (`(family_id, due_at) WHERE deleted_at IS NULL`, whose stated purpose is literally this
+	//     query's WHERE clause): without it the planner cannot use a partial index at all, and dev's
+	//     own EXPLAIN against 0008's DDL showed the fallback -- a bitmap heap scan on
+	//     idx_homeos_due_registration_family that reads the family's whole registration history and
+	//     throws 59 of 60 rows away per day window.
+	//   - `source_system IN (?)` -- PRD 17.8 定版 ⑯: 被停用/对该角色不可见的面的注册项不得出现在
+	//     日历与待办里. The set is the caller's composition output, never a second opinion computed
+	//     here or on the client (17.7 第 4 条 「客户端不得二次过滤」).
+	where := "family_id = ? AND due_at >= ? AND due_at < ? AND deleted_at IS NULL AND source_system IN ?"
+	args := []any{familyID, window.DayStart, window.DayEnd, faceCodes}
+
 	if err := db.WithContext(ctx).Table(dueTable).
-		Where("family_id = ? AND due_at >= ? AND due_at < ?", familyID, window.DayStart, window.DayEnd).
+		Where(where, args...).
 		Count(&result.Count).Error; err != nil {
 		return DueToday{}, fmt.Errorf("failed to count due items today: %w", err)
 	}
@@ -874,7 +905,7 @@ func HomeSummaryDueToday(
 	items := make([]DueTodayItem, 0, 3)
 	if err := db.WithContext(ctx).Table(dueTable).
 		Select("id, title, due_at, source_system").
-		Where("family_id = ? AND due_at >= ? AND due_at < ?", familyID, window.DayStart, window.DayEnd).
+		Where(where, args...).
 		Order("due_at ASC").
 		Limit(3).
 		Scan(&items).Error; err != nil {

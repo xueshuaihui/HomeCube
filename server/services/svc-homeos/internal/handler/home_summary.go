@@ -5,7 +5,9 @@
 // What this file adds is the wiring, not the answers. Every zone's data comes from a helper that
 // already existed and had no caller: the A 区 name册 from repo.ListMembers, the C 区 set from
 // s.composeFaceEntries filtered through mountedFaces and each cell's 状态句 from s.faceHeadline
-// (both in faces.go), the B 区 block from repo.HomeSummaryDueToday, the D 区 page from
+// (both in faces.go), the B 区 block from repo.HomeSummaryDueToday filtered by that same mountedFaces
+// output (dueFaceCodes below -- 17.8 定版 ⑯ counts 到期中心注册项 among the five consumers of one
+// composition), the D 区 page from
 // repo.ListDynamics and the single `unread` from repo.UnreadNotificationCounts. Re-implementing any
 // of those here would give the 首页 an idea of the face set that could drift from the 开通页's -- and
 // the identity PRD 17.8 定版 ⑯ states as 「同一份服务端合成，客户端只拿自己可见的那一份」 is only
@@ -44,6 +46,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/xueshuaihui/HomeCube/server/packages/authz"
+	"github.com/xueshuaihui/HomeCube/server/packages/registry"
 	svcauth "github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/auth"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/model"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/repo"
@@ -238,12 +241,19 @@ func GetHomeSummary(c *gin.Context, s *Services, mw *svcauth.Middleware) {
 
 	// ⑥ B 区 / D 区 / 未读. A failure here is this service's own table being unreachable, which is a
 	// 500 rather than an empty zone: 17.2's single request either answers the 首页 or says it cannot.
+	//
+	// B 区 is filtered by the SAME composition C 区 was just drawn from (dueFaceCodes below), because
+	// PRD 17.8 定版 ⑯ puts 到期中心注册项 inside 五处同源 and its 聚合 rule reads 「一律按本家庭的已挂载
+	// 面集合过滤」. Reading the registration table unfiltered would show a 被停用的财务面 its 账单到期
+	// while C 区 shows no 财务格子 -- two answers about one household from one response, i.e. the exact
+	// divergence 同源 exists to prevent, and the reason the set travels with the query instead of being
+	// re-derived (18.2#12③) or applied by the client (17.7 第 4 条).
 	due, err := repo.HomeSummaryDueToday(ctx, s.DB, sess.FamilyID, repo.DueWindow{
 		DayStart:   dayStart,
 		DayEnd:     dayEnd,
 		PeriodFrom: periodFrom,
 		PeriodTo:   periodTo,
-	})
+	}, dueFaceCodes(entries))
 	if err != nil {
 		s.internal(c, "due_today_load_failed", err)
 		return
@@ -315,6 +325,32 @@ func summaryDueToday(due repo.DueToday) DueTodayBlock {
 		block.Count = &count
 	}
 	return block
+}
+
+// dueFaceCodes names the face set B 区's due read filters on, spelled in the currency
+// homeos_due_registration.source_system stores (registry codes, PRD 16.1 / 0008:29-30).
+//
+// The set is `mountedFaces` of the one composition -- not "every code the family has an enabled row
+// for". The two differ for a 儿童/访客 session, and the difference is the point: 15.3's scope=module
+// row is already applied inside composeFaceEntries (定版 ⑯), so a ward whose role is 「-」 on 财务 must
+// not get 财务's 账单到期 into B 区 either, even though C 区 correctly shows them no 财务格子.
+//
+// The 底座 code is then appended, and that is not a second composition: composeFaceEntries subtracts
+// registry.HomeosCode on purpose, because PRD 17.1 「首页自身不进矩阵」 means the 底座 has no cell to
+// draw (faces.go). homeos_due_registration still stores 底座-sourced registrations -- the 待办 side of
+// B 区's 「今日到期与待办」 (17.2) is the 底座's own data, and TIME-1's homeos_todos lands there -- and
+// PRD 17.8's rule filters 「被停用面」 items out. The 底座 is not a face a family can 停用: there is no
+// homeos_family_module row for it and 17.8 第 4 条 forbids a 0 面家庭, so dropping its code would delete
+// a zone the document says must keep rendering (17.8 第 4 条 「…此时 C 区整区不渲染，A/B/D 三区照常」).
+// Nothing here re-decides mountability; the only added term is the code the composition documents as
+// deliberately omitted.
+func dueFaceCodes(entries []FaceEntry) []string {
+	mounted := mountedFaces(entries)
+	out := make([]string, 0, len(mounted)+1)
+	for _, e := range mounted {
+		out = append(out, e.Code)
+	}
+	return append(out, registry.HomeosCode)
 }
 
 // summaryFaces turns the shared composition into faces[] cells. Order is untouched (mountedFaces

@@ -9,7 +9,8 @@
 //
 // ② is what makes the pver in /auth/login, /members/snapshot and every issued token a real number
 // rather than a constant, and ③④ are the only durable "审计 + 事件" the shipped schema supports
-// (see AppendOutboxEnvelope's comment for why not bus.InsertOutboxMessage).
+// (④ goes through the base helper packages/bus InsertOutboxMessageWithFamily, the repository's only
+// outbox INSERT).
 package repo
 
 import (
@@ -1103,15 +1104,14 @@ func AppendAudit(ctx context.Context, db *gorm.DB, row *model.HomeosAuditLog) er
 	return appendAuditTx(ctx, db, row)
 }
 
-// AppendOutboxEnvelope writes one pending event into homeos_outbox inside the caller's transaction,
-// using the envelope shape packages/bus defines (§3.3「INSERT homeos_outbox(subject, envelope,
-// status=pending)」).
+// AppendOutboxEnvelope builds one §3.1 envelope (event_type / business_id / family_id / payload /
+// version / timestamp) and appends it as a pending row in the caller's transaction.
 //
-// Why not bus.InsertOutboxMessage, which is the obvious helper: its OutboxMessage struct also writes
-// updated_at / sent_at / error and can set status='failed', none of which exist in the shipped
-// homeos.homeos_outbox DDL (0002 states it left those out pending a report). Inserting through it
-// would therefore fail on the first governance write, so this card writes the documented column set
-// and reports the struct/DDL divergence instead of editing another card's package.
+// The INSERT itself is the base's: bus.InsertOutboxMessageWithFamily owns the {code}_outbox table name
+// and 0002's seven-column set (id, family_id, subject, envelope, status, attempts, created_at) with
+// status='pending' (§3.3「INSERT homeos_outbox(subject, envelope, status=pending)」). This function
+// therefore only shapes the envelope -- there is exactly one outbox write implementation in the
+// repository, and it is packages/bus.
 func AppendOutboxEnvelope(ctx context.Context, tx *gorm.DB, familyID, eventType, businessID string, payload map[string]any) error {
 	env := bus.Envelope{
 		EventType:  eventType,
@@ -1125,14 +1125,8 @@ func AppendOutboxEnvelope(ctx context.Context, tx *gorm.DB, familyID, eventType,
 	if err != nil {
 		return fmt.Errorf("failed to marshal event envelope: %w", err)
 	}
-	if err := tx.WithContext(ctx).Table("homeos_outbox").Create(map[string]any{
-		"family_id":  familyID,
-		"subject":    eventType,
-		"envelope":   string(raw),
-		"status":     "pending",
-		"attempts":   0,
-		"created_at": time.Now().UTC(),
-	}).Error; err != nil {
+	if err := bus.InsertOutboxMessageWithFamily(tx.WithContext(ctx), registry.HomeosCode, familyID,
+		eventType, string(raw)); err != nil {
 		return fmt.Errorf("failed to append outbox message: %w", err)
 	}
 	return nil

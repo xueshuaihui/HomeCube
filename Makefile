@@ -121,9 +121,18 @@ up:
 		exit 2; \
 	fi; \
 	$(NODE) $(DEPLOY_DIR)/gen-nginx-unborn.mjs; \
-	echo "[up 2/5] 起全栈容器（postgres16 + nats + migrate + svc-homeos + svc-finance + web + admin + nginx）"; \
-	echo "         migrate 为一次性容器，执行完即退出；其余 7 个为常驻容器"; \
-	$(COMPOSE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d --wait; \
+	echo "[up 2/5] 迁移（先跑一次性 migrate 容器，逐序列 up）"; \
+	echo "         出处：§2.2 每服务一条独立序列、§10.1 一次性 migrate 容器；"; \
+	echo "         失败即退出 —— 序列没跑到最新版本，后面起服务连的是空 schema"; \
+	if ! $(COMPOSE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) run -T --rm migrate up; then \
+		echo "make up：迁移步骤失败（deploy/migrate.sh 或 compose 的 migrate 服务）"; \
+		exit 1; \
+	fi; \
+	echo "[up 2/5] 起常驻/静态容器（postgres16 + nats + svc-homeos + svc-finance + web + admin + nginx）"; \
+	echo "         migrate 不在这里点名：它是一次性容器，跑完就 exited (0)，而本机 compose v5.5.1 的"; \
+	echo "         'up --wait' 把任何 exited 都算失败（实测 up -d --wait postgres16 nats migrate -> 1，"; \
+	echo "         去掉 migrate -> 0）；迁移已在上一步 compose run --rm migrate 里真跑过"; \
+	$(COMPOSE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d --wait postgres16 nats svc-homeos svc-finance web admin nginx; \
 	echo "[up 3/5] 健康收敛后的状态"; \
 	$(COMPOSE) --env-file $(ENV_FILE) -f $(COMPOSE_FILE) ps; \
 	echo "[up 4/5] Schema 与账号 provisioning 验证"; \

@@ -10,7 +10,10 @@
 // and the request authenticator mounted on every route that reads a family or a member. §1.1 states
 // 「鉴权在每个服务的中间件里由同一 SDK 完成」, so the middleware installed below calls
 // packages/authz for the claim rules and puts the resolved session into the gin context; the business
-// handlers contain no family judgement of their own. The outbox 投递器 with its durable consumers is S2.
+// handlers contain no family judgement of their own. The event side -- the outbox 投递器 and the
+// durable consumer for finance.due.registered -- is wired below (PRD 3.4.6, §3.3, §3.4, §3.6): every
+// step of it is fail-fast, because a service that comes up without its subscription would answer the
+// 首页's B 区 with an empty cell and no error to show for it.
 package main
 
 import (
@@ -26,12 +29,20 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/xueshuaihui/HomeCube/server/packages/obs"
 	svcauth "github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/auth"
+	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/consumer"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/handler"
 )
 
 // code is this process's identity: one registry row, looked up rather than assumed --
 // obs.ResolveDomain refuses a code the table does not declare as built in the current phase.
 const code = "homeos"
+
+// dueEventSourceCode is the domain whose event this process consumes (§3.6「svc-finance: 写自己的实体
+// （含 due_at）→ 同事务 outbox → finance.due.registered」，consumers: [svc-homeos] in
+// contracts/events/finance.yaml）。它走 obs.ResolveDomain 而不是字符串拼接：来源域的流名 HC_FINANCE 与
+// subject pattern finance.> 由 registry 派生，而未出生 / 未实建的域会在启动期就被拒（§1.3「一张域表是
+// 唯一真源」），订阅一条不存在的流不是可以留到运行期的错。
+const dueEventSourceCode = "finance"
 
 // addrEnvKey is the OPTIONAL environment key that overrides the default listen address. It is not a
 // key deploy/env.local.example registers today (§十三 hands ports to that file but the file carries
@@ -261,6 +272,33 @@ func run(addr string) error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	// The event side (BUS-2): the outbox 投递器 that moves this service's own homeos_outbox rows into
+	// HC_HOMEOS (§3.3, PRD 3.4.6 发布/幂等/重试/死信) plus the durable consumer that feeds
+	// homeos_due_registration from finance.due.registered (§3.6, PRD 14.5 第 4 项「到期中心可注册可触
+	// 发」). Both ends belong to this process's lifecycle: SetupBus returns an error for any step that
+	// cannot be built -- 建流、连 JetStream、注册 consumer——and that error aborts the start rather than
+	// degrading into 「broker 不可用就先不订阅」. A service that starts without its subscription is
+	// healthy and answers B 区 empty, which is the failure mode this card exists to close.
+	//
+	// Stop is deferred, not called from a second signal path: the same ctx the HTTP shutdown uses
+	// cancels the delivery loop, then the consumer and the deliverer come down before svc.Close()
+	// releases the connections obs.Open made (defer LIFO).
+	source, err := obs.ResolveDomain(dueEventSourceCode)
+	if err != nil {
+		return err
+	}
+	busRT, err := consumer.SetupBus(ctx, consumer.BusConfig{
+		Logger:  svc.Logger,
+		Own:     d,
+		Source:  source,
+		DSN:     cfg.DSN,
+		NATSURL: cfg.NATSURL,
+	})
+	if err != nil {
+		return err
+	}
+	defer busRT.Stop()
 
 	err = svc.Run(ctx)
 	if errors.Is(err, context.Canceled) {

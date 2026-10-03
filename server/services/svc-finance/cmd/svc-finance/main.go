@@ -5,8 +5,9 @@
 // so its cwd is server/ (§十三).
 //
 // Delivered here: config validation against registry row "finance", the two §10.1 health checks, the
-// /api/finance/ route group and /metrics. Not delivered: the authz middleware (S4), the JWKS pull
-// that FINANCE_JWKS_URL is for (§4.1, S4), the outbox 投递器 and consumers (S2), and every business
+// /api/finance/ route group, /metrics and the outbox 投递器 wired to a real JetStream connection
+// (§3.1 stream HC_FINANCE). Not delivered: the authz middleware (S4), the JWKS pull
+// that FINANCE_JWKS_URL is for (§4.1, S4), the consumers (S2), and every business
 // handler of PRD 4.8 (S7-S13).
 package main
 
@@ -14,14 +15,17 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/xueshuaihui/HomeCube/server/packages/adapter/asr"
 	"github.com/xueshuaihui/HomeCube/server/packages/bus"
 	"github.com/xueshuaihui/HomeCube/server/packages/obs"
+	"github.com/xueshuaihui/HomeCube/server/packages/registry"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/handler"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/repo"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/service"
@@ -37,6 +41,60 @@ const code = "finance"
 // second implemented row -> :8081), so this service and svc-homeos (:8080) no longer collide under
 // `make dev-homeos` + `make dev-finance`.
 const addrEnvKey = "FINANCE_ADDR"
+
+// The two 「保留」 cells of §3.1's 流规划 table for this service's stream:
+// 「HC_HOMEOS | homeos.> | max_age=90d，R=1」 and 「HC_FINANCE | finance.> | 同上 | 建」. Both numbers
+// are therefore read off the document, not coined: 90 days of retention and R=1 (single node --
+// 「不做集群」 per PRD 14.6). They are consts rather than env keys because §十三's env file registers
+// no retention key and a home deployment must not be able to shrink the hot window below what
+// §3.1 and PRD 21.4 「热 90 天」 promise.
+const (
+	eventStreamMaxAge   = 90 * 24 * time.Hour
+	eventStreamReplicas = 1
+)
+
+// streamCreateTimeout bounds how long startup waits for the 「建流」 call. §3.1/§10.1 register no
+// number for it (card-level choice, reported): it only has to be short enough that a broker that
+// accepts TCP but never answers the JetStream API cannot leave the process hanging before
+// fail-fast.
+const streamCreateTimeout = 10 * time.Second
+
+// newEventBus connects this service's JetStream endpoint (§3.1 载体, PRD 10.4) and ensures this
+// domain's own stream exists, returning the wrapper the outbox 投递器 publishes through.
+//
+// Every name comes from the registry row (§1.3 「一张域表是唯一真源」), not from a string written
+// here: Domain.StreamName() is HC_FINANCE and Domain.StreamSubjectPattern() is finance.> (§3.1 流表),
+// so this service can neither create nor publish to another domain's stream.
+//
+// Both steps fail fast: an error here means the process does not start. The previous behaviour --
+// building the deliverer over a nil wrapper -- wrote outbox rows that nothing ever moved into the
+// bus, which is the defect this path closes (§3.3 「投递器: 每 500ms 批量 100 行 → JetStream Publish」).
+// Falling back to nil when the broker is unreachable would be that same defect with new wording, and
+// it is the same stance svc-homeos takes for a missing signing key: a service must not start 带病.
+//
+// CreateStream is CreateOrUpdateStream under the hood (packages/bus), so replaying `make dev-finance`
+// against an existing stream is a no-op.
+func newEventBus(d registry.Domain, url string) (bus.JetStreamWrapper, error) {
+	js, err := bus.NewJetStreamWrapper(bus.JetStreamConfig{
+		URL:      url,
+		Code:     d.Code,
+		MaxAge:   eventStreamMaxAge,
+		Replicas: eventStreamReplicas,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("为投递器连接 JetStream（%s，§3.1 的流载体；obs.Open 的健康检查连接是另一条）: %w", url, err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), streamCreateTimeout)
+	defer cancel()
+
+	if err := js.CreateStream(ctx, d.StreamName(), []string{d.StreamSubjectPattern()}); err != nil {
+		js.Close()
+		return nil, fmt.Errorf("确保本域流 %s（subjects %s）存在: %w", d.StreamName(), d.StreamSubjectPattern(), err)
+	}
+
+	return js, nil
+}
 
 func main() {
 	addr := flag.String("addr", "", "监听地址（host:port）；缺省时取 $FINANCE_ADDR，仍无则按 registry.Implemented() 登记序派生默认端口")
@@ -85,10 +143,31 @@ func run(addr string) error {
 	// Initialize ASR adapter (stub for now)
 	asrAdapter := asr.NewStubAdapter()
 
+	// Connect the bus BEFORE the deliverer: the wrapper is a real JetStream connection and this
+	// domain's stream HC_FINANCE is ensured on startup. A broker that will not answer means the
+	// process does not come up at all (§3.3's 投递器 is the only thing that moves finance_outbox rows
+	// into JetStream, so a process without it would accept writes whose events silently pile up).
+	js, err := newEventBus(d, cfg.NATSURL)
+	if err != nil {
+		return err
+	}
+	// Deferred after svc.Close() and before the deliverer's own defer, so unwinding at exit is
+	// Stop() -> Close() -> svc.Close(): the deliverer is drained before the connection it publishes
+	// over is closed.
+	defer js.Close()
+
+	svc.Logger.Info("eventbus_ready",
+		"stream", d.StreamName(),
+		"subjects", d.StreamSubjectPattern(),
+		"nats_url", cfg.NATSURL,
+		"max_age", eventStreamMaxAge.String(),
+		"replicas", eventStreamReplicas,
+	)
+
 	// Initialize outbox deliverer for async event publishing
 	outboxDeliverer := bus.NewOutboxDeliverer(
 		svc.DB(),
-		nil, // JetStream wrapper - would be initialized in production
+		js,
 		bus.OutboxConfig{Code: code},
 		func(msg string) { slog.Warn("outbox alert", "msg", msg) },
 	)
@@ -99,7 +178,10 @@ func run(addr string) error {
 
 	// Initialize budget alert service
 	budgetAlertService := service.NewBudgetAlertService(financeRepo, svc.DB())
-	financeHandler := handler.NewFinanceHandler(financeRepo, balanceService, statisticsService, budgetAlertService, exportService)
+	// The bill service owns the transaction that commits the bill row together with its
+	// finance.due.registered outbox row (PRD 卷首第 3 条: 带时间语义的业务对象一律注册到 HomeOS).
+	billService := service.NewBillService(financeRepo, svc.DB(), code)
+	financeHandler := handler.NewFinanceHandler(financeRepo, balanceService, statisticsService, budgetAlertService, exportService, billService)
 	voiceHandler := handler.NewVoiceHandler(financeRepo, asrAdapter)
 
 	// Register business routes under the finance domain's route prefix (/api/finance)

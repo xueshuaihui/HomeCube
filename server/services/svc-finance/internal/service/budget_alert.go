@@ -87,8 +87,11 @@ func (s *BudgetAlertService) publishBudgetExceededEvent(ctx context.Context, tx 
 		return fmt.Errorf("failed to marshal envelope: %w", err)
 	}
 
-	// Insert into outbox table within the same transaction
-	err = bus.InsertOutboxMessage(tx, "finance", "finance.budget.exceeded", string(envelopeJSON))
+	// Insert into outbox table within the same transaction. The budget's own family goes into the row's
+	// family_id column (finance_0006's finance_budget.family_id is NOT NULL, §10.3「指标最小集（全部带
+	// family_id 与 code）」), and it is the same value the envelope already carries.
+	err = bus.InsertOutboxMessageWithFamily(tx, "finance", budget.FamilyID,
+		"finance.budget.exceeded", string(envelopeJSON))
 	if err != nil {
 		return fmt.Errorf("failed to insert outbox message: %w", err)
 	}
