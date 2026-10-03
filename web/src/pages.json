@@ -3,6 +3,10 @@
     { "path": "pages/homeos/auth/login" },
     { "path": "pages/homeos/family/create" },
     { "path": "pages/homeos/home/index" },
+    { "path": "pages/homeos/dynamics/index" },
+    { "path": "pages/homeos/messages/index" },
+    { "path": "pages/homeos/mine/index" },
+    { "path": "pages/homeos/quick-add/index" },
     { "path": "pages/homeos/legal/privacy-policy" },
     { "path": "pages/homeos/legal/user-agreement" }
   ],

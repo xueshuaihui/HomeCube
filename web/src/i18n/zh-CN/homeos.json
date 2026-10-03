@@ -1,5 +1,15 @@
 {
   "home": {
-    "title": "首页"
+    "title": "首页",
+    "period_label": "时间窗",
+    "period_month": "月",
+    "period_quarter": "季",
+    "period_year": "年"
+  },
+  "nav": {
+    "home": "首页",
+    "dynamics": "动态",
+    "messages": "消息",
+    "mine": "我的"
   }
 }

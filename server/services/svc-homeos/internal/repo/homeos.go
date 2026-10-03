@@ -11,6 +11,7 @@ import (
 
 	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/model"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 var (
@@ -60,8 +61,8 @@ func UpsertSearchIndex(ctx context.Context, db *gorm.DB, index *model.HomeosSear
 
 	// Use ON CONFLICT for upsert behavior
 	err := db.WithContext(ctx).Clauses(
-		gorm.OnConflict{
-			Columns:   []gorm.Column{{Name: "domain"}, {Name: "entity_id"}},
+		clause.OnConflict{
+			Columns:   []clause.Column{{Name: "domain"}, {Name: "entity_id"}},
 			UpdateAll: true,
 		},
 	).Create(index).Error
