@@ -13,7 +13,12 @@
   "subPackages": [
     {
       "root": "pages/finance",
-      "pages": [{ "path": "flow/index" }]
+      "pages": [
+        { "path": "flow/index" },
+        { "path": "transaction/create" },
+        { "path": "account/index" },
+        { "path": "category/index" }
+      ]
     }
   ]
 }
