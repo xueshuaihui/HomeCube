@@ -7,11 +7,11 @@ set -euo pipefail
 
 BASE_HOMEOS="http://localhost:8080"
 BASE_FINANCE="http://localhost:8081"
-PHONE_ADMIN="13800138001"
+PHONE_ADMIN="13800138000"
 PHONE_ADULT="13800138002"
 PHONE_CHILD="13800138003"
 PHONE_GUEST="13800138004"
-SMS_CODE="123456"  # 开发环境固定验证码
+SMS_CODE="123456"  # 开发环境固定验证码（local_stub）
 
 PASS=0
 FAIL=0
@@ -147,10 +147,10 @@ check_response "成人成员登录" "$ADULT_HTTP" "200"
 ADULT_TOKEN=$(echo "$ADULT_BODY" | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4 || true)
 
 if [ -n "$INVITE_CODE" ] && [ -n "$ADULT_TOKEN" ]; then
-  JOIN_RES=$(curl -s -w "\n%{http_code}" -X POST "$BASE_HOMEOS/api/homeos/invites/$INVITE_CODE/join" \
+  JOIN_RES=$(curl -s -w "\n%{http_code}" -X POST "$BASE_HOMEOS/api/homeos/family/invite/accept" \
     -H "Authorization: Bearer $ADULT_TOKEN" \
     -H "Content-Type: application/json" \
-    -d "{\"name\":\"成人成员\"}")
+    -d "{\"invite_code\":\"$INVITE_CODE\",\"name\":\"成人成员\"}")
   JOIN_HTTP=$(echo "$JOIN_RES" | tail -1)
   check_response "成人成员加入家庭" "$JOIN_HTTP" "200"
 fi
@@ -225,18 +225,21 @@ BALANCE_HTTP=$(echo "$BALANCE_RES" | tail -1)
 BALANCE_BODY=$(echo "$BALANCE_RES" | sed '$d')
 check_response "查询余额" "$BALANCE_HTTP" "200"
 
-# 3.6 创建预算（需要 end_date 字段）
+# 3.6 创建预算（需要 RFC3339 格式的日期）
 if [ -n "$CATEGORY_ID" ]; then
+  START_DATE="$(date +%Y-%m-01)T00:00:00Z"
+  END_DATE="$(date -v+1m +%Y-%m-01)T00:00:00Z"
   BUDGET_RES=$(curl -s -w "\n%{http_code}" -X POST "$BASE_FINANCE/api/finance/budgets" \
     -H "Authorization: Bearer $ADMIN_TOKEN" \
     -H "Content-Type: application/json" \
-    -d "{\"family_id\":\"$ADMIN_FAMILY_ID\",\"category_id\":\"$CATEGORY_ID\",\"period\":\"monthly\",\"amount_cents\":50000,\"start_date\":\"$(date +%Y-%m-01)\",\"end_date\":\"$(date -v+1m +%Y-%m-01)\"}")
+    -d "{\"family_id\":\"$ADMIN_FAMILY_ID\",\"category_id\":\"$CATEGORY_ID\",\"period\":\"monthly\",\"amount_cents\":50000,\"start_date\":\"$START_DATE\",\"end_date\":\"$END_DATE\"}")
   BUDGET_HTTP=$(echo "$BUDGET_RES" | tail -1)
   check_response "创建预算" "$BUDGET_HTTP" "201"
 fi
 
-# 3.7 查询统计报表（正确路径：/statistics/overview，period 参数）
-STATS_RES=$(curl -s -w "\n%{http_code}" "$BASE_FINANCE/api/finance/statistics/overview?family_id=$ADMIN_FAMILY_ID&period=monthly" \
+# 3.7 查询统计报表（period 参数需要 YYYY-MM 格式）
+CURRENT_MONTH=$(date +%Y-%m)
+STATS_RES=$(curl -s -w "\n%{http_code}" "$BASE_FINANCE/api/finance/statistics/overview?family_id=$ADMIN_FAMILY_ID&period=$CURRENT_MONTH" \
   -H "Authorization: Bearer $ADMIN_TOKEN")
 STATS_HTTP=$(echo "$STATS_RES" | tail -1)
 check_response "查询统计报表" "$STATS_HTTP" "200"

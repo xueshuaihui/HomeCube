@@ -6,12 +6,14 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math/big"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 
 	"github.com/xueshuaihui/HomeCube/server/packages/authz"
@@ -507,19 +509,16 @@ func CreateInvite(c *gin.Context, s *Services) {
 	ctx := c.Request.Context()
 
 	// Verify the inviter is actually in this family
-	// For onboarding tokens, use account_id to find member row
 	memberAccountID := sess.AccountID
 	var membership model.HomeosMember
-	var err error
-	err = s.DB.WithContext(ctx).Where("family_id = ? AND user_id = ?", familyID, memberAccountID).First(&membership).Error
-	if err != nil || errors.Is(err, gorm.ErrRecordNotFound) {
-		c.JSON(http.StatusForbidden, gin.H{
-			"error":   "not_family_member",
-			"message": "您不是该家庭成员",
-		})
-		return
-	}
-	if err != nil {
+	if err := s.DB.WithContext(ctx).Where("family_id = ? AND user_id = ?", familyID, memberAccountID).First(&membership).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error":   "not_family_member",
+				"message": "您不是该家庭成员",
+			})
+			return
+		}
 		s.internal(c, "member_lookup_failed", err)
 		return
 	}
@@ -535,15 +534,19 @@ func CreateInvite(c *gin.Context, s *Services) {
 	expiresAt := time.Now().UTC().Add(time.Duration(expiresIn) * 24 * time.Hour)
 
 	// Create invitation row
-	inviteID := generateUUID()
 	now := time.Now().UTC()
+	inviteID := uuid.New().String()
+	var inviteePhone *string
+	if strings.TrimSpace(req.InviteePhone) != "" {
+		inviteePhone = &req.InviteePhone
+	}
 	invite := model.HomeosInvitation{
 		ID:             inviteID,
 		FamilyID:       familyID,
 		Code:           code,
 		Role:           req.Role,
 		InviterID:      sess.MemberID,
-		InviteePhone:   emptyAsNull(req.InviteePhone),
+		InviteePhone:   inviteePhone,
 		Status:         "pending",
 		ExpiresAt:      expiresAt,
 		CreatedAt:      now,
@@ -551,6 +554,7 @@ func CreateInvite(c *gin.Context, s *Services) {
 	}
 
 	if err := s.DB.WithContext(ctx).Create(&invite).Error; err != nil {
+		slog.Error("invite_create_failed", "err", err.Error(), "family_id", familyID, "code", code)
 		s.internal(c, "invite_create_failed", err)
 		return
 	}
@@ -663,7 +667,6 @@ func RevokeInvite(c *gin.Context, s *Services) {
 	}
 
 	// Audit log
-	actorName := sess.AccountID
 	reason := "撤销邀请 " + inviteID
 	s.writeAudit(ctx, s.auditRow(c, sess, model.AuditEventPermissionChange, model.AuditResultAllowed, reason))
 
