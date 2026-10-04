@@ -393,7 +393,7 @@ func (r *FinanceRepo) UpdateTransaction(ctx context.Context, id string, updates 
 	})
 }
 
-// SoftDeleteTransaction soft-deletes a transaction.
+// SoftDeleteTransaction soft-deletes a transaction (GORM soft delete via DeletedAt).
 func (r *FinanceRepo) SoftDeleteTransaction(ctx context.Context, id string, deletedBy string) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var transaction model.FinanceTransaction
@@ -405,15 +405,27 @@ func (r *FinanceRepo) SoftDeleteTransaction(ctx context.Context, id string, dele
 			return fmt.Errorf("failed to get transaction: %w", result.Error)
 		}
 
-		transaction.DeletedBy = &deletedBy
-		transaction.Version++
-
-		result = tx.Where("id = ?", id).Delete(&transaction)
-		if result.Error != nil {
-			return fmt.Errorf("failed to delete transaction: %w", result.Error)
+		// Update metadata before soft delete
+		now := time.Now().UTC()
+		updates := map[string]interface{}{
+			"deleted_by": deletedBy,
+			"version":    transaction.Version + 1,
+		}
+		if err := tx.Model(&transaction).Updates(updates).Error; err != nil {
+			return fmt.Errorf("failed to update transaction metadata: %w", err)
 		}
 
-		return r.sync.AppendChangeLog(ctx, tx, transaction.FamilyID, "transaction", transaction.ID, "DELETE", transaction.Version, transaction)
+		// GORM soft delete: sets deleted_at timestamp (model has gorm.DeletedAt field)
+		result = tx.Delete(&transaction)
+		if result.Error != nil {
+			return fmt.Errorf("failed to soft-delete transaction: %w", result.Error)
+		}
+
+		if result.RowsAffected == 0 {
+			return errors.New("no rows affected during soft delete")
+		}
+
+		return r.sync.AppendChangeLog(ctx, tx, transaction.FamilyID, "transaction", transaction.ID, "DELETE", transaction.Version+1, transaction)
 	})
 }
 
