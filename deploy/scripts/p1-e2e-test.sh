@@ -225,18 +225,18 @@ BALANCE_HTTP=$(echo "$BALANCE_RES" | tail -1)
 BALANCE_BODY=$(echo "$BALANCE_RES" | sed '$d')
 check_response "查询余额" "$BALANCE_HTTP" "200"
 
-# 3.6 创建预算
+# 3.6 创建预算（需要 end_date 字段）
 if [ -n "$CATEGORY_ID" ]; then
   BUDGET_RES=$(curl -s -w "\n%{http_code}" -X POST "$BASE_FINANCE/api/finance/budgets" \
     -H "Authorization: Bearer $ADMIN_TOKEN" \
     -H "Content-Type: application/json" \
-    -d "{\"family_id\":\"$ADMIN_FAMILY_ID\",\"category_id\":\"$CATEGORY_ID\",\"period\":\"month\",\"amount_cents\":50000,\"start_date\":\"$(date +%Y-%m-01)\"}")
+    -d "{\"family_id\":\"$ADMIN_FAMILY_ID\",\"category_id\":\"$CATEGORY_ID\",\"period\":\"monthly\",\"amount_cents\":50000,\"start_date\":\"$(date +%Y-%m-01)\",\"end_date\":\"$(date -v+1m +%Y-%m-01)\"}")
   BUDGET_HTTP=$(echo "$BUDGET_RES" | tail -1)
   check_response "创建预算" "$BUDGET_HTTP" "201"
 fi
 
-# 3.7 查询统计报表（正确路径：/statistics/overview）
-STATS_RES=$(curl -s -w "\n%{http_code}" "$BASE_FINANCE/api/finance/statistics/overview?family_id=$ADMIN_FAMILY_ID&period=month" \
+# 3.7 查询统计报表（正确路径：/statistics/overview，period 参数）
+STATS_RES=$(curl -s -w "\n%{http_code}" "$BASE_FINANCE/api/finance/statistics/overview?family_id=$ADMIN_FAMILY_ID&period=monthly" \
   -H "Authorization: Bearer $ADMIN_TOKEN")
 STATS_HTTP=$(echo "$STATS_RES" | tail -1)
 check_response "查询统计报表" "$STATS_HTTP" "200"
@@ -336,8 +336,8 @@ MODULES_RES=$(curl -s -w "\n%{http_code}" "$BASE_HOMEOS/api/homeos/family/module
 MODULES_HTTP=$(echo "$MODULES_RES" | tail -1)
 check_response "查询家庭模块配置" "$MODULES_HTTP" "200"
 
-# 7.2 查询成员列表（正确路径：/members/snapshot）
-MEMBERS_RES=$(curl -s -w "\n%{http_code}" "$BASE_HOMEOS/api/homeos/members/snapshot?family_id=$ADMIN_FAMILY_ID" \
+# 7.2 查询成员列表（正确路径：/members/snapshot，参数 fid）
+MEMBERS_RES=$(curl -s -w "\n%{http_code}" "$BASE_HOMEOS/api/homeos/members/snapshot?fid=$ADMIN_FAMILY_ID" \
   -H "Authorization: Bearer $ADMIN_TOKEN")
 MEMBERS_HTTP=$(echo "$MEMBERS_RES" | tail -1)
 check_response "查询成员列表" "$MEMBERS_HTTP" "200"
