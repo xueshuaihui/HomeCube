@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/xueshuaihui/HomeCube/server/packages/authz"
+	svcauth "github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/auth"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/model"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/repo"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/service"
@@ -266,6 +268,24 @@ func (h *FinanceHandler) ListTransactions(c *gin.Context) {
 		return
 	}
 
+	// Get current user session for L3 visibility filtering (PRD 15.4)
+	sess, err := svcauth.SessionFrom(c)
+	if err == nil && sess != nil {
+		// Apply L3 filter: hide private transactions from non-author, non-owner
+		filtered := make([]*model.FinanceTransaction, 0, len(transactions))
+		for _, tx := range transactions {
+			if tx.Visibility == "private" {
+				isAuthor := tx.CreatedBy != nil && *tx.CreatedBy == sess.MemberID
+				isOwner := sess.Role == authz.RoleOwner
+				if !isAuthor && !isOwner {
+					continue
+				}
+			}
+			filtered = append(filtered, tx)
+		}
+		transactions = filtered
+	}
+
 	response := gin.H{
 		"items": transactions,
 	}
@@ -367,10 +387,36 @@ func (h *FinanceHandler) DeleteTransaction(c *gin.Context) {
 		return
 	}
 
-	// In a real implementation, deletedBy would come from the authenticated user context
-	deletedBy := "system" // Placeholder
+	// Get current user from context (set by auth middleware)
+	sess, err := svcauth.SessionFrom(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
+		return
+	}
 
-	if err := h.repo.SoftDeleteTransaction(c.Request.Context(), id, deletedBy); err != nil {
+	// Load the transaction to check ownership and family_id
+	ctx := c.Request.Context()
+	tx, err := h.repo.GetTransactionByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "transaction not found"})
+		return
+	}
+
+	// Permission check: only author or owner can delete (PRD 15.3)
+	isAuthor := tx.CreatedBy != nil && *tx.CreatedBy == sess.MemberID
+	isOwner := sess.Role == authz.RoleOwner
+	
+	if !isAuthor && !isOwner {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error":   "forbidden",
+			"message": "只有流水创建者或家庭管理员可以删除流水",
+		})
+		return
+	}
+
+	deletedBy := sess.MemberID
+
+	if err := h.repo.SoftDeleteTransaction(ctx, id, deletedBy); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete transaction: " + err.Error()})
 		return
 	}

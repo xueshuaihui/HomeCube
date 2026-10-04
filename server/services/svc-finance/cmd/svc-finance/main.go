@@ -24,9 +24,11 @@ import (
 	"time"
 
 	"github.com/xueshuaihui/HomeCube/server/packages/adapter/asr"
+	"github.com/xueshuaihui/HomeCube/server/packages/authz"
 	"github.com/xueshuaihui/HomeCube/server/packages/bus"
 	"github.com/xueshuaihui/HomeCube/server/packages/obs"
 	"github.com/xueshuaihui/HomeCube/server/packages/registry"
+	svcauth "github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/auth"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/handler"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/repo"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/service"
@@ -231,104 +233,121 @@ func run(addr string) error {
 	// Register business routes under the finance domain's route prefix (/api/finance)
 	group := svc.Engine.Group(d.RoutePrefix)
 
-	// Existing flow list endpoint (mock)
-	group.GET("/flow/list", handler.FlowListHandler)
+	// Auth middleware: all finance routes require a valid JWT with family_id (PRD 15.2)
+	// The signer is shared with homeos -- both services verify RS256 tokens signed by the same key pair
+	signer, err := svcauth.NewSigner()
+	if err != nil {
+		svc.Logger.Error("signer_init_failed", "err", err.Error())
+		os.Exit(1)
+	}
+	mw := svcauth.NewMiddleware(signer, &svcauth.MiddlewareConfig{
+		Code:          code,
+		OnDenied:      func(c *gin.Context, sess *svcauth.Session, event, reason string) {}, // audit handled by homeos
+		OnboardingRoutes: map[string]bool{}, // finance has no onboarding routes
+	})
 
-	// Account endpoints
-	group.POST("/accounts", financeHandler.CreateAccount)
-	group.GET("/accounts", financeHandler.ListAccounts)
-	group.PUT("/accounts/:id/archive", financeHandler.ArchiveAccount)
+	// Protected routes: all require authentication + family context
+	protected := group.Group("", mw.Handler())
+	{
+		// Existing flow list endpoint (mock)
+		protected.GET("/flow/list", handler.FlowListHandler)
 
-	// Category endpoints
-	group.POST("/categories", financeHandler.CreateCategory)
-	group.GET("/categories", financeHandler.ListCategories)
-	group.PUT("/categories/:id/deactivate", financeHandler.DeactivateCategory)
+		// Account endpoints
+		protected.POST("/accounts", financeHandler.CreateAccount)
+		protected.GET("/accounts", financeHandler.ListAccounts)
+		protected.PUT("/accounts/:id/archive", financeHandler.ArchiveAccount)
 
-	// Transaction endpoints
-	group.POST("/transactions", financeHandler.CreateTransaction)
-	group.GET("/transactions", financeHandler.ListTransactions)
-	group.GET("/transactions/:id", financeHandler.GetTransaction)
-	group.PUT("/transactions/:id", financeHandler.UpdateTransaction)
-	group.DELETE("/transactions/:id", financeHandler.DeleteTransaction)
+		// Category endpoints
+		protected.POST("/categories", financeHandler.CreateCategory)
+		protected.GET("/categories", financeHandler.ListCategories)
+		protected.PUT("/categories/:id/deactivate", financeHandler.DeactivateCategory)
+
+		// Transaction endpoints
+		protected.POST("/transactions", financeHandler.CreateTransaction)
+		protected.GET("/transactions", financeHandler.ListTransactions)
+		protected.GET("/transactions/:id", financeHandler.GetTransaction)
+		protected.PUT("/transactions/:id", financeHandler.UpdateTransaction)
+		protected.DELETE("/transactions/:id", financeHandler.DeleteTransaction)
 
 	// Ledger endpoints
-	group.POST("/ledgers", financeHandler.CreateLedger)
-	group.GET("/ledgers", financeHandler.ListLedgers)
+		protected.POST("/ledgers", financeHandler.CreateLedger)
+		protected.GET("/ledgers", financeHandler.ListLedgers)
 
 	// Balance endpoints
-	group.GET("/accounts/:id/balance", financeHandler.GetAccountBalance)
+		protected.GET("/accounts/:id/balance", financeHandler.GetAccountBalance)
 
 	// Statistics endpoints
-	group.GET("/statistics/overview", financeHandler.GetOverviewStats)
-	group.GET("/statistics/trend", financeHandler.GetTrendStats)
-	group.GET("/statistics/category", financeHandler.GetCategoryStats)
-	group.GET("/statistics/member", financeHandler.GetMemberStats)
+		protected.GET("/statistics/overview", financeHandler.GetOverviewStats)
+		protected.GET("/statistics/trend", financeHandler.GetTrendStats)
+		protected.GET("/statistics/category", financeHandler.GetCategoryStats)
+		protected.GET("/statistics/member", financeHandler.GetMemberStats)
 
 	// Budget endpoints
-	group.POST("/budgets", financeHandler.CreateBudget)
-	group.GET("/budgets", financeHandler.ListBudgets)
+		protected.POST("/budgets", financeHandler.CreateBudget)
+		protected.GET("/budgets", financeHandler.ListBudgets)
 
 	// Bill endpoints
-	group.POST("/bills", financeHandler.CreateBill)
-	group.GET("/bills", financeHandler.ListBills)
-	group.PUT("/bills/:id/pay", financeHandler.PayBill)
+		protected.POST("/bills", financeHandler.CreateBill)
+		protected.GET("/bills", financeHandler.ListBills)
+		protected.PUT("/bills/:id/pay", financeHandler.PayBill)
 
 	// Export endpoint
-	group.GET("/export", financeHandler.ExportTransactions)
+		protected.GET("/export", financeHandler.ExportTransactions)
 
 	// Voice entry endpoint
-	group.POST("/voice-entry", voiceHandler.VoiceEntry)
+		protected.POST("/voice-entry", voiceHandler.VoiceEntry)
 
 	// Loan endpoints
-	group.POST("/loans", financeHandler.CreateLoan)
-	group.GET("/loans", financeHandler.ListLoans)
-	group.PUT("/loans/:id/payoff", financeHandler.PayOffLoan)
-	group.GET("/loans/:id/repayment-plans", financeHandler.GetRepaymentPlans)
+		protected.POST("/loans", financeHandler.CreateLoan)
+		protected.GET("/loans", financeHandler.ListLoans)
+		protected.PUT("/loans/:id/payoff", financeHandler.PayOffLoan)
+		protected.GET("/loans/:id/repayment-plans", financeHandler.GetRepaymentPlans)
 
 	// Repayment plan endpoints
-	group.PUT("/repayment-plans/:id/pay", financeHandler.PayRepaymentPlan)
+		protected.PUT("/repayment-plans/:id/pay", financeHandler.PayRepaymentPlan)
 
 	// Goal endpoints
-	group.POST("/goals", financeHandler.CreateGoal)
-	group.GET("/goals", financeHandler.ListGoals)
-	group.PUT("/goals/:id/progress", financeHandler.UpdateGoalProgress)
+		protected.POST("/goals", financeHandler.CreateGoal)
+		protected.GET("/goals", financeHandler.ListGoals)
+		protected.PUT("/goals/:id/progress", financeHandler.UpdateGoalProgress)
 
 	// Split settlement endpoints (S17-S18)
-	group.POST("/split-settlements", financeHandler.CreateSplitSettlement)
-	group.GET("/split-settlements", financeHandler.ListSplitSettlements)
-	group.PUT("/split-settlements/:id/participants", financeHandler.AddParticipant)
-	group.PUT("/split-settlements/:id/settle", financeHandler.SettleSplit)
-	group.GET("/split-settlements/:id/participants", financeHandler.GetParticipants)
+		protected.POST("/split-settlements", financeHandler.CreateSplitSettlement)
+		protected.GET("/split-settlements", financeHandler.ListSplitSettlements)
+		protected.PUT("/split-settlements/:id/participants", financeHandler.AddParticipant)
+		protected.PUT("/split-settlements/:id/settle", financeHandler.SettleSplit)
+		protected.GET("/split-settlements/:id/participants", financeHandler.GetParticipants)
 
 	// Credit card endpoints (S17-S18)
-	group.POST("/credit-cards", financeHandler.CreateCreditCard)
-	group.GET("/credit-cards", financeHandler.ListCreditCards)
-	group.PUT("/credit-cards/:id/balance", financeHandler.UpdateCreditCardBalance)
+		protected.POST("/credit-cards", financeHandler.CreateCreditCard)
+		protected.GET("/credit-cards", financeHandler.ListCreditCards)
+		protected.PUT("/credit-cards/:id/balance", financeHandler.UpdateCreditCardBalance)
 
 	// Invoice endpoints (S17-S18)
-	group.POST("/invoices", financeHandler.CreateInvoice)
-	group.GET("/invoices", financeHandler.ListInvoices)
-	group.PUT("/invoices/:id/reimburse", financeHandler.ReimburseInvoice)
+		protected.POST("/invoices", financeHandler.CreateInvoice)
+		protected.GET("/invoices", financeHandler.ListInvoices)
+		protected.PUT("/invoices/:id/reimburse", financeHandler.ReimburseInvoice)
 
 	// Asset-liability report endpoints (S17-S18)
-	group.POST("/reports/asset-liability", financeHandler.GenerateAssetLiabilityReport)
-	group.GET("/reports/asset-liability", financeHandler.GetAssetLiabilityReport)
+		protected.POST("/reports/asset-liability", financeHandler.GenerateAssetLiabilityReport)
+		protected.GET("/reports/asset-liability", financeHandler.GetAssetLiabilityReport)
 
 	// Recurring rule endpoints (P1-M1: 周期记账规则)
-	group.GET("/recurring", financeHandler.ListRecurringRules)
-	group.POST("/recurring", financeHandler.CreateRecurringRule)
-	group.PUT("/recurring/:id", financeHandler.UpdateRecurringRule)
-	group.DELETE("/recurring/:id", financeHandler.DeleteRecurringRule)
+		protected.GET("/recurring", financeHandler.ListRecurringRules)
+		protected.POST("/recurring", financeHandler.CreateRecurringRule)
+		protected.PUT("/recurring/:id", financeHandler.UpdateRecurringRule)
+		protected.DELETE("/recurring/:id", financeHandler.DeleteRecurringRule)
 
 	// Trash/Recycle bin endpoints (回收站功能)
-	group.GET("/trash", financeHandler.ListTrash)
-	group.POST("/trash/:id/restore", financeHandler.RestoreTrashItem)
-	group.DELETE("/trash/:id", financeHandler.PermanentlyDeleteTrashItem)
-	group.POST("/trash/clear-expired", financeHandler.ClearExpiredTrash)
+		protected.GET("/trash", financeHandler.ListTrash)
+		protected.POST("/trash/:id/restore", financeHandler.RestoreTrashItem)
+		protected.DELETE("/trash/:id", financeHandler.PermanentlyDeleteTrashItem)
+		protected.POST("/trash/clear-expired", financeHandler.ClearExpiredTrash)
 
 	// Finance settings endpoints (PRD 4.8)
-	group.GET("/settings", financeHandler.GetFinanceSettings)
-	group.PUT("/settings", financeHandler.UpdateFinanceSettings)
+		protected.GET("/settings", financeHandler.GetFinanceSettings)
+		protected.PUT("/settings", financeHandler.UpdateFinanceSettings)
+	} // end of protected routes
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
