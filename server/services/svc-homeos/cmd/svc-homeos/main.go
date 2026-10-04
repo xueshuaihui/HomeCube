@@ -27,8 +27,8 @@ import (
 	"syscall"
 
 	"github.com/gin-gonic/gin"
+	svcauth "github.com/xueshuaihui/HomeCube/server/packages/auth"
 	"github.com/xueshuaihui/HomeCube/server/packages/obs"
-	svcauth "github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/auth"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/consumer"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/handler"
 )
@@ -185,8 +185,9 @@ func run(addr string) error {
 	// only the first half of the gate.
 	//
 	// Which of these an ONBOARDING (family-less) token may reach is decided by svcauth's allowlist,
-	// built from services.RoutePrefix above: POST/GET /families and GET /auth/me are in it, every other
-	// route here answers 403 insufficient_scope. That is the gate, not this list's ordering.
+	// built from services.RoutePrefix above: POST/GET /families, POST /family/invite/accept and
+	// GET /auth/me are in it, every other route here answers 403 insufficient_scope. That is the
+	// gate, not this list's ordering.
 	protected := group.Group("", mw.Handler())
 	{
 		familyGroup := protected.Group("/families")
@@ -197,18 +198,23 @@ func run(addr string) error {
 			familyGroup.GET("", func(c *gin.Context) {
 				handler.ListFamilies(c, services)
 			})
-			
-			// Invitation management (PRD 3.4.1 邀请成员)
-			familyGroup.POST("/:family_id/invites", func(c *gin.Context) {
-				handler.CreateInvite(c, services)
-			})
-			familyGroup.GET("/:family_id/invites", func(c *gin.Context) {
-				handler.ListInvites(c, services)
-			})
-			familyGroup.DELETE("/:family_id/invites/:invite_id", func(c *gin.Context) {
-				handler.RevokeInvite(c, services)
-			})
 		}
+
+		// 邀请三接口，路径即 PRD 3.4.1 接口表与 web 前端（family/invite.vue、auth/family-join.vue）
+		// 共同登记的那组：
+		//   POST   /members/invite        发起邀请（仅 owner；家庭取自会话，不收 family_id —— PRD 15.2）
+		//   GET    /family/invites        待处理邀请列表（前端在册；PRD 接口表未登记该读口，已上报）
+		//   DELETE /family/invites/{id}   撤销邀请（三态链接同时失效，落审计）
+		// 此前注册的 /families/:family_id/invites* 三条既不在 PRD 也不在前端，已删除而非留别名。
+		protected.POST("/members/invite", func(c *gin.Context) {
+			handler.CreateInvite(c, services)
+		})
+		protected.GET("/family/invites", func(c *gin.Context) {
+			handler.ListInvites(c, services)
+		})
+		protected.DELETE("/family/invites/:id", func(c *gin.Context) {
+			handler.RevokeInvite(c, services)
+		})
 
 		// Session introspection: the one read a family-less caller needs to see its own state, and the
 		// only /auth/* route behind the middleware (the four login-side routes above must stay public).

@@ -1,0 +1,1184 @@
+{
+  "total": 147,
+  "failed": 0,
+  "idempotency_ok": true,
+  "uncovered": [],
+  "results": [
+    {
+      "method": "GET",
+      "path": "/api/finance/flow/list",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/flow/list",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"items\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/accounts",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/accounts",
+      "status": 201,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"id\":\"b5a57d25-b50f-4033-bb08-6ddfdd81905c\",\"family_id\":\"660e8400-e29b-41d4-a716-446655440001\",\"name\":\"acc-acceptance\",\"type\":\"cash\",\"balance\":0,\"is_archived\":false,\"version\":1,\"created_at\":\"2026-10-"
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/accounts",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/accounts",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"items\":[{\"id\":\"b5a57d25-b50f-4033-bb08-6ddfdd81905c\",\"family_id\":\"660e8400-e29b-41d4-a716-446655440001\",\"name\":\"acc-acceptance\",\"type\":\"cash\",\"balance\":0,\"is_archived\":false,\"version\":1,\"created_at\""
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/accounts/:id/archive",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/accounts/:id/archive",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"message\":\"account archived successfully\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/categories",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/categories",
+      "status": 201,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"id\":\"c0b0bdfd-b442-4a53-b3eb-bf4348965907\",\"family_id\":\"660e8400-e29b-41d4-a716-446655440001\",\"name\":\"cat-acceptance\",\"icon\":\"c\",\"sort_order\":0,\"is_active\":true,\"version\":1,\"created_at\":\"2026-10-04T"
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/categories",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/categories",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"items\":[{\"id\":\"c0b0bdfd-b442-4a53-b3eb-bf4348965907\",\"family_id\":\"660e8400-e29b-41d4-a716-446655440001\",\"name\":\"cat-acceptance\",\"icon\":\"c\",\"sort_order\":0,\"is_active\":true,\"version\":1,\"created_at\":\"2"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/categories/:id/deactivate",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/categories/:id/deactivate",
+      "status": 404,
+      "verdict": "PASS",
+      "reason": "业务 4xx（404）",
+      "body_snippet": "{\"error\":\"failed to deactivate category: category f0e6566d-e64a-45ab-a694-5767c309b4ab: finance resource not found\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/transactions",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/transactions",
+      "status": 201,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"id\":\"09454511-b7af-4e73-9716-4732d80888af\",\"family_id\":\"660e8400-e29b-41d4-a716-446655440001\",\"type\":\"expense\",\"amount_cents\":-100,\"account_id\":\"f0e6566d-e64a-45ab-a694-5767c309b4ab\",\"occurred_at\":\""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/transactions",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/transactions",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"items\":[{\"id\":\"e6bbbc75-0eb7-4ca6-bac7-73e6f0c2b8f6\",\"family_id\":\"660e8400-e29b-41d4-a716-446655440001\",\"type\":\"expense\",\"amount_cents\":-777,\"account_id\":\"9fbf9333-fc54-43b8-82ad-8b411c9e9908\",\"occu"
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/transactions/:id",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/transactions/:id",
+      "status": 404,
+      "verdict": "PASS",
+      "reason": "业务 4xx（404）",
+      "body_snippet": "{\"error\":\"transaction not found or deleted\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/transactions/:id",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/transactions/:id",
+      "status": 400,
+      "verdict": "PASS",
+      "reason": "业务 4xx（400）",
+      "body_snippet": "{\"error\":\"invalid request: Key: 'UpdateTransactionRequest.Version' Error:Field validation for 'Version' failed on the 'required' tag\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/finance/transactions/:id",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/finance/transactions/:id",
+      "status": 404,
+      "verdict": "PASS",
+      "reason": "业务 4xx（404）",
+      "body_snippet": "{\"error\":\"transaction not found\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/ledgers",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/ledgers",
+      "status": 400,
+      "verdict": "PASS",
+      "reason": "业务 4xx（400）",
+      "body_snippet": "{\"error\":\"invalid request: Key: 'CreateLedgerRequest.MemberIDs' Error:Field validation for 'MemberIDs' failed on the 'min' tag\\nKey: 'CreateLedgerRequest.PeriodStart' Error:Field validation for 'Perio"
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/ledgers",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/ledgers",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"items\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/accounts/:id/balance",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/accounts/:id/balance",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"account_id\":\"f0e6566d-e64a-45ab-a694-5767c309b4ab\",\"balance\":-100}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/statistics/overview",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/statistics/overview",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"total_income\":0,\"total_expense\":-109454,\"net_balance\":-109454,\"account_count\":10}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/statistics/trend",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/statistics/trend",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"items\":[{\"period\":\"2026-10\",\"income\":0,\"expense\":-109454}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/statistics/category",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/statistics/category",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"items\":[{\"category_id\":\"\",\"category_name\":\"未分类\",\"amount\":-8054,\"percentage\":7.358342317320518,\"count\":10},{\"category_id\":\"6099bddc-dea4-4663-b267-c8c45055e7fe\",\"category_name\":\"餐饮\",\"amount\":-10000,\""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/statistics/member",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/statistics/member",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"items\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/budgets",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/budgets",
+      "status": 201,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"id\":\"3d5f458f-0dfe-4d6a-835a-5d0c2f672a29\",\"family_id\":\"660e8400-e29b-41d4-a716-446655440001\",\"category_id\":\"1846efab-cab6-40b5-a229-9df626acbbb4\",\"amount_cents\":100000,\"period\":\"monthly\",\"start_dat"
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/budgets",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/budgets",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"items\":[{\"id\":\"3d5f458f-0dfe-4d6a-835a-5d0c2f672a29\",\"family_id\":\"660e8400-e29b-41d4-a716-446655440001\",\"category_id\":\"1846efab-cab6-40b5-a229-9df626acbbb4\",\"amount_cents\":100000,\"period\":\"monthly\","
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/bills",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/bills",
+      "status": 400,
+      "verdict": "PASS",
+      "reason": "业务 4xx（400）",
+      "body_snippet": "{\"error\":\"invalid request: Key: 'CreateBillRequest.PayeeID' Error:Field validation for 'PayeeID' failed on the 'required' tag\\nKey: 'CreateBillRequest.DueAt' Error:Field validation for 'DueAt' failed "
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/bills",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/bills",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"items\":[]}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/bills/:id/pay",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/bills/:id/pay",
+      "status": 404,
+      "verdict": "PASS",
+      "reason": "业务 4xx（404）",
+      "body_snippet": "{\"error\":\"failed to mark bill as paid: bill f0e6566d-e64a-45ab-a694-5767c309b4ab: finance resource not found\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/export",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/export",
+      "status": 400,
+      "verdict": "PASS",
+      "reason": "业务 4xx（400）",
+      "body_snippet": "{\"error\":\"type parameter is required (income/expense/transfer/all)\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/voice-entry",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/voice-entry",
+      "status": 400,
+      "verdict": "PASS",
+      "reason": "业务 4xx（400）",
+      "body_snippet": "{\"error\":\"invalid request: Key: 'VoiceEntryRequest.FamilyID' Error:Field validation for 'FamilyID' failed on the 'required' tag\\nKey: 'VoiceEntryRequest.AccountID' Error:Field validation for 'AccountI"
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/loans",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/loans",
+      "status": 400,
+      "verdict": "PASS",
+      "reason": "业务 4xx（400）",
+      "body_snippet": "{\"error\":\"invalid request: Key: 'CreateLoanRequest.LenderName' Error:Field validation for 'LenderName' failed on the 'required' tag\\nKey: 'CreateLoanRequest.BorrowerName' Error:Field validation for 'B"
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/loans",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/loans",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"items\":[]}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/loans/:id/payoff",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/loans/:id/payoff",
+      "status": 404,
+      "verdict": "PASS",
+      "reason": "业务 4xx（404）",
+      "body_snippet": "{\"error\":\"failed to pay off loan: loan f0e6566d-e64a-45ab-a694-5767c309b4ab: finance resource not found\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/loans/:id/repayment-plans",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/loans/:id/repayment-plans",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"items\":[]}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/repayment-plans/:id/pay",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/repayment-plans/:id/pay",
+      "status": 404,
+      "verdict": "PASS",
+      "reason": "业务 4xx（404）",
+      "body_snippet": "{\"error\":\"failed to mark repayment plan as paid: repayment_plan f0e6566d-e64a-45ab-a694-5767c309b4ab: finance resource not found\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/goals",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/goals",
+      "status": 400,
+      "verdict": "PASS",
+      "reason": "业务 4xx（400）",
+      "body_snippet": "{\"error\":\"invalid request: Key: 'CreateGoalRequest.Deadline' Error:Field validation for 'Deadline' failed on the 'required' tag\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/goals",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/goals",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"items\":[]}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/goals/:id/progress",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/goals/:id/progress",
+      "status": 400,
+      "verdict": "PASS",
+      "reason": "业务 4xx（400）",
+      "body_snippet": "{\"error\":\"invalid request: Key: 'UpdateGoalProgressRequest.CurrentAmountCents' Error:Field validation for 'CurrentAmountCents' failed on the 'required' tag\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/split-settlements",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/split-settlements",
+      "status": 400,
+      "verdict": "PASS",
+      "reason": "业务 4xx（400）",
+      "body_snippet": "{\"error\":\"invalid request: Key: 'CreateSplitSettlementRequest.FamilyID' Error:Field validation for 'FamilyID' failed on the 'required' tag\\nKey: 'CreateSplitSettlementRequest.TransactionID' Error:Fiel"
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/split-settlements",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/split-settlements",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"items\":[]}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/split-settlements/:id/participants",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/split-settlements/:id/participants",
+      "status": 400,
+      "verdict": "PASS",
+      "reason": "业务 4xx（400）",
+      "body_snippet": "{\"error\":\"invalid request: Key: 'AddParticipantRequest.SettlementID' Error:Field validation for 'SettlementID' failed on the 'required' tag\\nKey: 'AddParticipantRequest.AccountID' Error:Field validati"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/split-settlements/:id/settle",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/split-settlements/:id/settle",
+      "status": 404,
+      "verdict": "PASS",
+      "reason": "业务 4xx（404）",
+      "body_snippet": "{\"error\":\"failed to settle split: split_settlement f0e6566d-e64a-45ab-a694-5767c309b4ab: finance resource not found\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/split-settlements/:id/participants",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/split-settlements/:id/participants",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"items\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/credit-cards",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/credit-cards",
+      "status": 400,
+      "verdict": "PASS",
+      "reason": "业务 4xx（400）",
+      "body_snippet": "{\"error\":\"invalid request: Key: 'CreateCreditCardRequest.FamilyID' Error:Field validation for 'FamilyID' failed on the 'required' tag\\nKey: 'CreateCreditCardRequest.CardNumberHash' Error:Field validat"
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/credit-cards",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/credit-cards",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"items\":[]}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/credit-cards/:id/balance",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/credit-cards/:id/balance",
+      "status": 400,
+      "verdict": "PASS",
+      "reason": "业务 4xx（400）",
+      "body_snippet": "{\"error\":\"invalid request: Key: 'UpdateCreditCardBalanceRequest.NewBalanceCents' Error:Field validation for 'NewBalanceCents' failed on the 'required' tag\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/invoices",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/invoices",
+      "status": 400,
+      "verdict": "PASS",
+      "reason": "业务 4xx（400）",
+      "body_snippet": "{\"error\":\"invalid request: Key: 'CreateInvoiceRequest.FamilyID' Error:Field validation for 'FamilyID' failed on the 'required' tag\\nKey: 'CreateInvoiceRequest.InvoiceNumber' Error:Field validation for"
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/invoices",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/invoices",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"items\":[]}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/invoices/:id/reimburse",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/invoices/:id/reimburse",
+      "status": 400,
+      "verdict": "PASS",
+      "reason": "业务 4xx（400）",
+      "body_snippet": "{\"error\":\"invalid request: Key: 'ReimburseInvoiceRequest.Status' Error:Field validation for 'Status' failed on the 'required' tag\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/reports/asset-liability",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/reports/asset-liability",
+      "status": 400,
+      "verdict": "PASS",
+      "reason": "业务 4xx（400）",
+      "body_snippet": "{\"error\":\"invalid request: Key: 'GenerateAssetLiabilityReportRequest.FamilyID' Error:Field validation for 'FamilyID' failed on the 'required' tag\\nKey: 'GenerateAssetLiabilityReportRequest.Period' Err"
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/reports/asset-liability",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/reports/asset-liability",
+      "status": 404,
+      "verdict": "PASS",
+      "reason": "业务 4xx（404）",
+      "body_snippet": "{\"error\":\"failed to get asset-liability report: asset_liability_report 660e8400-e29b-41d4-a716-446655440001: finance resource not found\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/recurring",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/recurring",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"items\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/recurring",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/recurring",
+      "status": 400,
+      "verdict": "PASS",
+      "reason": "业务 4xx（400）",
+      "body_snippet": "{\"error\":\"invalid request: Key: 'FamilyID' Error:Field validation for 'FamilyID' failed on the 'required' tag\\nKey: 'Name' Error:Field validation for 'Name' failed on the 'required' tag\\nKey: 'Type' E"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/recurring/:id",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/recurring/:id",
+      "status": 404,
+      "verdict": "PASS",
+      "reason": "业务 4xx（404）",
+      "body_snippet": "{\"error\":\"failed to get recurring rule: recurring_rule f0e6566d-e64a-45ab-a694-5767c309b4ab: finance resource not found\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/finance/recurring/:id",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/finance/recurring/:id",
+      "status": 404,
+      "verdict": "PASS",
+      "reason": "业务 4xx（404）",
+      "body_snippet": "{\"error\":\"failed to delete recurring rule: recurring_rule f0e6566d-e64a-45ab-a694-5767c309b4ab: finance resource not found\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/trash",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/trash",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"items\":[{\"id\":\"34b12015-cc87-4c34-af6b-18ee61fede33\",\"family_id\":\"660e8400-e29b-41d4-a716-446655440001\",\"type\":\"expense\",\"amount_cents\":-5000,\"category_id\":\"70827749-5b40-4a45-812b-0826d849da16\",\"ac"
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/trash/:id/restore",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/trash/:id/restore",
+      "status": 404,
+      "verdict": "PASS",
+      "reason": "业务 4xx（404）",
+      "body_snippet": "{\"error\":\"failed to restore item: transaction f0e6566d-e64a-45ab-a694-5767c309b4ab: finance resource not found\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/finance/trash/:id",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/finance/trash/:id",
+      "status": 404,
+      "verdict": "PASS",
+      "reason": "业务 4xx（404）",
+      "body_snippet": "{\"error\":\"failed to permanently delete item: transaction f0e6566d-e64a-45ab-a694-5767c309b4ab: finance resource not found\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/trash/clear-expired",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "POST",
+      "path": "/api/finance/trash/clear-expired",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"count\":0,\"message\":\"expired trash cleared\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/settings",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/finance/settings",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"id\":\"b8904d1d-2efa-4efb-9db8-09da002168df\",\"family_id\":\"660e8400-e29b-41d4-a716-446655440001\",\"currency_unit\":\"CNY\",\"decimal_places\":2,\"budget_alert_threshold\":0.8,\"auto_categorize_enabled\":false,\"r"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/settings",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "PUT",
+      "path": "/api/finance/settings",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"id\":\"b8904d1d-2efa-4efb-9db8-09da002168df\",\"family_id\":\"660e8400-e29b-41d4-a716-446655440001\",\"currency_unit\":\"CNY\",\"decimal_places\":2,\"budget_alert_threshold\":0.8,\"auto_categorize_enabled\":false,\"r"
+    },
+    {
+      "method": "GET",
+      "path": "/api/homeos/.well-known/jwks.json",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"keys\":[{\"kty\":\"RSA\",\"kid\":\"test-key-1\",\"use\":\"sig\",\"alg\":\"RS256\",\"n\":\"16EZ5F5mcmjykHaZV3Y6ira85sWAlTnpUM2sA_ENq3BQHIGfVAvFzNEmWnMOmWxhD8NM9Xx4dPJl3NVHArVH0x_wHDDhoIqlsmRPizEZQGhWSMa1Z4MEcZASHuJWR0lY"
+    },
+    {
+      "method": "GET",
+      "path": "/api/homeos/legal/privacy-policy",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"content\":\"【占位】本文档尚未定版，商用前将由法务部门提供正式文本。\",\"title\":\"隐私政策\",\"updated_at\":\"2026-10-03\",\"version\":\"P1-M2 收口期\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/homeos/legal/user-agreement",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"content\":\"【占位】本文档尚未定版，商用前将由法务部门提供正式文本。\",\"title\":\"用户协议\",\"updated_at\":\"2026-10-03\",\"version\":\"P1-M2 收口期\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/homeos/auth/me",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/homeos/auth/me",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"user_id\":\"550e8400-e29b-41d4-a716-446655440000\",\"phone\":\"13800138000\",\"name\":\"测试用户\",\"family_id\":\"660e8400-e29b-41d4-a716-446655440001\",\"role\":\"owner\",\"pver\":2,\"member_id\":\"770e8400-e29b-41d4-a716-44"
+    },
+    {
+      "method": "POST",
+      "path": "/api/homeos/family/invite/accept",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "POST",
+      "path": "/api/homeos/family/invite/accept",
+      "status": 400,
+      "verdict": "PASS",
+      "reason": "业务 4xx（400）",
+      "body_snippet": "{\"error\":\"invalid_request\",\"message\":\"需要 invite_code 字段\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/homeos/family/switch",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "POST",
+      "path": "/api/homeos/family/switch",
+      "status": 400,
+      "verdict": "PASS",
+      "reason": "业务 4xx（400）",
+      "body_snippet": "{\"error\":\"invalid_request\",\"message\":\"需要 family_id 字段\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/homeos/family/modules",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/homeos/family/modules",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"modules\":[{\"code\":\"finance\",\"name\":\"财务\",\"icon\":\"wallet\",\"enabled\":true,\"visible\":true,\"born\":true,\"availability\":\"available\"},{\"code\":\"purchase\",\"name\":\"采购\",\"icon\":\"shopping-cart\",\"enabled\":false,\"v"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/homeos/family/modules",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "PUT",
+      "path": "/api/homeos/family/modules",
+      "status": 409,
+      "verdict": "PASS",
+      "reason": "业务 4xx（409）",
+      "body_snippet": "{\"error\":\"version_conflict\",\"message\":\"面配置已被其他成员改动，已取回最新配置，请照着新状态再决定（PRD 17.8 乐观锁）\",\"version\":1}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/homeos/home/summary",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/homeos/home/summary",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"family\":{\"id\":\"660e8400-e29b-41d4-a716-446655440001\",\"name\":\"测试家庭\",\"members\":[{\"member_id\":\"770e8400-e29b-41d4-a716-446655440002\",\"name\":\"测试用户\",\"relation\":\"户主\",\"avatar\":null}],\"member_count\":1},\"due"
+    },
+    {
+      "method": "GET",
+      "path": "/api/homeos/notifications",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/homeos/notifications",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"items\":[],\"unread\":0,\"unread_by_type\":{\"budget_alert\":0,\"system\":0,\"reminder\":0},\"next_cursor\":null}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/homeos/notifications/read",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "POST",
+      "path": "/api/homeos/notifications/read",
+      "status": 400,
+      "verdict": "PASS",
+      "reason": "业务 4xx（400）",
+      "body_snippet": "{\"error\":\"invalid_request\",\"message\":\"必须显式指定标记范围：all:true（本人全部未读）或非空的 notification_ids；两者皆空时不做任何写入（契约 /notifications/read 的 notification_ids 描述「为空则标记全部已读」与 all 缺省 false 冲突，已按不破坏收件箱的一边实现并上报）\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/homeos/dynamics",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/homeos/dynamics",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"items\":[],\"next_cursor\":null}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/homeos/dynamics/read",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "POST",
+      "path": "/api/homeos/dynamics/read",
+      "status": 400,
+      "verdict": "PASS",
+      "reason": "业务 4xx（400）",
+      "body_snippet": "{\"error\":\"invalid_request\",\"message\":\"必须显式指定标记范围：all:true（本人全部未读）或非空的 dynamic_ids；两者皆空时不做任何写入\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/homeos/search",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/homeos/search",
+      "status": 400,
+      "verdict": "PASS",
+      "reason": "业务 4xx（400）",
+      "body_snippet": "{\"error\":\"invalid request: q parameter is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/homeos/members/snapshot",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/homeos/members/snapshot",
+      "status": 400,
+      "verdict": "PASS",
+      "reason": "业务 4xx（400）",
+      "body_snippet": "{\"error\":\"fid query parameter is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/homeos/app/bundles",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/homeos/app/bundles",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"bundles\":[{\"code\":\"homeos\",\"version\":\"1.0.0\",\"url\":\"/static/bundles/homeos-1.0.0.js\",\"sha256\":\"placeholder_sha256_homeos\",\"size\":1024000,\"min_compat\":\"1.0.0\"},{\"code\":\"finance\",\"version\":\"1.0.0\",\"ur"
+    },
+    {
+      "method": "GET",
+      "path": "/api/homeos/app/version",
+      "status": 401,
+      "verdict": "PASS",
+      "reason": "匿名被正确拒绝",
+      "body_snippet": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/homeos/app/version",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "2xx",
+      "body_snippet": "{\"current_version\":\"1.0.0\",\"update_notes\":\"P1-M2 release: Complete financial management, loan tracking, split settlements\",\"min_compat\":\"1.0.0\",\"force_update\":false}"
+    },
+    {
+      "method": "GET",
+      "path": "homeos:/healthz",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "ok",
+      "body_snippet": "{\"checks\":[{\"name\":\"schema:homeos\",\"status\":\"up\"},{\"name\":\"jetstream\",\"status\":\"up\"}],\"code\":\"homeos\",\"service\":\"svc-hom"
+    },
+    {
+      "method": "GET",
+      "path": "finance:/healthz",
+      "status": 200,
+      "verdict": "PASS",
+      "reason": "ok",
+      "body_snippet": "{\"checks\":[{\"name\":\"schema:finance\",\"status\":\"up\"},{\"name\":\"jetstream\",\"status\":\"up\"}],\"code\":\"finance\",\"service\":\"svc-f"
+    }
+  ]
+}

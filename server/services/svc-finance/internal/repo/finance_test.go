@@ -123,7 +123,7 @@ func TestCreateAndGetAccount(t *testing.T) {
 		t.Fatalf("failed to create account: %v", err)
 	}
 
-	retrieved, err := r.GetAccountByID(ctx, account.ID)
+	retrieved, err := r.GetAccountByID(ctx, account.FamilyID, account.ID)
 	if err != nil {
 		t.Fatalf("failed to get account: %v", err)
 	}
@@ -183,12 +183,12 @@ func TestArchiveAccountWithZeroBalance(t *testing.T) {
 		t.Fatalf("failed to create account: %v", err)
 	}
 
-	err = r.ArchiveAccount(ctx, account.ID)
+	err = r.ArchiveAccount(ctx, account.FamilyID, account.ID)
 	if err != nil {
 		t.Fatalf("failed to archive account with zero balance: %v", err)
 	}
 
-	retrieved, err := r.GetAccountByID(ctx, account.ID)
+	retrieved, err := r.GetAccountByID(ctx, account.FamilyID, account.ID)
 	if err != nil {
 		t.Fatalf("failed to get account: %v", err)
 	}
@@ -215,7 +215,7 @@ func TestArchiveAccountWithNonZeroBalance(t *testing.T) {
 		t.Fatalf("failed to create account: %v", err)
 	}
 
-	err = r.ArchiveAccount(ctx, account.ID)
+	err = r.ArchiveAccount(ctx, account.FamilyID, account.ID)
 	if err != repo.ErrAccountBalanceNonZero {
 		t.Errorf("expected ErrAccountBalanceNonZero, got %v", err)
 	}
@@ -239,7 +239,7 @@ func TestCreateAndGetCategory(t *testing.T) {
 		t.Fatalf("failed to create category: %v", err)
 	}
 
-	retrieved, err := r.GetCategoryByID(ctx, category.ID)
+	retrieved, err := r.GetCategoryByID(ctx, category.FamilyID, category.ID)
 	if err != nil {
 		t.Fatalf("failed to get category: %v", err)
 	}
@@ -270,12 +270,12 @@ func TestDeactivateCategory(t *testing.T) {
 		t.Fatalf("failed to create category: %v", err)
 	}
 
-	err = r.DeactivateCategory(ctx, category.ID)
+	err = r.DeactivateCategory(ctx, category.FamilyID, category.ID)
 	if err != nil {
 		t.Fatalf("failed to deactivate category: %v", err)
 	}
 
-	retrieved, err := r.GetCategoryByID(ctx, category.ID)
+	retrieved, err := r.GetCategoryByID(ctx, category.FamilyID, category.ID)
 	if err != nil {
 		t.Fatalf("failed to get category: %v", err)
 	}
@@ -300,7 +300,7 @@ func TestCreateAndGetTransaction(t *testing.T) {
 		Version:     1,
 	}
 
-	input := repo.CreateTransactionInput{
+	input := &repo.CreateTransactionInput{
 		Transaction: transaction,
 		FamilyID:    "test-family-001",
 		RequestData: transaction,
@@ -311,7 +311,7 @@ func TestCreateAndGetTransaction(t *testing.T) {
 		t.Fatalf("failed to create transaction: %v", err)
 	}
 
-	retrieved, err := r.GetTransactionByID(ctx, transaction.ID)
+	retrieved, err := r.GetTransactionByID(ctx, transaction.FamilyID, transaction.ID)
 	if err != nil {
 		t.Fatalf("failed to get transaction: %v", err)
 	}
@@ -355,7 +355,7 @@ func TestIdempotentTransaction(t *testing.T) {
 		Version:         1,
 	}
 
-	input := repo.CreateTransactionInput{
+	input := &repo.CreateTransactionInput{
 		Transaction: transaction,
 		ClientReqID: clientReqID,
 		FamilyID:    "test-family-001",
@@ -380,7 +380,7 @@ func TestIdempotentTransaction(t *testing.T) {
 		Version:         1,
 	}
 
-	input2 := repo.CreateTransactionInput{
+	input2 := &repo.CreateTransactionInput{
 		Transaction: transaction2,
 		ClientReqID: clientReqID,
 		FamilyID:    "test-family-001",
@@ -434,7 +434,7 @@ func TestListTransactionsWithCursor(t *testing.T) {
 			Version:     1,
 		}
 
-		input := repo.CreateTransactionInput{
+		input := &repo.CreateTransactionInput{
 			Transaction: transaction,
 			FamilyID:    "test-family-001",
 			RequestData: transaction,
@@ -489,7 +489,7 @@ func TestSoftDeleteTransaction(t *testing.T) {
 		Version:     1,
 	}
 
-	input := repo.CreateTransactionInput{
+	input := &repo.CreateTransactionInput{
 		Transaction: transaction,
 		FamilyID:    "test-family-001",
 		RequestData: transaction,
@@ -500,7 +500,7 @@ func TestSoftDeleteTransaction(t *testing.T) {
 		t.Fatalf("failed to create transaction: %v", err)
 	}
 
-	err = r.SoftDeleteTransaction(ctx, transaction.ID, "user-001")
+	err = r.SoftDeleteTransaction(ctx, transaction.FamilyID, transaction.ID, "user-001")
 	if err != nil {
 		t.Fatalf("failed to soft delete transaction: %v", err)
 	}
@@ -535,7 +535,7 @@ func TestCreateAndGetLedger(t *testing.T) {
 		t.Fatalf("failed to create ledger: %v", err)
 	}
 
-	retrieved, err := r.GetLedgerByID(ctx, ledger.ID)
+	retrieved, err := r.GetLedgerByID(ctx, ledger.FamilyID, ledger.ID)
 	if err != nil {
 		t.Fatalf("failed to get ledger: %v", err)
 	}
@@ -604,7 +604,7 @@ func TestCreateAndGetBudget(t *testing.T) {
 		t.Fatalf("failed to create budget: %v", err)
 	}
 
-	retrieved, err := r.GetBudgetByID(ctx, budget.ID)
+	retrieved, err := r.GetBudgetByID(ctx, budget.FamilyID, budget.ID)
 	if err != nil {
 		t.Fatalf("failed to get budget: %v", err)
 	}
@@ -712,7 +712,7 @@ func TestCheckExceeded(t *testing.T) {
 			Description: "Expense " + string(rune('A'+i)),
 			Version:     1,
 		}
-		input := repo.CreateTransactionInput{
+		input := &repo.CreateTransactionInput{
 			Transaction: transaction,
 			FamilyID:    "test-family-001",
 			RequestData: transaction,
@@ -755,7 +755,7 @@ func TestCreateAndGetBill(t *testing.T) {
 		t.Fatalf("failed to create bill: %v", err)
 	}
 
-	retrieved, err := r.GetBillByID(ctx, bill.ID)
+	retrieved, err := r.GetBillByID(ctx, bill.FamilyID, bill.ID)
 	if err != nil {
 		t.Fatalf("failed to get bill: %v", err)
 	}
@@ -848,7 +848,7 @@ func TestMarkBillAsPaid(t *testing.T) {
 	}
 
 	// Mark as paid
-	updatedBill, err := r.MarkAsPaid(ctx, bill.ID)
+	updatedBill, err := r.MarkAsPaid(ctx, bill.FamilyID, bill.ID)
 	if err != nil {
 		t.Fatalf("failed to mark bill as paid: %v", err)
 	}
@@ -866,7 +866,7 @@ func TestMarkBillAsPaid(t *testing.T) {
 	}
 
 	// Verify the bill is updated in database
-	retrieved, err := r.GetBillByID(ctx, bill.ID)
+	retrieved, err := r.GetBillByID(ctx, bill.FamilyID, bill.ID)
 	if err != nil {
 		t.Fatalf("failed to get bill: %v", err)
 	}
@@ -900,7 +900,7 @@ func TestCreateAndGetLoan(t *testing.T) {
 		t.Fatalf("failed to create loan: %v", err)
 	}
 
-	retrieved, err := r.GetLoanByID(ctx, loan.ID)
+	retrieved, err := r.GetLoanByID(ctx, loan.FamilyID, loan.ID)
 	if err != nil {
 		t.Fatalf("failed to get loan: %v", err)
 	}
@@ -996,7 +996,7 @@ func TestPayOffLoan(t *testing.T) {
 	}
 
 	// Pay off the loan
-	updatedLoan, err := r.PayOffLoan(ctx, loan.ID)
+	updatedLoan, err := r.PayOffLoan(ctx, loan.FamilyID, loan.ID)
 	if err != nil {
 		t.Fatalf("failed to pay off loan: %v", err)
 	}
@@ -1010,7 +1010,7 @@ func TestPayOffLoan(t *testing.T) {
 	}
 
 	// Verify the loan is updated in database
-	retrieved, err := r.GetLoanByID(ctx, loan.ID)
+	retrieved, err := r.GetLoanByID(ctx, loan.FamilyID, loan.ID)
 	if err != nil {
 		t.Fatalf("failed to get loan: %v", err)
 	}
@@ -1061,7 +1061,7 @@ func TestCreateAndGetRepaymentPlan(t *testing.T) {
 		t.Fatalf("failed to create repayment plan: %v", err)
 	}
 
-	retrieved, err := r.GetRepaymentPlanByID(ctx, plan.ID)
+	retrieved, err := r.GetRepaymentPlanByID(ctx, plan.FamilyID, plan.ID)
 	if err != nil {
 		t.Fatalf("failed to get repayment plan: %v", err)
 	}
@@ -1120,7 +1120,7 @@ func TestGetRepaymentPlansByLoanID(t *testing.T) {
 		}
 	}
 
-	plans, err := r.GetRepaymentPlansByLoanID(ctx, loan.ID)
+	plans, err := r.GetRepaymentPlansByLoanID(ctx, loan.FamilyID, loan.ID)
 	if err != nil {
 		t.Fatalf("failed to get repayment plans: %v", err)
 	}
@@ -1249,7 +1249,7 @@ func TestMarkRepaymentPlanAsPaid(t *testing.T) {
 	}
 
 	// Mark as paid
-	updatedPlan, err := r.MarkRepaymentPlanAsPaid(ctx, plan.ID)
+	updatedPlan, err := r.MarkRepaymentPlanAsPaid(ctx, plan.FamilyID, plan.ID)
 	if err != nil {
 		t.Fatalf("failed to mark repayment plan as paid: %v", err)
 	}
@@ -1267,7 +1267,7 @@ func TestMarkRepaymentPlanAsPaid(t *testing.T) {
 	}
 
 	// Verify the plan is updated in database
-	retrieved, err := r.GetRepaymentPlanByID(ctx, plan.ID)
+	retrieved, err := r.GetRepaymentPlanByID(ctx, plan.FamilyID, plan.ID)
 	if err != nil {
 		t.Fatalf("failed to get repayment plan: %v", err)
 	}
@@ -1298,7 +1298,7 @@ func TestCreateAndGetGoal(t *testing.T) {
 		t.Fatalf("failed to create goal: %v", err)
 	}
 
-	retrieved, err := r.GetGoalByID(ctx, goal.ID)
+	retrieved, err := r.GetGoalByID(ctx, goal.FamilyID, goal.ID)
 	if err != nil {
 		t.Fatalf("failed to get goal: %v", err)
 	}
@@ -1373,7 +1373,7 @@ func TestUpdateGoalProgress(t *testing.T) {
 	}
 
 	// Update progress to 50%
-	updatedGoal, err := r.UpdateGoalProgress(ctx, goal.ID, 500000)
+	updatedGoal, err := r.UpdateGoalProgress(ctx, goal.FamilyID, goal.ID, 500000)
 	if err != nil {
 		t.Fatalf("failed to update goal progress: %v", err)
 	}
@@ -1391,7 +1391,7 @@ func TestUpdateGoalProgress(t *testing.T) {
 	}
 
 	// Update progress to 100% (achieved)
-	updatedGoal2, err := r.UpdateGoalProgress(ctx, goal.ID, 1000000)
+	updatedGoal2, err := r.UpdateGoalProgress(ctx, goal.FamilyID, goal.ID, 1000000)
 	if err != nil {
 		t.Fatalf("failed to update goal progress to 100%%: %v", err)
 	}
@@ -1401,7 +1401,7 @@ func TestUpdateGoalProgress(t *testing.T) {
 	}
 
 	// Verify the goal is updated in database
-	retrieved, err := r.GetGoalByID(ctx, goal.ID)
+	retrieved, err := r.GetGoalByID(ctx, goal.FamilyID, goal.ID)
 	if err != nil {
 		t.Fatalf("failed to get goal: %v", err)
 	}
@@ -1434,7 +1434,7 @@ func TestCreateAndGetSplitSettlement(t *testing.T) {
 		t.Fatalf("failed to create split settlement: %v", err)
 	}
 
-	retrieved, err := r.GetSplitSettlementByID(ctx, settlement.ID)
+	retrieved, err := r.GetSplitSettlementByID(ctx, settlement.FamilyID, settlement.ID)
 	if err != nil {
 		t.Fatalf("failed to get split settlement: %v", err)
 	}
@@ -1508,13 +1508,13 @@ func TestAddParticipantToDraftSettlement(t *testing.T) {
 		Version:          1,
 	}
 
-	err = r.AddParticipant(ctx, participant)
+	err = r.AddParticipant(ctx, settlement.FamilyID, participant)
 	if err != nil {
 		t.Fatalf("failed to add participant: %v", err)
 	}
 
 	// Verify participant was added
-	participants, err := r.GetParticipantsBySettlement(ctx, settlement.ID)
+	participants, err := r.GetParticipantsBySettlement(ctx, settlement.FamilyID, settlement.ID)
 	if err != nil {
 		t.Fatalf("failed to get participants: %v", err)
 	}
@@ -1555,7 +1555,7 @@ func TestCannotAddParticipantToNonDraftSettlement(t *testing.T) {
 		Version:          1,
 	}
 
-	err = r.AddParticipant(ctx, participant)
+	err = r.AddParticipant(ctx, settlement.FamilyID, participant)
 	if err != repo.ErrInvalidSplitStatusTransition {
 		t.Errorf("expected ErrInvalidSplitStatusTransition, got %v", err)
 	}
@@ -1595,7 +1595,7 @@ func TestSettleSplitWithValidAmounts(t *testing.T) {
 	}
 
 	// Settle the split
-	updated, err := r.SettleSplit(ctx, settlement.ID)
+	updated, err := r.SettleSplit(ctx, settlement.FamilyID, settlement.ID)
 	if err != nil {
 		t.Fatalf("failed to settle split: %v", err)
 	}
@@ -1641,7 +1641,7 @@ func TestSettleSplitWithMismatchedAmounts(t *testing.T) {
 	}
 
 	// Try to settle (should fail due to amount mismatch)
-	_, err = r.SettleSplit(ctx, settlement.ID)
+	_, err = r.SettleSplit(ctx, settlement.FamilyID, settlement.ID)
 	if err == nil {
 		t.Error("expected error for amount mismatch")
 	}
@@ -1671,7 +1671,7 @@ func TestSplitSettlementStateMachine(t *testing.T) {
 	}
 
 	// Transition: draft -> pending
-	updated, err := r.SettleSplit(ctx, settlement.ID)
+	updated, err := r.SettleSplit(ctx, settlement.FamilyID, settlement.ID)
 	if err != nil {
 		t.Fatalf("failed to transition to pending: %v", err)
 	}
@@ -1694,7 +1694,7 @@ func TestSplitSettlementStateMachine(t *testing.T) {
 	}
 
 	// Transition: pending -> settled
-	updated, err = r.SettleSplit(ctx, settlement.ID)
+	updated, err = r.SettleSplit(ctx, settlement.FamilyID, settlement.ID)
 	if err != nil {
 		t.Fatalf("failed to transition to settled: %v", err)
 	}
@@ -1703,7 +1703,7 @@ func TestSplitSettlementStateMachine(t *testing.T) {
 	}
 
 	// Try to settle again (should fail - irreversible)
-	_, err = r.SettleSplit(ctx, settlement.ID)
+	_, err = r.SettleSplit(ctx, settlement.FamilyID, settlement.ID)
 	if err != repo.ErrInvalidSplitStatusTransition {
 		t.Errorf("expected ErrInvalidSplitStatusTransition for already settled, got %v", err)
 	}
@@ -1733,7 +1733,7 @@ func TestCreateAndGetCreditCard(t *testing.T) {
 		t.Fatalf("failed to create credit card: %v", err)
 	}
 
-	retrieved, err := r.GetCreditCardByID(ctx, card.ID)
+	retrieved, err := r.GetCreditCardByID(ctx, card.FamilyID, card.ID)
 	if err != nil {
 		t.Fatalf("failed to get credit card: %v", err)
 	}
@@ -1808,7 +1808,7 @@ func TestUpdateCreditCardBalance(t *testing.T) {
 	}
 
 	// Update balance
-	updated, err := r.UpdateCreditCardBalance(ctx, card.ID, 150000)
+	updated, err := r.UpdateCreditCardBalance(ctx, card.FamilyID, card.ID, 150000)
 	if err != nil {
 		t.Fatalf("failed to update balance: %v", err)
 	}
@@ -1846,7 +1846,7 @@ func TestCreateAndGetInvoice(t *testing.T) {
 		t.Fatalf("failed to create invoice: %v", err)
 	}
 
-	retrieved, err := r.GetInvoiceByID(ctx, invoice.ID)
+	retrieved, err := r.GetInvoiceByID(ctx, invoice.FamilyID, invoice.ID)
 	if err != nil {
 		t.Fatalf("failed to get invoice: %v", err)
 	}
@@ -1897,7 +1897,7 @@ func TestListInvoicesByFamily(t *testing.T) {
 }
 
 func TestMarkInvoiceAsReimbursed(t *testing.T) {
-	r, _ := setupTestRepo(t)
+	r, db := setupTestRepo(t)
 	ctx := context.Background()
 
 	issueDate := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
@@ -1919,8 +1919,22 @@ func TestMarkInvoiceAsReimbursed(t *testing.T) {
 	}
 
 	// Mark as reimbursed
+	// 关联流水必须真实属于本家庭：MarkInvoiceAsReimbursed 现在按
+	// `WHERE id = ? AND family_id = ?` 校验引用，凭空的事务 id 会被拒（ErrNotFound）。
 	txnID := "test-txn-001"
-	updated, err := r.MarkInvoiceAsReimbursed(ctx, invoice.ID, "reimbursed", nil, &txnID)
+	txn := &model.FinanceTransaction{
+		ID:          txnID,
+		FamilyID:    "test-family-001",
+		Type:        "expense",
+		AmountCents: -100000,
+		AccountID:   "test-account-001",
+		OccurredAt:  issueDate,
+		Version:     1,
+	}
+	if err := db.Create(txn).Error; err != nil {
+		t.Fatalf("failed to seed linked transaction: %v", err)
+	}
+	updated, err := r.MarkInvoiceAsReimbursed(ctx, invoice.FamilyID, invoice.ID, "reimbursed", nil, &txnID)
 	if err != nil {
 		t.Fatalf("failed to mark as reimbursed: %v", err)
 	}
@@ -1962,7 +1976,7 @@ func TestMarkInvoiceAsRejected(t *testing.T) {
 
 	// Mark as rejected
 	reason := "Invalid invoice"
-	updated, err := r.MarkInvoiceAsReimbursed(ctx, invoice.ID, "rejected", &reason, nil)
+	updated, err := r.MarkInvoiceAsReimbursed(ctx, invoice.FamilyID, invoice.ID, "rejected", &reason, nil)
 	if err != nil {
 		t.Fatalf("failed to mark as rejected: %v", err)
 	}
@@ -1999,7 +2013,7 @@ func TestCannotTransitionInvoiceFromNonPending(t *testing.T) {
 	}
 
 	// Try to mark again (should fail)
-	_, err = r.MarkInvoiceAsReimbursed(ctx, invoice.ID, "rejected", nil, nil)
+	_, err = r.MarkInvoiceAsReimbursed(ctx, invoice.FamilyID, invoice.ID, "rejected", nil, nil)
 	if err != repo.ErrInvalidInvoiceStatusTransition {
 		t.Errorf("expected ErrInvalidInvoiceStatusTransition, got %v", err)
 	}

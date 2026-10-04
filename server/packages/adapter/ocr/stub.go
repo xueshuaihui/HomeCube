@@ -8,10 +8,10 @@ import (
 
 // ReceiptData represents the structured data extracted from a receipt image.
 type ReceiptData struct {
-	Amount   float64 `json:"amount"`    // Amount in yuan
-	Category string  `json:"category"`  // Expense category
-	Date     string  `json:"date"`      // Transaction date (YYYY-MM-DD format)
-	Merchant string  `json:"merchant"`  // Merchant name
+	Amount   float64 `json:"amount"`   // Amount in yuan
+	Category string  `json:"category"` // Expense category
+	Date     string  `json:"date"`     // Transaction date (YYYY-MM-DD format)
+	Merchant string  `json:"merchant"` // Merchant name
 }
 
 // OCRAdapter defines the interface for OCR receipt recognition.

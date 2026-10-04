@@ -452,6 +452,18 @@ func CreateFamily(ctx context.Context, db *gorm.DB, actor Actor, name, timezone,
 			return err
 		}
 
+		// 建家事务的三支契约事件（与下面的业务行同事务，§2.3/15.6「无跨服务事务、事件走 outbox」）：
+		// homeos.family.created（business_id「{family_id}」）+ 业主那一行 homeos.member.created
+		// （business_id「{member_id}」，contracts/events/homeos.yaml:68-79、13-32）。
+		if err := AppendOutboxEnvelope(ctx, tx, familyID, "homeos.family.created", familyID, map[string]any{
+			"family_id": familyID, "name": name, "timezone": timezone, "currency": currency,
+		}); err != nil {
+			return err
+		}
+		if err := AppendOutboxEnvelope(ctx, tx, familyID, "homeos.member.created", memberID, memberCreatedPayload(&mem)); err != nil {
+			return err
+		}
+
 		return appendAuditTx(ctx, tx, &model.HomeosAuditLog{
 			ID: generateUUID(), FamilyID: &familyID, Code: strPtr(registry.HomeosCode),
 			Event: model.AuditEventPermissionChange, ActorMemberID: &memberID,
@@ -643,6 +655,17 @@ func SetMemberRole(
 			return err
 		}
 
+		// 成员信息变更事件（contracts/events/homeos.yaml:33-49，business_id「{member_id}」）：角色是
+		// homeos_members 上的一列，改它即一次 member.updated，updated_fields 只列真被改的字段。紧随其后的
+		// permission.updated 是另一回事（权限版本 +1 的缓存失效信号），两者都发。
+		if err := AppendOutboxEnvelope(ctx, tx, familyID, "homeos.member.updated", memberID, map[string]any{
+			"member_id":      memberID,
+			"family_id":      familyID,
+			"updated_fields": map[string]any{"role": role},
+		}); err != nil {
+			return err
+		}
+
 		return AppendOutboxEnvelope(ctx, tx, familyID, "homeos.permission.updated",
 			fmt.Sprintf("%s:%d", familyID, pver), map[string]any{
 				"family_id": familyID, "pver": pver, "changed_by": actor.MemberID, "change_type": "role",
@@ -728,6 +751,17 @@ func RemoveMember(ctx context.Context, db *gorm.DB, familyID, memberID string, a
 		// auth middleware, which resolves the member row on every request and 401s + audits once it
 		// is gone; the access token's own 15-minute expiry bounds the residue. The missing
 		// family scoping is reported as a schema gap.
+		//
+		// 成员移除是两支契约事件（contracts/events/homeos.yaml:50-66、102-118），同事务：
+		// homeos.member.deleted（business_id「{member_id}」，软删这一事实本身）与
+		// permission.updated（权限版本 +1，change_type=member，下游据此失效缓存）。
+		if err := AppendOutboxEnvelope(ctx, tx, familyID, "homeos.member.deleted", memberID, map[string]any{
+			"member_id":   memberID,
+			"family_id":   familyID,
+			"deleted_by":  actor.MemberID,
+		}); err != nil {
+			return err
+		}
 		return AppendOutboxEnvelope(ctx, tx, familyID, "homeos.permission.updated",
 			fmt.Sprintf("%s:%d", familyID, pver), map[string]any{
 				"family_id": familyID, "pver": pver, "changed_by": actor.MemberID, "change_type": "member",
@@ -1018,6 +1052,11 @@ func AcceptInvitation(ctx context.Context, db *gorm.DB, code, accountID string, 
 		if err := tx.Create(&mem).Error; err != nil {
 			return fmt.Errorf("failed to add accepting member: %w", err)
 		}
+		// 受邀者接受邀请 = 一行的诞生，因此是 homeos.member.created（business_id「{member_id}」，
+		// contracts/events/homeos.yaml:13-32）；同事务的 permission.updated 是权限版本信号，两支都发。
+		if err := AppendOutboxEnvelope(ctx, tx, familyID, "homeos.member.created", mem.ID, memberCreatedPayload(&mem)); err != nil {
+			return err
+		}
 		if err := tx.Model(&model.HomeosInvitation{}).Where("id = ?", row.ID).
 			Updates(map[string]any{"status": "accepted", "updated_at": now}).Error; err != nil {
 			return fmt.Errorf("failed to mark invitation accepted: %w", err)
@@ -1097,6 +1136,27 @@ func appendAuditTx(ctx context.Context, tx *gorm.DB, row *model.HomeosAuditLog) 
 	if err := tx.WithContext(ctx).Create(row).Error; err != nil {
 		return fmt.Errorf("failed to write audit log: %w", err)
 	}
+
+	// The durable audit fact is also a contracted event (contracts/events/homeos.yaml:181, business_id
+	// 「{audit_id}」), emitted from the ONE place that writes homeos_audit_log so 审计落库 and 审计事件
+	// cannot diverge -- the row and the envelope describe the same nine-class fact (PRD 21.5) and share
+	// one transaction, exactly like the business rows and their events elsewhere in this file.
+	familyForEvent := derefOrEmpty(row.FamilyID)
+	actorForEvent := derefOrEmpty(row.ActorMemberID)
+	if actorForEvent == "" {
+		actorForEvent = derefOrEmpty(row.ActorUserID)
+	}
+	if err := AppendOutboxEnvelope(ctx, tx, familyForEvent, "homeos.audit.recorded", row.ID, map[string]any{
+		"audit_id":     row.ID,
+		"family_id":    familyForEvent,
+		"actor_id":     actorForEvent,
+		"action":       derefOrEmpty(row.Action),
+		"resource":     derefOrEmpty(row.Entity),
+		"outcome":      auditOutcome(row.Result),
+		"recorded_at":  row.OccurredAt.UTC().Format(time.RFC3339Nano),
+	}); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -1138,6 +1198,99 @@ func AppendOutboxEnvelope(ctx context.Context, tx *gorm.DB, familyID, eventType,
 // "1.0" is the value the other implemented service already stamps (svc-finance
 // internal/service/budget_alert.go), so the two producers agree without a shared constant.
 const envelopeSchemaVersion = "1.0"
+
+// ==================== the three contract events with no svc-homeos mutation endpoint yet ====================
+//
+// contracts/events/homeos.yaml declares eleven homeos.* events. Eight now go out from a real mutation
+// point in this service (member.created/updated/deleted, family.created, permission.updated,
+// family.module.updated, reminder.fired, audit.recorded). The three below are the remaining contracted
+// shapes, emitted through the SAME AppendOutboxEnvelope/InsertOutboxMessageWithFamily machinery and
+// payload_schema, but the business mutation that would call them is not built in svc-homeos this round:
+// family profile edit (name/timezone/currency), 解散家庭（30 天冷存窗口）, and TIME-1 待办完成
+// (homeos_todos is a TIME-1 table -- see handler/home_summary.go's B 区 comment). These publishers are
+// the contract-correct seam that mutation handler calls; they carry no invented behaviour and are
+// covered directly by publisher tests. Reported in the delivery notes rather than faked with a handler.
+
+// PublishFamilyUpdated emits homeos.family.updated (business_id「{family_id}」, payload family_id +
+// updated_fields object, contracts/events/homeos.yaml:80-88). updated_fields carries only the columns
+// that actually changed; nil is rendered as the empty object so the key stays present.
+func PublishFamilyUpdated(ctx context.Context, tx *gorm.DB, familyID string, updatedFields map[string]any) error {
+	if updatedFields == nil {
+		updatedFields = map[string]any{}
+	}
+	return AppendOutboxEnvelope(ctx, tx, familyID, "homeos.family.updated", familyID, map[string]any{
+		"family_id":      familyID,
+		"updated_fields": updatedFields,
+	})
+}
+
+// PublishFamilyDissolved emits homeos.family.dissolved (business_id「{family_id}」, payload family_id /
+// dissolved_at / dissolved_by, contracts/events/homeos.yaml:90-99).
+func PublishFamilyDissolved(ctx context.Context, tx *gorm.DB, familyID, dissolvedBy string, dissolvedAt time.Time) error {
+	return AppendOutboxEnvelope(ctx, tx, familyID, "homeos.family.dissolved", familyID, map[string]any{
+		"family_id":     familyID,
+		"dissolved_at":  dissolvedAt.UTC().Format(time.RFC3339Nano),
+		"dissolved_by":  dissolvedBy,
+	})
+}
+
+// PublishTodoCompleted emits homeos.todo.completed (business_id「{todo_id}」, payload todo_id /
+// source_system / source_id / completed_at / completed_by, contracts/events/homeos.yaml:142-159). The
+// payload declares no family_id, so none is put in the body; familyID only fills the outbox row's
+// family_id column (§10.3「指标最小集（全部带 family_id 与 code）」).
+func PublishTodoCompleted(ctx context.Context, tx *gorm.DB, familyID, todoID, sourceSystem, sourceID, completedBy string, completedAt time.Time) error {
+	return AppendOutboxEnvelope(ctx, tx, familyID, "homeos.todo.completed", todoID, map[string]any{
+		"todo_id":       todoID,
+		"source_system": sourceSystem,
+		"source_id":     sourceID,
+		"completed_at":  completedAt.UTC().Format(time.RFC3339Nano),
+		"completed_by":  completedBy,
+	})
+}
+
+// ==================== homeos.* event payload builders (contracts/events/homeos.yaml) ====================
+
+// memberCreatedPayload shapes the homeos.member.created payload_schema verbatim
+// (contracts/events/homeos.yaml:25-32): member_id / family_id / name / relation / role / on_behalf_of.
+// on_behalf_of is the 监护人 uuid for a 无账号被记录成员建档 row (the row's guardian_id) and null
+// otherwise; the contract spells it `uuid | null`, so a nil guardian marshals to JSON null, never to "".
+func memberCreatedPayload(mem *model.HomeosMember) map[string]any {
+	return map[string]any{
+		"member_id":   mem.ID,
+		"family_id":   mem.FamilyID,
+		"name":        derefOrEmpty(mem.Name),
+		"relation":    derefOrEmpty(mem.Relation),
+		"role":        mem.Role,
+		"on_behalf_of": guardianOrNull(mem.GuardianID),
+	}
+}
+
+// guardianOrNull renders homeos_members.guardian_id as the contract's `uuid | null`: a populated
+// guardian id passes through, an absent one becomes an untyped nil so encoding/json emits null.
+func guardianOrNull(p *string) any {
+	if p == nil || *p == "" {
+		return nil
+	}
+	return *p
+}
+
+// derefOrEmpty renders a nullable text column as "" when absent, keeping the payload key present so a
+// consumer never has to guess whether a missing key meant null or an unset field.
+func derefOrEmpty(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
+
+// auditOutcome maps the audit row's result (allowed|denied, model.AuditResult*) onto the contract's
+// homeos.audit.recorded outcome enum(success|failure) (contracts/events/homeos.yaml:193).
+func auditOutcome(result string) string {
+	if result == model.AuditResultDenied {
+		return "failure"
+	}
+	return "success"
+}
 
 // ==================== idempotency seam ====================
 

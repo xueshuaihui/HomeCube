@@ -326,7 +326,7 @@ func Can(ctx context.Context, claims *Claims, scope string, resource string, act
 
 	// Step 2: Role-default matrix (PRD 15.3) - This is the main P1 implementation
 	level, allowed := canByMatrix(claims.Role, resource, action)
-	
+
 	// For PermMine, check object ownership per PRD 15.3: "M 只能操作自己创建的对象"
 	if level == PermMine && allowed && hasOwnershipField(resource) {
 		objAuthorID := GetObjectAuthorID(obj)
@@ -335,7 +335,7 @@ func Can(ctx context.Context, claims *Claims, scope string, resource string, act
 			return false
 		}
 	}
-	
+
 	if allowed {
 		return true
 	}

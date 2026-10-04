@@ -46,67 +46,67 @@ func TestPermissionMatrix(t *testing.T) {
 	// Key: resource + ":" + role, Value: expected permission level
 	expectedPermissions := map[string]authz.PermissionLevel{
 		// Row 1: HomeOS Governance
-		authz.ResourceHomeOSGovernance + ":owner":         authz.PermAll,
-		authz.ResourceHomeOSGovernance + ":member":        authz.PermRead,
-		authz.ResourceHomeOSGovernance + ":ward":          authz.PermNone,
+		authz.ResourceHomeOSGovernance + ":owner":           authz.PermAll,
+		authz.ResourceHomeOSGovernance + ":member":          authz.PermRead,
+		authz.ResourceHomeOSGovernance + ":ward":            authz.PermNone,
 		authz.ResourceHomeOSGovernance + ":ward_no_account": authz.PermNone,
-		authz.ResourceHomeOSGovernance + ":guest":         authz.PermNone,
+		authz.ResourceHomeOSGovernance + ":guest":           authz.PermNone,
 
 		// Row 2: HomeOS Module Config
-		authz.ResourceHomeOSModuleConfig + ":owner":         authz.PermAll,
-		authz.ResourceHomeOSModuleConfig + ":member":        authz.PermRead,
-		authz.ResourceHomeOSModuleConfig + ":ward":          authz.PermRead,
+		authz.ResourceHomeOSModuleConfig + ":owner":           authz.PermAll,
+		authz.ResourceHomeOSModuleConfig + ":member":          authz.PermRead,
+		authz.ResourceHomeOSModuleConfig + ":ward":            authz.PermRead,
 		authz.ResourceHomeOSModuleConfig + ":ward_no_account": authz.PermNone,
-		authz.ResourceHomeOSModuleConfig + ":guest":         authz.PermRead,
+		authz.ResourceHomeOSModuleConfig + ":guest":           authz.PermRead,
 
 		// Row 3: HomeOS Time & Collab
-		authz.ResourceHomeOSTimeCollab + ":owner":         authz.PermAll,
-		authz.ResourceHomeOSTimeCollab + ":member":        authz.PermMine,
-		authz.ResourceHomeOSTimeCollab + ":ward":          authz.PermMine,
+		authz.ResourceHomeOSTimeCollab + ":owner":           authz.PermAll,
+		authz.ResourceHomeOSTimeCollab + ":member":          authz.PermMine,
+		authz.ResourceHomeOSTimeCollab + ":ward":            authz.PermMine,
 		authz.ResourceHomeOSTimeCollab + ":ward_no_account": authz.PermMine,
-		authz.ResourceHomeOSTimeCollab + ":guest":         authz.PermMine,
+		authz.ResourceHomeOSTimeCollab + ":guest":           authz.PermMine,
 
 		// Row 4: Finance
-		authz.SystemFinance + ":owner":         authz.PermAll,
-		authz.SystemFinance + ":member":        authz.PermMine,
-		authz.SystemFinance + ":ward":          authz.PermNone,
+		authz.SystemFinance + ":owner":           authz.PermAll,
+		authz.SystemFinance + ":member":          authz.PermMine,
+		authz.SystemFinance + ":ward":            authz.PermNone,
 		authz.SystemFinance + ":ward_no_account": authz.PermNone,
-		authz.SystemFinance + ":guest":         authz.PermNone,
+		authz.SystemFinance + ":guest":           authz.PermNone,
 
 		// Row 5: Purchase
-		authz.SystemPurchase + ":owner":         authz.PermAll,
-		authz.SystemPurchase + ":member":        authz.PermAll,
-		authz.SystemPurchase + ":ward":          authz.PermMine,
+		authz.SystemPurchase + ":owner":           authz.PermAll,
+		authz.SystemPurchase + ":member":          authz.PermAll,
+		authz.SystemPurchase + ":ward":            authz.PermMine,
 		authz.SystemPurchase + ":ward_no_account": authz.PermNone,
-		authz.SystemPurchase + ":guest":         authz.PermRead,
+		authz.SystemPurchase + ":guest":           authz.PermRead,
 
 		// Row 6: Diet
-		authz.SystemDiet + ":owner":         authz.PermAll,
-		authz.SystemDiet + ":member":        authz.PermAll,
-		authz.SystemDiet + ":ward":          authz.PermRead,
+		authz.SystemDiet + ":owner":           authz.PermAll,
+		authz.SystemDiet + ":member":          authz.PermAll,
+		authz.SystemDiet + ":ward":            authz.PermRead,
 		authz.SystemDiet + ":ward_no_account": authz.PermNone,
-		authz.SystemDiet + ":guest":         authz.PermRead,
+		authz.SystemDiet + ":guest":           authz.PermRead,
 
 		// Row 7: Trip
-		authz.SystemTrip + ":owner":         authz.PermAll,
-		authz.SystemTrip + ":member":        authz.PermMine,
-		authz.SystemTrip + ":ward":          authz.PermRead,
+		authz.SystemTrip + ":owner":           authz.PermAll,
+		authz.SystemTrip + ":member":          authz.PermMine,
+		authz.SystemTrip + ":ward":            authz.PermRead,
 		authz.SystemTrip + ":ward_no_account": authz.PermNone,
-		authz.SystemTrip + ":guest":         authz.PermRead,
+		authz.SystemTrip + ":guest":           authz.PermRead,
 
 		// Row 8: Kin
-		authz.SystemKin + ":owner":         authz.PermAll,
-		authz.SystemKin + ":member":        authz.PermMine,
-		authz.SystemKin + ":ward":          authz.PermNone,
+		authz.SystemKin + ":owner":           authz.PermAll,
+		authz.SystemKin + ":member":          authz.PermMine,
+		authz.SystemKin + ":ward":            authz.PermNone,
 		authz.SystemKin + ":ward_no_account": authz.PermNone,
-		authz.SystemKin + ":guest":         authz.PermRead,
+		authz.SystemKin + ":guest":           authz.PermRead,
 
 		// Row 9: Growth
-		authz.SystemGrowth + ":owner":         authz.PermAll,
-		authz.SystemGrowth + ":member":        authz.PermMine,
-		authz.SystemGrowth + ":ward":          authz.PermMine,
+		authz.SystemGrowth + ":owner":           authz.PermAll,
+		authz.SystemGrowth + ":member":          authz.PermMine,
+		authz.SystemGrowth + ":ward":            authz.PermMine,
 		authz.SystemGrowth + ":ward_no_account": authz.PermNone,
-		authz.SystemGrowth + ":guest":         authz.PermNone,
+		authz.SystemGrowth + ":guest":           authz.PermNone,
 	}
 
 	testCount := 0
@@ -235,10 +235,10 @@ func TestModuleScopePermission(t *testing.T) {
 	moduleResource := authz.ResourceHomeOSModuleConfig
 
 	testCases := []struct {
-		role           string
-		action         string
-		expectedAllow  bool
-		description    string
+		role          string
+		action        string
+		expectedAllow bool
+		description   string
 	}{
 		{authz.RoleOwner, authz.ActionRead, true, "owner can read module config"},
 		{authz.RoleOwner, authz.ActionCreate, true, "owner can create module config"},
@@ -432,27 +432,27 @@ func TestVisibleFields(t *testing.T) {
 // TestFilterDTO tests DTO field filtering
 func TestFilterDTO(t *testing.T) {
 	type TestMember struct {
-		ID              string
-		FamilyID        string
-		Name            string
-		Relation        string
-		BloodType       string // L3 field
-		Allergies       string // L3 field
+		ID               string
+		FamilyID         string
+		Name             string
+		Relation         string
+		BloodType        string // L3 field
+		Allergies        string // L3 field
 		EmergencyContact string // L3 field
-		Size            string // L3 field
-		GiftPreferences string // L3 field
+		Size             string // L3 field
+		GiftPreferences  string // L3 field
 	}
 
 	member := TestMember{
-		ID:              "mem-123",
-		FamilyID:        "fam-456",
-		Name:            "John Doe",
-		Relation:        "爸爸",
-		BloodType:       "A",
-		Allergies:       "Peanuts",
+		ID:               "mem-123",
+		FamilyID:         "fam-456",
+		Name:             "John Doe",
+		Relation:         "爸爸",
+		BloodType:        "A",
+		Allergies:        "Peanuts",
 		EmergencyContact: "1234567890",
-		Size:            "M",
-		GiftPreferences: "Books",
+		Size:             "M",
+		GiftPreferences:  "Books",
 	}
 
 	// Test filtering for member role (should exclude L3 fields)
@@ -543,9 +543,9 @@ func TestFilterL3Fields(t *testing.T) {
 // TestPrivateTransactionVisibility tests financial privacy default per PRD 15.3
 func TestPrivateTransactionVisibility(t *testing.T) {
 	type Transaction struct {
-		ID         string
-		AuthorID   string
-		IsPrivate  bool
+		ID          string
+		AuthorID    string
+		IsPrivate   bool
 		AmountCents int64
 	}
 
@@ -617,9 +617,9 @@ func TestClaimsSerialization(t *testing.T) {
 // TestNormalizeResource tests resource name normalization
 func TestNormalizeResource(t *testing.T) {
 	testCases := []struct {
-		system     string
-		subRes     string
-		expected   string
+		system   string
+		subRes   string
+		expected string
 	}{
 		{authz.SystemHomeOS, "members", authz.ResourceHomeOSGovernance},
 		{authz.SystemHomeOS, "permissions", authz.ResourceHomeOSGovernance},
@@ -699,15 +699,15 @@ func BenchmarkVisibleFields(b *testing.B) {
 func TestFilterDTOWithJSONTag(t *testing.T) {
 	// Define a struct with json tags matching the VisibleFieldsMap snake_case format
 	type MemberWithTags struct {
-		ID              string `json:"id"`
-		FamilyID        string `json:"family_id"`
-		Name            string `json:"name"`
-		Relation        string `json:"relation"`
-		BloodType       string `json:"blood_type"`       // L3 field with json tag
-		Allergies       string `json:"allergies"`        // L3 field with json tag
+		ID               string `json:"id"`
+		FamilyID         string `json:"family_id"`
+		Name             string `json:"name"`
+		Relation         string `json:"relation"`
+		BloodType        string `json:"blood_type"`        // L3 field with json tag
+		Allergies        string `json:"allergies"`         // L3 field with json tag
 		EmergencyContact string `json:"emergency_contact"` // L3 field with json tag
-		Size            string `json:"size"`             // L3 field with json tag
-		GiftPreferences string `json:"gift_preferences"` // L3 field with json tag
+		Size             string `json:"size"`              // L3 field with json tag
+		GiftPreferences  string `json:"gift_preferences"`  // L3 field with json tag
 	}
 
 	member := MemberWithTags{
@@ -767,8 +767,8 @@ func TestPermMineOwnershipCheck(t *testing.T) {
 
 	// Define a test object with AuthorID
 	type FinanceRecord struct {
-		ID         string `json:"id"`
-		AuthorID   string `json:"author_id"`
+		ID          string `json:"id"`
+		AuthorID    string `json:"author_id"`
 		AmountCents int64  `json:"amount_cents"`
 	}
 

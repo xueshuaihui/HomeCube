@@ -24,11 +24,10 @@ import (
 	"time"
 
 	"github.com/xueshuaihui/HomeCube/server/packages/adapter/asr"
-	"github.com/xueshuaihui/HomeCube/server/packages/authz"
+	svcauth "github.com/xueshuaihui/HomeCube/server/packages/auth"
 	"github.com/xueshuaihui/HomeCube/server/packages/bus"
 	"github.com/xueshuaihui/HomeCube/server/packages/obs"
 	"github.com/xueshuaihui/HomeCube/server/packages/registry"
-	svcauth "github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/auth"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/handler"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/repo"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/service"
@@ -234,17 +233,31 @@ func run(addr string) error {
 	group := svc.Engine.Group(d.RoutePrefix)
 
 	// Auth middleware: all finance routes require a valid JWT with family_id (PRD 15.2)
-	// The signer is shared with homeos -- both services verify RS256 tokens signed by the same key pair
-	signer, err := svcauth.NewSigner()
+	//
+	// The signer is shared with homeos -- both verify RS256 tokens signed by the same key pair
+	// (PRD 15.6「鉴权 SDK 由 svc-homeos 发布、各服务共用同一实现」). NewSigner 读不到私钥就
+	// 拒启：临时密钥会让每次重启后所有已签发 token 立即失效。
+	signer, err := svcauth.NewSigner(svc.Logger)
 	if err != nil {
-		svc.Logger.Error("signer_init_failed", "err", err.Error())
-		os.Exit(1)
+		return err
 	}
-	mw := svcauth.NewMiddleware(signer, &svcauth.MiddlewareConfig{
-		Code:          code,
-		OnDenied:      func(c *gin.Context, sess *svcauth.Session, event, reason string) {}, // audit handled by homeos
-		OnboardingRoutes: map[string]bool{}, // finance has no onboarding routes
-	})
+
+	// MemberResolver / OnDenied 的口径见 handler/auth.go 的文件头（投影表尚无写入方，
+	// 因此 resolveMember 查不到时按 account_id 透传并记 WARN，而不是让全站 401）。
+	mw, err := (&handler.FinanceAuth{
+		Signer: signer,
+		DB:     svc.DB(),
+		Logger: svc.Logger,
+	}).Middleware()
+	if err != nil {
+		return err
+	}
+
+	// 中间件的 OnDenied sink（PRD 15.5 的审计入口）同时挂给两个 handler：
+	// handler 侧的家庭作用域判定看的是「路径里的资源 id 属不属于本家庭」，
+	// 这必须查过库才知道，中间件看不见，所以拒绝点比中间件更晚、审计入口却要同一个。
+	financeHandler.OnDenied = mw.OnDenied
+	voiceHandler.OnDenied = mw.OnDenied
 
 	// Protected routes: all require authentication + family context
 	protected := group.Group("", mw.Handler())
@@ -269,82 +282,82 @@ func run(addr string) error {
 		protected.PUT("/transactions/:id", financeHandler.UpdateTransaction)
 		protected.DELETE("/transactions/:id", financeHandler.DeleteTransaction)
 
-	// Ledger endpoints
+		// Ledger endpoints
 		protected.POST("/ledgers", financeHandler.CreateLedger)
 		protected.GET("/ledgers", financeHandler.ListLedgers)
 
-	// Balance endpoints
+		// Balance endpoints
 		protected.GET("/accounts/:id/balance", financeHandler.GetAccountBalance)
 
-	// Statistics endpoints
+		// Statistics endpoints
 		protected.GET("/statistics/overview", financeHandler.GetOverviewStats)
 		protected.GET("/statistics/trend", financeHandler.GetTrendStats)
 		protected.GET("/statistics/category", financeHandler.GetCategoryStats)
 		protected.GET("/statistics/member", financeHandler.GetMemberStats)
 
-	// Budget endpoints
+		// Budget endpoints
 		protected.POST("/budgets", financeHandler.CreateBudget)
 		protected.GET("/budgets", financeHandler.ListBudgets)
 
-	// Bill endpoints
+		// Bill endpoints
 		protected.POST("/bills", financeHandler.CreateBill)
 		protected.GET("/bills", financeHandler.ListBills)
 		protected.PUT("/bills/:id/pay", financeHandler.PayBill)
 
-	// Export endpoint
+		// Export endpoint
 		protected.GET("/export", financeHandler.ExportTransactions)
 
-	// Voice entry endpoint
+		// Voice entry endpoint
 		protected.POST("/voice-entry", voiceHandler.VoiceEntry)
 
-	// Loan endpoints
+		// Loan endpoints
 		protected.POST("/loans", financeHandler.CreateLoan)
 		protected.GET("/loans", financeHandler.ListLoans)
 		protected.PUT("/loans/:id/payoff", financeHandler.PayOffLoan)
 		protected.GET("/loans/:id/repayment-plans", financeHandler.GetRepaymentPlans)
 
-	// Repayment plan endpoints
+		// Repayment plan endpoints
 		protected.PUT("/repayment-plans/:id/pay", financeHandler.PayRepaymentPlan)
 
-	// Goal endpoints
+		// Goal endpoints
 		protected.POST("/goals", financeHandler.CreateGoal)
 		protected.GET("/goals", financeHandler.ListGoals)
 		protected.PUT("/goals/:id/progress", financeHandler.UpdateGoalProgress)
 
-	// Split settlement endpoints (S17-S18)
+		// Split settlement endpoints (S17-S18)
 		protected.POST("/split-settlements", financeHandler.CreateSplitSettlement)
 		protected.GET("/split-settlements", financeHandler.ListSplitSettlements)
 		protected.PUT("/split-settlements/:id/participants", financeHandler.AddParticipant)
 		protected.PUT("/split-settlements/:id/settle", financeHandler.SettleSplit)
 		protected.GET("/split-settlements/:id/participants", financeHandler.GetParticipants)
 
-	// Credit card endpoints (S17-S18)
+		// Credit card endpoints (S17-S18)
 		protected.POST("/credit-cards", financeHandler.CreateCreditCard)
 		protected.GET("/credit-cards", financeHandler.ListCreditCards)
 		protected.PUT("/credit-cards/:id/balance", financeHandler.UpdateCreditCardBalance)
 
-	// Invoice endpoints (S17-S18)
+		// Invoice endpoints (S17-S18)
 		protected.POST("/invoices", financeHandler.CreateInvoice)
 		protected.GET("/invoices", financeHandler.ListInvoices)
 		protected.PUT("/invoices/:id/reimburse", financeHandler.ReimburseInvoice)
 
-	// Asset-liability report endpoints (S17-S18)
+		// Asset-liability report endpoints (S17-S18)
 		protected.POST("/reports/asset-liability", financeHandler.GenerateAssetLiabilityReport)
 		protected.GET("/reports/asset-liability", financeHandler.GetAssetLiabilityReport)
 
-	// Recurring rule endpoints (P1-M1: 周期记账规则)
+		// Recurring rule endpoints (P1-M1: 周期记账规则)
 		protected.GET("/recurring", financeHandler.ListRecurringRules)
 		protected.POST("/recurring", financeHandler.CreateRecurringRule)
 		protected.PUT("/recurring/:id", financeHandler.UpdateRecurringRule)
 		protected.DELETE("/recurring/:id", financeHandler.DeleteRecurringRule)
 
-	// Trash/Recycle bin endpoints (回收站功能)
+		// Trash/Recycle bin endpoints (回收站功能)
 		protected.GET("/trash", financeHandler.ListTrash)
 		protected.POST("/trash/:id/restore", financeHandler.RestoreTrashItem)
 		protected.DELETE("/trash/:id", financeHandler.PermanentlyDeleteTrashItem)
 		protected.POST("/trash/clear-expired", financeHandler.ClearExpiredTrash)
 
-	// Finance settings endpoints (PRD 4.8)
+		// Finance settings endpoints (PRD 4.8)
 		protected.GET("/settings", financeHandler.GetFinanceSettings)
 		protected.PUT("/settings", financeHandler.UpdateFinanceSettings)
 	} // end of protected routes

@@ -17,5 +17,6 @@
     "lib": ["ESNext", "DOM"],
     "types": ["@dcloudio/types", "vite/client"]
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.vue", "tests/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.vue"],
+  "//exclude": "tests/ 由 tests/tsconfig.json 单独管（见该文件注释）：它是 node 环境，用 node --experimental-strip-types 跑，依赖 @types/node 与 allowImportingTsExtensions，两者在 app 侧都不该开。把它塞进主配置会稳定产出 3 个 'Cannot find module node:test' 类报错，而那不是缺陷 —— 是把两种运行环境混在一个 tsconfig 里。"
 }

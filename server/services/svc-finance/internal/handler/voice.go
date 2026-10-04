@@ -18,6 +18,9 @@ import (
 type VoiceHandler struct {
 	repo       *repo.FinanceRepo
 	asrAdapter asr.ASRAdapter
+
+	// OnDenied 同 FinanceHandler.OnDenied：家庭越权的审计 sink，见 scope.go。
+	OnDenied DenyFunc
 }
 
 // NewVoiceHandler creates a new voice handler instance.
@@ -54,6 +57,11 @@ type VoiceEntryResponse struct {
 // VoiceEntry handles POST /api/finance/voice-entry.
 // This endpoint accepts audio data, transcribes it using ASR, and returns a transaction draft.
 // If ASR fails, it falls back to manual input with 100% reliability.
+//
+// 这条路由同时是 multipart/form-data 入口：中间件的 claimedFamilyIDs 只看
+// Content-Type: application/json 的请求体，所以 multipart 里塞的 family_id 它看不见
+// （根因 A 的另一半）。这里不依赖中间件 —— 草稿的 family_id 一律取 session 的家庭，
+// 客户端给的只用来做越权检测。
 func (h *VoiceHandler) VoiceEntry(c *gin.Context) {
 	var req VoiceEntryRequest
 
@@ -63,11 +71,22 @@ func (h *VoiceHandler) VoiceEntry(c *gin.Context) {
 		return
 	}
 
+	_, familyID, ok := scopeFamily(c, h.OnDenied, req.FamilyID)
+	if !ok {
+		return
+	}
+
+	// account_id 是引用：草稿里的账户必须属于本家庭，否则确认后就是把流水写进别人账户。
+	if err := h.repo.AssertRefsExist(c.Request.Context(), familyID, req.AccountID, nil); err != nil {
+		rejectScopedError(c, h.OnDenied, "invalid request", "account", err)
+		return
+	}
+
 	// Get uploaded audio file
 	file, err := c.FormFile("audio")
 	if err != nil {
 		// Fallback to manual mode if no audio file
-		draft := h.createManualDraft(req)
+		draft := h.createManualDraft(req, familyID)
 		c.JSON(http.StatusOK, VoiceEntryResponse{
 			Draft:      draft,
 			Transcript: req.Description,
@@ -80,7 +99,7 @@ func (h *VoiceHandler) VoiceEntry(c *gin.Context) {
 	audioBytes, err := file.Open()
 	if err != nil {
 		// Fallback to manual mode on file read error
-		draft := h.createManualDraft(req)
+		draft := h.createManualDraft(req, familyID)
 		c.JSON(http.StatusOK, VoiceEntryResponse{
 			Draft:      draft,
 			Transcript: req.Description,
@@ -95,7 +114,7 @@ func (h *VoiceHandler) VoiceEntry(c *gin.Context) {
 	_, err = audioBytes.Read(buf)
 	if err != nil {
 		// Fallback to manual mode on read error
-		draft := h.createManualDraft(req)
+		draft := h.createManualDraft(req, familyID)
 		c.JSON(http.StatusOK, VoiceEntryResponse{
 			Draft:      draft,
 			Transcript: req.Description,
@@ -108,7 +127,7 @@ func (h *VoiceHandler) VoiceEntry(c *gin.Context) {
 	transcript, err := h.asrAdapter.TranscribeVoice(c.Request.Context(), buf)
 	if err != nil || transcript == "" {
 		// 100% fallback to manual input on ASR failure
-		draft := h.createManualDraft(req)
+		draft := h.createManualDraft(req, familyID)
 		c.JSON(http.StatusOK, VoiceEntryResponse{
 			Draft:      draft,
 			Transcript: req.Description,
@@ -118,10 +137,10 @@ func (h *VoiceHandler) VoiceEntry(c *gin.Context) {
 	}
 
 	// Parse the transcript to create a transaction draft
-	draft, parseErr := h.parseTranscriptToDraft(transcript, req)
+	draft, parseErr := h.parseTranscriptToDraft(transcript, req, familyID)
 	if parseErr != nil {
 		// If parsing fails, fall back to manual mode
-		draft = h.createManualDraft(req)
+		draft = h.createManualDraft(req, familyID)
 		c.JSON(http.StatusOK, VoiceEntryResponse{
 			Draft:      draft,
 			Transcript: transcript,
@@ -139,7 +158,9 @@ func (h *VoiceHandler) VoiceEntry(c *gin.Context) {
 }
 
 // createManualDraft creates a draft transaction from manual input.
-func (h *VoiceHandler) createManualDraft(req VoiceEntryRequest) *model.FinanceTransaction {
+//
+// familyID 由调用方从 session 传入，绝不取 req.FamilyID —— 后者是客户端声明，只用于越权检测。
+func (h *VoiceHandler) createManualDraft(req VoiceEntryRequest, familyID string) *model.FinanceTransaction {
 	now := time.Now()
 	description := req.Description
 	if description == "" {
@@ -148,7 +169,7 @@ func (h *VoiceHandler) createManualDraft(req VoiceEntryRequest) *model.FinanceTr
 
 	return &model.FinanceTransaction{
 		ID:          generateUUID(),
-		FamilyID:    req.FamilyID,
+		FamilyID:    familyID,
 		Type:        "expense", // Default to expense for manual entry
 		AmountCents: 0,         // Requires user to fill in
 		AccountID:   req.AccountID,
@@ -160,7 +181,7 @@ func (h *VoiceHandler) createManualDraft(req VoiceEntryRequest) *model.FinanceTr
 
 // parseTranscriptToDraft parses ASR transcript into a transaction draft.
 // Expected format: "餐饮支出 50 元" or similar patterns.
-func (h *VoiceHandler) parseTranscriptToDraft(transcript string, req VoiceEntryRequest) (*model.FinanceTransaction, error) {
+func (h *VoiceHandler) parseTranscriptToDraft(transcript string, req VoiceEntryRequest, familyID string) (*model.FinanceTransaction, error) {
 	// Extract amount using regex (matches patterns like "50元", "50.5元", "五十元")
 	amountRegex := regexp.MustCompile(`(\d+\.?\d*)\s*元`)
 	matches := amountRegex.FindStringSubmatch(transcript)
@@ -187,7 +208,7 @@ func (h *VoiceHandler) parseTranscriptToDraft(transcript string, req VoiceEntryR
 
 	draft := &model.FinanceTransaction{
 		ID:          generateUUID(),
-		FamilyID:    req.FamilyID,
+		FamilyID:    familyID,
 		Type:        transType,
 		AmountCents: amountCents,
 		AccountID:   req.AccountID,

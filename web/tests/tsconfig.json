@@ -1,0 +1,16 @@
+{
+  "//": "tests/ 的独立 tsconfig。测试跑在 node 环境（node --experimental-strip-types），app 跑在浏览器/uni 环境，两者的类型依赖不同：测试需要 @types/node 的 node:test / node:assert，并且用 .ts 扩展名直接 import 源码（node 的 strip-types 要求显式扩展名）。把 tests 放进 app 的 tsconfig 会稳定报 'Cannot find module node:test' 与 TS5097，而那不是代码缺陷，是把两种运行环境混在一份配置里。",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "allowImportingTsExtensions": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "lib": ["ESNext"],
+    "types": ["node", "@dcloudio/types", "vite/client"]
+  },
+  "include": ["tests/**/*.ts", "../src/api/request.ts"]
+}

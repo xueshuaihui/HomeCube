@@ -15,11 +15,11 @@ import (
 // Request defines a cross-service read request.
 // All three elements must be explicitly declared - no defaults.
 type Request struct {
-	Target  string                             // Service name only (no URL)
-	Path    string                             // GET path only
-	Timeout time.Duration                      // Required timeout
-	Retry   int                                // Number of retries
-	Degrade func(context.Context, error) any   // Degradation function: returns fallback value on failure
+	Target  string                           // Service name only (no URL)
+	Path    string                           // GET path only
+	Timeout time.Duration                    // Required timeout
+	Retry   int                              // Number of retries
+	Degrade func(context.Context, error) any // Degradation function: returns fallback value on failure
 }
 
 // Response is the result from a cross-service call.

@@ -19,6 +19,23 @@
 /** 本卡用到的方法集合（服务端 OpenAPI 由 S1-C/S7 交付，届时按契约收口）。 */
 export type ApiMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
+/**
+ * uni.request 的 method 形参类型。
+ *
+ * 为什么需要这一层：@dcloudio/uni-app 的 H5 侧类型定义把 method 收窄成
+ * 'GET' | 'POST' | 'PUT' | 'DELETE' | 'OPTIONS' | 'HEAD' | 'TRACE' | 'CONNECT'，
+ * **不含 'PATCH'**。而 ApiMethod 按 RESTful 惯例带 PATCH（finance 的
+ * `PUT /transactions/{id}` 之外还有 PATCH 形态的更新接口），于是
+ * `method: options.method ?? 'GET'` 直接报 TS2769: No overload matches this call。
+ *
+ * 这里是**类型窄化**而不是删能力：ApiMethod 仍导出 PATCH，调用方可以传；
+ * 真正发请求时若目标平台不支持 PATCH，uni-app 会在运行时按其自身规则处理
+ * （H5 走 XHR，PATCH 是合法方法）。所以断言成 UniApp 的 method 类型是安全的，
+ * 不会掩盖任何真实缺口 —— 若某天真的发出 PATCH 并被服务端 405，
+ * 那时该收窄的是 ApiMethod，而不是在这里骗过类型检查。
+ */
+type UniRequestMethod = NonNullable<UniApp.RequestOptions['method']>
+
 /** 网络层与业务层共用的错误形状：HTTP 状态 + 服务端返回体里的错误码与文案。 */
 export class ApiError extends Error {
   readonly status: number
@@ -92,7 +109,7 @@ export function request<T = unknown>(code: string, path: string, options: Reques
   return new Promise<T>((resolve, reject) => {
     uni.request({
       url,
-      method: options.method ?? 'GET',
+      method: (options.method ?? 'GET') as UniRequestMethod,
       data: options.data as UniApp.RequestOptions['data'],
       header: options.header,
       success(res) {

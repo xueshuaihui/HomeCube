@@ -1,0 +1,449 @@
+{
+  "routes": [
+    {
+      "service": "svc-finance",
+      "method": "GET",
+      "path": "/api/finance/flow/list",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "POST",
+      "path": "/api/finance/accounts",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "GET",
+      "path": "/api/finance/accounts",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "PUT",
+      "path": "/api/finance/accounts/:id/archive",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "POST",
+      "path": "/api/finance/categories",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "GET",
+      "path": "/api/finance/categories",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "PUT",
+      "path": "/api/finance/categories/:id/deactivate",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "POST",
+      "path": "/api/finance/transactions",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "GET",
+      "path": "/api/finance/transactions",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "GET",
+      "path": "/api/finance/transactions/:id",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "PUT",
+      "path": "/api/finance/transactions/:id",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "DELETE",
+      "path": "/api/finance/transactions/:id",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "POST",
+      "path": "/api/finance/ledgers",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "GET",
+      "path": "/api/finance/ledgers",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "GET",
+      "path": "/api/finance/accounts/:id/balance",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "GET",
+      "path": "/api/finance/statistics/overview",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "GET",
+      "path": "/api/finance/statistics/trend",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "GET",
+      "path": "/api/finance/statistics/category",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "GET",
+      "path": "/api/finance/statistics/member",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "POST",
+      "path": "/api/finance/budgets",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "GET",
+      "path": "/api/finance/budgets",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "POST",
+      "path": "/api/finance/bills",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "GET",
+      "path": "/api/finance/bills",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "PUT",
+      "path": "/api/finance/bills/:id/pay",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "GET",
+      "path": "/api/finance/export",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "POST",
+      "path": "/api/finance/voice-entry",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "POST",
+      "path": "/api/finance/loans",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "GET",
+      "path": "/api/finance/loans",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "PUT",
+      "path": "/api/finance/loans/:id/payoff",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "GET",
+      "path": "/api/finance/loans/:id/repayment-plans",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "PUT",
+      "path": "/api/finance/repayment-plans/:id/pay",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "POST",
+      "path": "/api/finance/goals",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "GET",
+      "path": "/api/finance/goals",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "PUT",
+      "path": "/api/finance/goals/:id/progress",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "POST",
+      "path": "/api/finance/split-settlements",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "GET",
+      "path": "/api/finance/split-settlements",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "PUT",
+      "path": "/api/finance/split-settlements/:id/participants",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "PUT",
+      "path": "/api/finance/split-settlements/:id/settle",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "GET",
+      "path": "/api/finance/split-settlements/:id/participants",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "POST",
+      "path": "/api/finance/credit-cards",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "GET",
+      "path": "/api/finance/credit-cards",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "PUT",
+      "path": "/api/finance/credit-cards/:id/balance",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "POST",
+      "path": "/api/finance/invoices",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "GET",
+      "path": "/api/finance/invoices",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "PUT",
+      "path": "/api/finance/invoices/:id/reimburse",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "POST",
+      "path": "/api/finance/reports/asset-liability",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "GET",
+      "path": "/api/finance/reports/asset-liability",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "GET",
+      "path": "/api/finance/recurring",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "POST",
+      "path": "/api/finance/recurring",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "PUT",
+      "path": "/api/finance/recurring/:id",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "DELETE",
+      "path": "/api/finance/recurring/:id",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "GET",
+      "path": "/api/finance/trash",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "POST",
+      "path": "/api/finance/trash/:id/restore",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "DELETE",
+      "path": "/api/finance/trash/:id",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "POST",
+      "path": "/api/finance/trash/clear-expired",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "GET",
+      "path": "/api/finance/settings",
+      "protected": true
+    },
+    {
+      "service": "svc-finance",
+      "method": "PUT",
+      "path": "/api/finance/settings",
+      "protected": true
+    },
+    {
+      "service": "svc-homeos",
+      "method": "GET",
+      "path": "/api/homeos/.well-known/jwks.json",
+      "protected": false
+    },
+    {
+      "service": "svc-homeos",
+      "method": "GET",
+      "path": "/api/homeos/legal/privacy-policy",
+      "protected": false
+    },
+    {
+      "service": "svc-homeos",
+      "method": "GET",
+      "path": "/api/homeos/legal/user-agreement",
+      "protected": false
+    },
+    {
+      "service": "svc-homeos",
+      "method": "GET",
+      "path": "/api/homeos/auth/me",
+      "protected": true
+    },
+    {
+      "service": "svc-homeos",
+      "method": "POST",
+      "path": "/api/homeos/family/invite/accept",
+      "protected": true
+    },
+    {
+      "service": "svc-homeos",
+      "method": "POST",
+      "path": "/api/homeos/family/switch",
+      "protected": true
+    },
+    {
+      "service": "svc-homeos",
+      "method": "GET",
+      "path": "/api/homeos/family/modules",
+      "protected": true
+    },
+    {
+      "service": "svc-homeos",
+      "method": "PUT",
+      "path": "/api/homeos/family/modules",
+      "protected": true
+    },
+    {
+      "service": "svc-homeos",
+      "method": "GET",
+      "path": "/api/homeos/home/summary",
+      "protected": true
+    },
+    {
+      "service": "svc-homeos",
+      "method": "GET",
+      "path": "/api/homeos/notifications",
+      "protected": true
+    },
+    {
+      "service": "svc-homeos",
+      "method": "POST",
+      "path": "/api/homeos/notifications/read",
+      "protected": true
+    },
+    {
+      "service": "svc-homeos",
+      "method": "GET",
+      "path": "/api/homeos/dynamics",
+      "protected": true
+    },
+    {
+      "service": "svc-homeos",
+      "method": "POST",
+      "path": "/api/homeos/dynamics/read",
+      "protected": true
+    },
+    {
+      "service": "svc-homeos",
+      "method": "GET",
+      "path": "/api/homeos/search",
+      "protected": true
+    },
+    {
+      "service": "svc-homeos",
+      "method": "GET",
+      "path": "/api/homeos/members/snapshot",
+      "protected": true
+    },
+    {
+      "service": "svc-homeos",
+      "method": "GET",
+      "path": "/api/homeos/app/bundles",
+      "protected": true
+    },
+    {
+      "service": "svc-homeos",
+      "method": "GET",
+      "path": "/api/homeos/app/version",
+      "protected": true
+    }
+  ],
+  "duplicates": []
+}

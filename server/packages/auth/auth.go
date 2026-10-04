@@ -1,9 +1,22 @@
-// Package auth is svc-homeos' token issuer and request authenticator.
+// Package auth is the shared token issuer + request authenticator (PRD 15.6
+// 「鉴权 SDK 由 svc-homeos 发布、各服务共用同一实现」).
 //
-// Why it lives here rather than in packages/authz: packages/authz is the shared SDK every service
-// embeds and it deliberately only VERIFIES (PRD 15.6「鉴权 SDK 由 svc-homeos 发布、各服务共用同一
-// 实现」). Signing keys are the issuing service's own secret, so the private half stays inside
-// svc-homeos while every service, this one included, verifies through authz.Verify.
+// # 为什么落在 packages/auth 而不是 services/svc-homeos/internal/auth
+//
+// 它原来在 svc-homeos 的 internal/ 下，而 svc-finance 也要用其中的中间件
+// （NewSigner / NewMiddleware / SessionFrom）。Go 语言规则禁止跨服务引用 internal 包：
+//
+//	services/svc-finance/internal/handler/finance.go:13:2:
+//	    use of internal package .../services/svc-homeos/internal/auth not allowed
+//
+// 也就是说 finance 服务**在本机就编译不过**，整个 P1 无法交付。
+// 鉴权 SDK 本来就是「发布一份、各服务共用」的东西，位置就该在 packages/ 下 ——
+// 这次移动是让代码回到它本来就该在的地方，不是为绕过编译临时开的后门。
+//
+// # 与 packages/authz 的分工（边界没有变）
+//
+// authz 是共享 SDK 且**只做验签**（PRD 15.6）。签发方（svc-homeos）持有私钥，
+// 私钥不出 svc-homeos；其余服务（含 finance）通过 authz.Verify 验签。
 //
 // Algorithm: RS256, because authz.Verify rejects every non-RSA signing method outright
 // (policy.go「unexpected signing method」). The previous handler code built an RS256 token and then
@@ -12,17 +25,25 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"math/big"
+	"mime"
+	"mime/multipart"
+	"net/http"
+	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -84,17 +105,25 @@ const (
 // that could read /families/{id}/... could read another household's data with a token this service
 // signed itself (PRD 15.2「判定以 family_id 为界」, 22.2 第 5 条).
 //
-//	POST {prefix}/families       -- 创建家庭, the act this whole scope exists to allow (PRD 3.4.1, 17.8)
-//	GET  {prefix}/families       -- the CALLER'S OWN account-family list, which is how the client knows
+//	POST {prefix}/families           -- 创建家庭, the act this whole scope exists to allow (PRD 3.4.1, 17.8)
+//	GET  {prefix}/families         -- the CALLER'S OWN account-family list, which is how the client knows
 //	                               it is in 「登录后无家庭」 state. It reads homeos_members by the token's
 //	                               sub only; it never takes a family id from the request, so it cannot
 //	                               become a way to enumerate somebody else's household.
+//	POST {prefix}/family/invite/accept -- 加入已有家庭 (PRD 3.4.1 接口表): the OTHER way out of
+//	                               「登录后无家庭」. The route reads no family data with the OLD session --
+//	                               the family boundary only exists after the code is spent, and the
+//	                               handler re-signs a fresh family session from the rows the accept
+//	                               transaction wrote -- so the token needs a family to act IN, it needs
+//	                               NOT to have one yet. Still authenticated: an anonymous POST is 401 at
+//	                               the middleware, and an invalid code is 404 from the handler.
 //	GET  {prefix}/auth/me        -- session introspection (scope, families), same account-only reads
 //	POST {prefix}/auth/refresh   -- rotate the onboarding pair so the建家页 survives its own 10 minutes
 //	POST {prefix}/auth/logout     -- revoking one's own refresh row is always safe
 const (
 	OnboardingRouteCreateFamily = "POST %s/families"
 	OnboardingRouteListFamilies = "GET %s/families"
+	OnboardingRouteAcceptInvite = "POST %s/family/invite/accept"
 	OnboardingRouteMe           = "GET %s/auth/me"
 	OnboardingRouteRefresh      = "POST %s/auth/refresh"
 	OnboardingRouteLogout       = "POST %s/auth/logout"
@@ -109,6 +138,7 @@ func OnboardingAllowedRoutes(routePrefix string) map[string]bool {
 	templates := []string{
 		OnboardingRouteCreateFamily,
 		OnboardingRouteListFamilies,
+		OnboardingRouteAcceptInvite,
 		OnboardingRouteMe,
 		OnboardingRouteRefresh,
 		OnboardingRouteLogout,
@@ -542,9 +572,232 @@ func (m *Middleware) Handler() gin.HandlerFunc {
 		c.Set(CtxRole, sess.Role)
 		c.Set(CtxPVersion, sess.PVersion)
 		c.Set(CtxSession, sess)
+
+		// 家庭边界强制校验（PRD 15.2「判定以 family_id 为界」）。
+		//
+		// 为什么必须在中间件、而不是靠每个 handler 自己比对：token 里的 claims.FamilyID
+		// 只能证明「你是 X 家庭的人」，不能证明「你请求的 family_id 就是 X 家庭」。
+		// 只要 handler 直接读客户端传来的 family_id，任何一个 B 家庭的合法用户改一下
+		// URL 里的 family_id 就能读走 A 家庭的全部数据 —— 签名完全合法，无需任何伪造。
+		//
+		// 实测（越权复现）：用 13800138001（B 家庭）的 access_token 请求
+		//   GET /api/finance/transactions?family_id=<A家庭的 UUID>
+		// 返回 200 和 A 家庭流水的完整字段（id / family_id / amount_cents / account_id …）。
+		//
+		// 这里的检查覆盖请求里出现的**所有** family_id 形态（query 与所有编码的 body 都不放过，
+		// 见 claimedFamilyIDs 的文件头），任何一个与 token 的 fid 不一致就 403 + 落审计。
+		// 放在中间件的好处是新增 handler 默认就是安全的 —— 不需要记得在每个 handler 里写这行。
+		//
+		// 注意这一层只是「声明值一致性」检查，不是家庭边界本身：路径里的资源 id 属不属于本家庭
+		// 只有查库才知道，那由各服务 handler 以 sess.FamilyID 为唯一作用域来源来保证
+		// （svc-finance 见 internal/handler/scope.go + repo 的 `WHERE id = ? AND family_id = ?`）。
+		if !isFamilyScopedRoute(c.Request) {
+			if claimed := claimedFamilyIDs(c.Request); len(claimed) > 0 {
+				for _, f := range claimed {
+					if f != sess.FamilyID {
+						m.rejectForeignClaim(c, sess, f)
+						return
+					}
+				}
+			}
+		}
+
 		c.Next()
 	}
 }
+
+// isFamilyScopedRoute 判断这条路由是否**本身就是**「跨家庭」语义，因此不能被
+// 「family_id 必须等于 token 的 fid」这条规则拦。
+//
+// 目前只有一类：POST /family/switch —— 它的用途就是切换到**另一个**家庭，
+// 请求体里的 family_id 按定义不等于当前 token 的 fid。它的归属校验由 handler 自己
+// 负责且更完整（handler 会查该账号是否真属于目标家庭，并落 PRD 15.5 的越权审计，
+// 见 handler/family.go:416 的「切换家庭请求了非本人所属的家庭」）。
+//
+// 如果中间件先拦掉，handler 那段就永远走不到：返回码从 handler 的 403 变成中间件的 401，
+// 且那条审计行消失 —— 这正是本函数存在的原因：不要让通用规则吃掉专用语义。
+// 将来若新增「加入家庭 / 邀请接受」这类同语义路由，必须一并登记到这里，
+// 否则它们会被误判成越权。
+func isFamilyScopedRoute(r *http.Request) bool {
+	return strings.HasSuffix(r.URL.Path, "/family/switch")
+}
+
+// claimedFamilyKeys 是要在请求里收集的同名取值。
+//
+// 键名覆盖 fid / family_id / familyId 三种：仓里三种都出现过 —— middleware 文档里的
+// /members/snapshot?fid=、finance 全部读接口的 ?family_id=、以及部分 handler 的 body。
+// 漏掉任何一种，那条路径就是绕过口。空值不算声明（?family_id= 等价于没传，handler 自己会拒）。
+var claimedFamilyKeys = []string{"fid", "family_id", "familyId"}
+
+// claimedFamilyIDs 收集请求里出现的所有 family_id 取值（query string 与请求体）。
+//
+// # 为什么请求体的解析不能看 Content-Type（这是本次缺陷的根因 A）
+//
+// 旧实现在这里有一句
+//
+//	ct := r.Header.Get("Content-Type")
+//	if !strings.HasPrefix(ct, "application/json") { return out }
+//
+// 于是「body 是 JSON，但 Content-Type 写成 text/plain / 不写 / 写成 multipart」的请求
+// 根本不会被检查 —— 而 gin 的 ShouldBindJSON **同样不看 Content-Type**（它无条件
+// json.Unmarshal 整个 body，见 gin@v1.12.0/binding/json.go）。两边口径不一致，中间件
+// 这一层就变成一个可以按一个 header 关掉的开关。
+//
+// 实测（本次复现的缺陷）：
+//
+//	POST /api/finance/transactions
+//	Content-Type: text/plain
+//	{"family_id":"<别人家>","amount_cents":-1000,...}
+//	→ 旧：201，流水写进了别人家；application/json 同样内容 → 401
+//
+// multipart 更糟：form:"family_id" 走的是 form mapper，body 是 multipart 分段，
+// 任何「按 Content-Type 决定要不要看」的写法都要为每种编码补一个分支，早晚漏一种。
+//
+// 现在的做法：把 body 的前 maxClaimedFamilyBodyBytes 字节**原样缓冲**（读多少就还多少，
+// 绝不截断，handler 看到的字节流和没有中间件时完全一致），然后对这段字节依次尝试
+// JSON / urlencoded / multipart 三种编码来提取声明值。尝试失败只是「这一种编码没命中」，
+// 不影响 handler 自己怎么绑。
+//
+// # 这不是安全边界
+//
+// 这里只处理「客户端**声明**的 family_id」。安全边界在 handler：作用域一律取
+// sess.FamilyID，按 id 读写都带 `AND family_id = ?`（见 svc-finance 的 handler/scope.go 与
+// repo/finance.go）。中间件看不见路径里的资源 id 属不属于本家庭 —— 那要查库才知道。
+// 所以本函数的作用是「让改 family_id 这种探测在所有编码下都被同一口径拒掉」，
+// 而不是唯一的防线。
+func claimedFamilyIDs(r *http.Request) []string {
+	var out []string
+	seen := map[string]bool{}
+	add := func(v string) {
+		v = strings.TrimSpace(v)
+		if v == "" || seen[v] {
+			return
+		}
+		seen[v] = true
+		out = append(out, v)
+	}
+
+	q := r.URL.Query()
+	for _, key := range claimedFamilyKeys {
+		add(q.Get(key))
+	}
+
+	raw, oversized := bufferBody(r)
+	if raw == nil || oversized {
+		// 体积超过缓冲上限：不在这里深解析（可能切在 JSON/multipart 中间，
+		// 解析出来的半截结果既不可信也可能误判），但字节已经原样还给 handler。
+		// 这类请求仍由 handler 侧的 sess.FamilyID 兜住，不依赖本函数。
+		return out
+	}
+
+	for _, v := range claimedFamilyIDsInBytes(raw, r.Header.Get("Content-Type")) {
+		add(v)
+	}
+	return out
+}
+
+// claimedFamilyIDsInBytes 依次按三种编码尝试从已缓冲的请求体里取出声明的 family_id。
+//
+// 三种编码都跑一遍而不是「按 Content-Type 选一种」：Content-Type 正是攻击者可控的输入，
+// 用它来决定「要不要检查」就等于把开关交给攻击者。
+func claimedFamilyIDsInBytes(raw []byte, contentType string) []string {
+	var out []string
+
+	// 1) JSON：不看 Content-Type，只要字节流本身是 JSON 对象就算。
+	var body map[string]any
+	if err := json.Unmarshal(raw, &body); err == nil {
+		for _, key := range claimedFamilyKeys {
+			if s, ok := body[key].(string); ok {
+				out = append(out, s)
+			}
+		}
+		// 嵌套一层也收：{"data":{"family_id":"..."}}
+		if nested, ok := body["data"].(map[string]any); ok {
+			for _, key := range claimedFamilyKeys {
+				if s, ok := nested[key].(string); ok {
+					out = append(out, s)
+				}
+			}
+		}
+	}
+
+	// 2) urlencoded / 裸 text：family_id=<uuid>&amount=1
+	if vals, err := url.ParseQuery(string(raw)); err == nil {
+		for _, key := range claimedFamilyKeys {
+			for _, s := range vals[key] {
+				out = append(out, s)
+			}
+		}
+	}
+
+	// 3) multipart/form-data：voice-entry 这类上传口，form:"family_id" 是个普通分段。
+	if strings.HasPrefix(strings.ToLower(contentType), "multipart/") {
+		_, params, err := mime.ParseMediaType(contentType)
+		if err == nil && params["boundary"] != "" {
+			mr := multipart.NewReader(bytes.NewReader(raw), params["boundary"])
+			for {
+				p, err := mr.NextPart()
+				if err != nil {
+					break // 缓冲可能被截断，读不动就停，剩余由 handler 自己处理
+				}
+				for _, key := range claimedFamilyKeys {
+					if p.FormName() == key {
+						if v, err := io.ReadAll(io.LimitReader(p, 256)); err == nil {
+							out = append(out, string(v))
+						}
+					}
+				}
+				_ = p.Close()
+			}
+		}
+	}
+
+	// 4) multipart 分段但 Content-Type 被改写了（攻击者把 multipart body 标成 text/plain）：
+	// 退化为按分段文本扫一遍，宁可多判也不漏判。
+	if !strings.HasPrefix(strings.ToLower(contentType), "multipart/") && bytes.Contains(raw, []byte(`name="family_id"`)) {
+		for _, m := range familyFormPartRe.FindAllSubmatch(raw, -1) {
+			out = append(out, string(m[1]))
+		}
+	}
+
+	return out
+}
+
+// familyFormPartRe 匹配 multipart 里一个名为 family_id 的**普通字段**分段
+// （没有 Content-Type、内容不含 CRLF，即 UUID 这种短值）。
+var familyFormPartRe = regexp.MustCompile(`(?s)name="(?:fid|family_id|familyId)"\r?\n\r?\n([^\r\n]{1,256})`)
+
+// maxClaimedFamilyBodyBytes 是「够读完一个 JSON 对象的量」，避免为了安全检查把
+// 大 body 整个读进内存。1 MiB 远大于任何家庭接口的请求体。
+const maxClaimedFamilyBodyBytes = 1 << 20
+
+// bodyBufferLimitPlusOne 让 oversized 可判定：真的读出第 max+1 个字节，说明 body 超过上限。
+const bodyBufferLimitPlusOne = maxClaimedFamilyBodyBytes + 1
+
+// bufferBody 读出请求体的前 maxClaimedFamilyBodyBytes+1 个字节，并把读到的字节**原样放回**，
+// 使 handler 之后读到完整、未被改写的流。返回 (读到的字节, 是否超过上限)。
+//
+// 旧实现用 io.ReadAll(io.LimitReader(...)) 再把 r.Body 换成只含这段前缀的 reader，
+// 等于悄悄把超过 1 MiB 的 body 截断了（大附件的 multipart 上传会被弄坏），
+// 而且截断后的 JSON 解析必然失败 —— 越权检查就静默失效。
+func bufferBody(r *http.Request) ([]byte, bool) {
+	if r.Body == nil {
+		return nil, false
+	}
+	buf := make([]byte, bodyBufferLimitPlusOne)
+	n, err := io.ReadFull(r.Body, buf)
+	if n > 0 {
+		read := buf[:n]
+		// 不 Close 原 body：剩余字节还要由 handler 继续读，Close 之后读会报错。
+		r.Body = io.NopCloser(io.MultiReader(bytes.NewReader(read), r.Body))
+		if err == nil { // 读满了 max+1，说明超过上限
+			return read[:maxClaimedFamilyBodyBytes], true
+		}
+		return read, false
+	}
+	return nil, err != nil
+}
+
 
 // allowOnboarding runs the onboarding-only half of the gate: install a session with NO family_id and
 // admit the request only if its route is in the closed bootstrap set.
@@ -588,6 +841,29 @@ func (m *Middleware) reject(c *gin.Context, sess *Session, event, reason string)
 		m.OnDenied(c, sess, event, reason)
 	}
 	c.AbortWithStatusJSON(401, gin.H{"error": "unauthorized", "message": "登录状态无效或不属于当前家庭"})
+}
+
+// rejectForeignClaim 拒一次「声明的 family_id ≠ token 的 fid」：403 + cross_family_denied + 审计。
+//
+// 403 而不是 401：调用方拿的是**有效** token，只是伸手要进别人的家庭 —— 回 401 会让客户端把
+// 越权探测当成登录过期去重新登录重试，掩盖告警（与 rejectOnboarding 同一口径）。
+//
+// 旧行为是各 handler 自己比对后回 401；检查上移到中间件后若沿用 401，PRD 15.5 的越权审计
+// 就只剩 handler 那一半（且多数 handler 根本没比）。所以这里必须同时做两件事：
+//  1. 经 OnDenied 落一条 cross_family_attempt —— 与 svc-finance scope.go 的 deny、
+//     homeos 的 auditDenied 用同一个事件名，验收脚本按事件统计时不会漏；
+//  2. 响应体和 svc-finance handler 层的同名拒绝保持同一形状（error/code/message 逐字一致），
+//     让探测者无论被哪一层拦下都只看到同一个 403，不泄露「哪层先拦」这一信息。
+func (m *Middleware) rejectForeignClaim(c *gin.Context, sess *Session, claimed string) {
+	reason := "请求声明的 family_id 与 token 家庭不一致: claimed=" + claimed
+	if m.OnDenied != nil {
+		m.OnDenied(c, sess, "cross_family_attempt", reason)
+	}
+	c.AbortWithStatusJSON(403, gin.H{
+		"error":   "forbidden",
+		"code":    "cross_family_denied",
+		"message": "无权访问其他家庭的数据",
+	})
 }
 
 func bearer(header string) (string, error) {

@@ -48,11 +48,11 @@ type SearchResponse struct {
 // Per PRD 15.6 and tech plan §4.2: internal endpoint for authz SDK and service projections.
 // P1: family_overrides and object_acls always return empty arrays (定版 ㉖).
 type MembersSnapshotResponse struct {
-	PVersion       int64            `json:"pver"`
-	Members        []MemberInfo     `json:"members"`
-	Permissions    []PermissionInfo `json:"permissions"`
-	FamilyOverrides []interface{}   `json:"family_overrides"` // P1: always empty
-	ObjectACLs     []interface{}    `json:"object_acls"`      // P1: always empty
+	PVersion        int64            `json:"pver"`
+	Members         []MemberInfo     `json:"members"`
+	Permissions     []PermissionInfo `json:"permissions"`
+	FamilyOverrides []interface{}    `json:"family_overrides"` // P1: always empty
+	ObjectACLs      []interface{}    `json:"object_acls"`      // P1: always empty
 }
 
 // MemberInfo represents a member in the snapshot response.
@@ -67,7 +67,7 @@ type MemberInfo struct {
 
 // PermissionInfo represents a permission entry in the snapshot.
 type PermissionInfo struct {
-	Scope     string `json:"scope"`     // module, data, operation
+	Scope     string `json:"scope"` // module, data, operation
 	Resource  string `json:"resource"`
 	Action    string `json:"action"`
 	Condition string `json:"condition"`
@@ -157,12 +157,12 @@ type AppBundlesResponse struct {
 
 // BundleInfo represents a frontend bundle's metadata.
 type BundleInfo struct {
-	Code       string `json:"code"`
-	Version    string `json:"version"`
-	URL        string `json:"url"`
-	SHA256     string `json:"sha256"`
-	Size       int    `json:"size"`
-	MinCompat  string `json:"min_compat"`
+	Code      string `json:"code"`
+	Version   string `json:"version"`
+	URL       string `json:"url"`
+	SHA256    string `json:"sha256"`
+	Size      int    `json:"size"`
+	MinCompat string `json:"min_compat"`
 }
 
 // GetAppBundles handles GET /api/homeos/app/bundles.

@@ -93,7 +93,7 @@ func TestMarkAsPaidEmitsDueRevokedInSameTransaction(t *testing.T) {
 	dueAt := time.Date(2026, 10, 10, 9, 0, 0, 0, time.FixedZone("UTC+8", 8*60*60)) // 01:00 UTC
 	bill := paidBill(t, ctx, r, dueAt)
 
-	updated, err := r.MarkAsPaid(ctx, bill.ID)
+	updated, err := r.MarkAsPaid(ctx, bill.FamilyID, bill.ID)
 	require.NoError(t, err)
 	require.NotNil(t, updated.PaidAt)
 
@@ -154,12 +154,12 @@ func TestMarkAsPaidRevokedFailureRollsBackBillUpdate(t *testing.T) {
 		BEFORE INSERT ON finance_outbox
 		BEGIN SELECT RAISE(ABORT, 'forced outbox failure'); END`).Error)
 
-	_, err := r.MarkAsPaid(ctx, bill.ID)
+	_, err := r.MarkAsPaid(ctx, bill.FamilyID, bill.ID)
 	require.Error(t, err, "撤销事件写不进去时，整次结清必须失败")
 	assert.Contains(t, err.Error(), "due revocation", "错误要指向撤销那一步，不是别处")
 
 	// 业务行回滚：账单仍是 pending、version 仍是 1、paid_at 没有落下。
-	retrieved, err := r.GetBillByID(ctx, bill.ID)
+	retrieved, err := r.GetBillByID(ctx, bill.FamilyID, bill.ID)
 	require.NoError(t, err)
 	require.NotNil(t, retrieved)
 	assert.Equal(t, "pending", retrieved.Status, "账单不能留下已付状态（回滚）")
@@ -177,7 +177,7 @@ func TestMarkAsPaidRevokedFailureRollsBackBillUpdate(t *testing.T) {
 	require.NoError(t, db.Exec(`DROP TRIGGER force_outbox_failure`).Error)
 
 	// 触发器撤掉后同一条路径恢复正常：撤销事件确实由这一步写出，不是被守卫吞掉。
-	_, err = r.MarkAsPaid(ctx, bill.ID)
+	_, err = r.MarkAsPaid(ctx, bill.FamilyID, bill.ID)
 	require.NoError(t, err)
 	require.Len(t, loadRevokedRows(t, db), 1)
 }
@@ -193,9 +193,9 @@ func TestMarkAsPaidRepeatKeepsOneIdempotencyKey(t *testing.T) {
 
 	bill := paidBill(t, ctx, r, time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC))
 
-	_, err := r.MarkAsPaid(ctx, bill.ID)
+	_, err := r.MarkAsPaid(ctx, bill.FamilyID, bill.ID)
 	require.NoError(t, err)
-	_, err = r.MarkAsPaid(ctx, bill.ID)
+	_, err = r.MarkAsPaid(ctx, bill.FamilyID, bill.ID)
 	require.NoError(t, err)
 
 	rows := loadRevokedRows(t, db)
@@ -214,7 +214,7 @@ func TestMarkAsPaidUnknownBillWritesNothing(t *testing.T) {
 	r, db := setupTestRepo(t)
 	ctx := context.Background()
 
-	_, err := r.MarkAsPaid(ctx, "00000000-0000-4000-8000-000000000000")
+	_, err := r.MarkAsPaid(ctx, "test-family-001", "00000000-0000-4000-8000-000000000000")
 	require.Error(t, err)
 	assert.Empty(t, loadRevokedRows(t, db))
 	assert.Equal(t, int64(0), countOutboxRows(t, db))

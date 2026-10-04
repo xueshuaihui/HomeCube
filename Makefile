@@ -367,3 +367,77 @@ check-device-lock:
 	@echo "=== P1 Device Lock & L3 Unlock Check ==="
 	./deploy/scripts/device_lock_check.sh
 
+
+# =============================================================================
+# acceptance —— P1 可交付验收（G1 API 门禁）
+#
+# 为什么要独立成 target：验收必须是**一条命令、可重复、结果确定**的，
+# 不能靠「人工点一遍页面觉得没问题」。前几轮之所以反复返工，正是因为
+# 验收依赖执行者的临场判断 —— 同一个缺陷被不同的人看成不同的问题。
+#
+# G1（API 层）：从 cmd/*/main.go 自动发现**实际注册**的全部路由，逐条发真实请求断言。
+#   路由清单不手写：手写清单等于拿「我以为有哪些接口」当 oracle，
+#   上一轮 /statistics/summary 与 /members 就是这样漏掉的。
+#
+# 用法：
+#   make acceptance            # G1
+#   make acceptance-verbose    # G1 + 打印每条明细
+#   make acceptance-all        # G1 + G2 浏览器 + G3 构建 + G4 数据 + G5 权限
+#
+# 前置：两个服务与 PostgreSQL/NATS 已在跑（make up 或容器常驻）。
+# =============================================================================
+PYTHON ?= python3
+ACCEPT_DIR := server/test/acceptance
+
+.PHONY: acceptance
+acceptance:
+	@echo "=== G1 · API 契约验收（路由自动发现 + 逐条实调）==="
+	@$(PYTHON) $(ACCEPT_DIR)/route_discovery.py > $(ACCEPT_DIR)/routes.json
+	@$(PYTHON) $(ACCEPT_DIR)/api_acceptance.py --json $(ACCEPT_DIR)/result-g1.json
+
+.PHONY: acceptance-verbose
+acceptance-verbose:
+	@echo "=== G1 · API 契约验收（verbose）==="
+	@$(PYTHON) $(ACCEPT_DIR)/route_discovery.py > $(ACCEPT_DIR)/routes.json
+	@$(PYTHON) $(ACCEPT_DIR)/api_acceptance.py --verbose --json $(ACCEPT_DIR)/result-g1.json
+
+# =============================================================================
+# acceptance-g3 —— 构建与静态门禁
+#
+# 覆盖：Go 侧 build/vet/test/gofmt + 前端 check/tc/H5 构建。
+# H5 构建输出到 web/dist-acceptance 而不是 web/dist：dist 里有上一轮留下的 57 个产物，
+# 清理它们会触发环境的批量删除保护从而中断构建。构建到独立目录既绕开该保护，
+# 也让「本轮产物」与「历史产物」可分辨。
+# =============================================================================
+.PHONY: acceptance-g3
+acceptance-g3:
+	@echo "=== G3-1 · Go 格式化 / 构建 / vet / 单测 ==="
+	@cd $(SERVER_DIR) && GOTOOLCHAIN=local $(GO) fmt ./... >/dev/null
+	@cd $(SERVER_DIR) && test -z "$$(GOTOOLCHAIN=local $(GO) run cmd/gofmtcheck 2>/dev/null || $(HOME)/sdk/go/bin/gofmt -l .)" \
+		&& echo "  PASS gofmt" || (echo "  FAIL gofmt: 上述文件未格式化"; exit 1)
+	@cd $(SERVER_DIR) && GOTOOLCHAIN=local $(GO) build ./... && echo "  PASS go build"
+	@cd $(SERVER_DIR) && GOTOOLCHAIN=local $(GO) vet ./... && echo "  PASS go vet"
+	@cd $(SERVER_DIR) && GOTOOLCHAIN=local $(GO) test ./... 2>&1 | tee /tmp/hc-gotest.txt | grep -E '^(FAIL|---)' \
+		&& (echo "  FAIL go test"; exit 1) || echo "  PASS go test"
+	@echo "=== G3-2 · 前端类型检查 ==="
+	@cd web && npx tsc --noEmit -p tsconfig.json && echo "  PASS tsc (app)"
+	@cd web && npx tsc --noEmit -p tests/tsconfig.json && echo "  PASS tsc (tests)"
+	@echo "=== G3-3 · 前端工程检查（check:pages 13 项 + check:request 6 项）==="
+	@cd web && npm run check >/dev/null && echo "  PASS npm run check"
+	@echo "=== G3-4 · H5 构建 ==="
+	@cd web && npx uni build --outDir dist-acceptance 2>&1 | grep -qE 'DONE' && echo "  PASS uni build"
+
+# =============================================================================
+# acceptance-g5 —— 权限与越权边界门禁
+#
+# 验收的是**安全性质**，不是「接口能不能调通」。用两个真实账号互相试探 ——
+# 真实 token 才有意义（签名完全合法，只是家庭不对），伪造的 payload 测不出这类越权。
+#
+# 覆盖：无 token 401 / 伪造 token 401 / 跨家庭不可见 / 家庭数据边界 /
+#       无效 refresh 401 / 非法 family_id 4xx。
+# =============================================================================
+.PHONY: acceptance-g5
+acceptance-g5:
+	@echo "=== G5 · 权限与越权边界验收 ==="
+	@$(PYTHON) $(ACCEPT_DIR)/route_discovery.py > $(ACCEPT_DIR)/routes.json
+	@$(PYTHON) $(ACCEPT_DIR)/authz_acceptance.py

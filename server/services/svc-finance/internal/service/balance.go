@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/model"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/repo"
 	"gorm.io/gorm"
 )
@@ -21,6 +22,33 @@ func NewBalanceService(db *gorm.DB, repo *repo.FinanceRepo) *BalanceService {
 		db:   db,
 		repo: repo,
 	}
+}
+
+// RecalcAccountBalance 重新计算并**写回** finance_account.balance。
+//
+// 为什么需要「写回」：CalculateAccountBalance 是纯读，而 finance_account.balance 这一列
+// 被建表时就给了（bigint，注释写着账户余额），于是它成了**没人维护的陈旧缓存** ——
+// 记账不写它、删除不写它、只有「查余额」那个 GET 接口会现算现答。
+// G4 数据门禁实测：12 个账户里有 6 个有流水却 balance = 0，漂移最大 57200 分（¥572）。
+//
+// 后果不是「显示不好看」：任何直接读 balance 列的地方（报表、导出、预算可用额度、
+// 归档前的余额校验）拿到的都是错的数，且与 API 返回值对不上 ——
+// 同一个账户，GET /accounts/{id}/balance 答 -572，GET /accounts 答 0。
+//
+// 这里用「重算」而不是「增量加减」：增量在撤销/修改/软删除恢复时会漂移，
+// 而流水是软删的、可恢复的，重算永远是 SUM(non-deleted)，不需要维护加减逻辑。
+func (s *BalanceService) RecalcAccountBalance(ctx context.Context, accountID string, familyID string) (int64, error) {
+	total, err := s.CalculateAccountBalance(ctx, accountID, familyID)
+	if err != nil {
+		return 0, err
+	}
+	if err := s.db.WithContext(ctx).
+		Model(&model.FinanceAccount{}).
+		Where("id = ? AND family_id = ?", accountID, familyID).
+		Update("balance", total).Error; err != nil {
+		return 0, fmt.Errorf("failed to persist account balance: %w", err)
+	}
+	return total, nil
 }
 
 // CalculateAccountBalance calculates the balance for a single account by summing amount_cents.

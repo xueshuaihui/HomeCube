@@ -227,14 +227,14 @@ func (s *DueTriggerScanner) fireReminderWithCheck(tx *gorm.DB, reg dueRegistrati
 
 	// Build the envelope payload per contracts/events/homeos.yaml:173-178
 	payload := map[string]any{
-		"reminder_id":    reg.ID,
-		"fire_date":      fireDate.Format("2006-01-02"), // date format (YYYY-MM-DD)
-		"source_system":  reg.SourceSystem,
-		"source_id":      reg.SourceID,
-		"type":           classifyReminderType(reg.Kind),
-		"title":          reg.Title,
-		"family_id":      reg.FamilyID,
-		"due_at":         reg.DueAt.UTC().Format(time.RFC3339),
+		"reminder_id":   reg.ID,
+		"fire_date":     fireDate.Format("2006-01-02"), // date format (YYYY-MM-DD)
+		"source_system": reg.SourceSystem,
+		"source_id":     reg.SourceID,
+		"type":          classifyReminderType(reg.Kind),
+		"title":         reg.Title,
+		"family_id":     reg.FamilyID,
+		"due_at":        reg.DueAt.UTC().Format(time.RFC3339),
 	}
 
 	envelope := bus.Envelope{

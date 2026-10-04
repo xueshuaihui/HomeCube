@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/xueshuaihui/HomeCube/server/packages/bus"
+	svcauth "github.com/xueshuaihui/HomeCube/server/packages/auth"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/model"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/repo"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/service"
@@ -74,6 +75,13 @@ func postBill(t *testing.T, h *FinanceHandler, body string) *httptest.ResponseRe
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/api/finance/bills", bytes.NewBufferString(body))
 	c.Request.Header.Set("Content-Type", "application/json")
+	// 与真实链路对齐：中间件装好 session 后 handler 才有家庭作用域（scopeFamily fail closed）。
+	c.Set(svcauth.CtxSession, &svcauth.Session{
+		AccountID: "test-account",
+		FamilyID:  testFamilyUUID,
+		MemberID:  "test-member",
+		Role:      "owner",
+	})
 
 	h.CreateBill(c)
 	return w

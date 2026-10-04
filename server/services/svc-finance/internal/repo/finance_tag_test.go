@@ -154,9 +154,14 @@ func TestDeleteTag(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Verify deletion
+	// 软删除后「取不到」用哨兵错误表达（errors.Is + ErrNotFound），不是 (nil, nil)。
+	// 旧断言是 `assert.NoError` + `assert.Nil(retrieved)`，那等于把
+	// 「repo 用 nil 表达不存在」这条隐患写进了契约：调用方的 `if err != nil` 抓不到，
+	// 随后解引用 nil 就 panic（实测 DELETE /transactions/{id} 打不存在的 id 即 500 空体）。
 	retrieved, err := repo.GetTagByID(ctx, "test-family-001", tag.ID)
-	assert.NoError(t, err)
-	assert.Nil(t, retrieved) // Should be nil after soft delete
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, ErrNotFound)
+	assert.Nil(t, retrieved)
 }
 
 func TestCreateRecurringRule(t *testing.T) {
@@ -253,7 +258,7 @@ func TestMarkRecurringRuleExecuted(t *testing.T) {
 
 	// Mark as executed
 	nextExecuteAt := now.AddDate(0, 1, 0)
-	err = repo.MarkRecurringRuleExecuted(ctx, rule.ID, nextExecuteAt)
+	err = repo.MarkRecurringRuleExecuted(ctx, "test-family-001", rule.ID, nextExecuteAt)
 	assert.NoError(t, err)
 
 	// Verify update
@@ -360,7 +365,9 @@ func TestDeleteBudgetPeriod(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Verify deletion
+	// 同上：不存在的语义是 ErrNotFound，而不是 (nil, nil)。
 	retrieved, err := repo.GetBudgetPeriodByID(ctx, "test-family-001", period.ID)
-	assert.NoError(t, err)
-	assert.Nil(t, retrieved) // Should be nil after soft delete
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, ErrNotFound)
+	assert.Nil(t, retrieved)
 }

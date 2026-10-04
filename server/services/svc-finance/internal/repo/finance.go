@@ -4,6 +4,7 @@ package repo
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -19,7 +20,26 @@ var (
 	ErrAccountBalanceNonZero = errors.New("account balance must be zero before archiving")
 	ErrOptimisticLock        = errors.New("optimistic lock conflict: record was modified by another request")
 	ErrDuplicateRequest      = errors.New("duplicate request: this transaction has already been processed")
+
+	// ErrNotFound 是「资源不存在」的哨兵。
+	//
+	// 为什么必须有它：下面所有 repo 方法此前都用裸 `errors.New("<entity> not found")`，
+	// handler 拿到的也只是普通 error，只能 `err != nil` 一刀切，于是
+	// 「id 不存在」和「数据库真的坏了」一起被答成 **500**。实测 11 条按 id 操作的路由
+	// （accounts/:id/archive、categories/:id/deactivate、bills/:id/pay、loans/:id/payoff …）
+	// 用一个不存在的 id 调用，全部返回 500。
+	//
+	// 语义上「不存在」是 404 而不是 500 —— 客户端要能区分「资源没了」和「服务坏了」，
+	// 前者该重试/换 id，后者该报警。用哨兵 + errors.Is 判定，判定不依赖错误字符串，
+	// 因此改文案不会把 404 悄悄变成 500。
+	ErrNotFound = errors.New("finance resource not found")
 )
+
+// notFoundf 返回一个**能被 errors.Is(err, ErrNotFound) 识别**的「不存在」错误，
+// 同时保留具体的实体名供日志与响应体使用。
+func notFoundf(entity string, id string) error {
+	return fmt.Errorf("%s %s: %w", entity, id, ErrNotFound)
+}
 
 // isUniqueViolation reports a unique-index collision in an engine-neutral way, the same shape as
 // svc-homeos's helper (services/svc-homeos/internal/repo/homeos.go:218). This repo runs on
@@ -117,13 +137,33 @@ func (r *FinanceRepo) CreateAccount(ctx context.Context, account *model.FinanceA
 	})
 }
 
-// GetAccountByID retrieves an account by its ID.
-func (r *FinanceRepo) GetAccountByID(ctx context.Context, id string) (*model.FinanceAccount, error) {
+// ── 家庭边界（PRD 15.2「判定以 family_id 为界」/ 18.2 验收第 8 条）────────────────
+//
+// 本文件里每一条**按 id 读写已存在资源**的查询都必须带 family_id，形如
+// `WHERE id = ? AND family_id = ?`，0 行时返回 ErrNotFound（→ handler 答 404）。
+// 照的是 svc-homeos 的口径（repo/homeos.go:521 `WHERE id = ? AND family_id = ?`）。
+//
+// 为什么不能只按 id 查、由 handler 事后比对：实测 GET /api/finance/transactions/:id
+// 用 A 家庭的 token 拿到 200 + B 家庭流水的**整行**（family_id / created_by /
+// category_id / account_id / version / receipt_file_id），因为
+// `GetTransactionByID` 当时是 `WHERE id = ?`。任何「先读出来再看归属」的写法
+// 都把跨家庭存在性变成了可读信号（404 vs 200 本身就是 oracle）。
+//
+// 参数顺序统一为 (ctx, familyID, id...)，与既有的 GetTagByID / GetRecurringRuleByID 一致。
+// familyID 为空时**不放宽**而是查不到（id = ? AND family_id = '' 命中 0 行）：
+// handler 侧的 session 缺失已在 401 挡掉，这里是第二道 fail closed 网。
+
+// GetAccountByID retrieves an account by its ID within the given family.
+func (r *FinanceRepo) GetAccountByID(ctx context.Context, familyID, id string) (*model.FinanceAccount, error) {
 	var account model.FinanceAccount
-	result := r.db.WithContext(ctx).Where("id = ?", id).First(&account)
+	result := r.db.WithContext(ctx).Where("id = ? AND family_id = ?", id, familyID).First(&account)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil
+			// 「不存在」用哨兵错误表达，不再 return nil, nil：返回 (nil, nil) 让调用方
+			// 的 `if err != nil` 抓不到，随后解引用 nil 直接 panic —— 实测
+			// DELETE /transactions/{id} 打一个不存在的 id 就是 runtime error: invalid
+			// memory address or nil pointer dereference（gin Recovery 吞成空体 500）。
+			return nil, notFoundf("account", id)
 		}
 		return nil, fmt.Errorf("failed to get account: %w", result.Error)
 	}
@@ -143,14 +183,14 @@ func (r *FinanceRepo) ListAccountsByFamily(ctx context.Context, familyID string)
 	return accounts, nil
 }
 
-// ArchiveAccount archives an account (only if balance is zero).
-func (r *FinanceRepo) ArchiveAccount(ctx context.Context, id string) error {
+// ArchiveAccount archives an account (only if balance is zero) within the given family.
+func (r *FinanceRepo) ArchiveAccount(ctx context.Context, familyID, id string) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var account model.FinanceAccount
-		result := tx.Where("id = ?", id).First(&account)
+		result := tx.Where("id = ? AND family_id = ?", id, familyID).First(&account)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return errors.New("account not found")
+				return notFoundf("account", id)
 			}
 			return fmt.Errorf("failed to get account: %w", result.Error)
 		}
@@ -188,17 +228,93 @@ func (r *FinanceRepo) CreateCategory(ctx context.Context, category *model.Financ
 	})
 }
 
-// GetCategoryByID retrieves a category by its ID.
-func (r *FinanceRepo) GetCategoryByID(ctx context.Context, id string) (*model.FinanceCategory, error) {
+// GetCategoryByID retrieves a category by its ID within the given family.
+func (r *FinanceRepo) GetCategoryByID(ctx context.Context, familyID, id string) (*model.FinanceCategory, error) {
 	var category model.FinanceCategory
-	result := r.db.WithContext(ctx).Where("id = ?", id).First(&category)
+	result := r.db.WithContext(ctx).Where("id = ? AND family_id = ?", id, familyID).First(&category)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil
+			// 「不存在」用哨兵错误表达，不再 return nil, nil：返回 (nil, nil) 让调用方
+			// 的 `if err != nil` 抓不到，随后解引用 nil 直接 panic —— 实测
+			// DELETE /transactions/{id} 打一个不存在的 id 就是 runtime error: invalid
+			// memory address or nil pointer dereference（gin Recovery 吞成空体 500）。
+			return nil, notFoundf("category", id)
 		}
 		return nil, fmt.Errorf("failed to get category: %w", result.Error)
 	}
 	return &category, nil
+}
+
+// AssertRefsExist 校验一笔流水引用的账户与分类都真实存在于**该家庭**。
+//
+// 存在的原因：CreateTransactionRequest 的 binding 只有 `required,uuid`，那只管格式。
+// 迁移 0001 的 finance_transaction 也没有外键约束（account_id 上只有普通索引），
+// 所以「格式合法但指向不存在的行」会被照单全收 —— G4 数据门禁实测就是靠这条查出了
+// 4 条 account_id = 全零 UUID 的孤儿流水，账户余额与分类统计因此对不上。
+//
+// 为什么连 family 一起校验：只按 id 查是不够的 —— A 家庭的账户 id 被 B 家庭拿去用
+// 同样是一条对不上账的流水。所以每次都带 family_id，跨家庭的引用在写入侧就挡住。
+//
+// categoryID 为 nil 表示「未分类」，这是合法状态（迁移 0001 里 category_id 可空），
+// 因此只在非 nil 时校验。accountID 为空同理表示「本次没有账户引用」，也跳过 ——
+// 记账接口上的「必须有账户」仍由 binding 的 `required,uuid` 保证，
+// 而这个跳过让同一个校验能复用到只有分类引用的场合（POST /budgets）。
+func (r *FinanceRepo) AssertRefsExist(ctx context.Context, familyID, accountID string, categoryID *string) error {
+	var n int64
+	if accountID != "" {
+		if err := r.db.WithContext(ctx).
+			Model(&model.FinanceAccount{}).
+			Where("id = ? AND family_id = ? AND deleted_at IS NULL", accountID, familyID).
+			Count(&n).Error; err != nil {
+			return fmt.Errorf("failed to verify account: %w", err)
+		}
+		if n == 0 {
+			return notFoundf("account", accountID)
+		}
+	}
+
+	if categoryID != nil && *categoryID != "" {
+		var m int64
+		if err := r.db.WithContext(ctx).
+			Model(&model.FinanceCategory{}).
+			Where("id = ? AND family_id = ? AND deleted_at IS NULL", *categoryID, familyID).
+			Count(&m).Error; err != nil {
+			return fmt.Errorf("failed to verify category: %w", err)
+		}
+		if m == 0 {
+			return notFoundf("category", *categoryID)
+		}
+	}
+	return nil
+}
+
+// AssertTransactionsInFamily 校验若干笔流水都真实存在于**该家庭**。
+//
+// 与 AssertRefsExist 同一个理由，只是引用对象换成了 transaction_id：
+// POST /split-settlements 会把 body 里的 transaction_id 直接写进
+// finance_split_settlement.transaction_id（迁移 0001 上没有外键约束），
+// PUT /invoices/:id/reimburse 同理。只校验「像个 UUID」= 谁都能把别人家庭的一笔
+// 流水挂到自己家庭的 AA 单 / 报销单上，并且从「201 还是 404」里免费读出对方流水是否存在。
+//
+// 空 id 视为未引用（AA 单允许先不挂流水），不报错；familyID 为空则任何 id 都查不到，
+// 方向同样是 fail closed（PRD 15.2）。
+func (r *FinanceRepo) AssertTransactionsInFamily(ctx context.Context, familyID string, ids ...string) error {
+	for _, id := range ids {
+		if id == "" {
+			continue
+		}
+		var n int64
+		if err := r.db.WithContext(ctx).
+			Model(&model.FinanceTransaction{}).
+			Where("id = ? AND family_id = ? AND deleted_at IS NULL", id, familyID).
+			Count(&n).Error; err != nil {
+			return fmt.Errorf("failed to verify transaction: %w", err)
+		}
+		if n == 0 {
+			return notFoundf("transaction", id)
+		}
+	}
+	return nil
 }
 
 // ListCategoriesByFamily retrieves all categories for a family.
@@ -217,14 +333,14 @@ func (r *FinanceRepo) ListCategoriesByFamily(ctx context.Context, familyID strin
 	return categories, nil
 }
 
-// DeactivateCategory deactivates a category (does not affect historical transactions).
-func (r *FinanceRepo) DeactivateCategory(ctx context.Context, id string) error {
+// DeactivateCategory deactivates a category within the given family (does not affect historical transactions).
+func (r *FinanceRepo) DeactivateCategory(ctx context.Context, familyID, id string) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var category model.FinanceCategory
-		result := tx.Where("id = ?", id).First(&category)
+		result := tx.Where("id = ? AND family_id = ?", id, familyID).First(&category)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return errors.New("category not found")
+				return notFoundf("category", id)
 			}
 			return fmt.Errorf("failed to get category: %w", result.Error)
 		}
@@ -249,19 +365,41 @@ type CreateTransactionInput struct {
 	ClientReqID string
 	FamilyID    string
 	RequestData interface{}
+	// Replay 承接「重放首次响应」的结果（PRD 14.7 / 迁移 0003 注释「重放返回首次响应
+	// 而非重复执行」）。同一个 client_request_id 再来一次时，sync.CheckIdempotency
+	// 会把首次的响应快照放进这里，handler 照它原样回给客户端。
+	//
+	// 旧实现直接 `return ErrDuplicateRequest`，于是重复提交得到 **409**。那不是幂等，
+	// 是拒绝：客户端在网络超时后重试会看到「冲突」，无法判断自己的第一次写入到底
+	// 成功了没有 —— 幂等键的全部意义就是让重试安全。
+	Replay *model.FinanceTransaction
 }
 
 // CreateTransaction creates a new finance transaction with idempotency and optimistic locking.
-func (r *FinanceRepo) CreateTransaction(ctx context.Context, input CreateTransactionInput) error {
+func (r *FinanceRepo) CreateTransaction(ctx context.Context, input *CreateTransactionInput) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// Check idempotency
 		if input.ClientReqID != "" {
-			exists, _, err := r.sync.CheckIdempotency(ctx, tx, input.ClientReqID, input.FamilyID, input.RequestData)
+			exists, snapshot, err := r.sync.CheckIdempotency(ctx, tx, input.ClientReqID, input.FamilyID, input.RequestData)
 			if err != nil {
 				return fmt.Errorf("failed to check idempotency: %w", err)
 			}
 			if exists {
-				return ErrDuplicateRequest
+				// 重放：把首次创建的记录回填给调用方，由 handler 原样返回。
+				// 快照里存的是首次响应体（RecordIdempotency 传的就是 input.Transaction），
+				// 因此这里能还原出同一个 id —— 客户端看到的是「我的第一次提交成功了」，
+				// 而不是 409。
+				prior := &model.FinanceTransaction{}
+				if len(snapshot) > 0 {
+					if uerr := json.Unmarshal(snapshot, prior); uerr == nil && prior.ID != "" {
+						input.Replay = prior
+						return nil
+					}
+				}
+				// 快照读不出来（历史数据/格式变更）时不能静默重复插入 —— 那会真的记两笔账。
+				// 此时仍以冲突告知，并带上「首次确实已处理」这个事实。
+				return fmt.Errorf("client_request_id %q 已处理但无法重放首次响应: %w",
+					input.ClientReqID, ErrDuplicateRequest)
 			}
 		}
 
@@ -303,13 +441,17 @@ func (r *FinanceRepo) CreateTransaction(ctx context.Context, input CreateTransac
 	})
 }
 
-// GetTransactionByID retrieves a transaction by its ID.
-func (r *FinanceRepo) GetTransactionByID(ctx context.Context, id string) (*model.FinanceTransaction, error) {
+// GetTransactionByID retrieves a transaction by its ID within the given family.
+func (r *FinanceRepo) GetTransactionByID(ctx context.Context, familyID, id string) (*model.FinanceTransaction, error) {
 	var transaction model.FinanceTransaction
-	result := r.db.WithContext(ctx).Where("id = ?", id).First(&transaction)
+	result := r.db.WithContext(ctx).Where("id = ? AND family_id = ?", id, familyID).First(&transaction)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil
+			// 「不存在」用哨兵错误表达，不再 return nil, nil：返回 (nil, nil) 让调用方
+			// 的 `if err != nil` 抓不到，随后解引用 nil 直接 panic —— 实测
+			// DELETE /transactions/{id} 打一个不存在的 id 就是 runtime error: invalid
+			// memory address or nil pointer dereference（gin Recovery 吞成空体 500）。
+			return nil, notFoundf("transaction", id)
 		}
 		return nil, fmt.Errorf("failed to get transaction: %w", result.Error)
 	}
@@ -357,14 +499,14 @@ func (r *FinanceRepo) ListTransactionsByFamily(ctx context.Context, familyID str
 	return transactions, nextCursor, nil
 }
 
-// UpdateTransaction updates a transaction with optimistic locking.
-func (r *FinanceRepo) UpdateTransaction(ctx context.Context, id string, updates map[string]interface{}, expectedVersion int64) (*model.FinanceTransaction, error) {
+// UpdateTransaction updates a transaction within the given family, with optimistic locking.
+func (r *FinanceRepo) UpdateTransaction(ctx context.Context, familyID, id string, updates map[string]interface{}, expectedVersion int64) (*model.FinanceTransaction, error) {
 	return nil, r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var transaction model.FinanceTransaction
-		result := tx.Where("id = ?", id).First(&transaction)
+		result := tx.Where("id = ? AND family_id = ?", id, familyID).First(&transaction)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return errors.New("transaction not found")
+				return notFoundf("transaction", id)
 			}
 			return fmt.Errorf("failed to get transaction: %w", result.Error)
 		}
@@ -384,7 +526,7 @@ func (r *FinanceRepo) UpdateTransaction(ctx context.Context, id string, updates 
 		}
 
 		// Reload to get updated values
-		result = tx.Where("id = ?", id).First(&transaction)
+		result = tx.Where("id = ? AND family_id = ?", id, familyID).First(&transaction)
 		if result.Error != nil {
 			return fmt.Errorf("failed to reload transaction: %w", result.Error)
 		}
@@ -393,20 +535,19 @@ func (r *FinanceRepo) UpdateTransaction(ctx context.Context, id string, updates 
 	})
 }
 
-// SoftDeleteTransaction soft-deletes a transaction (GORM soft delete via DeletedAt).
-func (r *FinanceRepo) SoftDeleteTransaction(ctx context.Context, id string, deletedBy string) error {
+// SoftDeleteTransaction soft-deletes a transaction inside the given family (GORM soft delete via DeletedAt).
+func (r *FinanceRepo) SoftDeleteTransaction(ctx context.Context, familyID, id string, deletedBy string) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var transaction model.FinanceTransaction
-		result := tx.Where("id = ?", id).First(&transaction)
+		result := tx.Where("id = ? AND family_id = ?", id, familyID).First(&transaction)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return errors.New("transaction not found")
+				return notFoundf("transaction", id)
 			}
 			return fmt.Errorf("failed to get transaction: %w", result.Error)
 		}
 
 		// Update metadata before soft delete
-		now := time.Now().UTC()
 		updates := map[string]interface{}{
 			"deleted_by": deletedBy,
 			"version":    transaction.Version + 1,
@@ -444,13 +585,17 @@ func (r *FinanceRepo) CreateLedger(ctx context.Context, ledger *model.FinanceLed
 	})
 }
 
-// GetLedgerByID retrieves a ledger by its ID.
-func (r *FinanceRepo) GetLedgerByID(ctx context.Context, id string) (*model.FinanceLedger, error) {
+// GetLedgerByID retrieves a ledger by its ID within the given family.
+func (r *FinanceRepo) GetLedgerByID(ctx context.Context, familyID, id string) (*model.FinanceLedger, error) {
 	var ledger model.FinanceLedger
-	result := r.db.WithContext(ctx).Where("id = ?", id).First(&ledger)
+	result := r.db.WithContext(ctx).Where("id = ? AND family_id = ?", id, familyID).First(&ledger)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil
+			// 「不存在」用哨兵错误表达，不再 return nil, nil：返回 (nil, nil) 让调用方
+			// 的 `if err != nil` 抓不到，随后解引用 nil 直接 panic —— 实测
+			// DELETE /transactions/{id} 打一个不存在的 id 就是 runtime error: invalid
+			// memory address or nil pointer dereference（gin Recovery 吞成空体 500）。
+			return nil, notFoundf("ledger", id)
 		}
 		return nil, fmt.Errorf("failed to get ledger: %w", result.Error)
 	}
@@ -485,13 +630,17 @@ func (r *FinanceRepo) CreateBudget(ctx context.Context, budget *model.FinanceBud
 	})
 }
 
-// GetBudgetByID retrieves a budget by its ID.
-func (r *FinanceRepo) GetBudgetByID(ctx context.Context, id string) (*model.FinanceBudget, error) {
+// GetBudgetByID retrieves a budget by its ID within the given family.
+func (r *FinanceRepo) GetBudgetByID(ctx context.Context, familyID, id string) (*model.FinanceBudget, error) {
 	var budget model.FinanceBudget
-	result := r.db.WithContext(ctx).Where("id = ?", id).First(&budget)
+	result := r.db.WithContext(ctx).Where("id = ? AND family_id = ?", id, familyID).First(&budget)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil
+			// 「不存在」用哨兵错误表达，不再 return nil, nil：返回 (nil, nil) 让调用方
+			// 的 `if err != nil` 抓不到，随后解引用 nil 直接 panic —— 实测
+			// DELETE /transactions/{id} 打一个不存在的 id 就是 runtime error: invalid
+			// memory address or nil pointer dereference（gin Recovery 吞成空体 500）。
+			return nil, notFoundf("budget", id)
 		}
 		return nil, fmt.Errorf("failed to get budget: %w", result.Error)
 	}
@@ -550,13 +699,17 @@ func (r *FinanceRepo) CreateBill(ctx context.Context, bill *model.FinanceBill) e
 	})
 }
 
-// GetBillByID retrieves a bill by its ID.
-func (r *FinanceRepo) GetBillByID(ctx context.Context, id string) (*model.FinanceBill, error) {
+// GetBillByID retrieves a bill by its ID within the given family.
+func (r *FinanceRepo) GetBillByID(ctx context.Context, familyID, id string) (*model.FinanceBill, error) {
 	var bill model.FinanceBill
-	result := r.db.WithContext(ctx).Where("id = ?", id).First(&bill)
+	result := r.db.WithContext(ctx).Where("id = ? AND family_id = ?", id, familyID).First(&bill)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil
+			// 「不存在」用哨兵错误表达，不再 return nil, nil：返回 (nil, nil) 让调用方
+			// 的 `if err != nil` 抓不到，随后解引用 nil 直接 panic —— 实测
+			// DELETE /transactions/{id} 打一个不存在的 id 就是 runtime error: invalid
+			// memory address or nil pointer dereference（gin Recovery 吞成空体 500）。
+			return nil, notFoundf("bill", id)
 		}
 		return nil, fmt.Errorf("failed to get bill: %w", result.Error)
 	}
@@ -588,14 +741,14 @@ func (r *FinanceRepo) ListBillsByFamily(ctx context.Context, familyID string, st
 // 同步底座的 change log 共用一个事务，任一步失败整体回滚（§3.4.6、PRD 3.4「发布前落盘」）。没有这一步，
 // 已付账单的到期行会永久留在首页 B 区与到期中心里 —— homeos_0008:43-44 写明 finance.due.revoked 是
 // homeos_due_registration 唯一的删除路径（软删 deleted_at，不是删行），而撤销只能由持有账单的这边发出。
-func (r *FinanceRepo) MarkAsPaid(ctx context.Context, id string) (*model.FinanceBill, error) {
+func (r *FinanceRepo) MarkAsPaid(ctx context.Context, familyID, id string) (*model.FinanceBill, error) {
 	var updatedBill *model.FinanceBill
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var bill model.FinanceBill
-		result := tx.Where("id = ?", id).First(&bill)
+		result := tx.Where("id = ? AND family_id = ?", id, familyID).First(&bill)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return errors.New("bill not found")
+				return notFoundf("bill", id)
 			}
 			return fmt.Errorf("failed to get bill: %w", result.Error)
 		}
@@ -697,13 +850,17 @@ func (r *FinanceRepo) CreateLoan(ctx context.Context, loan *model.FinanceLoan) e
 	})
 }
 
-// GetLoanByID retrieves a loan by its ID.
-func (r *FinanceRepo) GetLoanByID(ctx context.Context, id string) (*model.FinanceLoan, error) {
+// GetLoanByID retrieves a loan by its ID within the given family.
+func (r *FinanceRepo) GetLoanByID(ctx context.Context, familyID, id string) (*model.FinanceLoan, error) {
 	var loan model.FinanceLoan
-	result := r.db.WithContext(ctx).Where("id = ?", id).First(&loan)
+	result := r.db.WithContext(ctx).Where("id = ? AND family_id = ?", id, familyID).First(&loan)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil
+			// 「不存在」用哨兵错误表达，不再 return nil, nil：返回 (nil, nil) 让调用方
+			// 的 `if err != nil` 抓不到，随后解引用 nil 直接 panic —— 实测
+			// DELETE /transactions/{id} 打一个不存在的 id 就是 runtime error: invalid
+			// memory address or nil pointer dereference（gin Recovery 吞成空体 500）。
+			return nil, notFoundf("loan", id)
 		}
 		return nil, fmt.Errorf("failed to get loan: %w", result.Error)
 	}
@@ -730,14 +887,14 @@ func (r *FinanceRepo) ListLoansByFamily(ctx context.Context, familyID string, st
 }
 
 // PayOffLoan marks a loan as paid off and increments version.
-func (r *FinanceRepo) PayOffLoan(ctx context.Context, id string) (*model.FinanceLoan, error) {
+func (r *FinanceRepo) PayOffLoan(ctx context.Context, familyID, id string) (*model.FinanceLoan, error) {
 	var updatedLoan *model.FinanceLoan
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var loan model.FinanceLoan
-		result := tx.Where("id = ?", id).First(&loan)
+		result := tx.Where("id = ? AND family_id = ?", id, familyID).First(&loan)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return errors.New("loan not found")
+				return notFoundf("loan", id)
 			}
 			return fmt.Errorf("failed to get loan: %w", result.Error)
 		}
@@ -776,24 +933,31 @@ func (r *FinanceRepo) CreateRepaymentPlan(ctx context.Context, plan *model.Finan
 	})
 }
 
-// GetRepaymentPlanByID retrieves a repayment plan by its ID.
-func (r *FinanceRepo) GetRepaymentPlanByID(ctx context.Context, id string) (*model.FinanceRepaymentPlan, error) {
+// GetRepaymentPlanByID retrieves a repayment plan by its ID within the given family.
+func (r *FinanceRepo) GetRepaymentPlanByID(ctx context.Context, familyID, id string) (*model.FinanceRepaymentPlan, error) {
 	var plan model.FinanceRepaymentPlan
-	result := r.db.WithContext(ctx).Where("id = ?", id).First(&plan)
+	result := r.db.WithContext(ctx).Where("id = ? AND family_id = ?", id, familyID).First(&plan)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil
+			// 「不存在」用哨兵错误表达，不再 return nil, nil：返回 (nil, nil) 让调用方
+			// 的 `if err != nil` 抓不到，随后解引用 nil 直接 panic —— 实测
+			// DELETE /transactions/{id} 打一个不存在的 id 就是 runtime error: invalid
+			// memory address or nil pointer dereference（gin Recovery 吞成空体 500）。
+			return nil, notFoundf("repayment_plan", id)
 		}
 		return nil, fmt.Errorf("failed to get repayment plan: %w", result.Error)
 	}
 	return &plan, nil
 }
 
-// GetRepaymentPlansByLoanID retrieves all repayment plans for a loan.
-func (r *FinanceRepo) GetRepaymentPlansByLoanID(ctx context.Context, loanID string) ([]model.FinanceRepaymentPlan, error) {
+// GetRepaymentPlansByLoanID retrieves all repayment plans for a loan of the given family.
+//
+// 两个条件都要：plans 行自己带 family_id，只按 loan_id 过滤等于把「这条 loan 属于谁」
+// 交给客户端判断 —— 猜到别人的 loan_id 就能读出对方家庭整条还款计划。
+func (r *FinanceRepo) GetRepaymentPlansByLoanID(ctx context.Context, familyID, loanID string) ([]model.FinanceRepaymentPlan, error) {
 	var plans []model.FinanceRepaymentPlan
 	result := r.db.WithContext(ctx).
-		Where("loan_id = ? AND deleted_at IS NULL", loanID).
+		Where("loan_id = ? AND family_id = ? AND deleted_at IS NULL", loanID, familyID).
 		Order("due_at ASC").
 		Find(&plans)
 	if result.Error != nil {
@@ -817,14 +981,14 @@ func (r *FinanceRepo) ListOverdueRepaymentPlans(ctx context.Context) ([]model.Fi
 }
 
 // MarkRepaymentPlanAsPaid marks a repayment plan as paid and increments version.
-func (r *FinanceRepo) MarkRepaymentPlanAsPaid(ctx context.Context, id string) (*model.FinanceRepaymentPlan, error) {
+func (r *FinanceRepo) MarkRepaymentPlanAsPaid(ctx context.Context, familyID, id string) (*model.FinanceRepaymentPlan, error) {
 	var updatedPlan *model.FinanceRepaymentPlan
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var plan model.FinanceRepaymentPlan
-		result := tx.Where("id = ?", id).First(&plan)
+		result := tx.Where("id = ? AND family_id = ?", id, familyID).First(&plan)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return errors.New("repayment plan not found")
+				return notFoundf("repayment_plan", id)
 			}
 			return fmt.Errorf("failed to get repayment plan: %w", result.Error)
 		}
@@ -865,13 +1029,17 @@ func (r *FinanceRepo) CreateGoal(ctx context.Context, goal *model.FinanceGoal) e
 	})
 }
 
-// GetGoalByID retrieves a goal by its ID.
-func (r *FinanceRepo) GetGoalByID(ctx context.Context, id string) (*model.FinanceGoal, error) {
+// GetGoalByID retrieves a goal by its ID within the given family.
+func (r *FinanceRepo) GetGoalByID(ctx context.Context, familyID, id string) (*model.FinanceGoal, error) {
 	var goal model.FinanceGoal
-	result := r.db.WithContext(ctx).Where("id = ?", id).First(&goal)
+	result := r.db.WithContext(ctx).Where("id = ? AND family_id = ?", id, familyID).First(&goal)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil
+			// 「不存在」用哨兵错误表达，不再 return nil, nil：返回 (nil, nil) 让调用方
+			// 的 `if err != nil` 抓不到，随后解引用 nil 直接 panic —— 实测
+			// DELETE /transactions/{id} 打一个不存在的 id 就是 runtime error: invalid
+			// memory address or nil pointer dereference（gin Recovery 吞成空体 500）。
+			return nil, notFoundf("goal", id)
 		}
 		return nil, fmt.Errorf("failed to get goal: %w", result.Error)
 	}
@@ -892,14 +1060,14 @@ func (r *FinanceRepo) ListGoalsByFamily(ctx context.Context, familyID string) ([
 }
 
 // UpdateGoalProgress updates the current amount of a goal and checks if achieved.
-func (r *FinanceRepo) UpdateGoalProgress(ctx context.Context, id string, currentAmountCents int64) (*model.FinanceGoal, error) {
+func (r *FinanceRepo) UpdateGoalProgress(ctx context.Context, familyID, id string, currentAmountCents int64) (*model.FinanceGoal, error) {
 	var updatedGoal *model.FinanceGoal
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var goal model.FinanceGoal
-		result := tx.Where("id = ?", id).First(&goal)
+		result := tx.Where("id = ? AND family_id = ?", id, familyID).First(&goal)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return errors.New("goal not found")
+				return notFoundf("goal", id)
 			}
 			return fmt.Errorf("failed to get goal: %w", result.Error)
 		}
@@ -946,13 +1114,17 @@ func (r *FinanceRepo) CreateSplitSettlement(ctx context.Context, settlement *mod
 	})
 }
 
-// GetSplitSettlementByID retrieves a split settlement by its ID.
-func (r *FinanceRepo) GetSplitSettlementByID(ctx context.Context, id string) (*model.FinanceSplitSettlement, error) {
+// GetSplitSettlementByID retrieves a split settlement by its ID within the given family.
+func (r *FinanceRepo) GetSplitSettlementByID(ctx context.Context, familyID, id string) (*model.FinanceSplitSettlement, error) {
 	var settlement model.FinanceSplitSettlement
-	result := r.db.WithContext(ctx).Where("id = ?", id).First(&settlement)
+	result := r.db.WithContext(ctx).Where("id = ? AND family_id = ?", id, familyID).First(&settlement)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil
+			// 「不存在」用哨兵错误表达，不再 return nil, nil：返回 (nil, nil) 让调用方
+			// 的 `if err != nil` 抓不到，随后解引用 nil 直接 panic —— 实测
+			// DELETE /transactions/{id} 打一个不存在的 id 就是 runtime error: invalid
+			// memory address or nil pointer dereference（gin Recovery 吞成空体 500）。
+			return nil, notFoundf("split_settlement", id)
 		}
 		return nil, fmt.Errorf("failed to get split settlement: %w", result.Error)
 	}
@@ -978,15 +1150,20 @@ func (r *FinanceRepo) ListSplitSettlementsByFamily(ctx context.Context, familyID
 	return settlements, nil
 }
 
-// AddParticipant adds a participant to a split settlement.
-func (r *FinanceRepo) AddParticipant(ctx context.Context, participant *model.FinanceParticipant) error {
+// AddParticipant adds a participant to a split settlement of the given family.
+//
+// familyID 是**会话家庭**，不是客户端声明值：finance_participant 行本身没有 family_id 列
+// （model/finance.go:238-241 只有 settlement_id / account_id），所以它的归属只能由
+// 「父 settlement 是否属于本家庭」推导。少了这一层，任何人猜到别人的 settlement_id
+// 就能往对方那笔 AA 里塞一条分摊记录。
+func (r *FinanceRepo) AddParticipant(ctx context.Context, familyID string, participant *model.FinanceParticipant) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// Verify settlement exists and is in draft status
+		// Verify settlement exists, belongs to this family, and is in draft status
 		var settlement model.FinanceSplitSettlement
-		result := tx.Where("id = ?", participant.SettlementID).First(&settlement)
+		result := tx.Where("id = ? AND family_id = ?", participant.SettlementID, familyID).First(&settlement)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return errors.New("split settlement not found")
+				return notFoundf("split_settlement", participant.SettlementID)
 			}
 			return fmt.Errorf("failed to get split settlement: %w", result.Error)
 		}
@@ -1008,14 +1185,14 @@ func (r *FinanceRepo) AddParticipant(ctx context.Context, participant *model.Fin
 
 // SettleSplit completes a split settlement by transitioning from pending to settled.
 // Validates that sum of participant amounts equals total amount.
-func (r *FinanceRepo) SettleSplit(ctx context.Context, id string) (*model.FinanceSplitSettlement, error) {
+func (r *FinanceRepo) SettleSplit(ctx context.Context, familyID, id string) (*model.FinanceSplitSettlement, error) {
 	var updatedSettlement *model.FinanceSplitSettlement
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var settlement model.FinanceSplitSettlement
-		result := tx.Where("id = ?", id).First(&settlement)
+		result := tx.Where("id = ? AND family_id = ?", id, familyID).First(&settlement)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return errors.New("split settlement not found")
+				return notFoundf("split_settlement", id)
 			}
 			return fmt.Errorf("failed to get split settlement: %w", result.Error)
 		}
@@ -1067,8 +1244,23 @@ func (r *FinanceRepo) SettleSplit(ctx context.Context, id string) (*model.Financ
 	return updatedSettlement, nil
 }
 
-// GetParticipantsBySettlement retrieves all participants for a split settlement.
-func (r *FinanceRepo) GetParticipantsBySettlement(ctx context.Context, settlementID string) ([]model.FinanceParticipant, error) {
+// GetParticipantsBySettlement retrieves all participants for a split settlement of the given family.
+//
+// 与 AddParticipant 同一个理由：finance_participant 没有 family_id 列，归属只能由父
+// settlement 决定，所以这里先确认 settlement 属于本家庭，再列它的分摊明细。
+// 直接按 settlement_id 查等于把「别人的 settlement_id」变成一个可读接口
+// （实测 GET /split-settlements/:id/participants 只带 settlement_id 条件）。
+func (r *FinanceRepo) GetParticipantsBySettlement(ctx context.Context, familyID, settlementID string) ([]model.FinanceParticipant, error) {
+	var owned int64
+	if err := r.db.WithContext(ctx).Model(&model.FinanceSplitSettlement{}).
+		Where("id = ? AND family_id = ? AND deleted_at IS NULL", settlementID, familyID).
+		Count(&owned).Error; err != nil {
+		return nil, fmt.Errorf("failed to verify split settlement: %w", err)
+	}
+	if owned == 0 {
+		return nil, notFoundf("split_settlement", settlementID)
+	}
+
 	var participants []model.FinanceParticipant
 	result := r.db.WithContext(ctx).
 		Where("settlement_id = ? AND deleted_at IS NULL", settlementID).
@@ -1095,13 +1287,17 @@ func (r *FinanceRepo) CreateCreditCard(ctx context.Context, card *model.FinanceC
 	})
 }
 
-// GetCreditCardByID retrieves a credit card by its ID.
-func (r *FinanceRepo) GetCreditCardByID(ctx context.Context, id string) (*model.FinanceCreditCard, error) {
+// GetCreditCardByID retrieves a credit card by its ID within the given family.
+func (r *FinanceRepo) GetCreditCardByID(ctx context.Context, familyID, id string) (*model.FinanceCreditCard, error) {
 	var card model.FinanceCreditCard
-	result := r.db.WithContext(ctx).Where("id = ?", id).First(&card)
+	result := r.db.WithContext(ctx).Where("id = ? AND family_id = ?", id, familyID).First(&card)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil
+			// 「不存在」用哨兵错误表达，不再 return nil, nil：返回 (nil, nil) 让调用方
+			// 的 `if err != nil` 抓不到，随后解引用 nil 直接 panic —— 实测
+			// DELETE /transactions/{id} 打一个不存在的 id 就是 runtime error: invalid
+			// memory address or nil pointer dereference（gin Recovery 吞成空体 500）。
+			return nil, notFoundf("credit_card", id)
 		}
 		return nil, fmt.Errorf("failed to get credit card: %w", result.Error)
 	}
@@ -1129,14 +1325,14 @@ func (r *FinanceRepo) ListCreditCardsByFamily(ctx context.Context, familyID stri
 
 // UpdateCreditCardBalance updates the current balance of a credit card.
 // Balance is recalculated as SUM(unpaid bills).
-func (r *FinanceRepo) UpdateCreditCardBalance(ctx context.Context, id string, newBalanceCents int64) (*model.FinanceCreditCard, error) {
+func (r *FinanceRepo) UpdateCreditCardBalance(ctx context.Context, familyID, id string, newBalanceCents int64) (*model.FinanceCreditCard, error) {
 	var updatedCard *model.FinanceCreditCard
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var card model.FinanceCreditCard
-		result := tx.Where("id = ?", id).First(&card)
+		result := tx.Where("id = ? AND family_id = ?", id, familyID).First(&card)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return errors.New("credit card not found")
+				return notFoundf("credit_card", id)
 			}
 			return fmt.Errorf("failed to get credit card: %w", result.Error)
 		}
@@ -1179,13 +1375,17 @@ func (r *FinanceRepo) CreateInvoice(ctx context.Context, invoice *model.FinanceI
 	})
 }
 
-// GetInvoiceByID retrieves an invoice by its ID.
-func (r *FinanceRepo) GetInvoiceByID(ctx context.Context, id string) (*model.FinanceInvoice, error) {
+// GetInvoiceByID retrieves an invoice by its ID within the given family.
+func (r *FinanceRepo) GetInvoiceByID(ctx context.Context, familyID, id string) (*model.FinanceInvoice, error) {
 	var invoice model.FinanceInvoice
-	result := r.db.WithContext(ctx).Where("id = ?", id).First(&invoice)
+	result := r.db.WithContext(ctx).Where("id = ? AND family_id = ?", id, familyID).First(&invoice)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil
+			// 「不存在」用哨兵错误表达，不再 return nil, nil：返回 (nil, nil) 让调用方
+			// 的 `if err != nil` 抓不到，随后解引用 nil 直接 panic —— 实测
+			// DELETE /transactions/{id} 打一个不存在的 id 就是 runtime error: invalid
+			// memory address or nil pointer dereference（gin Recovery 吞成空体 500）。
+			return nil, notFoundf("invoice", id)
 		}
 		return nil, fmt.Errorf("failed to get invoice: %w", result.Error)
 	}
@@ -1213,16 +1413,35 @@ func (r *FinanceRepo) ListInvoicesByFamily(ctx context.Context, familyID string,
 
 // MarkInvoiceAsReimbursed marks an invoice as reimbursed or rejected.
 // Can only transition from pending status.
-func (r *FinanceRepo) MarkInvoiceAsReimbursed(ctx context.Context, id string, status string, reason *string, transactionID *string) (*model.FinanceInvoice, error) {
+//
+// 两处家庭边界（PRD 15.2）：
+//  1. 发票行按 id + family_id 取，别人家庭的发票一律 not found；
+//  2. 关联的 transaction_id 必须**也**属于本家庭。此前它是原样落库的
+//     （invoice.transaction_id = 客户端给的任意 UUID），于是 A 家庭能把 B 家庭的一笔
+//     流水挂到自己发票的报销凭证上 —— 既是数据污染，也是一条跨家庭的引用存在性探测。
+func (r *FinanceRepo) MarkInvoiceAsReimbursed(ctx context.Context, familyID, id string, status string, reason *string, transactionID *string) (*model.FinanceInvoice, error) {
 	var updatedInvoice *model.FinanceInvoice
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var invoice model.FinanceInvoice
-		result := tx.Where("id = ?", id).First(&invoice)
+		result := tx.Where("id = ? AND family_id = ?", id, familyID).First(&invoice)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return errors.New("invoice not found")
+				return notFoundf("invoice", id)
 			}
 			return fmt.Errorf("failed to get invoice: %w", result.Error)
+		}
+
+		// 关联流水归属校验（同一事务，校验与写入同一个提交点）。
+		if transactionID != nil && *transactionID != "" {
+			var n int64
+			if err := tx.Model(&model.FinanceTransaction{}).
+				Where("id = ? AND family_id = ? AND deleted_at IS NULL", *transactionID, familyID).
+				Count(&n).Error; err != nil {
+				return fmt.Errorf("failed to verify transaction: %w", err)
+			}
+			if n == 0 {
+				return notFoundf("transaction", *transactionID)
+			}
 		}
 
 		// Can only transition from pending
@@ -1383,7 +1602,11 @@ func (r *FinanceRepo) GetLatestAssetLiabilityReport(ctx context.Context, familyI
 		First(&report)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil
+			// 「不存在」用哨兵错误表达，不再 return nil, nil：返回 (nil, nil) 让调用方
+			// 的 `if err != nil` 抓不到，随后解引用 nil 直接 panic —— 实测
+			// DELETE /transactions/{id} 打一个不存在的 id 就是 runtime error: invalid
+			// memory address or nil pointer dereference（gin Recovery 吞成空体 500）。
+			return nil, notFoundf("asset_liability_report", familyID)
 		}
 		return nil, fmt.Errorf("failed to get latest asset-liability report: %w", result.Error)
 	}
@@ -1398,7 +1621,11 @@ func (r *FinanceRepo) GetAssetLiabilityReportByPeriod(ctx context.Context, famil
 		First(&report)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil
+			// 「不存在」用哨兵错误表达，不再 return nil, nil：返回 (nil, nil) 让调用方
+			// 的 `if err != nil` 抓不到，随后解引用 nil 直接 panic —— 实测
+			// DELETE /transactions/{id} 打一个不存在的 id 就是 runtime error: invalid
+			// memory address or nil pointer dereference（gin Recovery 吞成空体 500）。
+			return nil, notFoundf("asset_liability_report", familyID)
 		}
 		return nil, fmt.Errorf("failed to get asset-liability report: %w", result.Error)
 	}
@@ -1440,7 +1667,11 @@ func (r *FinanceRepo) GetTagByID(ctx context.Context, familyID string, tagID str
 	result := r.db.WithContext(ctx).Where("id = ? AND family_id = ?", tagID, familyID).First(&tag)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil
+			// 「不存在」用哨兵错误表达，不再 return nil, nil：返回 (nil, nil) 让调用方
+			// 的 `if err != nil` 抓不到，随后解引用 nil 直接 panic —— 实测
+			// DELETE /transactions/{id} 打一个不存在的 id 就是 runtime error: invalid
+			// memory address or nil pointer dereference（gin Recovery 吞成空体 500）。
+			return nil, notFoundf("tag", tagID)
 		}
 		return nil, fmt.Errorf("failed to get tag: %w", result.Error)
 	}
@@ -1478,7 +1709,7 @@ func (r *FinanceRepo) DeleteTag(ctx context.Context, familyID string, tagID stri
 		result := tx.Where("id = ? AND family_id = ?", tagID, familyID).First(&tag)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return errors.New("tag not found")
+				return notFoundf("tag", tagID)
 			}
 			return fmt.Errorf("failed to get tag: %w", result.Error)
 		}
@@ -1513,7 +1744,11 @@ func (r *FinanceRepo) GetRecurringRuleByID(ctx context.Context, familyID string,
 	result := r.db.WithContext(ctx).Where("id = ? AND family_id = ?", ruleID, familyID).First(&rule)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil
+			// 「不存在」用哨兵错误表达，不再 return nil, nil：返回 (nil, nil) 让调用方
+			// 的 `if err != nil` 抓不到，随后解引用 nil 直接 panic —— 实测
+			// DELETE /transactions/{id} 打一个不存在的 id 就是 runtime error: invalid
+			// memory address or nil pointer dereference（gin Recovery 吞成空体 500）。
+			return nil, notFoundf("recurring_rule", ruleID)
 		}
 		return nil, fmt.Errorf("failed to get recurring rule: %w", result.Error)
 	}
@@ -1558,11 +1793,14 @@ func (r *FinanceRepo) UpdateRecurringRule(ctx context.Context, rule *model.Finan
 }
 
 // MarkRecurringRuleExecuted marks a rule as executed and calculates the next execution time.
-func (r *FinanceRepo) MarkRecurringRuleExecuted(ctx context.Context, ruleID string, nextExecuteAt time.Time) error {
+//
+// familyID 由调用方（周期记账 worker）从规则行本身带进来 —— 它不是客户端给的，但
+// 「按 id 更新」同样要带家庭条件，否则任何拿到别人 rule_id 的代码路径都能改写它。
+func (r *FinanceRepo) MarkRecurringRuleExecuted(ctx context.Context, familyID, ruleID string, nextExecuteAt time.Time) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		now := time.Now()
 		result := tx.Model(&model.FinanceRecurringRule{}).
-			Where("id = ?", ruleID).
+			Where("id = ? AND family_id = ?", ruleID, familyID).
 			Updates(map[string]any{
 				"last_executed_at": now,
 				"next_execute_at":  nextExecuteAt,
@@ -1582,7 +1820,7 @@ func (r *FinanceRepo) DeleteRecurringRule(ctx context.Context, familyID string, 
 		result := tx.Where("id = ? AND family_id = ?", ruleID, familyID).First(&rule)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return errors.New("recurring rule not found")
+				return notFoundf("recurring_rule", ruleID)
 			}
 			return fmt.Errorf("failed to get recurring rule: %w", result.Error)
 		}
@@ -1617,7 +1855,11 @@ func (r *FinanceRepo) GetBudgetPeriodByID(ctx context.Context, familyID string, 
 	result := r.db.WithContext(ctx).Where("id = ? AND family_id = ?", periodID, familyID).First(&period)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil
+			// 「不存在」用哨兵错误表达，不再 return nil, nil：返回 (nil, nil) 让调用方
+			// 的 `if err != nil` 抓不到，随后解引用 nil 直接 panic —— 实测
+			// DELETE /transactions/{id} 打一个不存在的 id 就是 runtime error: invalid
+			// memory address or nil pointer dereference（gin Recovery 吞成空体 500）。
+			return nil, notFoundf("budget_period", periodID)
 		}
 		return nil, fmt.Errorf("failed to get budget period: %w", result.Error)
 	}
@@ -1655,7 +1897,7 @@ func (r *FinanceRepo) DeleteBudgetPeriod(ctx context.Context, familyID string, p
 		result := tx.Where("id = ? AND family_id = ?", periodID, familyID).First(&period)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return errors.New("budget period not found")
+				return notFoundf("budget_period", periodID)
 			}
 			return fmt.Errorf("failed to get budget period: %w", result.Error)
 		}
@@ -1720,7 +1962,7 @@ func (r *FinanceRepo) RestoreTransaction(ctx context.Context, id string, familyI
 		result := tx.Unscoped().Where("id = ? AND family_id = ?", id, familyID).First(&transaction)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return errors.New("transaction not found or already restored")
+				return notFoundf("transaction", id)
 			}
 			return fmt.Errorf("failed to get deleted transaction: %w", result.Error)
 		}
@@ -1758,7 +2000,7 @@ func (r *FinanceRepo) PermanentlyDeleteTransaction(ctx context.Context, id strin
 		result := tx.Unscoped().Where("id = ? AND family_id = ?", id, familyID).First(&transaction)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				return errors.New("transaction not found")
+				return notFoundf("transaction", id)
 			}
 			return fmt.Errorf("failed to get deleted transaction: %w", result.Error)
 		}
@@ -1819,6 +2061,15 @@ func (r *FinanceRepo) GetSettingsByFamily(ctx context.Context, familyID string) 
 		First(&settings)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			// 「还没有设置」在本方法里是**正常状态**而不是错误：handler.GetFinanceSettings
+			// 的语义是「查不到就建一份默认」（finance.go:1911 的 `if settings == nil`），
+			// 因此这里必须返回 (nil, nil) 而不是 ErrNotFound —— 否则 handler 会答 404，
+			// 家庭第一次打开设置页就看到「不存在」而不是默认值。
+			//
+			// 这与本文件其他 Get*ByID 刻意不同：那些方法的调用方都会直接解引用返回值，
+			// 用 nil 表达不存在会让 `if err != nil` 抓不到、随后 panic（实测 DELETE
+			// /transactions/{id} 打不存在的 id 即 runtime error，被 gin Recovery 吞成空体 500）。
+			// 判据是「调用方是否解引用」，不是「是否查不到」。
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get finance settings: %w", result.Error)

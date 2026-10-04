@@ -361,6 +361,252 @@ paths:
         '409':
           description: 版本冲突或仅剩最后一面不允许停用
 
+  # === 邀请与加入家庭（PRD 3.4.1 接口表：POST /members/invite、POST /family/invite/accept、
+  #     DELETE /family/invites/{id}；GET /family/invites 为前端在册的邀请名册读口，
+  #     PRD 接口表未登记该读口——已作为定版空白上报，待人工裁定是否补入 3.4.1） ===
+  /members/invite:
+    post:
+      summary: 发起邀请（仅家庭管理员）
+      description: >
+        为当前会话家庭发起一条邀请（家庭取自会话令牌，请求不接受 family_id，PRD 15.2）。
+        邀请码 / 链接 / 二维码三态共用同一 code（PRD 3.7）。expires_in_days <=0 时取默认 30 天
+        （PRD 15.1 访客默认）。落审计；家庭已满 12 人时 409（PRD 18.1）。
+      operationId: createMemberInvite
+      tags:
+        - family
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role:
+                  type: string
+                  enum: [owner, member, ward, guest]
+                  description: 受邀者加入后获得的角色（前端邀请页仅提供 member/ward/guest）
+                invitee_phone:
+                  type: string
+                  description: 可选，受邀手机号（无账号被记录成员留空）
+                expires_in_days:
+                  type: integer
+                  description: 有效期档位（天）；<=0 取服务端默认 30
+      responses:
+        '201':
+          description: 邀请已创建（三态合一的 Invitation 视图）
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  code:
+                    type: string
+                    description: 8 位邀请码；链接与二维码是同一 code 的两种载体
+                  link:
+                    type: string
+                    description: host-free 的落地页路由（web/src/pages/homeos/auth/family-join）
+                  qr_content:
+                    type: string
+                    description: 二维码原文（homecube://invite/{code}）
+                  role:
+                    type: string
+                    enum: [owner, member, ward, guest]
+                  invitee_phone:
+                    type: string
+                    nullable: true
+                  status:
+                    type: string
+                    enum: [pending, accepted, expired]
+                  expires_at:
+                    type: string
+                    format: date-time
+                  revoked_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  inviter_id:
+                    type: string
+                    format: uuid
+                  created_at:
+                    type: string
+                    format: date-time
+        '400':
+          description: role 非法或缺失
+        '403':
+          description: 非 owner 无权发起（PRD 15.1「邀请仅 owner 可发起」）
+        '409':
+          description: 家庭已达 12 人上限（PRD 18.1）
+
+  /family/invites:
+    get:
+      summary: 邀请名册（仅家庭管理员）
+      description: >
+        当前会话家庭的邀请列表，按创建时间倒序；status=pending 只返回未过期未使用的邀请。
+        读时校正：pending 且已过 expires_at 的行以 expired 呈现（三态是时间的函数）。
+        注意：本读口在前端（web/src/pages/homeos/family/invite.vue）在册，
+        PRD 3.4.1 接口表未登记——定版空白已上报，待人工裁定。
+      operationId: listFamilyInvites
+      tags:
+        - family
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, accepted, expired, all]
+      responses:
+        '200':
+          description: 邀请列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        code:
+                          type: string
+                        link:
+                          type: string
+                        qr_content:
+                          type: string
+                        role:
+                          type: string
+                          enum: [owner, member, ward, guest]
+                        invitee_phone:
+                          type: string
+                          nullable: true
+                        status:
+                          type: string
+                          enum: [pending, accepted, expired]
+                        expires_at:
+                          type: string
+                          format: date-time
+                        revoked_at:
+                          type: string
+                          format: date-time
+                          nullable: true
+                        inviter_id:
+                          type: string
+                          format: uuid
+                        created_at:
+                          type: string
+                          format: date-time
+        '403':
+          description: 非 owner 或 onboarding（无家庭）会话无权读取
+
+  /family/invites/{id}:
+    delete:
+      summary: 撤销邀请（三态链接同时失效）
+      description: >
+        撤销当前会话家庭下的一条 pending 邀请：行置 expired 并落 revoked_at/revoked_by 与审计
+        （PRD 3.4.1「撤销邀请（三态链接同时失效），落审计」）。id 不属于会话家庭时 404，
+        不泄露其他家庭的存在性（PRD 15.2）。
+      operationId: revokeFamilyInvite
+      tags:
+        - family
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 已撤销
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  message:
+                    type: string
+        '403':
+          description: 非 owner 无权撤销
+        '404':
+          description: 邀请不存在或不属于当前家庭
+        '409':
+          description: 邀请已被接受或已失效（非 pending），无需重复撤销
+
+  /family/invite/accept:
+    post:
+      summary: 接受邀请加入家庭
+      description: >
+        花掉一个 pending 邀请码：成员写入、行置 accepted、pver+1、落审计与
+        homeos.permission.updated 事件（同一事务），并回签**新家庭的会话令牌对**
+        （PRD 3.4.1、18.2#1；加入不重新选面，17.8）。
+        本路由在 svcauth 的 onboarding 允许清单上：无家庭账号持 onboarding token 可直接接受
+        （加入是其离开「登录后无家庭」的另一条路），但仍须携带合法 token，不是公开接口。
+      operationId: acceptFamilyInvite
+      tags:
+        - family
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [invite_code]
+              properties:
+                invite_code:
+                  type: string
+                  description: 邀请码 / 链接 / 二维码三态共用的同一 code
+      responses:
+        '200':
+          description: 加入成功，返回新家庭的会话令牌对
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  family_id:
+                    type: string
+                    format: uuid
+                  family_name:
+                    type: string
+                  role:
+                    type: string
+                    enum: [owner, member, ward, guest]
+                  pver:
+                    type: integer
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+                  expires_in:
+                    type: integer
+                  message:
+                    type: string
+        '400':
+          description: 缺少 invite_code
+        '404':
+          description: 邀请码无效、已被使用、已撤销或已过期（pending 口径下查无此码，不泄露他家庭信息）
+        '409':
+          description: 邀请已过期 / 家庭已达 12 人上限 / 账号已达 5 家庭上限
+
   # === 首页聚合 ===
   /home/summary:
     get:

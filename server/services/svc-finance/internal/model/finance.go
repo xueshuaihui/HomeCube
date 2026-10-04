@@ -78,6 +78,12 @@ type FinanceTransaction struct {
 	UpdatedAt       time.Time      `json:"updated_at"`
 	DeletedAt       gorm.DeletedAt `gorm:"index" json:"-"`
 	DeletedBy       *string        `json:"deleted_by,omitempty"`
+	// CreatedBy 记账人的 member_id（PRD 15.3/15.4）。NULL = 未知作者 →
+	// L3 判定与删除权限都退化为「仅 owner」，即 fail closed。迁移 0015 引入。
+	CreatedBy *string `gorm:"index:idx_finance_transaction_created_by" json:"created_by,omitempty"`
+	// Visibility L3 可见性（PRD 15.4）：shared = 家庭内可见；private = 仅作者与 owner 可见。
+	// 取值域由 ck_finance_transaction_visibility CHECK 约束收口。迁移 0015 引入。
+	Visibility string `gorm:"not null;default:shared" json:"visibility"`
 }
 
 // TableName returns the table name for FinanceTransaction.

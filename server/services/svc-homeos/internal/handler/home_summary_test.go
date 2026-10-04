@@ -55,9 +55,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 
+	svcauth "github.com/xueshuaihui/HomeCube/server/packages/auth"
 	"github.com/xueshuaihui/HomeCube/server/packages/bus"
 	"github.com/xueshuaihui/HomeCube/server/packages/registry"
-	svcauth "github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/auth"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/consumer"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/model"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/repo"

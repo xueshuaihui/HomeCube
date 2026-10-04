@@ -115,8 +115,8 @@ fi
 echo ""
 echo "--- 场景 2：邀请成员 ---"
 
-# 2.1 生成邀请码（正确路径：POST /families/{id}/invites）
-INVITE_RES=$(curl -s -w "\n%{http_code}" -X POST "$BASE_HOMEOS/api/homeos/families/$ADMIN_FAMILY_ID/invites" \
+# 2.1 生成邀请码（PRD 3.4.1 路径：POST /members/invite，家庭取自会话，不收 family_id）
+INVITE_RES=$(curl -s -w "\n%{http_code}" -X POST "$BASE_HOMEOS/api/homeos/members/invite" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"role":"member"}')
@@ -130,6 +130,18 @@ if [ -n "$INVITE_CODE" ]; then
 else
   fail "获取邀请码失败"
   echo "响应体: $INVITE_BODY"
+fi
+
+# 2.1b 邀请列表（GET /family/invites，pending 口径）
+LIST_RES=$(curl -s -w "\n%{http_code}" "$BASE_HOMEOS/api/homeos/family/invites?status=pending" \
+  -H "Authorization: Bearer $ADMIN_TOKEN")
+LIST_HTTP=$(echo "$LIST_RES" | tail -1)
+LIST_BODY=$(echo "$LIST_RES" | sed '$d')
+check_response "邀请列表(pending)" "$LIST_HTTP" "200"
+if echo "$LIST_BODY" | grep -q "$INVITE_CODE"; then
+  pass "列表包含刚生成的邀请码"
+else
+  fail "列表未包含刚生成的邀请码"
 fi
 
 # 2.2 成人成员接受邀请（先发送验证码）
@@ -153,6 +165,28 @@ if [ -n "$INVITE_CODE" ] && [ -n "$ADULT_TOKEN" ]; then
     -d "{\"invite_code\":\"$INVITE_CODE\",\"name\":\"成人成员\"}")
   JOIN_HTTP=$(echo "$JOIN_RES" | tail -1)
   check_response "成人成员加入家庭" "$JOIN_HTTP" "200"
+fi
+
+# 2.3 撤销邀请（DELETE /family/invites/{id}，三态链接同时失效；PRD 3.4.1）
+# 已接受的邀请不可再撤销（409）；另发一条专用邀请验证 200 撤销 + 重复撤销 409。
+REVOKE_SRC=$(curl -s -w "\n%{http_code}" -X POST "$BASE_HOMEOS/api/homeos/members/invite" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"role":"guest"}')
+REVOKE_SRC_BODY=$(echo "$REVOKE_SRC" | sed '$d')
+REVOKE_ID=$(echo "$REVOKE_SRC_BODY" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
+if [ -n "$REVOKE_ID" ]; then
+  REVOKE_RES=$(curl -s -w "\n%{http_code}" -X DELETE "$BASE_HOMEOS/api/homeos/family/invites/$REVOKE_ID" \
+    -H "Authorization: Bearer $ADMIN_TOKEN")
+  REVOKE_HTTP=$(echo "$REVOKE_RES" | tail -1)
+  check_response "撤销邀请" "$REVOKE_HTTP" "200"
+
+  REAGAIN_RES=$(curl -s -w "\n%{http_code}" -X DELETE "$BASE_HOMEOS/api/homeos/family/invites/$REVOKE_ID" \
+    -H "Authorization: Bearer $ADMIN_TOKEN")
+  REAGAIN_HTTP=$(echo "$REAGAIN_RES" | tail -1)
+  check_response "重复撤销应拒绝" "$REAGAIN_HTTP" "409"
+else
+  fail "获取待撤销邀请 id 失败"
 fi
 
 # ==========================================

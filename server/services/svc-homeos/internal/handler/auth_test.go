@@ -28,14 +28,16 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
+	svcauth "github.com/xueshuaihui/HomeCube/server/packages/auth"
 	"github.com/xueshuaihui/HomeCube/server/packages/registry"
-	svcauth "github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/auth"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/model"
+	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/repo"
 )
 
 const testPhone = "13800000001"
@@ -104,6 +106,15 @@ func setupIdentityDB(t *testing.T) (*gorm.DB, string, string, string) {
 		`CREATE TABLE homeos_refresh_tokens (
 			id TEXT PRIMARY KEY, user_id TEXT NOT NULL, token_hash TEXT NOT NULL,
 			expires_at DATETIME NOT NULL, revoked BOOLEAN NOT NULL DEFAULT 0, created_at DATETIME NOT NULL)`,
+		// homeos_invitations: 0006 的三态 CHECK + 0009 的 revoked_*。id / family_id / inviter_id 在
+		// Postgres 都是 uuid NOT NULL，这里以 TEXT 承载同样的非空纪律（handler 写入的必须是真 UUID）。
+		`CREATE TABLE homeos_invitations (
+			id TEXT PRIMARY KEY, family_id TEXT NOT NULL, code TEXT NOT NULL UNIQUE,
+			role TEXT NOT NULL, inviter_id TEXT NOT NULL, invitee_phone TEXT,
+			status TEXT NOT NULL DEFAULT 'pending'
+				CHECK (status IN ('pending','accepted','expired')),
+			expires_at DATETIME NOT NULL, revoked_at DATETIME, revoked_by TEXT,
+			created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL)`,
 		// 0007's two projection tables: POST /families writes one face row per selected code plus the
 		// family.created dynamic inside its transaction.
 		`CREATE TABLE homeos_family_module (
@@ -208,6 +219,12 @@ func newIdentityRouter(t *testing.T, s *Services) (*gin.Engine, *svcauth.Middlew
 		protected.GET("/families", func(c *gin.Context) { ListFamilies(c, s) })
 		protected.GET("/auth/me", func(c *gin.Context) { Me(c, s) })
 		protected.POST("/family/switch", func(c *gin.Context) { SwitchFamily(c, s) })
+		// 邀请三接口，与 cmd/svc-homeos 一致按 PRD 3.4.1 的路径挂载：
+		// allowlist、404/409 分支与 onboarding 接受路径都在这张真实路由表上测。
+		protected.POST("/family/invite/accept", func(c *gin.Context) { AcceptInvite(c, s) })
+		protected.POST("/members/invite", func(c *gin.Context) { CreateInvite(c, s) })
+		protected.GET("/family/invites", func(c *gin.Context) { ListInvites(c, s) })
+		protected.DELETE("/family/invites/:id", func(c *gin.Context) { RevokeInvite(c, s) })
 		protected.GET("/search", func(c *gin.Context) { c.JSON(http.StatusNoContent, nil) })
 	}
 	return r, mw
@@ -765,4 +782,204 @@ func jwtHeaderOf(t *testing.T, token string) map[string]any {
 	var header map[string]any
 	require.NoError(t, json.Unmarshal(raw, &header))
 	return header
+}
+
+// loginAs runs 验证码 -> 登录 through the router and returns the pair the real Login issued.
+// An account phone that does not exist yet is created by the login path itself (PRD 3.4.1), which
+// is exactly the family-less state whose accept-join this test drives.
+func loginAs(t *testing.T, r *gin.Engine, db *gorm.DB, phone string) LoginResponse {
+	t.Helper()
+	newBootstrapPhone(t, db, phone)
+	w := doJSON(t, r, http.MethodPost, "/api/homeos/auth/login", "",
+		gin.H{"phone": phone, "code": svcauth.DevFixedSMSCode})
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var res LoginResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+	return res
+}
+
+// TestInviteFlowOnboardingAcceptIsTheWholeJoinCard fixes and pins the two defects that made joining
+// a family impossible end to end:
+//
+//  1. the invite trio was registered as /families/:family_id/invites* -- a shape neither
+//     PRD 3.4.1's 接口表 nor web/src/pages/homeos/family/invite.vue uses; the PRD paths
+//     (POST /members/invite, GET /family/invites, DELETE /family/invites/{id}) answered the
+//     router's 404. They are now mounted, family-scoped from the SESSION (PRD 15.2).
+//  2. POST /family/invite/accept was NOT in svcauth's onboarding allowlist, so exactly the
+//     users the join flow exists for -- an account with no family -- got 403 insufficient_scope
+//     / no_family at the middleware. Accept is now allowlisted: it stays authenticated (an
+//     anonymous POST is 401 at the middleware), it reads no family data with the OLD session,
+//     and the handler re-signs a REAL family session from the rows the accept transaction wrote.
+func TestInviteFlowOnboardingAcceptIsTheWholeJoinCard(t *testing.T) {
+	const (
+		joinerPhone = "13900000077"
+		expiredWho  = "13900000078"
+		cappedWho   = "13900000079"
+	)
+	db, _, familyID, ownerMemberID := setupIdentityDB(t)
+	// repo.AcceptInvitation 在同事务里发 homeos.permission.updated：借用其他测试文件
+	// 已在 identity fixture 之上叠加 0002 outbox 的那个 helper。
+	addOutboxTable(t, db)
+	s := newServices(t, db)
+	r, _ := newIdentityRouter(t, s)
+
+	owner := loginAs(t, r, db, testPhone)
+	require.Equal(t, familyID, owner.FamilyID, "owner 登录后的会话家庭就是种子家庭")
+
+	// 列表先于创建可读：空列表是 200 + 空 items，不是 404，也不是错误态假数据。
+	w := doJSON(t, r, http.MethodGet, "/api/homeos/family/invites?status=pending", owner.AccessToken, nil)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var emptyList struct {
+		Items []repo.InvitationView `json:"items"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &emptyList))
+	assert.Empty(t, emptyList.Items)
+
+	// ① POST /members/invite (PRD path): family comes from the session, body carries only the
+	//    invitee shape. 201 + the three-state view.
+	w = doJSON(t, r, http.MethodPost, "/api/homeos/members/invite", owner.AccessToken,
+		gin.H{"role": "member", "expires_in_days": 7})
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	var invite repo.InvitationView
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &invite))
+	assert.NotEmpty(t, invite.Code)
+	assert.Equal(t, "pending", invite.Status)
+	// homeos_invitations.ID / inviter_id are Postgres uuid NOT NULL: the id must PARSE as a UUID
+	// and the inviter must be the owner's real member row, never "" (the pre-fix empty-member trap).
+	_, err := uuid.Parse(invite.ID)
+	require.NoError(t, err, "invitation id 必须是真 UUID")
+	assert.Equal(t, ownerMemberID, invite.InviterID)
+
+	// ② An onboarding token (family-less account) accepts: this exact call answered
+	//    403 no_family before svcauth.OnboardingRouteAcceptInvite existed.
+	joiner := loginAs(t, r, db, joinerPhone)
+	require.Equal(t, svcauth.ScopeOnboarding, joiner.Scope, "joiner 登录时必须是 onboarding 会话")
+	require.Empty(t, joiner.FamilyID)
+
+	w = doJSON(t, r, http.MethodPost, "/api/homeos/family/invite/accept", joiner.AccessToken,
+		gin.H{"invite_code": invite.Code})
+	require.Equal(t, http.StatusOK, w.Code, "onboarding token 接受邀请必须 200，而不是 403 no_family：%s", w.Body.String())
+	var joined AcceptInviteResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &joined))
+	assert.Equal(t, familyID, joined.FamilyID)
+	assert.Equal(t, "member", joined.Role)
+	assert.Equal(t, seededPVer+1, joined.PVer, "pver 必须取自接受事务 Bump 后的家庭行")
+	assert.NotEmpty(t, joined.AccessToken)
+	assert.NotEmpty(t, joined.RefreshToken)
+
+	// The returned pair is a REAL family session: the shared SDK's Verify -- which refused the
+	// onboarding token -- accepts this one, and it carries the joined family + granted role.
+	claims, err := s.Signer.Verify(joined.AccessToken)
+	require.NoError(t, err)
+	assert.Equal(t, familyID, claims.FamilyID)
+	assert.Equal(t, "member", claims.Role)
+
+	// Rows, not just the response body: code spent, member row with the joiner's own account id.
+	var inviteStatus string
+	require.NoError(t, db.Raw("SELECT status FROM homeos_invitations WHERE code = ?", invite.Code).
+		Row().Scan(&inviteStatus))
+	assert.Equal(t, "accepted", inviteStatus)
+	var memberRole string
+	require.NoError(t, db.Raw(`SELECT role FROM homeos_members WHERE family_id = ? AND user_id = ?`,
+		familyID, joiner.User.ID).Row().Scan(&memberRole))
+	assert.Equal(t, "member", memberRole)
+
+	// ③ The spent code cannot be spent again: repo looks the code up under pending, so a replay
+	//    is the leak-free 404, and an unknown code answers the same thing.
+	for _, code := range []string{invite.Code, "ZZZZ9999"} {
+		w = doJSON(t, r, http.MethodPost, "/api/homeos/family/invite/accept", joiner.AccessToken,
+			gin.H{"invite_code": code})
+		assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+		assert.Contains(t, w.Body.String(), "invite_not_found")
+	}
+
+	// ④ An expired code is 409, and the expired invitation is what the list shows under status
+	//    correction (三态里的 expired 是时间的函数).
+	w = doJSON(t, r, http.MethodPost, "/api/homeos/members/invite", owner.AccessToken, gin.H{"role": "guest"})
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	var second repo.InvitationView
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &second))
+	require.NoError(t, db.Exec(`UPDATE homeos_invitations SET expires_at = datetime('now', '-1 day') WHERE id = ?`,
+		second.ID).Error)
+
+	expiredJoiner := loginAs(t, r, db, expiredWho)
+	w = doJSON(t, r, http.MethodPost, "/api/homeos/family/invite/accept", expiredJoiner.AccessToken,
+		gin.H{"invite_code": second.Code})
+	assert.Equal(t, http.StatusConflict, w.Code, w.Body.String())
+	assert.Contains(t, w.Body.String(), "invite_expired")
+
+	// ⑤ The 12-member cap (PRD 18.1) refuses the JOIN, not just the invite: fill the family to 12
+	//    (owner + joiner + 10 无账号 rows) and the next accept is 409.
+	w = doJSON(t, r, http.MethodPost, "/api/homeos/members/invite", owner.AccessToken, gin.H{"role": "member"})
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	var third repo.InvitationView
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &third))
+	for i := 0; i < 10; i++ {
+		require.NoError(t, db.Exec(
+			`INSERT INTO homeos_members (id, family_id, user_id, role, created_at, updated_at)
+			 VALUES (?, ?, NULL, 'member', datetime('now'), datetime('now'))`,
+			uuid.NewString(), familyID).Error)
+	}
+	capped := loginAs(t, r, db, cappedWho)
+	w = doJSON(t, r, http.MethodPost, "/api/homeos/family/invite/accept", capped.AccessToken,
+		gin.H{"invite_code": third.Code})
+	assert.Equal(t, http.StatusConflict, w.Code, w.Body.String())
+	assert.Contains(t, w.Body.String(), "member_cap_reached")
+
+	// ⑥ DELETE /family/invites/{id} (PRD path) revokes the still-pending third invite: expired +
+	//    revoked_* through repo.RevokeInvitation; a second revoke is 409, and the revoked code can
+	//    no longer be spent (404 at the pending-only lookup).
+	w = doJSON(t, r, http.MethodDelete, "/api/homeos/family/invites/"+third.ID, owner.AccessToken, nil)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var revokedRow struct {
+		Status    string `json:"status"`
+		RevokedAt string `json:"revoked_at"`
+	}
+	require.NoError(t, db.Raw("SELECT status, COALESCE(revoked_at, '') AS revoked_at FROM homeos_invitations WHERE id = ?",
+		third.ID).Row().Scan(&revokedRow.Status, &revokedRow.RevokedAt))
+	assert.Equal(t, "expired", revokedRow.Status)
+	assert.NotEmpty(t, revokedRow.RevokedAt, "手工撤销必须落 revoked_at，与超时过期可区分")
+
+	w = doJSON(t, r, http.MethodPost, "/api/homeos/family/invite/accept", capped.AccessToken,
+		gin.H{"invite_code": third.Code})
+	assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+	w = doJSON(t, r, http.MethodDelete, "/api/homeos/family/invites/"+third.ID, owner.AccessToken, nil)
+	assert.Equal(t, http.StatusConflict, w.Code, w.Body.String())
+	assert.Contains(t, w.Body.String(), "invite_not_pending")
+
+	// ⑦ The roster read honours ?status: nothing is pending any more (the spent/expired/corrected
+	//    rows are), and the full list carries all three invitations newest-first.
+	w = doJSON(t, r, http.MethodGet, "/api/homeos/family/invites?status=pending", owner.AccessToken, nil)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &emptyList))
+	assert.Empty(t, emptyList.Items, w.Body.String())
+
+	w = doJSON(t, r, http.MethodGet, "/api/homeos/family/invites", owner.AccessToken, nil)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var fullList struct {
+		Items []repo.InvitationView `json:"items"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &fullList))
+	require.Len(t, fullList.Items, 3)
+	for _, item := range fullList.Items {
+		assert.NotEqual(t, "pending", item.Status, "过期/已用/已撤销的行都不得再以 pending 出现在列表里")
+	}
+
+	// ⑧ The trio is family-scoped: a family-less token gets 403 on list/create/revoke -- only
+	//    ACCEPT is allowlisted -- and the invented old paths answer the router's 404, not a handler.
+	brandNew := loginAs(t, r, db, "13900000080")
+	require.Equal(t, svcauth.ScopeOnboarding, brandNew.Scope)
+	for _, denied := range []struct{ method, path string }{
+		{http.MethodPost, "/api/homeos/members/invite"},
+		{http.MethodGet, "/api/homeos/family/invites"},
+		{http.MethodDelete, "/api/homeos/family/invites/some-id"},
+	} {
+		w = doJSON(t, r, denied.method, denied.path, brandNew.AccessToken, gin.H{"role": "member"})
+		assert.Equal(t, http.StatusForbidden, w.Code, "%s %s 不得对 onboarding 会话开放", denied.method, denied.path)
+		assert.Contains(t, w.Body.String(), "insufficient_scope")
+	}
+
+	w = doJSON(t, r, http.MethodPost, "/api/homeos/families/"+familyID+"/invites", owner.AccessToken,
+		gin.H{"role": "member"})
+	assert.Equal(t, http.StatusNotFound, w.Code, "旧自造路径必须已删除，而不是别名保留：%s", w.Body.String())
 }

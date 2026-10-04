@@ -52,8 +52,8 @@ var (
 // around now() within which items are considered "due". These defaults match the PRD intent
 // of 「到点下发」 without overwhelming the database or producing too many events at once.
 const (
-	scannerScanInterval     = 1 * time.Minute  // scan every minute
-	scannerReminderLeadTime = 5 * time.Minute  // fire reminders for items due within ±5 minutes
+	scannerScanInterval     = 1 * time.Minute // scan every minute
+	scannerReminderLeadTime = 5 * time.Minute // fire reminders for items due within ±5 minutes
 )
 
 // pump decorates a bus.JetStreamWrapper. CreateStream and Publish stay the底座's (so the outbox

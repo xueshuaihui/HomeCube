@@ -80,19 +80,23 @@ func (s *RecurringService) executeRule(ctx context.Context, db *gorm.DB, rule mo
 	// Execute in a transaction
 	return db.WithContext(ctx).Transaction(func(txDB *gorm.DB) error {
 		// Create transaction
-		input := repo.CreateTransactionInput{
+		input := &repo.CreateTransactionInput{
 			Transaction: tx,
 			ClientReqID: "", // No idempotency key for auto-generated transactions
 			FamilyID:    rule.FamilyID,
 			RequestData: rule,
 		}
 
+		// 指针传递：重放结果（幂等命中时）要能回填给调用方，见 CreateTransactionInput.Replay。
+		// 定时任务生成的流水不带幂等键（ClientReqID 为空），因此不会命中重放分支。
 		if err := s.repo.CreateTransaction(ctx, input); err != nil {
 			return fmt.Errorf("failed to create transaction for recurring rule: %w", err)
 		}
 
 		// Mark rule as executed and update next execution time
-		if err := s.repo.MarkRecurringRuleExecuted(ctx, rule.ID, nextExecuteAt); err != nil {
+		// 家庭边界：repo 侧按 (family_id, id) 复合条件更新，rule 自带的 family 即数据来源，
+		// 任何跨家庭的 id 都只会命中 0 行并返回 ErrNotFound。
+		if err := s.repo.MarkRecurringRuleExecuted(ctx, rule.FamilyID, rule.ID, nextExecuteAt); err != nil {
 			return fmt.Errorf("failed to mark rule as executed: %w", err)
 		}
 

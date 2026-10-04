@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/xueshuaihui/HomeCube/server/packages/adapter/asr"
+	svcauth "github.com/xueshuaihui/HomeCube/server/packages/auth"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/model"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-finance/internal/repo"
 	"gorm.io/driver/sqlite"
@@ -56,6 +57,15 @@ func setupVoiceTestDB(t *testing.T) *gorm.DB {
 
 	err = db.AutoMigrate(&model.FinanceTransaction{}, &model.FinanceAccount{}, &model.FinanceCategory{})
 	assert.NoError(t, err)
+
+	// VoiceEntry 现在按 `WHERE id = ? AND family_id = ?` 校验草稿账户的归属
+	//（repo.AssertRefsExist）—— 引用的账户必须真实存在于本家庭，否则一律 404。
+	require.NoError(t, db.Create(&model.FinanceAccount{
+		ID:       voiceAccountUUID,
+		FamilyID: voiceFamilyUUID,
+		Name:     "语音记账账户",
+		Type:     "cash",
+	}).Error)
 
 	return db
 }
@@ -126,6 +136,14 @@ func TestVoiceHandler_VoiceEntry_ManualFallback(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
+	// 家庭边界改造后 VoiceEntry 只认 session 的家庭（scopeFamily fail closed：无 session → 401）；
+	// 请求里声明的 family_id 仅参与一致性校验。
+	c.Set(svcauth.CtxSession, &svcauth.Session{
+		AccountID: "voice-account",
+		FamilyID:  voiceFamilyUUID,
+		MemberID:  "voice-member",
+		Role:      "owner",
+	})
 	c.Request = newVoiceJSONRequest(t, voiceFamilyUUID, voiceAccountUUID)
 
 	handler.VoiceEntry(c)
@@ -159,6 +177,14 @@ func TestVoiceHandler_VoiceEntry_ASRFailureFallsBackToManual(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
+	// 家庭边界改造后 VoiceEntry 只认 session 的家庭（scopeFamily fail closed：无 session → 401）；
+	// 请求里声明的 family_id 仅参与一致性校验。
+	c.Set(svcauth.CtxSession, &svcauth.Session{
+		AccountID: "voice-account",
+		FamilyID:  voiceFamilyUUID,
+		MemberID:  "voice-member",
+		Role:      "owner",
+	})
 	c.Request = newVoiceMultipartRequest(t, voiceFamilyUUID, voiceAccountUUID, "", "fake-audio-bytes")
 
 	handler.VoiceEntry(c)
@@ -192,6 +218,14 @@ func TestVoiceHandler_VoiceEntry_ASRSuccess(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
+	// 家庭边界改造后 VoiceEntry 只认 session 的家庭（scopeFamily fail closed：无 session → 401）；
+	// 请求里声明的 family_id 仅参与一致性校验。
+	c.Set(svcauth.CtxSession, &svcauth.Session{
+		AccountID: "voice-account",
+		FamilyID:  voiceFamilyUUID,
+		MemberID:  "voice-member",
+		Role:      "owner",
+	})
 	c.Request = newVoiceMultipartRequest(t, voiceFamilyUUID, voiceAccountUUID, "", "fake-audio-bytes")
 
 	handler.VoiceEntry(c)
@@ -226,6 +260,14 @@ func TestVoiceHandler_VoiceEntry_MultipartFormFieldsBindAndDriveASR(t *testing.T
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
+	// 家庭边界改造后 VoiceEntry 只认 session 的家庭（scopeFamily fail closed：无 session → 401）；
+	// 请求里声明的 family_id 仅参与一致性校验。
+	c.Set(svcauth.CtxSession, &svcauth.Session{
+		AccountID: "voice-account",
+		FamilyID:  voiceFamilyUUID,
+		MemberID:  "voice-member",
+		Role:      "owner",
+	})
 	c.Request = newVoiceMultipartRequest(t, voiceFamilyUUID, voiceAccountUUID, "午饭", "fake-audio-bytes")
 
 	handler.VoiceEntry(c)
@@ -264,6 +306,14 @@ func TestVoiceHandler_VoiceEntry_MultipartWithoutAudioPartFallsBackToManual(t *t
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
+	// 家庭边界改造后 VoiceEntry 只认 session 的家庭（scopeFamily fail closed：无 session → 401）；
+	// 请求里声明的 family_id 仅参与一致性校验。
+	c.Set(svcauth.CtxSession, &svcauth.Session{
+		AccountID: "voice-account",
+		FamilyID:  voiceFamilyUUID,
+		MemberID:  "voice-member",
+		Role:      "owner",
+	})
 	c.Request = newVoiceMultipartRequest(t, voiceFamilyUUID, voiceAccountUUID, "打车给司机 30 元", "")
 
 	handler.VoiceEntry(c)
@@ -297,6 +347,14 @@ func TestVoiceHandler_VoiceEntry_MultipartMissingFamilyIDIsBadRequest(t *testing
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
+	// 家庭边界改造后 VoiceEntry 只认 session 的家庭（scopeFamily fail closed：无 session → 401）；
+	// 请求里声明的 family_id 仅参与一致性校验。
+	c.Set(svcauth.CtxSession, &svcauth.Session{
+		AccountID: "voice-account",
+		FamilyID:  voiceFamilyUUID,
+		MemberID:  "voice-member",
+		Role:      "owner",
+	})
 	c.Request = newVoiceMultipartRequest(t, "", voiceAccountUUID, "", "fake-audio-bytes")
 
 	handler.VoiceEntry(c)
@@ -318,6 +376,14 @@ func TestVoiceHandler_VoiceEntry_RejectsNonUUIDFamily(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
+	// 家庭边界改造后 VoiceEntry 只认 session 的家庭（scopeFamily fail closed：无 session → 401）；
+	// 请求里声明的 family_id 仅参与一致性校验。
+	c.Set(svcauth.CtxSession, &svcauth.Session{
+		AccountID: "voice-account",
+		FamilyID:  voiceFamilyUUID,
+		MemberID:  "voice-member",
+		Role:      "owner",
+	})
 	c.Request = newVoiceJSONRequest(t, "test-family-001", voiceAccountUUID)
 
 	handler.VoiceEntry(c)
@@ -353,7 +419,7 @@ func TestVoiceHandler_ParseTranscriptToDraft(t *testing.T) {
 				AccountID: "test-account",
 			}
 
-			draft, err := handler.parseTranscriptToDraft(tt.transcript, req)
+			draft, err := handler.parseTranscriptToDraft(tt.transcript, req, req.FamilyID)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedType, draft.Type)
 			assert.Equal(t, tt.expectedAmount, draft.AmountCents)

@@ -102,7 +102,7 @@ func TestDueTriggerScanner_ScanFindsUpcomingDues(t *testing.T) {
 	insertTestRegistration(t, db, "reg-1", "family-1", "finance", "bill-1", "bill", "Electric Bill", now.Add(2*time.Minute))
 	insertTestRegistration(t, db, "reg-2", "family-1", "finance", "bill-2", "bill", "Water Bill", now.Add(-3*time.Minute))
 	insertTestRegistration(t, db, "reg-3", "family-1", "finance", "bill-3", "bill", "Future Bill", now.Add(1*time.Hour)) // Too far in future
-	insertTestRegistration(t, db, "reg-4", "family-1", "finance", "bill-4", "bill", "Past Bill", now.Add(-1*time.Hour))   // Too far in past
+	insertTestRegistration(t, db, "reg-4", "family-1", "finance", "bill-4", "bill", "Past Bill", now.Add(-1*time.Hour))  // Too far in past
 
 	scanner := NewDueTriggerScanner(ScannerConfig{
 		DB:               db,

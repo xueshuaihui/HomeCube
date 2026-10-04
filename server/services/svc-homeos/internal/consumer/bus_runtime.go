@@ -67,9 +67,10 @@ type BusRuntime struct {
 	log             *slog.Logger
 	pump            *pump
 	deliverer       *bus.OutboxDeliverer
-	consumer        *bus.DurableConsumer  // finance.due.registered
-	revokedConsumer *bus.DurableConsumer  // finance.due.revoked
-	scanner         *DueTriggerScanner    // due-trigger scanner (homeos.reminder.fired)
+	consumer        *bus.DurableConsumer // finance.due.registered
+	revokedConsumer *bus.DurableConsumer // finance.due.revoked
+	txnConsumers    []*bus.DurableConsumer // finance.transaction.created / .updated / .deleted
+	scanner         *DueTriggerScanner   // due-trigger scanner (homeos.reminder.fired)
 	db              *gorm.DB
 }
 
@@ -162,6 +163,21 @@ func SetupBus(ctx context.Context, cfg BusConfig) (*BusRuntime, error) {
 		{DueRevokedEventType, DueRevokedHandler(rt.db, log), func(r *BusRuntime, c *bus.DurableConsumer) {
 			r.revokedConsumer = c
 		}},
+		// The three finance money events (contracts/events/finance.yaml:17-58, consumers: svc-homeos)
+		// share one handler because the projection logic is the same for all of them and only the subject
+		// differs; the durable consumer, however, needs one subscription per FilterSubject
+		// (bus.ConsumerConfig:27 -- a durable consumer has exactly one FilterSubject), so the three ride
+		// three consumers. Without these the 首页 finance cell's projection table stays 0 rows forever --
+		// the reason this wiring was opened (homeos_proj_finance had no writer anywhere in the repo).
+		{TransactionCreatedEventType, FinanceTransactionProjectionHandler(rt.db), func(r *BusRuntime, c *bus.DurableConsumer) {
+			r.txnConsumers = append(r.txnConsumers, c)
+		}},
+		{TransactionUpdatedEventType, FinanceTransactionProjectionHandler(rt.db), func(r *BusRuntime, c *bus.DurableConsumer) {
+			r.txnConsumers = append(r.txnConsumers, c)
+		}},
+		{TransactionDeletedEventType, FinanceTransactionProjectionHandler(rt.db), func(r *BusRuntime, c *bus.DurableConsumer) {
+			r.txnConsumers = append(r.txnConsumers, c)
+		}},
 	} {
 		// Assigned before Start so the fail-fast path below still brings the already-running consumer
 		// down: rt.Stop() stops whatever the runtime holds, and every consumer it never reached is nil.
@@ -197,10 +213,16 @@ func SetupBus(ctx context.Context, cfg BusConfig) (*BusRuntime, error) {
 	log.Info("event_side_started",
 		"own_stream", cfg.Own.StreamName(),
 		"source_stream", cfg.Source.StreamName(),
-		"filter_subjects", strings.Join([]string{DueRegisteredEventType, DueRevokedEventType}, ","),
+		"filter_subjects", strings.Join([]string{
+			DueRegisteredEventType, DueRevokedEventType,
+			TransactionCreatedEventType, TransactionUpdatedEventType, TransactionDeletedEventType,
+		}, ","),
 		"consumers", strings.Join([]string{
 			durableName(cfg.Own.Code + "-" + DueRegisteredEventType),
 			durableName(cfg.Own.Code + "-" + DueRevokedEventType),
+			durableName(cfg.Own.Code + "-" + TransactionCreatedEventType),
+			durableName(cfg.Own.Code + "-" + TransactionUpdatedEventType),
+			durableName(cfg.Own.Code + "-" + TransactionDeletedEventType),
 		}, ","),
 		"scanner", "due_trigger_scanner",
 	)
@@ -223,6 +245,11 @@ func (r *BusRuntime) Stop() {
 	}
 	if r.revokedConsumer != nil {
 		r.revokedConsumer.Stop()
+	}
+	for _, c := range r.txnConsumers {
+		if c != nil {
+			c.Stop()
+		}
 	}
 	if r.deliverer != nil {
 		r.deliverer.Stop()

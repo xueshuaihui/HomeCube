@@ -3,21 +3,17 @@ package handler
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"fmt"
-	"log/slog"
-	"math/big"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 
+	svcauth "github.com/xueshuaihui/HomeCube/server/packages/auth"
 	"github.com/xueshuaihui/HomeCube/server/packages/authz"
-	svcauth "github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/auth"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/model"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/repo"
 )
@@ -335,7 +331,9 @@ type ListFamiliesResponse struct {
 // ListFamilies handles GET /api/homeos/families.
 //
 // Account-scoped, not family-scoped: the only key is the token's sub, and no family id is taken from
-// the request, which is why this read is on the onboarding allowlist while /families/{id}/... is not.
+// the request, which is why this read is on the onboarding allowlist while the invite trio (which
+// acts inside a family) is not — except POST /family/invite/accept, the other way out of 无家庭,
+// which svcauth allowlists deliberately.
 // A removed membership is excluded (m.deleted_at IS NULL) and the role is this account's role in THAT
 // family, so a caller in two families sees its own two different roles.
 func ListFamilies(c *gin.Context, s *Services) {
@@ -454,37 +452,23 @@ func SwitchFamily(c *gin.Context, s *Services) {
 	})
 }
 
-// CreateInviteRequest is POST /families/{family_id}/invites' body.
+// CreateInviteRequest is POST /members/invite's body (PRD 3.4.1 接口表「邀请成员（仅家庭管理员
+// 可发起）」). No family identifier is taken from the request: the session's family is the only
+// boundary (PRD 15.2), matching every other homeos write path.
 type CreateInviteRequest struct {
 	Role          string `json:"role" binding:"required,oneof=owner member ward guest"`
 	InviteePhone  string `json:"invitee_phone,omitempty"`
-	ExpiresInDays int    `json:"expires_in_days"` // default 7 days
+	ExpiresInDays int    `json:"expires_in_days"` // <=0 -> repo's defaultInviteTTL (PRD 15.1: 30 天)
 }
 
-// CreateInviteResponse answers with the invitation code and metadata.
-type CreateInviteResponse struct {
-	ID           string    `json:"id"`
-	FamilyID     string    `json:"family_id"`
-	Code         string    `json:"code"`
-	Role         string    `json:"role"`
-	InviteePhone string    `json:"invitee_phone,omitempty"`
-	ExpiresAt    time.Time `json:"expires_at"`
-	CreatedAt    time.Time `json:"created_at"`
-	InviteLink   string    `json:"invite_link"` // deep link for QR code
-}
-
-// CreateInvite handles POST /api/homeos/families/{family_id}/invites (PRD 3.4.1 邀请成员).
+// CreateInvite handles POST /api/homeos/members/invite (PRD 3.4.1 接口表, 3.7 三态邀请).
 //
-// Only family owners can create invitations (PRD 15.3 「面配置」+「成员管理」). The invite code is a
-// random 8-character string, valid for 7 days by default. The three-state discipline (pending/accepted/expired)
-// is enforced by repo.AcceptInvitation at consume time.
+// The write goes through repo.CreateInvitation, which owns what the previous inline version skipped:
+// the <=12-member cap check, the UNIQUE code collision handling, the inviter member row as
+// inviter_id (a NOT NULL uuid column -- hence the owner check below must guarantee a resolved member
+// id, never an empty string), and the audit row, all in one transaction.
+// The 三态（链接/二维码/邀请码）are three renderings of the one code in the response.
 func CreateInvite(c *gin.Context, s *Services) {
-	familyID := c.Param("family_id")
-	if strings.TrimSpace(familyID) == "" {
-		badRequest(c, "invalid_request", "需要 family_id 路径参数")
-		return
-	}
-
 	var req CreateInviteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		badRequest(c, "invalid_request", "需要 role 字段（owner/member/ward/guest）")
@@ -496,8 +480,14 @@ func CreateInvite(c *gin.Context, s *Services) {
 		s.internal(c, "session_unavailable", err)
 		return
 	}
-
-	// Enforce owner-only for creating invites (PRD 15.3)
+	if sess.IsOnboarding() {
+		// Second gate behind the middleware allowlist (which denies this route to a family-less
+		// token): 发起邀请 presupposes a family to invite INTO, and sess.FamilyID is empty here.
+		c.JSON(http.StatusForbidden, gin.H{"error": "insufficient_scope", "code": "no_family",
+			"message": "当前会话尚无家庭，无法发起邀请"})
+		return
+	}
+	// PRD 15.1「邀请仅 owner 可发起」.
 	if sess.Role != authz.RoleOwner {
 		c.JSON(http.StatusForbidden, gin.H{
 			"error":   "forbidden",
@@ -505,101 +495,57 @@ func CreateInvite(c *gin.Context, s *Services) {
 		})
 		return
 	}
+	// inviter_id is uuid NOT NULL: a session whose member row vanished mid-flight must not mint an
+	// invitation with an empty inviter.
+	if sess.MemberID == "" {
+		s.internal(c, "member_unresolved", errors.New("family session without a member id cannot invite"))
+		return
+	}
 
-	ctx := c.Request.Context()
-
-	// Verify the inviter is actually in this family
-	memberAccountID := sess.AccountID
-	var membership model.HomeosMember
-	if err := s.DB.WithContext(ctx).Where("family_id = ? AND user_id = ?", familyID, memberAccountID).First(&membership).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error":   "not_family_member",
-				"message": "您不是该家庭成员",
-			})
-			return
+	ttl := time.Duration(req.ExpiresInDays) * 24 * time.Hour
+	view, err := repo.CreateInvitation(c.Request.Context(), s.DB, nil, sess.FamilyID, repo.Actor{
+		AccountID: sess.AccountID,
+		MemberID:  sess.MemberID,
+		IP:        c.ClientIP(),
+		UserAgent: truncatedUA(c),
+	}, req.Role, strings.TrimSpace(req.InviteePhone), ttl, "", false)
+	if err != nil {
+		switch {
+		case errors.Is(err, repo.ErrRoleInvalid):
+			badRequest(c, "invalid_role", err.Error())
+		case errors.Is(err, repo.ErrAccountNotInFamily):
+			c.JSON(http.StatusForbidden, gin.H{"error": "not_family_member", "message": "您不是该家庭成员"})
+		case errors.Is(err, repo.ErrMemberCapReached):
+			c.JSON(http.StatusConflict, gin.H{"error": "member_cap_reached",
+				"message": "该家庭已达 12 人上限（PRD 18.1），无法再邀请成员"})
+		default:
+			s.internal(c, "invite_create_failed", err)
 		}
-		s.internal(c, "member_lookup_failed", err)
 		return
 	}
 
-	// Generate invite code (8-char random string)
-	code := generateInviteCode()
-
-	// Calculate expiry
-	expiresIn := req.ExpiresInDays
-	if expiresIn <= 0 {
-		expiresIn = 7
-	}
-	expiresAt := time.Now().UTC().Add(time.Duration(expiresIn) * 24 * time.Hour)
-
-	// Create invitation row
-	now := time.Now().UTC()
-	inviteID := uuid.New().String()
-	var inviteePhone *string
-	if strings.TrimSpace(req.InviteePhone) != "" {
-		inviteePhone = &req.InviteePhone
-	}
-	invite := model.HomeosInvitation{
-		ID:             inviteID,
-		FamilyID:       familyID,
-		Code:           code,
-		Role:           req.Role,
-		InviterID:      sess.MemberID,
-		InviteePhone:   inviteePhone,
-		Status:         "pending",
-		ExpiresAt:      expiresAt,
-		CreatedAt:      now,
-		UpdatedAt:      now,
-	}
-
-	if err := s.DB.WithContext(ctx).Create(&invite).Error; err != nil {
-		slog.Error("invite_create_failed", "err", err.Error(), "family_id", familyID, "code", code)
-		s.internal(c, "invite_create_failed", err)
-		return
-	}
-
-	// Build deep link for QR code scanning
-	inviteLink := fmt.Sprintf("homecube://invite/%s", code)
-
-	c.JSON(http.StatusCreated, CreateInviteResponse{
-		ID:           inviteID,
-		FamilyID:     familyID,
-		Code:         code,
-		Role:         req.Role,
-		InviteePhone: req.InviteePhone,
-		ExpiresAt:    expiresAt,
-		CreatedAt:    now,
-		InviteLink:   inviteLink,
-	})
+	c.JSON(http.StatusCreated, view)
 }
 
-// generateInviteCode produces an 8-character random code (uppercase + digits).
-func generateInviteCode() string {
-	const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // no I/O/0/1 to avoid confusion
-	b := make([]byte, 8)
-	for i := range b {
-		n, _ := rand.Int(rand.Reader, big.NewInt(int64(len(chars))))
-		b[i] = chars[n.Int64()]
-	}
-	return string(b)
-}
-
-// ListInvites handles GET /api/homeos/families/{family_id}/invites.
+// ListInvites handles GET /api/homeos/family/invites (the roster page's pending list; the read is
+// the frontend's and the DELETE sibling's own resource -- its absence from PRD 3.4.1's 接口表 is a
+// reported 定版空白, not a license to leave the invite page broken).
+//
+// Family-scoped from the session only; ?status= filters the view server-side (pending/accepted/
+// expired, empty or "all" = no filter) over repo.ListInvitations, which already corrects a
+// past-expiry pending row to expired on read.
 func ListInvites(c *gin.Context, s *Services) {
-	familyID := c.Param("family_id")
-	if strings.TrimSpace(familyID) == "" {
-		badRequest(c, "invalid_request", "需要 family_id 路径参数")
-		return
-	}
-
 	sess, err := svcauth.SessionFrom(c)
 	if err != nil {
 		s.internal(c, "session_unavailable", err)
 		return
 	}
-
-	// Only owners can list invites
+	if sess.IsOnboarding() {
+		c.JSON(http.StatusForbidden, gin.H{"error": "insufficient_scope", "code": "no_family",
+			"message": "当前会话尚无家庭，无邀请可查"})
+		return
+	}
+	// 邀请列表含 code 明文，属成员治理数据：PRD 15.1 口径下仅 owner 可读（与 create/revoke 同级）。
 	if sess.Role != authz.RoleOwner {
 		c.JSON(http.StatusForbidden, gin.H{
 			"error":   "forbidden",
@@ -608,22 +554,33 @@ func ListInvites(c *gin.Context, s *Services) {
 		return
 	}
 
-	ctx := c.Request.Context()
-	var invites []model.HomeosInvitation
-	if err := s.DB.WithContext(ctx).Where("family_id = ?", familyID).Order("created_at DESC").Find(&invites).Error; err != nil {
+	rows, err := repo.ListInvitations(c.Request.Context(), s.DB, sess.FamilyID)
+	if err != nil {
 		s.internal(c, "invite_list_failed", err)
 		return
 	}
-
-	c.JSON(http.StatusOK, gin.H{"items": invites})
+	status := strings.TrimSpace(c.Query("status"))
+	items := make([]repo.InvitationView, 0, len(rows))
+	for _, r := range rows {
+		if status != "" && status != "all" && r.Status != status {
+			continue
+		}
+		items = append(items, r)
+	}
+	c.JSON(http.StatusOK, gin.H{"items": items})
 }
 
-// RevokeInvite handles DELETE /api/homeos/families/{family_id}/invites/{invite_id} (PRD 3.4.1 撤销邀请).
+// RevokeInvite handles DELETE /api/homeos/family/invites/{id} (PRD 3.4.1 接口表「撤销邀请（三态链接
+// 同时失效），落审计」).
+//
+// The id is the invitation row's uuid from GET /family/invites; the family boundary comes from the
+// session, so an id from another household answers 404, never 403-with-a-name (PRD 15.2). The write
+// goes through repo.RevokeInvitation: pending-only, status -> expired + revoked_at/revoked_by,
+// audit row, one transaction.
 func RevokeInvite(c *gin.Context, s *Services) {
-	familyID := c.Param("family_id")
-	inviteID := c.Param("invite_id")
-	if strings.TrimSpace(familyID) == "" || strings.TrimSpace(inviteID) == "" {
-		badRequest(c, "invalid_request", "需要 family_id 和 invite_id 路径参数")
+	inviteID := strings.TrimSpace(c.Param("id"))
+	if inviteID == "" {
+		badRequest(c, "invalid_request", "需要邀请 id 路径参数")
 		return
 	}
 
@@ -632,8 +589,11 @@ func RevokeInvite(c *gin.Context, s *Services) {
 		s.internal(c, "session_unavailable", err)
 		return
 	}
-
-	// Only owners can revoke invites
+	if sess.IsOnboarding() {
+		c.JSON(http.StatusForbidden, gin.H{"error": "insufficient_scope", "code": "no_family",
+			"message": "当前会话尚无家庭，无邀请可撤销"})
+		return
+	}
 	if sess.Role != authz.RoleOwner {
 		c.JSON(http.StatusForbidden, gin.H{
 			"error":   "forbidden",
@@ -642,35 +602,32 @@ func RevokeInvite(c *gin.Context, s *Services) {
 		return
 	}
 
-	ctx := c.Request.Context()
-	now := time.Now().UTC()
-
-	// Update invitation status to expired
-	result := s.DB.WithContext(ctx).Model(&model.HomeosInvitation{}).
-		Where("id = ? AND family_id = ? AND status = ?", inviteID, familyID, "pending").
-		Updates(map[string]interface{}{
-			"status":     "expired",
-			"updated_at": now,
-		})
-
-	if result.Error != nil {
-		s.internal(c, "invite_revoke_failed", result.Error)
+	err = repo.RevokeInvitation(c.Request.Context(), s.DB, sess.FamilyID, inviteID, repo.Actor{
+		AccountID: sess.AccountID,
+		MemberID:  sess.MemberID,
+		IP:        c.ClientIP(),
+		UserAgent: truncatedUA(c),
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, repo.ErrNoRow):
+			c.JSON(http.StatusNotFound, gin.H{
+				"error":   "invite_not_found",
+				"message": "邀请不存在或已失效",
+			})
+		case errors.Is(err, repo.ErrInviteNotPending):
+			c.JSON(http.StatusConflict, gin.H{
+				"error":   "invite_not_pending",
+				"message": "邀请已被接受或已失效，无需重复撤销",
+			})
+		default:
+			s.internal(c, "invite_revoke_failed", err)
+		}
 		return
 	}
-
-	if result.RowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error":   "invite_not_found",
-			"message": "邀请不存在或已失效",
-		})
-		return
-	}
-
-	// Audit log
-	reason := "撤销邀请 " + inviteID
-	s.writeAudit(ctx, s.auditRow(c, sess, model.AuditEventPermissionChange, model.AuditResultAllowed, reason))
 
 	c.JSON(http.StatusOK, gin.H{
+		"id":      inviteID,
 		"message": "邀请已撤销",
 	})
 }

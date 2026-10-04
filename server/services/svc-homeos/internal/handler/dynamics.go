@@ -38,9 +38,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	svcauth "github.com/xueshuaihui/HomeCube/server/packages/auth"
 	"github.com/xueshuaihui/HomeCube/server/packages/authz"
 	"github.com/xueshuaihui/HomeCube/server/packages/registry"
-	svcauth "github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/auth"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/model"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/repo"
 )

@@ -21,6 +21,7 @@
 # ---- Node / 前端构建产物（web = uni-app(Vue3)、admin = Vite + React，§1.2）----
 node_modules/
 web/dist/
+web/dist-acceptance/
 web/unpackage/
 admin/dist/
 
