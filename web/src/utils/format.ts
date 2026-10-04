@@ -125,3 +125,31 @@ export function truncateText(text: string, maxLength: number): string {
   if (!text || text.length <= maxLength) return text
   return text.slice(0, maxLength) + '...'
 }
+
+/**
+ * 生成 RFC 4122 v4 UUID —— 幂等键（`client_request_id`）要落进 `uuid` 列，格式必须合法。
+ *
+ * 为什么必须是 UUID：`finance.finance_transaction.client_request_id` 的列类型是 uuid
+ * （迁移 finance_0001_base_schema），而 `${Date.now()}-${random}` 这种串不是 UUID，
+ * PostgreSQL 会拒：`invalid input syntax for type uuid`（SQLSTATE 22P02）——
+ * 表现为**每一次记账都 500**。契约 finance.yaml:169-171 早期只写 `type: string`
+ * 没标 `format: uuid`，两端就都以为随便什么串都行；契约侧已补上 format。
+ *
+ * 优先 `crypto.randomUUID`（安全上下文才有）；退化路径用 `crypto.getRandomValues` 手工拼 v4。
+ * 本函数是幂等键的**唯一**生成口：记账页与快速添加页都调它，不各写一份。
+ */
+export function newIdempotencyUUID(): string {
+  const c: any = (globalThis as any).crypto
+  if (c && typeof c.randomUUID === 'function') return c.randomUUID()
+  if (c && typeof c.getRandomValues === 'function') {
+    const b = c.getRandomValues(new Uint8Array(16))
+    b[6] = (b[6] & 0x0f) | 0x40 // version 4
+    b[8] = (b[8] & 0x3f) | 0x80 // variant 10x
+    const h = [...b].map((x) => x.toString(16).padStart(2, '0')).join('')
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`
+  }
+  // 最后的兜底仍必须是 UUID 形状：拼 32 位十六进制并强制定位 version/variant 位
+  let s = ''
+  for (let i = 0; i < 32; i++) s += Math.floor(Math.random() * 16).toString(16)
+  return `${s.slice(0, 8)}-${s.slice(8, 12)}-4${s.slice(13, 16)}-8${s.slice(17, 20)}-${s.slice(20)}`
+}

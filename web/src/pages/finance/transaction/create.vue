@@ -27,7 +27,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { request } from '@/utils/request'
-import { parseAmountToCents } from '@/utils/format'
+import { parseAmountToCents, newIdempotencyUUID } from '@/utils/format'
 import { useHomeStore } from '@/stores/home'
 
 const { t } = useI18n({ useScope: 'global' })
@@ -128,8 +128,7 @@ function handleTypeChange(type: TransactionType) {
 }
 
 // Submit transaction
-async function handleSubmit() {
-  // Validation
+async function handleSubmit() {  // Validation
   if (!amountInput.value || amountCents.value <= 0) {
     uni.showToast({ title: '请输入有效金额', icon: 'none' })
     return
@@ -163,7 +162,13 @@ async function handleSubmit() {
       account_id: accountId.value,
       occurred_at: occurredAt.value,
       description: remark.value,
-      client_request_id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, // 幂等键
+      // 幂等键必须是 **UUID**：finance.finance_transaction.client_request_id 的列类型是
+      // uuid（迁移 finance_0001_base_schema），而旧写法 `${Date.now()}-${random}` 产出的是
+      // 「1791049719700-jybfx232uc9」这种带短横线的非 UUID 串，PostgreSQL 直接报
+      // `invalid input syntax for type uuid`（SQLSTATE 22P02），**每一次记账都 500**。
+      // 契约 finance.yaml:169-171 只写 `type: string` 没标 format:uuid，是契约侧的缺口；
+      // 这里按数据库列的实际类型生成合法 UUID（RFC 4122 v4）。
+      client_request_id: newIdempotencyUUID(),
     }
 
     await request.post('/api/finance/transactions', payload)

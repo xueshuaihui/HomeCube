@@ -94,7 +94,10 @@ async function fetchBudgets() {
     const body = await request.get<{ items?: Budget[] }>('/api/finance/budgets', {
       params: {
         family_id: familyId,
-        period: homeStore.period,
+        // 过滤值与写入值必须是同一套枚举：服务端按 `period` 精确匹配，
+        // 发 `month` 只会得到空列表（实测 `period=month` → items:[]，
+        // `period=monthly` → 命中）。口径见 toBudgetPeriod 的注释。
+        period: toBudgetPeriod(homeStore.period),
       },
     })
 
@@ -116,6 +119,50 @@ async function fetchBudgets() {
     error.value = err.message || '加载失败'
   } finally {
     loading.value = false
+  }
+}
+
+/**
+ * 时间窗档位（month / quarter / year）→ 预算周期枚举（monthly / quarterly yearly）。
+ * 两套编码的差别见 handleSubmit 里 payload 的注释：前者是统计视图口径，后者是
+ * `CreateBudgetRequest.Period` 的 `oneof` 白名单，不做这层映射就 400。
+ */
+function toBudgetPeriod(grain: string): 'monthly' | 'quarterly' | 'yearly' {
+  if (grain === 'quarter') return 'quarterly'
+  if (grain === 'year') return 'yearly'
+  return 'monthly'
+}
+
+/**
+ * 当前预算周期的起止日，格式为 **RFC3339**（`2026-10-01T00:00:00Z`）。
+ * 两种格式的差别不是洁癖：服务端 `StartDate/EndDate` 是 `time.Time` 的裸字段、
+ * 没有 binding 格式标签，gin 的 JSON 解码走 RFC3339 —— 只给 `2026-10-01` 会得到
+ * `parsing time "2026-10-01" as "2006-01-02T15:04:05Z07:00": cannot parse "" as "T"`，
+ * 也就是 400。所以这里返回全时间戳而不是日期串。
+ */
+function periodRange(grain: string): { start: string; end: string } {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = now.getMonth() + 1
+  const pad = (n: number) => String(n).padStart(2, '0')
+
+  if (grain === 'year') {
+    return { start: `${y}-01-01T00:00:00Z`, end: `${y}-12-31T23:59:59Z` }
+  }
+  if (grain === 'quarter') {
+    const q = Math.floor((m - 1) / 3)
+    const startMonth = q * 3 + 1
+    const endMonth = startMonth + 2
+    const lastDay = new Date(y, endMonth, 0).getDate()
+    return {
+      start: `${y}-${pad(startMonth)}-01T00:00:00Z`,
+      end: `${y}-${pad(endMonth)}-${pad(lastDay)}T23:59:59Z`,
+    }
+  }
+  const lastDay = new Date(y, m, 0).getDate()
+  return {
+    start: `${y}-${pad(m)}-01T00:00:00Z`,
+    end: `${y}-${pad(m)}-${pad(lastDay)}T23:59:59Z`,
   }
 }
 
@@ -158,7 +205,17 @@ async function handleSubmit() {
       family_id: familyId,
       category_id: formCategoryId.value,
       amount_cents: Math.round(amount * 100),
-      period: homeStore.period,
+      // `period` 的两套取值必须在这里对齐，否则**创建预算永远 400**：
+      //   · 前端时间窗档位（stores/home.ts 的 PeriodGrain）是 month / quarter / year，
+      //     它同时是 statistics 四视图的 period 编码（YYYY-MM / YYYY-Qn / YYYY）；
+      //   · 而 CreateBudgetRequest.Period 的 binding 是 `oneof=monthly quarterly yearly`。
+      // 旧代码直接把 `homeStore.period` 塞进 payload，于是发出去的是 "month"，
+      // 服务端 oneof 校验直接拒（400 invalid request: Key: 'CreateBudgetRequest.Period'）。
+      period: toBudgetPeriod(homeStore.period),
+      // CreateBudgetRequest 的 start_date / end_date 都是 binding:"required"，
+      // 缺一个就是 400 —— 预算周期必须自带起止日期，这里按当前周期算。
+      start_date: periodRange(homeStore.period).start,
+      end_date: periodRange(homeStore.period).end,
       alert_threshold: Number.parseInt(formAlertThreshold.value, 10) || 80,
     }
 

@@ -23,7 +23,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { request, unwrapBody } from '@/utils/request'
-import { extractFirstAmount, formatAmount } from '@/utils/format'
+import { extractFirstAmount, formatAmount, newIdempotencyUUID } from '@/utils/format'
 import { useHomeStore } from '@/stores/home'
 
 const { t, te } = useI18n({ useScope: 'global' })
@@ -269,8 +269,14 @@ function goBack() {
 }
 
 /** 幂等键：同一份输入在弱网重发时不产生第二条流水（3.4.6、18.2）。 */
+/**
+ * 幂等键走共享实现 `newIdempotencyUUID()`（utils/format.ts）——
+ * 必须是合法 UUID：`finance_transaction.client_request_id` 列类型是 uuid，
+ * 旧的 `${Date.now()}-${random}` 串会被 PostgreSQL 拒（SQLSTATE 22P02），
+ * 表现为快速添加**每次都 500**。
+ */
 function buildClientRequestId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+  return newIdempotencyUUID()
 }
 
 async function handleSubmit() {

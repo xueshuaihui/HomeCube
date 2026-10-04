@@ -99,7 +99,7 @@ async function fetchSplits() {
       return
     }
 
-    const body = await request.get<{ items?: Split[] }>('/api/finance/splits', {
+    const body = await request.get<{ items?: Split[] }>('/api/finance/split-settlements', {
       params: { family_id: familyId },
     })
     splits.value = Array.isArray(body?.items) ? body.items : []
@@ -156,7 +156,7 @@ async function handleSubmit() {
     if (formPayerId.value) payload.payer_member_id = formPayerId.value
     if (formDescription.value) payload.description = formDescription.value.trim()
 
-    await request.post('/api/finance/splits', payload)
+    await request.post('/api/finance/split-settlements', payload)
     uni.showToast({ title: '创建成功', icon: 'success' })
     showAddDialog.value = false
     await fetchSplits()

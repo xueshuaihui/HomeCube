@@ -2,7 +2,8 @@
 // pages/homeos/family/index —— 成员管理列表（§4.6 row ①，PRD 3.4.1 / 15.1 / 15.3 / 15.5）
 //
 // 口径：
-//   · 数据源：`GET /api/homeos/members`（名册，PRD 3.7）。**当前会话家庭与本人角色不在本页另取一份**：
+//   · 数据源：`GET /api/homeos/members/snapshot?fid=<family_id>`（名册，PRD 3.7；
+//     路由名以服务端 main.go 注册的为准）。**当前会话家庭与本人角色不在本页另取一份**：
 //     读的是主包 shell store 的会话快照（`homeStore.role`，唯一源 = `ensureSession()`），
 //     与「我的」页同一份（15.1、17.5 五处同源）。
 //   · **角色未知即按最小权限**：`homeStore.role` 为空串、`ward`、`guest` 时一律落
@@ -127,18 +128,37 @@ function classifyError(err: any): { text: string; code: string } {
 }
 
 async function loadRoster(cursor?: string | null): Promise<void> {
-  const params: Record<string, any> = { limit: MEMBER_HARD_CAP }
+  const params: Record<string, any> = {}
   if (cursor) params.cursor = cursor
 
-  const res = await request.get('/api/homeos/members', { params })
+  // 路由名与参数名都按服务端实际注册的形状：`GET /members/snapshot?fid=<family_id>`。
+  // 旧代码请求 `/members`（**没有这个路由**），于是本页每次打开都是
+  // 「成员列表加载失败 / HTTP 404 / 错误码：404」—— 一个 owner 也看不到自己家庭的名册。
+  // 返回体是 `{pver, members[], permissions[]}`，成员行主键字段名是 `member_id`（不是 `id`）。
+  const fid = homeStore.sessionFamilyId
+  if (!fid) {
+    members.value = []
+    nextCursor.value = null
+    return
+  }
+  params.fid = fid
+
+  const res = await request.get('/api/homeos/members/snapshot', { params })
   const body = unwrapBody(res)
-  const items: MemberRow[] = Array.isArray(body?.items)
-    ? body.items
-    : Array.isArray(body?.members)
-      ? body.members
+  const raw: any[] = Array.isArray(body?.members)
+    ? body.members
+    : Array.isArray(body?.items)
+      ? body.items
       : Array.isArray(body)
         ? body
         : []
+
+  // `member_id` → `id`：本页所有成员动作（改角色 / 移除）都用 `m.id`，
+  // 不做这层归一时每行的治理入口都会指向 undefined。
+  const items: MemberRow[] = raw.map((m: any) => ({
+    ...m,
+    id: m.id || m.member_id,
+  })) as MemberRow[]
 
   members.value = cursor ? members.value.concat(items) : items
   nextCursor.value = body?.next_cursor || body?.cursor || null

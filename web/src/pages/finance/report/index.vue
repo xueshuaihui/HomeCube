@@ -5,8 +5,11 @@
 //   · 收支统计：按分类、账户展示支出和收入分布
 //   · 趋势分析：按月/季/年展示收支趋势
 //   · 排行榜：支出最多的分类 TOP 10
-//   · 对接 GET /api/finance/statistics/summary?family_id=&period=
-//     GET /api/finance/statistics/trend?family_id=&period=&granularity=
+//   · 对接 GET /api/finance/statistics/overview?family_id=&period=（概览标量）
+//     GET /api/finance/statistics/category?family_id=&period=（分类分布）
+//     GET /api/finance/statistics/trend?family_id=&period=&granularity=（趋势）
+//     这三段式以服务端 main.go 注册的路由为准；旧注释里的 `/statistics/summary`
+//     **不存在**，请求它整页恒 404。
 
 import { ref, computed, onMounted } from 'vue'
 import { request } from '@/utils/request'
@@ -40,6 +43,31 @@ interface StatisticsSummary {
   net_cents: number
   by_category?: CategoryStat[]
   by_account?: AccountStat[]
+}
+
+/**
+ * `GET /statistics/overview` 的真实响应形状。
+ * 两个坑：
+ *  1. **单位是分**。服务端的 `GetOverviewStats` 直接聚合 `SUM(amount_cents)`
+ *     （statistics.go:88-118），字段名虽然没带 `_cents` 后缀，值仍是分。
+ *     所以这里**不能**再乘 100 —— 乘一次会让 ¥514.00 显示成 ¥51400.00。
+ *  2. 支出是负数（服务端 SUM 出来的符号），页面按「支出额」展示，取绝对值。
+ */
+interface OverviewResponse {
+  total_income?: number
+  total_expense?: number
+  net_balance?: number
+  account_count?: number
+}
+
+/** `GET /statistics/category` 的行形状：`{category_id, category_name, amount, percentage, count}`。 */
+interface RawCategoryStat {
+  category_id: string
+  category_name?: string
+  amount?: number
+  percentage?: number
+  /** 笔数：服务端已在 SELECT 里 COUNT(*) 带回，页面「N 笔」读它。 */
+  count?: number
 }
 
 const loading = ref(false)
@@ -99,29 +127,43 @@ async function fetchStatistics() {
       return
     }
 
-    // 获取统计摘要
-    const summaryBody = await request.get<StatisticsSummary>('/api/finance/statistics/summary', {
+    // 统计摘要：服务端注册的是 `/statistics/overview`（返回 total_income / total_expense /
+    // net_balance / account_count），**没有** `/statistics/summary` —— 旧代码请求后者，
+    // 于是「概览」页每次打开都是 HTTP 404 重试态。这里按真实路由取，并补上分类分布。
+    const overviewBody = await request.get<OverviewResponse>('/api/finance/statistics/overview', {
       params: {
         family_id: familyId,
         period: homeStore.period,
       },
     })
-    summary.value = summaryBody
 
-    // 填充分类和账户名称
-    if (summaryBody?.by_category) {
-      for (const stat of summaryBody.by_category) {
-        if (stat.category_id && !stat.category_name) {
-          stat.category_name = categoryNames.value[stat.category_id] || ''
-        }
-      }
-    }
-    if (summaryBody?.by_account) {
-      for (const stat of summaryBody.by_account) {
-        if (stat.account_id && !stat.account_name) {
-          stat.account_name = accountNames.value[stat.account_id] || ''
-        }
-      }
+    // 分类分布：服务端在 Overview 之外单独提供 `/statistics/category`，
+    // Overview 里没有 by_category（实测响应只有四个标量字段）。
+    // 这个接口此前坏过一次（SQL 缺表别名），所以 catch 兜一层：分类分布挂掉
+    // 不该让整页变成错误态 —— 概览数字仍然要显示。
+    const categoryBody = await request
+      .get<{ items?: RawCategoryStat[] }>('/api/finance/statistics/category', {
+        params: { family_id: familyId, period: homeStore.period },
+      })
+      .catch(() => ({ items: [] as RawCategoryStat[] }))
+
+    const catItems = Array.isArray(categoryBody?.items) ? categoryBody.items : []
+
+    // 字段名映射：net_balance → net_cents；金额已是分，不做换算。
+    summary.value = {
+      total_income_cents: overviewBody?.total_income ?? 0,
+      total_expense_cents: Math.abs(overviewBody?.total_expense ?? 0),
+      net_cents: overviewBody?.net_balance ?? 0,
+      by_category: catItems.map((c) => ({
+        category_id: c.category_id,
+        category_name: categoryNames.value[c.category_id] || c.category_name || '',
+        // `/statistics/category` 的金额字段是 `amount`，同样是 `SUM(amount_cents)` 的分，
+        // 不换算；percentage 由服务端算好直接用。支出是负数，取绝对值。
+        amount_cents: Math.abs(c.amount ?? 0),
+        percentage: c.percentage ?? 0,
+        count: c.count ?? 0,
+      })),
+      by_account: [],
     }
 
     // 获取趋势数据
@@ -132,7 +174,21 @@ async function fetchStatistics() {
         granularity: 'month',
       },
     })
-    trendData.value = Array.isArray(trendBody?.items) ? trendBody.items : []
+    // `/statistics/trend` 的行字段是 `income` / `expense`（单位：分，来自 SUM(amount_cents)），
+    // **没有** `_cents` 后缀，也没有 `net`。旧代码直接把响应塞进 trendData，
+    // 模板读 `point.income_cents` 全是 undefined，于是趋势页整屏显示 `¥NaN`。
+    // 这里显式映射：收入取原值，支出取绝对值（服务端 SUM 出负数），结余自己算。
+    const rawTrend: any[] = Array.isArray(trendBody?.items) ? trendBody.items : []
+    trendData.value = rawTrend.map((p: any) => {
+      const income = p.income ?? p.income_cents ?? 0
+      const expense = Math.abs(p.expense ?? p.expense_cents ?? 0)
+      return {
+        period: p.period,
+        income_cents: income,
+        expense_cents: expense,
+        net_cents: income - expense,
+      } as TrendPoint
+    })
 
     await loadNameDicts(familyId)
   } catch (err: any) {
@@ -144,21 +200,30 @@ async function fetchStatistics() {
 }
 
 // Computed: top expense categories
+//
+// 收支方向**不能靠金额正负推断**：`/statistics/category` 返回的 `amount` 已经是负数
+// （服务端 SUM 出来就是负的），而取数处为了页面展示统一取了绝对值 —— 于是
+// 「支出排行」按 `amount_cents < 0` 过滤永远为空，而同一批数据又都满足 `> 0`
+// 全部落进「收入排行」，出现「支出榜空、收入榜列出餐饮 ¥514.00」这种自相矛盾的界面。
+// 正确做法是让方向成为数据的一部分：这里用服务端给的 percentage 不可靠（支出也可能是 0%），
+// 所以改为按「本周期是否有收入」区分—— 服务端 Overview 明确给了 total_income。
+const hasIncome = computed(() => (summary.value?.total_income_cents ?? 0) > 0)
+
 const topExpenseCategories = computed(() => {
-  if (!summary.value?.by_category) return []
+  // 有收入数据时，分类分布是支出分布（服务端 /statistics/category 固定过滤 type='expense'）
+  if (!summary.value?.by_category || hasIncome.value) return []
   return [...summary.value.by_category]
-    .filter((c) => c.amount_cents < 0) // 支出为负数
-    .sort((a, b) => a.amount_cents - b.amount_cents) // 从小到大（绝对值从大到小）
+    .sort((a, b) => b.amount_cents - a.amount_cents) // 绝对值从大到小
     .slice(0, 10)
 })
 
 // Computed: top income categories
 const topIncomeCategories = computed(() => {
-  if (!summary.value?.by_category) return []
-  return [...summary.value.by_category]
-    .filter((c) => c.amount_cents > 0)
-    .sort((a, b) => b.amount_cents - a.amount_cents)
-    .slice(0, 10)
+  // 服务端目前只提供支出侧的分类分布（SQL 里写死 type = 'expense'），
+  // 收入侧没有对应接口 —— 所以本周期没有收入数据时，收入榜必须为空，
+  // 不能拿支出数据顶替。
+  if (!summary.value?.by_category || !hasIncome.value) return []
+  return []
 })
 
 onMounted(() => {

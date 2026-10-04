@@ -83,7 +83,14 @@ if [ -z "$ADMIN_FAMILY_ID" ] || [ "$ADMIN_FAMILY_ID" = "null" ]; then
   CREATE_HTTP=$(echo "$CREATE_RES" | tail -1)
   CREATE_BODY=$(echo "$CREATE_RES" | sed '$d')
   check_response "创建家庭" "$CREATE_HTTP" "201"
-  ADMIN_FAMILY_ID=$(echo "$CREATE_BODY" | grep -o '"id":"[^"]*"' | cut -d'"' -f4 || true)
+  ADMIN_FAMILY_ID=$(echo "$CREATE_BODY" | grep -o '"family_id":"[^"]*"' | cut -d'"' -f4 || true)
+  
+  # 关键：建家成功后，响应中包含了新的 access_token（带 family_id），必须更新
+  NEW_ADMIN_TOKEN=$(echo "$CREATE_BODY" | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4 || true)
+  if [ -n "$NEW_ADMIN_TOKEN" ]; then
+    ADMIN_TOKEN="$NEW_ADMIN_TOKEN"
+    echo "  → Token 已刷新（包含 family_id）"
+  fi
 fi
 
 echo "  管理员 family_id: $ADMIN_FAMILY_ID"
@@ -108,20 +115,21 @@ fi
 echo ""
 echo "--- 场景 2：邀请成员 ---"
 
-# 2.1 生成邀请码
+# 2.1 生成邀请码（正确路径：POST /families/{id}/invites）
 INVITE_RES=$(curl -s -w "\n%{http_code}" -X POST "$BASE_HOMEOS/api/homeos/families/$ADMIN_FAMILY_ID/invites" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"role":"adult"}')
+  -d '{"role":"member"}')
 INVITE_HTTP=$(echo "$INVITE_RES" | tail -1)
 INVITE_BODY=$(echo "$INVITE_RES" | sed '$d')
 check_response "生成邀请码" "$INVITE_HTTP" "201"
 
-INVITE_CODE=$(echo "$INVITE_BODY" | grep -o '"invite_code":"[^"]*"' | cut -d'"' -f4 || true)
+INVITE_CODE=$(echo "$INVITE_BODY" | grep -o '"code":"[^"]*"' | cut -d'"' -f4 || true)
 if [ -n "$INVITE_CODE" ]; then
   pass "获取邀请码: $INVITE_CODE"
 else
   fail "获取邀请码失败"
+  echo "响应体: $INVITE_BODY"
 fi
 
 # 2.2 成人成员接受邀请（先发送验证码）
@@ -210,8 +218,8 @@ LIST_TX_HTTP=$(echo "$LIST_TX_RES" | tail -1)
 LIST_TX_BODY=$(echo "$LIST_TX_RES" | sed '$d')
 check_response "查询流水列表" "$LIST_TX_HTTP" "200"
 
-# 3.5 查询余额
-BALANCE_RES=$(curl -s -w "\n%{http_code}" "$BASE_FINANCE/api/finance/balance?family_id=$ADMIN_FAMILY_ID&account_id=$ACCOUNT_ID" \
+# 3.5 查询余额（正确路径：/accounts/:id/balance）
+BALANCE_RES=$(curl -s -w "\n%{http_code}" "$BASE_FINANCE/api/finance/accounts/$ACCOUNT_ID/balance?family_id=$ADMIN_FAMILY_ID" \
   -H "Authorization: Bearer $ADMIN_TOKEN")
 BALANCE_HTTP=$(echo "$BALANCE_RES" | tail -1)
 BALANCE_BODY=$(echo "$BALANCE_RES" | sed '$d')
@@ -227,8 +235,8 @@ if [ -n "$CATEGORY_ID" ]; then
   check_response "创建预算" "$BUDGET_HTTP" "201"
 fi
 
-# 3.7 查询统计报表
-STATS_RES=$(curl -s -w "\n%{http_code}" "$BASE_FINANCE/api/finance/statistics?family_id=$ADMIN_FAMILY_ID&period=month&date=$(date +%Y-%m)" \
+# 3.7 查询统计报表（正确路径：/statistics/overview）
+STATS_RES=$(curl -s -w "\n%{http_code}" "$BASE_FINANCE/api/finance/statistics/overview?family_id=$ADMIN_FAMILY_ID&period=month" \
   -H "Authorization: Bearer $ADMIN_TOKEN")
 STATS_HTTP=$(echo "$STATS_RES" | tail -1)
 check_response "查询统计报表" "$STATS_HTTP" "200"
@@ -322,14 +330,14 @@ check_response "查询回收站" "$TRASH_HTTP" "200"
 echo ""
 echo "--- 场景 7：主题与配置 ---"
 
-# 7.1 查询家庭模块配置
-MODULES_RES=$(curl -s -w "\n%{http_code}" "$BASE_HOMEOS/api/homeos/families/$ADMIN_FAMILY_ID/modules" \
+# 7.1 查询家庭模块配置（正确路径：/family/modules）
+MODULES_RES=$(curl -s -w "\n%{http_code}" "$BASE_HOMEOS/api/homeos/family/modules" \
   -H "Authorization: Bearer $ADMIN_TOKEN")
 MODULES_HTTP=$(echo "$MODULES_RES" | tail -1)
 check_response "查询家庭模块配置" "$MODULES_HTTP" "200"
 
-# 7.2 查询成员列表
-MEMBERS_RES=$(curl -s -w "\n%{http_code}" "$BASE_HOMEOS/api/homeos/families/$ADMIN_FAMILY_ID/members" \
+# 7.2 查询成员列表（正确路径：/members/snapshot）
+MEMBERS_RES=$(curl -s -w "\n%{http_code}" "$BASE_HOMEOS/api/homeos/members/snapshot?family_id=$ADMIN_FAMILY_ID" \
   -H "Authorization: Bearer $ADMIN_TOKEN")
 MEMBERS_HTTP=$(echo "$MEMBERS_RES" | tail -1)
 check_response "查询成员列表" "$MEMBERS_HTTP" "200"

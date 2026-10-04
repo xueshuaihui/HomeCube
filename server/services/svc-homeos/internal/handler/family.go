@@ -3,14 +3,18 @@ package handler
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
+	"math/big"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"github.com/xueshuaihui/HomeCube/server/packages/authz"
 	svcauth "github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/auth"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/model"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/repo"
@@ -445,5 +449,225 @@ func SwitchFamily(c *gin.Context, s *Services) {
 		Role:         next.Role,
 		PVer:         next.PVersion,
 		Message:      "切换家庭成功",
+	})
+}
+
+// CreateInviteRequest is POST /families/{family_id}/invites' body.
+type CreateInviteRequest struct {
+	Role          string `json:"role" binding:"required,oneof=owner member ward guest"`
+	InviteePhone  string `json:"invitee_phone,omitempty"`
+	ExpiresInDays int    `json:"expires_in_days"` // default 7 days
+}
+
+// CreateInviteResponse answers with the invitation code and metadata.
+type CreateInviteResponse struct {
+	ID           string    `json:"id"`
+	FamilyID     string    `json:"family_id"`
+	Code         string    `json:"code"`
+	Role         string    `json:"role"`
+	InviteePhone string    `json:"invitee_phone,omitempty"`
+	ExpiresAt    time.Time `json:"expires_at"`
+	CreatedAt    time.Time `json:"created_at"`
+	InviteLink   string    `json:"invite_link"` // deep link for QR code
+}
+
+// CreateInvite handles POST /api/homeos/families/{family_id}/invites (PRD 3.4.1 邀请成员).
+//
+// Only family owners can create invitations (PRD 15.3 「面配置」+「成员管理」). The invite code is a
+// random 8-character string, valid for 7 days by default. The three-state discipline (pending/accepted/expired)
+// is enforced by repo.AcceptInvitation at consume time.
+func CreateInvite(c *gin.Context, s *Services) {
+	familyID := c.Param("family_id")
+	if strings.TrimSpace(familyID) == "" {
+		badRequest(c, "invalid_request", "需要 family_id 路径参数")
+		return
+	}
+
+	var req CreateInviteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		badRequest(c, "invalid_request", "需要 role 字段（owner/member/ward/guest）")
+		return
+	}
+
+	sess, err := svcauth.SessionFrom(c)
+	if err != nil {
+		s.internal(c, "session_unavailable", err)
+		return
+	}
+
+	// Enforce owner-only for creating invites (PRD 15.3)
+	if sess.Role != authz.RoleOwner {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error":   "forbidden",
+			"message": "只有家庭管理员可以创建邀请",
+		})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Verify the inviter is actually in this family
+	// For onboarding tokens, use account_id to find member row
+	memberAccountID := sess.AccountID
+	var membership model.HomeosMember
+	var err error
+	err = s.DB.WithContext(ctx).Where("family_id = ? AND user_id = ?", familyID, memberAccountID).First(&membership).Error
+	if err != nil || errors.Is(err, gorm.ErrRecordNotFound) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error":   "not_family_member",
+			"message": "您不是该家庭成员",
+		})
+		return
+	}
+	if err != nil {
+		s.internal(c, "member_lookup_failed", err)
+		return
+	}
+
+	// Generate invite code (8-char random string)
+	code := generateInviteCode()
+
+	// Calculate expiry
+	expiresIn := req.ExpiresInDays
+	if expiresIn <= 0 {
+		expiresIn = 7
+	}
+	expiresAt := time.Now().UTC().Add(time.Duration(expiresIn) * 24 * time.Hour)
+
+	// Create invitation row
+	inviteID := generateUUID()
+	now := time.Now().UTC()
+	invite := model.HomeosInvitation{
+		ID:             inviteID,
+		FamilyID:       familyID,
+		Code:           code,
+		Role:           req.Role,
+		InviterID:      sess.MemberID,
+		InviteePhone:   emptyAsNull(req.InviteePhone),
+		Status:         "pending",
+		ExpiresAt:      expiresAt,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}
+
+	if err := s.DB.WithContext(ctx).Create(&invite).Error; err != nil {
+		s.internal(c, "invite_create_failed", err)
+		return
+	}
+
+	// Build deep link for QR code scanning
+	inviteLink := fmt.Sprintf("homecube://invite/%s", code)
+
+	c.JSON(http.StatusCreated, CreateInviteResponse{
+		ID:           inviteID,
+		FamilyID:     familyID,
+		Code:         code,
+		Role:         req.Role,
+		InviteePhone: req.InviteePhone,
+		ExpiresAt:    expiresAt,
+		CreatedAt:    now,
+		InviteLink:   inviteLink,
+	})
+}
+
+// generateInviteCode produces an 8-character random code (uppercase + digits).
+func generateInviteCode() string {
+	const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // no I/O/0/1 to avoid confusion
+	b := make([]byte, 8)
+	for i := range b {
+		n, _ := rand.Int(rand.Reader, big.NewInt(int64(len(chars))))
+		b[i] = chars[n.Int64()]
+	}
+	return string(b)
+}
+
+// ListInvites handles GET /api/homeos/families/{family_id}/invites.
+func ListInvites(c *gin.Context, s *Services) {
+	familyID := c.Param("family_id")
+	if strings.TrimSpace(familyID) == "" {
+		badRequest(c, "invalid_request", "需要 family_id 路径参数")
+		return
+	}
+
+	sess, err := svcauth.SessionFrom(c)
+	if err != nil {
+		s.internal(c, "session_unavailable", err)
+		return
+	}
+
+	// Only owners can list invites
+	if sess.Role != authz.RoleOwner {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error":   "forbidden",
+			"message": "只有家庭管理员可以查看邀请列表",
+		})
+		return
+	}
+
+	ctx := c.Request.Context()
+	var invites []model.HomeosInvitation
+	if err := s.DB.WithContext(ctx).Where("family_id = ?", familyID).Order("created_at DESC").Find(&invites).Error; err != nil {
+		s.internal(c, "invite_list_failed", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"items": invites})
+}
+
+// RevokeInvite handles DELETE /api/homeos/families/{family_id}/invites/{invite_id} (PRD 3.4.1 撤销邀请).
+func RevokeInvite(c *gin.Context, s *Services) {
+	familyID := c.Param("family_id")
+	inviteID := c.Param("invite_id")
+	if strings.TrimSpace(familyID) == "" || strings.TrimSpace(inviteID) == "" {
+		badRequest(c, "invalid_request", "需要 family_id 和 invite_id 路径参数")
+		return
+	}
+
+	sess, err := svcauth.SessionFrom(c)
+	if err != nil {
+		s.internal(c, "session_unavailable", err)
+		return
+	}
+
+	// Only owners can revoke invites
+	if sess.Role != authz.RoleOwner {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error":   "forbidden",
+			"message": "只有家庭管理员可以撤销邀请",
+		})
+		return
+	}
+
+	ctx := c.Request.Context()
+	now := time.Now().UTC()
+
+	// Update invitation status to expired
+	result := s.DB.WithContext(ctx).Model(&model.HomeosInvitation{}).
+		Where("id = ? AND family_id = ? AND status = ?", inviteID, familyID, "pending").
+		Updates(map[string]interface{}{
+			"status":     "expired",
+			"updated_at": now,
+		})
+
+	if result.Error != nil {
+		s.internal(c, "invite_revoke_failed", result.Error)
+		return
+	}
+
+	if result.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error":   "invite_not_found",
+			"message": "邀请不存在或已失效",
+		})
+		return
+	}
+
+	// Audit log
+	actorName := sess.AccountID
+	reason := "撤销邀请 " + inviteID
+	s.writeAudit(ctx, s.auditRow(c, sess, model.AuditEventPermissionChange, model.AuditResultAllowed, reason))
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "邀请已撤销",
 	})
 }

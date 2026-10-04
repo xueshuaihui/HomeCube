@@ -168,7 +168,8 @@ paths:
                   maxItems: 3
                 client_request_id:
                   type: string
-                  description: 幂等键
+                  format: uuid
+                  description: 幂等键。格式必须为 uuid —— `finance.finance_transaction.client_request_id` 的列类型就是 uuid（迁移 finance_0001_base_schema），非 UUID 串会被 PostgreSQL 拒绝（SQLSTATE 22P02）。
                 ledger_id:
                   type: string
                   format: uuid

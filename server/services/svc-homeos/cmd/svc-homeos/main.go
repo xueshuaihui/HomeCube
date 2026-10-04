@@ -197,6 +197,17 @@ func run(addr string) error {
 			familyGroup.GET("", func(c *gin.Context) {
 				handler.ListFamilies(c, services)
 			})
+			
+			// Invitation management (PRD 3.4.1 邀请成员)
+			familyGroup.POST("/:family_id/invites", func(c *gin.Context) {
+				handler.CreateInvite(c, services)
+			})
+			familyGroup.GET("/:family_id/invites", func(c *gin.Context) {
+				handler.ListInvites(c, services)
+			})
+			familyGroup.DELETE("/:family_id/invites/:invite_id", func(c *gin.Context) {
+				handler.RevokeInvite(c, services)
+			})
 		}
 
 		// Session introspection: the one read a family-less caller needs to see its own state, and the
