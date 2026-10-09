@@ -437,6 +437,19 @@ func (r *FinanceRepo) CreateTransaction(ctx context.Context, input *CreateTransa
 			}
 		}
 
+		// finance.transaction.created（contracts/events/finance.yaml:17）与流水行同事务落 outbox。
+		// 这是手工记账/语音记账/周期记账共同的唯一创建路径 —— 周期记账原来在
+		// service/recurring.go 里自己插一条 outbox，现在由这里统一发，以免一次执行发两遍。
+		if err := writeTransactionCreatedEvent(ctx, tx, input.Transaction); err != nil {
+			return err
+		}
+
+		// 同一事务内的预算超支检测：这笔 expense 若把某个预算打爆，
+		// finance.budget.exceeded 与流水行同 commit（见 finance_events.go 的函数注释）。
+		if err := r.checkBudgetExceededAndPublish(ctx, tx, input.Transaction); err != nil {
+			return err
+		}
+
 		return nil
 	})
 }
@@ -517,6 +530,15 @@ func (r *FinanceRepo) UpdateTransaction(ctx context.Context, familyID, id string
 		}
 
 		// Apply updates
+		//
+		// 先把调用方**实际改动**的字段集复制出来：契约的 finance.transaction.updated
+		// payload 里 updated_fields 是「这次改了哪些字段」，底座自己补的 version/updated_at
+		// 是记账噪音，不能混进契约对象（contracts/events/finance.yaml:44）。
+		changedFields := make(map[string]any, len(updates))
+		for k, v := range updates {
+			changedFields[k] = v
+		}
+
 		updates["version"] = expectedVersion + 1
 		updates["updated_at"] = time.Now()
 
@@ -529,6 +551,16 @@ func (r *FinanceRepo) UpdateTransaction(ctx context.Context, familyID, id string
 		result = tx.Where("id = ? AND family_id = ?", id, familyID).First(&transaction)
 		if result.Error != nil {
 			return fmt.Errorf("failed to reload transaction: %w", result.Error)
+		}
+
+		if err := writeTransactionUpdatedEvent(ctx, tx, &transaction, changedFields, transaction.Version); err != nil {
+			return err
+		}
+
+		// 更新金额/分类同样可能把预算打爆（或改 type 让 income 变 expense）：
+		// 与 CreateTransaction 同一口径，在同一事务里检测并落 finance.budget.exceeded。
+		if err := r.checkBudgetExceededAndPublish(ctx, tx, &transaction); err != nil {
+			return err
 		}
 
 		return r.sync.AppendChangeLog(ctx, tx, transaction.FamilyID, "transaction", transaction.ID, "UPDATE", transaction.Version, transaction)
@@ -564,6 +596,16 @@ func (r *FinanceRepo) SoftDeleteTransaction(ctx context.Context, familyID, id st
 
 		if result.RowsAffected == 0 {
 			return errors.New("no rows affected during soft delete")
+		}
+
+		// finance.transaction.deleted（契约「流水被软删（进入回收站）」）：deleted_at 直接取
+		// GORM 刚写进行的那个时间戳（Delete 会把值回填到 struct 上），事件与软删同事务。
+		deletedAt := transaction.DeletedAt.Time
+		if deletedAt.IsZero() {
+			deletedAt = time.Now()
+		}
+		if err := writeTransactionDeletedEvent(ctx, tx, &transaction, deletedAt, deletedBy); err != nil {
+			return err
 		}
 
 		return r.sync.AppendChangeLog(ctx, tx, transaction.FamilyID, "transaction", transaction.ID, "DELETE", transaction.Version+1, transaction)
@@ -735,13 +777,15 @@ func (r *FinanceRepo) ListBillsByFamily(ctx context.Context, familyID string, st
 	return bills, nil
 }
 
-// MarkAsPaid marks a bill as paid and increments version.
+// MarkAsPaid marks a bill as paid and increments version. paidBy 是调用者的 member_id
+// （handler 传 sess.MemberID，可为空 → 契约 paid_by 发布 null，不编造）。
 //
-// 结清同时撤销它的到期注册（PRD 卷首第 3 条的反向半边）：账单行、finance.due.revoked 的 outbox 行、
+// 结清同时撤销它的到期注册（PRD 卷首第 3 条的反向半边）并发布 finance.bill.paid
+// （contracts/events/finance.yaml:108，「账单标记已付」）：账单行、两条 outbox 行、
 // 同步底座的 change log 共用一个事务，任一步失败整体回滚（§3.4.6、PRD 3.4「发布前落盘」）。没有这一步，
 // 已付账单的到期行会永久留在首页 B 区与到期中心里 —— homeos_0008:43-44 写明 finance.due.revoked 是
 // homeos_due_registration 唯一的删除路径（软删 deleted_at，不是删行），而撤销只能由持有账单的这边发出。
-func (r *FinanceRepo) MarkAsPaid(ctx context.Context, familyID, id string) (*model.FinanceBill, error) {
+func (r *FinanceRepo) MarkAsPaid(ctx context.Context, familyID, id string, paidBy string) (*model.FinanceBill, error) {
 	var updatedBill *model.FinanceBill
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var bill model.FinanceBill
@@ -764,6 +808,10 @@ func (r *FinanceRepo) MarkAsPaid(ctx context.Context, familyID, id string) (*mod
 		}
 
 		if err := writeDueRevokedEvent(ctx, tx, &bill, now, revokedReasonCompleted); err != nil {
+			return err
+		}
+
+		if err := writeBillPaidEvent(ctx, tx, &bill, now, paidBy); err != nil {
 			return err
 		}
 
@@ -1480,6 +1528,109 @@ func (r *FinanceRepo) MarkInvoiceAsReimbursed(ctx context.Context, familyID, id 
 	return updatedInvoice, nil
 }
 
+// ==================== Liability Operations ====================
+
+// CreateLiability creates a new liability record.
+func (r *FinanceRepo) CreateLiability(ctx context.Context, liability *model.FinanceLiability) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if liability.ID == "" {
+			liability.ID = generateUUID()
+		}
+		if err := tx.Create(liability).Error; err != nil {
+			return fmt.Errorf("failed to create liability: %w", err)
+		}
+		return r.sync.AppendChangeLog(ctx, tx, liability.FamilyID, "liability", liability.ID, "CREATE", 1, liability)
+	})
+}
+
+// GetLiabilityByID retrieves a liability by its ID within the given family.
+func (r *FinanceRepo) GetLiabilityByID(ctx context.Context, familyID, id string) (*model.FinanceLiability, error) {
+	var liability model.FinanceLiability
+	result := r.db.WithContext(ctx).Where("id = ? AND family_id = ?", id, familyID).First(&liability)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, notFoundf("liability", id)
+		}
+		return nil, fmt.Errorf("failed to get liability: %w", result.Error)
+	}
+	return &liability, nil
+}
+
+// ListLiabilitiesByFamily retrieves all liabilities for a family with optional status filter.
+func (r *FinanceRepo) ListLiabilitiesByFamily(ctx context.Context, familyID string, status *string) ([]model.FinanceLiability, error) {
+	var liabilities []model.FinanceLiability
+	query := r.db.WithContext(ctx).Where("family_id = ? AND deleted_at IS NULL", familyID)
+	if status != nil {
+		query = query.Where("status = ?", *status)
+	}
+	result := query.Order("created_at DESC").Find(&liabilities)
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to list liabilities: %w", result.Error)
+	}
+	return liabilities, nil
+}
+
+// UpdateLiability updates a liability record.
+func (r *FinanceRepo) UpdateLiability(ctx context.Context, liability *model.FinanceLiability) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		result := tx.Save(liability)
+		if result.Error != nil {
+			return fmt.Errorf("failed to update liability: %w", result.Error)
+		}
+		return r.sync.AppendChangeLog(ctx, tx, liability.FamilyID, "liability", liability.ID, "UPDATE", liability.Version, liability)
+	})
+}
+
+// PayOffLiability marks a liability as paid off.
+func (r *FinanceRepo) PayOffLiability(ctx context.Context, familyID, id string) (*model.FinanceLiability, error) {
+	var updatedLiability *model.FinanceLiability
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var liability model.FinanceLiability
+		result := tx.Where("id = ? AND family_id = ?", id, familyID).First(&liability)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return notFoundf("liability", id)
+			}
+			return fmt.Errorf("failed to get liability: %w", result.Error)
+		}
+
+		if liability.Status != "active" {
+			return fmt.Errorf("cannot pay off liability with status %s", liability.Status)
+		}
+
+		liability.Status = "paid_off"
+		liability.Version++
+
+		result = tx.Save(&liability)
+		if result.Error != nil {
+			return fmt.Errorf("failed to update liability status: %w", result.Error)
+		}
+
+		updatedLiability = &liability
+		return r.sync.AppendChangeLog(ctx, tx, liability.FamilyID, "liability", liability.ID, "UPDATE", liability.Version, liability)
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return updatedLiability, nil
+}
+
+// GetTotalLiabilitiesByFamily calculates total liabilities for a family.
+// This is used by GenerateAssetLiabilityReport to include independent liability objects.
+func (r *FinanceRepo) GetTotalLiabilitiesByFamily(ctx context.Context, familyID string) (int64, error) {
+	var total int64
+	err := r.db.WithContext(ctx).Model(&model.FinanceLiability{}).
+		Select("COALESCE(SUM(amount_cents), 0)").
+		Where("family_id = ? AND status = 'active' AND deleted_at IS NULL", familyID).
+		Scan(&total).Error
+	if err != nil {
+		return 0, fmt.Errorf("failed to calculate total liabilities: %w", err)
+	}
+	return total, nil
+}
+
 // ==================== Asset-Liability Report Operations ====================
 
 var (
@@ -1514,7 +1665,7 @@ func (r *FinanceRepo) GenerateAssetLiabilityReport(ctx context.Context, familyID
 
 		totalAssets := totalAccountBalance + totalGoalAmount
 
-		// Calculate total liabilities: SUM(loan principals where status='active') + SUM(credit card balances)
+		// Calculate total liabilities: SUM(loan principals where status='active') + SUM(credit card balances) + SUM(independent liability objects)
 		var totalLoanPrincipal int64
 		err = tx.Model(&model.FinanceLoan{}).
 			Select("COALESCE(SUM(principal_cents), 0)").
@@ -1533,7 +1684,17 @@ func (r *FinanceRepo) GenerateAssetLiabilityReport(ctx context.Context, familyID
 			return fmt.Errorf("failed to calculate credit card balances: %w", err)
 		}
 
-		totalLiabilities := totalLoanPrincipal + totalCreditCardBalance
+		// Include independent liability objects (mortgages, personal loans, etc.)
+		var totalIndependentLiabilities int64
+		err = tx.Model(&model.FinanceLiability{}).
+			Select("COALESCE(SUM(amount_cents), 0)").
+			Where("family_id = ? AND status = 'active' AND deleted_at IS NULL", familyID).
+			Scan(&totalIndependentLiabilities).Error
+		if err != nil {
+			return fmt.Errorf("failed to calculate independent liabilities: %w", err)
+		}
+
+		totalLiabilities := totalLoanPrincipal + totalCreditCardBalance + totalIndependentLiabilities
 
 		// Calculate net worth
 		netWorth := totalAssets - totalLiabilities

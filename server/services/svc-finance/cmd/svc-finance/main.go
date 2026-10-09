@@ -341,6 +341,12 @@ func run(addr string) error {
 		protected.GET("/invoices", financeHandler.ListInvoices)
 		protected.PUT("/invoices/:id/reimburse", financeHandler.ReimburseInvoice)
 
+		// Liability endpoints (PRD §4.7)
+		protected.POST("/liabilities", financeHandler.CreateLiability)
+		protected.GET("/liabilities", financeHandler.ListLiabilities)
+		protected.PUT("/liabilities/:id", financeHandler.UpdateLiability)
+		protected.POST("/liabilities/:id/pay-off", financeHandler.PayOffLiability)
+
 		// Asset-liability report endpoints (S17-S18)
 		protected.POST("/reports/asset-liability", financeHandler.GenerateAssetLiabilityReport)
 		protected.GET("/reports/asset-liability", financeHandler.GetAssetLiabilityReport)

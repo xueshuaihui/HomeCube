@@ -304,6 +304,29 @@ func (FinanceInvoice) TableName() string {
 	return setTableName("finance_invoice")
 }
 
+// FinanceLiability represents a liability record (finance_liability table).
+// PRD §4.7: Liability entity for mortgages, loans, and other debts.
+type FinanceLiability struct {
+	ID           string         `gorm:"primaryKey" json:"id"`
+	FamilyID     string         `gorm:"not null;index:idx_finance_liability_family_id" json:"family_id"`
+	Kind         string         `gorm:"type:text;not null" json:"kind"`                               // "mortgage", "loan", "credit_card", "other"
+	AmountCents  int64          `gorm:"type:bigint;not null" json:"amount_cents"`                     // liability amount in cents
+	Counterparty *string        `gorm:"type:text" json:"counterparty,omitempty"`                      // creditor/lender
+	Description  *string        `gorm:"type:text" json:"description,omitempty"`                       // description of the liability
+	DueDate      *time.Time     `gorm:"type:date" json:"due_date,omitempty"`                          // due date (optional)
+	Status       string         `gorm:"type:text;not null;default:'active'" json:"status"`            // "active", "paid_off", "cancelled"
+	Version      int64          `gorm:"type:bigint;not null;default:1" json:"version"`
+	CreatedAt    time.Time      `json:"created_at"`
+	UpdatedAt    time.Time      `json:"updated_at"`
+	DeletedAt    gorm.DeletedAt `gorm:"index" json:"-"`
+	DeletedBy    *string        `json:"deleted_by,omitempty"`
+}
+
+// TableName returns the table name for FinanceLiability.
+func (FinanceLiability) TableName() string {
+	return setTableName("finance_liability")
+}
+
 // FinanceAssetLiabilityReport represents an asset-liability report snapshot (finance_asset_liability_report table).
 type FinanceAssetLiabilityReport struct {
 	ID                    string         `gorm:"primaryKey" json:"id"`
@@ -387,6 +410,30 @@ type FinanceBudgetPeriod struct {
 // TableName returns the table name for FinanceBudgetPeriod.
 func (FinanceBudgetPeriod) TableName() string {
 	return setTableName("finance_budget_periods")
+}
+
+// FinanceDemoItem represents a P1 cross-service verification demo item (finance_demo_item table).
+//
+// 契约锚点：contracts/events/finance.yaml:123-138 finance.demo_item.created（FROZEN v1.0.0，
+// 「P1跨服务链路验证，M2收口时删除」）。列集即该事件的 payload_schema（demo_item_id/family_id/
+// title/due_at/created_by）+ §2.2 必备列；schema 见 migrations/finance/finance_0017_demo_item。
+// M2 收口（S19）时必须连同 handler 接口与事件发布一起删除。
+type FinanceDemoItem struct {
+	ID        string     `gorm:"primaryKey" json:"id"`
+	FamilyID  string     `gorm:"not null;index:idx_finance_demo_item_family_id" json:"family_id"`
+	Title     string     `gorm:"type:text;not null" json:"title"`
+	DueAt     time.Time  `gorm:"not null" json:"due_at"`
+	CreatedBy *string    `gorm:"index:idx_finance_demo_item_created_by" json:"created_by,omitempty"`
+	Version   int64      `gorm:"type:bigint;not null;default:1" json:"version"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	DeletedAt *time.Time `gorm:"index" json:"deleted_at,omitempty"`
+	DeletedBy *string    `json:"deleted_by,omitempty"`
+}
+
+// TableName returns the table name for FinanceDemoItem.
+func (FinanceDemoItem) TableName() string {
+	return setTableName("finance_demo_item")
 }
 
 // FinanceSettings represents per-family finance settings (finance_settings table).

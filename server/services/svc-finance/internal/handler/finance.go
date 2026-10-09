@@ -1808,6 +1808,166 @@ func (h *FinanceHandler) ListTags(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"items": tags})
 }
 
+// ==================== Liability Handlers ====================
+
+// CreateLiabilityRequest represents the request body for creating a liability.
+type CreateLiabilityRequest struct {
+	FamilyID     string  `json:"family_id" binding:"required,uuid"`
+	Kind         string  `json:"kind" binding:"required,oneof=mortgage loan credit_card other"`
+	AmountCents  int64   `json:"amount_cents" binding:"required,min=0"`
+	Counterparty *string `json:"counterparty,omitempty"`
+	Description  *string `json:"description,omitempty"`
+	DueDate      *string `json:"due_date,omitempty"` // format: YYYY-MM-DD
+}
+
+// CreateLiability handles POST /api/finance/liabilities.
+func (h *FinanceHandler) CreateLiability(c *gin.Context) {
+	var req CreateLiabilityRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		return
+	}
+
+	_, familyID, ok := scopeFamily(c, h.OnDenied, req.FamilyID)
+	if !ok {
+		return
+	}
+
+	var dueDate *time.Time
+	if req.DueDate != nil {
+		parsed, err := time.Parse("2006-01-02", *req.DueDate)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid due_date format, expected YYYY-MM-DD"})
+			return
+		}
+		dueDate = &parsed
+	}
+
+	liability := &model.FinanceLiability{
+		FamilyID:     familyID,
+		Kind:         req.Kind,
+		AmountCents:  req.AmountCents,
+		Counterparty: req.Counterparty,
+		Description:  req.Description,
+		DueDate:      dueDate,
+		Status:       "active",
+	}
+
+	if err := h.repo.CreateLiability(c.Request.Context(), liability); err != nil {
+		respondRepoError(c, "failed to create liability", err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, liability)
+}
+
+// ListLiabilities handles GET /api/finance/liabilities?family_id=&status=.
+func (h *FinanceHandler) ListLiabilities(c *gin.Context) {
+	_, familyID, ok := scopeFamily(c, h.OnDenied, c.Query("family_id"))
+	if !ok {
+		return
+	}
+
+	status := c.Query("status")
+	var statusPtr *string
+	if status != "" {
+		statusPtr = &status
+	}
+
+	liabilities, err := h.repo.ListLiabilitiesByFamily(c.Request.Context(), familyID, statusPtr)
+	if err != nil {
+		respondRepoError(c, "failed to list liabilities", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"items": liabilities})
+}
+
+// UpdateLiabilityRequest represents the request body for updating a liability.
+type UpdateLiabilityRequest struct {
+	Kind         *string `json:"kind,omitempty" binding:"omitempty,oneof=mortgage loan credit_card other"`
+	AmountCents  *int64  `json:"amount_cents,omitempty" binding:"omitempty,min=0"`
+	Counterparty *string `json:"counterparty,omitempty"`
+	Description  *string `json:"description,omitempty"`
+	DueDate      *string `json:"due_date,omitempty"` // format: YYYY-MM-DD
+}
+
+// UpdateLiability handles PUT /api/finance/liabilities/:id.
+func (h *FinanceHandler) UpdateLiability(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "liability id is required"})
+		return
+	}
+
+	var req UpdateLiabilityRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		return
+	}
+
+	_, familyID, ok := scopeFamily(c, h.OnDenied, c.Query("family_id"))
+	if !ok {
+		return
+	}
+
+	liability, err := h.repo.GetLiabilityByID(c.Request.Context(), familyID, id)
+	if err != nil {
+		rejectScopedError(c, h.OnDenied, "failed to get liability", "liability", err)
+		return
+	}
+
+	if req.Kind != nil {
+		liability.Kind = *req.Kind
+	}
+	if req.AmountCents != nil {
+		liability.AmountCents = *req.AmountCents
+	}
+	if req.Counterparty != nil {
+		liability.Counterparty = req.Counterparty
+	}
+	if req.Description != nil {
+		liability.Description = req.Description
+	}
+	if req.DueDate != nil {
+		parsed, err := time.Parse("2006-01-02", *req.DueDate)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid due_date format, expected YYYY-MM-DD"})
+			return
+		}
+		liability.DueDate = &parsed
+	}
+
+	if err := h.repo.UpdateLiability(c.Request.Context(), liability); err != nil {
+		respondRepoError(c, "failed to update liability", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, liability)
+}
+
+// PayOffLiability handles POST /api/finance/liabilities/:id/pay-off.
+func (h *FinanceHandler) PayOffLiability(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "liability id is required"})
+		return
+	}
+
+	_, familyID, ok := scopeFamily(c, h.OnDenied, c.Query("family_id"))
+	if !ok {
+		return
+	}
+
+	liability, err := h.repo.PayOffLiability(c.Request.Context(), familyID, id)
+	if err != nil {
+		rejectScopedError(c, h.OnDenied, "failed to pay off liability", "liability", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, liability)
+}
+
 // UpdateTagRequest represents the request body for updating a tag.
 type UpdateTagRequest struct {
 	Name  string `json:"name" binding:"omitempty,max=50"`
