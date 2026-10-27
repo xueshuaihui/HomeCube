@@ -28,7 +28,10 @@ if ! command -v node &> /dev/null; then
   echo "Checking for hardcoded color values in source files..."
 
   # Find Vue files that might have hardcoded colors
-  HARDCODED=$(find web/src/pages -name "*.vue" -type f -exec grep -l 'color:\s*#[0-9a-fA-F]\{6\}\|background-color:\s*#[0-9a-fA-F]\{6\}' {} \; 2>/dev/null || true)
+  # 正则必须用 POSIX 字符类 + grep -E：本机 grep 可能不是 GNU 实现（实测为 toybox），
+  # 它不支持 GNU 扩展的 \s，也不支持 BRE 的 \|。用这两者会让本检查永远命中 0 且不报错，
+  # 即"无论代码里有没有硬编码颜色都判 PASS"。
+  HARDCODED=$(find web/src/pages -name "*.vue" -type f -exec grep -lE 'color:[[:space:]]*#[0-9a-fA-F]{6}|background-color:[[:space:]]*#[0-9a-fA-F]{6}' {} \; 2>/dev/null || true)
 
   if [ -n "$HARDCODED" ]; then
     echo "FAIL: Found hardcoded color values in:"
@@ -203,7 +206,8 @@ if (darkModeMatch) {
 const { execSync } = require('child_process');
 try {
   const result = execSync(
-    'find web/src/pages -name "*.vue" -type f -exec grep -l "color:\\s*#[0-9a-fA-F]\\{6\\}\\|background-color:\\s*#[0-9a-fA-F]\\{6\\}" {} \\; 2>/dev/null || true',
+    // 与 bash 分支同一条正则：POSIX 字符类 + -E，避免 toybox/busybox grep 下永久漏报。
+    'find web/src/pages -name "*.vue" -type f -exec grep -lE "color:[[:space:]]*#[0-9a-fA-F]{6}|background-color:[[:space:]]*#[0-9a-fA-F]{6}" {} \\; 2>/dev/null || true',
     { encoding: 'utf8' }
   );
 
