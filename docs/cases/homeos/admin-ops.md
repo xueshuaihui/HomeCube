@@ -1,7 +1,7 @@
 # HomeOS · 管理台与运维口
 
 > 范围：审计事件查询、每日对账报表、备份状态、恢复演练触发、事件发布/订阅口。**全部为「仅管理台/运维口」接口，业务面不得调用。**
-> 权威源：`docs/prd-homecube.md` 3.7:425（events publish/subscribe 仅管理台与回放工具）、3.7:433（`backup-status` / `data/restore` 仅管理台与运维口）、3.7:434（`audit-events` 仅管理台，按 22.5 九类过滤）、3.7:435（`reconciliation-report` 仅管理台）、22.5:2560（审计九类事件清单）、22.3:2536（备份与恢复 RPO≤15min / RTO≤30min、每季度真实恢复演练）、19.7:2152（对账验收）、15.5#9:1875（备份首次演练即 P1-M1 门禁）；`docs/p1-tech-plan.md` 392 行（admin 五功能）、441 行（审计九类中 P1 可测八类）、413 行（恢复演练记录可查）。
+> 权威源：`docs/prd-homecube.md` 3.7:425（events publish/subscribe 仅管理台与回放工具）、3.7:433（`backup-status` / `data/restore` 仅管理台与运维口）、3.7:434（`audit-events` 仅管理台，按 22.5 九类过滤）、3.7:435（`reconciliation-report` 仅管理台）、22.5:2560（审计九类事件清单）、22.3:2536（备份与恢复 RPO≤15min / RTO≤30min、每季度真实恢复演练）、19.7:2396（对账验收）、15.5#9:1875（备份首次演练即 P1-M1 门禁）；`docs/p1-tech-plan.md` 392 行（admin 五功能）、441 行（审计九类中 P1 可测八类）、413 行（恢复演练记录可查）。
 > 本文件 case 前缀 `HOM-ADM`。**这 5 条在 `server/` 中均无实现**（全仓 `grep 'audit-events|reconciliation|backup-status|events/publish'` 零命中），状态统一标 `未实现`，不标「待自动化」。
 
 ---
@@ -22,14 +22,14 @@
 - 执行状态：未执行
 
 ## HOM-ADM-002 · 每日对账报表零孤儿引用（`GET /api/homeos/reconciliation-report`）
-- 关联需求：PRD 3.7:454（投影 vs 来源、孤儿逻辑引用、到期注册存在性）、19.7:2152、23.2 第 3 条（跨服务无物理外键，引用完整性走每日对账）
+- 关联需求：PRD 3.7:454（投影 vs 来源、孤儿逻辑引用、到期注册存在性）、19.7:2402、23.2 第 3 条（跨服务无物理外键，引用完整性走每日对账）
 - 类型：功能 | 优先级：P0 | 建议归属 Sprint：S6+S14
 - 前置条件：已运行一日；存在投影表与到期注册表
 - 步骤：查询对账报表
 - 预期结果：
   - 三项检查齐全：投影 vs 来源、孤儿逻辑引用、到期注册存在性
   - 孤儿引用计数 = 0（人为删除来源后能报出 1 条）
-  - **P1 只判已出生域**（homeos + finance），跨六面全量收口在 P6
+  - **P1 只判已出生域**（homeos + finance + **calendar**，㉚ 后 `calendar` 随 S5 出生即进分母），跨七面（八域）全量收口在 P6
 - 实现现状（快照）：未实现（`grep 'reconciliation' server --include='*.go'` 零命中；`p1-tech-plan.md:458` 的 S6「每日对账」未落地）
 - 执行状态：未执行
 
