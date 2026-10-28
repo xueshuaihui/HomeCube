@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>提醒 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .rem-content { padding-bottom: 24px; }
+
+  .rem-new {
+    height: 36px; padding: 0 4px;
+    border: 0; background: none;
+    font-family: inherit; font-size: var(--fs-15); font-weight: 600;
+    color: var(--brand-text); cursor: pointer;
+  }
+  .rem-new:hover { color: var(--brand-hover); }
+
+  .rem-note {
+    display: flex; align-items: flex-start; gap: 8px;
+    margin: 6px 0 0; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    color: var(--text-2);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .rem-note svg { flex: none; margin-top: 1px; color: var(--text-3); }
+  .rem-note b { color: var(--text); font-weight: 600; }
+
+  .rem-sum { padding: 12px 2px 8px; font-size: var(--fs-12); color: var(--text-3); }
+
+  .rem-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .rem-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--surface); }
+  .rem-item + .rem-item { border-top: 1px solid var(--border); }
+  .rem-item:hover { background: var(--surface-2); }
+  .rem-body { flex: 1; min-width: 0; display: block; text-decoration: none; color: var(--text); }
+  .rem-title { display: block; font-size: var(--fs-15); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rem-meta { margin-top: 4px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: var(--fs-12); color: var(--text-3); }
+  .rem-cycle { color: var(--text-2); font-weight: 600; }
+  .rem-sep { color: var(--border-strong); }
+  .rem-next { font-size: var(--fs-11); color: var(--text-3); }
+  .rem-next b { font-weight: 600; }
+
+  .rem-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 1px 6px; border-radius: var(--radius-pill);
+    font-size: var(--fs-11); font-weight: 600; white-space: nowrap;
+  }
+  .rem-tag-geo { background: var(--info-soft); color: var(--info); }
+  .rem-tag-off { background: var(--surface-2); color: var(--text-3); }
+
+  .rem-item.is-off .rem-title { color: var(--text-3); }
+  .rem-item.is-off .rem-meta { opacity: .75; }
+  .rem-item.is-off:hover { background: var(--surface); }
+
+  .rem-content .face-tabs { margin-top: 2px; }
+  .rem-foot-note { margin-top: 14px; line-height: var(--lh-normal); }
+
+  .rem-sk { display: none; padding-top: 20px; }
+  .rem-sk .sk-line:first-child { width: 38%; }
+  body[data-state="loading"] .rem-sk { display: block; }
+  body[data-state="loading"] .rem-list,
+  body[data-state="loading"] .rem-sum,
+  body[data-state="loading"] .rem-foot-note { display: none; }
+
+  .rem-empty { display: none; }
+  body[data-state="empty"] .rem-empty { display: flex; }
+  body[data-state="empty"] .rem-list,
+  body[data-state="empty"] .rem-sum,
+  body[data-state="empty"] .rem-foot-note { display: none; }
+
+  .rem-cache {
+    display: none; align-items: center; gap: 6px;
+    margin: 8px 0 0; padding: 7px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--warning-soft); color: var(--warning);
+    font-size: var(--fs-12);
+  }
+  body[data-state="offline"] .rem-cache { display: flex; }
+  body[data-state="offline"] .offline-bar { display: flex; }
+</style>
+</head>
+<body data-screen="16 提醒 · 日历面" data-tab="home" data-states="default,empty,loading,offline">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <button class="icon-btn" type="button" data-go="calendar.html"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回到期中心 calendar/calendar/index（本面一级页）；㉚ 起提醒不再从「我的 → 时间与提醒」进，那一行只剩时区与免打扰；返回不重置列表滚动与已展开条目" aria-label="返回">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </button>
+    </div>
+    <div class="nav-title">提醒</div>
+    <div class="nav-right">
+      <button class="rem-new" type="button" data-go="reminder-create.html"
+        data-hot="②" data-hot-name="新建" data-hot-pos="outer-top-right"
+        data-hot-label="进新建提醒页；新建是本页唯一的写入口，编辑与删除在条目内完成">新建</button>
+    </div>
+  </div>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 2 项开关改动待同步
+  </div>
+
+  <div class="content rem-content">
+    <nav class="face-tabs is-calendar" aria-label="日历面二级 Tab"
+      data-hot="⑥" data-hot-name="面内二级 Tab" data-hot-pos="outer-top-right"
+      data-hot-label="日程 / 待办 / 提醒在本分包内互切（calendar/calendar/index · calendar/todo/index · calendar/reminder/index），本页高亮「提醒」；不叠加底部栏、没有面切换器；末位「设置」P1 无路由位，点按只给未交付提示">
+      <a class="face-tab" href="calendar.html">日程</a>
+      <a class="face-tab" href="todo.html">待办</a>
+      <a class="face-tab" href="reminder.html" aria-current="page">提醒</a>
+      <button class="face-tab" type="button" data-unbuilt="日历面后续（面内设置页，不在 P1 的 9 页路由位）">设置</button>
+    </nav>
+    <div class="rem-note"
+      data-hot="⑤" data-hot-name="位置提醒说明" data-hot-pos="bottom-right"
+      data-hot-label="P6 前位置提醒只有手动地点：不接地图与地理围栏，只按用户填的地点文字提示，失败不回落、也不计入到达率；本行常驻，不随列表状态消失">
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17s5.5-4.4 5.5-8.5a5.5 5.5 0 1 0-11 0C4.5 12.6 10 17 10 17z"/><circle cx="10" cy="8.4" r="1.8"/></svg>
+      <span><b>位置提醒在 P6 前只有手动地点</b>，不保证触达；到达率口径不含位置类提醒。</span>
+    </div>
+
+    <div class="rem-cache">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="5.5"/><path d="M8 4.8V8l2.2 1.3"/></svg>
+      显示本机缓存 · 截至 10 月 29 日 08:10
+    </div>
+
+    <div class="rem-sum" id="rem-sum">共 5 条 · 4 条启用 · 1 条已暂停</div>
+
+    <div class="rem-list">
+      <div class="rem-item"
+        data-hot="④" data-hot-name="条目" data-hot-pos="bottom-right"
+        data-hot-label="整行点进编辑提醒：标题、周期、下次触发三件套常驻；位置提醒带「位置 · 手动地点」标记并在次行说明不保证触达">
+        <a class="rem-body" href="reminder-edit.html">
+          <span class="rem-title">吃药</span>
+          <span class="rem-meta">
+            <span class="rem-cycle num">每天 08:00</span>
+            <span class="rem-sep">·</span>
+            <span class="rem-next">下次 <b class="num">明天 08:00</b></span>
+          </span>
+        </a>
+        <label class="switch"
+          data-hot="③" data-hot-name="启用开关" data-hot-pos="outer-top-right"
+          data-hot-label="开关只改启用状态，不进编辑页、不弹确认；关掉后该条不再触发但规则保留，列表内该行转灰并计为已暂停">
+          <input type="checkbox" checked aria-label="启用 吃药" data-switch="吃药">
+          <span class="track"></span>
+          <span class="thumb"></span>
+        </label>
+      </div>
+
+      <div class="rem-item">
+        <a class="rem-body" href="reminder-edit.html">
+          <span class="rem-title">接女儿放学</span>
+          <span class="rem-meta">
+            <span class="rem-cycle num">每周一至周五 16:00</span>
+            <span class="rem-sep">·</span>
+            <span class="rem-next">下次 <b class="num">今天 16:00</b></span>
+          </span>
+        </a>
+        <label class="switch">
+          <input type="checkbox" checked aria-label="启用 接女儿放学" data-switch="接女儿放学">
+          <span class="track"></span>
+          <span class="thumb"></span>
+        </label>
+      </div>
+
+      <div class="rem-item">
+        <a class="rem-body" href="reminder-edit.html">
+          <span class="rem-title">到超市买牛奶</span>
+          <span class="rem-meta">
+            <span class="rem-tag rem-tag-geo">
+              <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17s5.5-4.4 5.5-8.5a5.5 5.5 0 1 0-11 0C4.5 12.6 10 17 10 17z"/><circle cx="10" cy="8.4" r="1.8"/></svg>
+              位置 · 手动地点
+            </span>
+            <span class="rem-sep">·</span>
+            <span class="rem-cycle">不重复</span>
+            <span class="rem-sep">·</span>
+            <span class="rem-next">地点 <b>永辉超市（公司楼下）</b></span>
+          </span>
+        </a>
+        <label class="switch">
+          <input type="checkbox" checked aria-label="启用 到超市买牛奶" data-switch="到超市买牛奶">
+          <span class="track"></span>
+          <span class="thumb"></span>
+        </label>
+      </div>
+
+      <div class="rem-item">
+        <a class="rem-body" href="reminder-edit.html">
+          <span class="rem-title">交房租</span>
+          <span class="rem-meta">
+            <span class="rem-cycle num">每月 1 日 09:00</span>
+            <span class="rem-sep">·</span>
+            <span class="rem-next">下次 <b class="num">11 月 1 日 09:00</b></span>
+          </span>
+        </a>
+        <label class="switch">
+          <input type="checkbox" checked aria-label="启用 交房租" data-switch="交房租">
+          <span class="track"></span>
+          <span class="thumb"></span>
+        </label>
+      </div>
+
+      <div class="rem-item is-off">
+        <a class="rem-body" href="reminder-edit.html">
+          <span class="rem-title">缴水电费</span>
+          <span class="rem-meta">
+            <span class="rem-tag rem-tag-off">已暂停</span>
+            <span class="rem-cycle num">每月 5 日 10:00</span>
+            <span class="rem-sep">·</span>
+            <span class="rem-next" data-resume="下次 11 月 5 日 10:00">暂停中，不触发</span>
+          </span>
+        </a>
+        <label class="switch">
+          <input type="checkbox" aria-label="启用 缴水电费" data-switch="缴水电费">
+          <span class="track"></span>
+          <span class="thumb"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="rem-sk" aria-hidden="true">
+      <div class="skeleton sk-line"></div>
+      <div class="skeleton sk-line" style="width:64%;margin-top:0"></div>
+      <div class="skeleton sk-block" style="height:64px"></div>
+      <div class="skeleton sk-block" style="height:64px"></div>
+      <div class="skeleton sk-block" style="height:64px"></div>
+      <div class="skeleton sk-block" style="height:64px"></div>
+    </div>
+
+    <div class="state rem-empty">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 5a7 7 0 0 1 7 7v5l2 3H7l2-3v-5a7 7 0 0 1 7-7z"/><path d="M13.5 23a2.5 2.5 0 0 0 5 0"/></svg>
+      </div>
+      <div class="state-title">还没有提醒</div>
+      <div class="state-desc">提醒到点通过站内信与推送下发；可以先建一条每天、每周或每月的提醒。</div>
+      <button class="btn btn-secondary" type="button" data-go="reminder-create.html">新建提醒</button>
+    </div>
+
+    <div class="rem-foot-note tiny">开关与删除会同步重发本面的到期注册（17.4）；到点后由 <code>calendar.reminder.fired</code> 交底座投递，本面不直连任何推送通道；暂停只停触发，不改周期规则。</div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var remState = new URLSearchParams(location.search).get('state') || 'default';
+  var sum = document.getElementById('rem-sum');
+
+  function refreshSum() {
+    var inputs = document.querySelectorAll('[data-switch]');
+    var on = 0;
+    inputs.forEach(function (i) { if (i.checked) on += 1; });
+    sum.textContent = '共 ' + inputs.length + ' 条 · ' + on + ' 条启用 · ' + (inputs.length - on) + ' 条已暂停';
+  }
+
+  document.querySelectorAll('[data-switch]').forEach(function (input) {
+    input.addEventListener('change', function () {
+      var row = input.closest('.rem-item');
+      row.classList.toggle('is-off', !input.checked);
+      var next = row.querySelector('.rem-next');
+      var tag = row.querySelector('.rem-tag-off');
+      if (!input.checked) {
+        if (next && next.textContent.indexOf('暂停') !== 0) next.dataset.full = next.innerHTML;
+        if (!tag) {
+          row.querySelector('.rem-meta').insertAdjacentHTML('afterbegin',
+            '<span class="rem-tag rem-tag-off">已暂停</span>');
+        }
+        if (next) next.textContent = '暂停中，不触发';
+      } else {
+        if (tag) tag.remove();
+        if (next) {
+          if (next.dataset.full) next.innerHTML = next.dataset.full;
+          else if (next.dataset.resume) next.textContent = next.dataset.resume;
+        }
+      }
+      refreshSum();
+      window.HC.toast(remState === 'offline'
+        ? '开关改动已记下，联网后同步'
+        : (input.checked ? '已启用，按周期继续触发' : '已暂停，规则保留'));
+    });
+  });
+</script>
+</body>
+</html>

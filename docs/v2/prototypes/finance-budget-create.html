@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>新建预算 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-content { padding-bottom: 24px; }
+
+  .fx-cancel {
+    height: 36px; padding: 0 2px;
+    display: inline-flex; align-items: center;
+    border: 0; background: none;
+    font-family: inherit; font-size: var(--fs-15); font-weight: 500;
+    color: var(--text-2); cursor: pointer;
+  }
+
+  .fx-banner {
+    display: none; align-items: flex-start; gap: 8px;
+    margin: 4px 0 14px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-banner svg { flex: none; margin-top: 1px; }
+  .fx-banner b { display: block; font-size: var(--fs-13); margin-bottom: 2px; }
+  .fx-banner-error { background: var(--danger-soft); color: var(--danger); }
+  body[data-state="error"] .fx-banner-error { display: flex; }
+
+  .fx-form { padding-top: 2px; }
+  .fx-required { margin-left: 4px; font-size: var(--fs-11); font-weight: 600; color: var(--text-3); }
+
+  .fx-seg-full { width: 100%; }
+  .fx-seg-full button { flex: 1; padding: 9px 6px; }
+  .fx-seg-full button[disabled] { color: var(--text-3); opacity: .8; cursor: not-allowed; }
+  .fx-seg-tag { margin-left: 4px; font-size: 10px; font-weight: 700; opacity: .8; }
+
+  .fx-amt { position: relative; }
+  .fx-amt-cur {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    z-index: 1; pointer-events: none;
+    font-family: var(--font-num); font-size: var(--fs-20); font-weight: 700; color: var(--text-2);
+  }
+  .fx-amt-input {
+    height: 56px; padding-left: 34px;
+    font-family: var(--font-num); font-size: var(--fs-20); font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 分类选择区：默认收起，点「指定分类」或状态帧展开 */
+  .fx-catpanel { display: none; margin-top: 8px; }
+  .fx-catpanel.is-open { display: block; }
+  body[data-state="category-pick"] .fx-catpanel { display: block; }
+
+  .fx-cat {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 10px 14px;
+    border: 0; background: var(--surface);
+    font-family: inherit; text-align: left; color: var(--text);
+    cursor: pointer;
+  }
+  .fx-cat + .fx-cat { border-top: 1px solid var(--border); }
+  .fx-cat:hover { background: var(--surface-2); }
+  .fx-cat-ic {
+    width: 28px; height: 28px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 8px; background: var(--surface-2); color: var(--text-2);
+  }
+  .fx-cat-body { flex: 1; min-width: 0; }
+  .fx-cat-name { display: block; font-size: var(--fs-14); font-weight: 600; }
+  .fx-cat-sub { display: block; margin-top: 1px; font-size: var(--fs-11); color: var(--text-3); }
+  .fx-radio {
+    width: 20px; height: 20px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    border: 1.5px solid var(--border-strong);
+    color: var(--on-brand);
+  }
+  .fx-radio svg { opacity: 0; }
+  .fx-cat[aria-pressed="true"] { background: var(--brand-soft); }
+  .fx-cat[aria-pressed="true"] .fx-radio { background: var(--brand); border-color: var(--brand); }
+  .fx-cat[aria-pressed="true"] .fx-radio svg { opacity: 1; }
+  .fx-cat[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
+  .fx-cat[aria-disabled="true"]:hover { background: transparent; }
+
+  /* 阈值设置区：默认收起 */
+  .fx-thpanel { display: none; margin-top: 8px; }
+  .fx-thpanel.is-open { display: block; }
+  body[data-state="threshold"] .fx-thpanel { display: block; }
+
+  .fx-thbox {
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    font-size: var(--fs-12); color: var(--text-2); line-height: var(--lh-normal);
+  }
+  .fx-thline { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .fx-thline + .fx-thline { margin-top: 8px; }
+  .fx-thk { flex: none; font-size: var(--fs-12); color: var(--text-3); }
+  .fx-thv { font-size: var(--fs-13); font-weight: 600; color: var(--text); }
+  .fx-thbox .tiny { display: block; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+
+  .fx-switch-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .fx-switch-text { flex: 1; min-width: 0; }
+  .fx-switch-k { display: block; font-size: var(--fs-14); font-weight: 600; }
+  .fx-switch-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
+
+  .fx-ro {
+    display: flex; align-items: center; gap: 8px;
+    min-height: 48px; padding: 0 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    font-size: var(--fs-14); color: var(--text-2);
+  }
+  .fx-ro-v { flex: 1; min-width: 0; }
+
+  .fx-foot {
+    flex: none;
+    padding: 10px 16px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+  .fx-foot-note { margin-top: 8px; text-align: center; line-height: var(--lh-normal); }
+</style>
+</head>
+<body data-screen="F20 新建预算" data-states="default,category-pick,threshold,error">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <button class="fx-cancel" type="button" data-go="finance-budget.html"
+        data-hot="①" data-hot-name="取消" data-hot-pos="outer-top-left"
+        data-hot-label="回预算列表；未保存内容直接丢弃，不落草稿、不入离线队列，也不产生预算周期行">
+        取消</button>
+    </div>
+    <div class="nav-title">新建预算</div>
+    <div class="nav-right"></div>
+  </div>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 保存后先排队，本期预算照旧
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-banner fx-banner-error">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
+      <div>
+        <b>还有 1 项需要补全</b>
+        预算金额必填，且必须大于 0；只管预算，不会改动任何已有流水。
+      </div>
+    </div>
+
+    <div class="fx-form">
+      <div class="field">
+        <span class="field-label">预算范围</span>
+        <div class="segmented fx-seg-full" id="fx-scope" role="tablist"
+          data-hot="②" data-hot-name="预算范围" data-hot-pos="outer-top-right"
+          data-hot-label="总预算 / 指定分类二选一：选总预算就管全家上限，选指定分类才展开分类选择；一条预算只属于一个范围，保存后不可改范围，要换请新建">
+          <button type="button" role="tab" aria-selected="true" data-scope="total">总预算</button>
+          <button type="button" role="tab" aria-selected="false" data-scope="category">指定分类</button>
+        </div>
+
+        <div class="fx-catpanel" id="fx-catpanel"
+          data-hot="③" data-hot-name="分类选择" data-hot-pos="bottom-right"
+          data-hot-label="只列未停用的叶子分类，顺序与记一笔、报表图例、筛选 chips 同源；同一分类同一周期只允许一条，已设预算的分类置灰并引导回列表编辑，不静默覆盖家人的金额">
+          <div class="list">
+            <button class="fx-cat" type="button" aria-pressed="false" aria-disabled="true" data-existing="true" data-cat="餐饮"
+              data-sub="本月已有预算 ¥1,500.00，回列表编辑">
+              <span class="fx-cat-ic">
+                <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.5v6.2a2 2 0 0 0 4 0V2.5"/><path d="M8 8.7v8.8"/><path d="M14 2.5c1.6 1.2 2.2 2.8 2.2 4.6 0 1.3-.8 2.2-2.2 2.4v8"/></svg>
+              </span>
+              <span class="fx-cat-body">
+                <span class="fx-cat-name">餐饮</span>
+                <span class="fx-cat-sub" data-catsub>本月已有预算 ¥1,500.00，回列表编辑</span>
+              </span>
+              <span class="fx-radio">
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
+              </span>
+            </button>
+            <button class="fx-cat" type="button" aria-pressed="true" data-cat="娱乐"
+              data-sub="本月还没有预算">
+              <span class="fx-cat-ic">
+                <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="15" height="8" rx="3"/><path d="M6.5 10h2.5M7.75 8.75v2.5"/><circle cx="13.4" cy="9.4" r=".9"/><circle cx="12" cy="11.2" r=".9"/></svg>
+              </span>
+              <span class="fx-cat-body">
+                <span class="fx-cat-name">娱乐</span>
+                <span class="fx-cat-sub" data-catsub>本月还没有预算</span>
+              </span>
+              <span class="fx-radio">
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
+              </span>
+            </button>
+            <button class="fx-cat" type="button" aria-pressed="false" data-cat="家务"
+              data-sub="本月还没有预算">
+              <span class="fx-cat-ic">
+                <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v3.4M10 9.4v1.6M10 15.6V17"/><path d="M6.6 6.4h6.8l1.4 5.2H5.2z"/><path d="M5.2 11.6h9.6V17H5.2z"/></svg>
+              </span>
+              <span class="fx-cat-body">
+                <span class="fx-cat-name">家务</span>
+                <span class="fx-cat-sub" data-catsub>本月还没有预算</span>
+              </span>
+              <span class="fx-radio">
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
+              </span>
+            </button>
+          </div>
+        </div>
+        <div class="help" id="fx-scope-help">总预算管全家当月上限，与各分类预算各自独立校验。</div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="fx-amount">预算金额<span class="fx-required">必填</span></label>
+        <div class="fx-amt">
+          <span class="fx-amt-cur">¥</span>
+          <input class="input fx-amt-input" id="fx-amount" type="text" inputmode="decimal" value="8000.00" autocomplete="off"
+            data-hot="④" data-hot-name="金额" data-hot-pos="outer-top-right"
+            data-hot-label="以「分」存储、按家庭币种展示；必须大于 0，为空或为 0 时红框 + 行内「请填写金额」，不弹全局错误层；改金额只影响本期剩余，不回算已发生的流水">
+        </div>
+        <div class="field-error" id="fx-amount-err" role="alert">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
+          请填写大于 0 的预算金额
+        </div>
+        <div class="help">金额按本期生效，不追溯到上一期；已发生的流水不会因为改预算而变动。</div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">周期</span>
+        <div class="segmented fx-seg-full"
+          data-hot="⑤" data-hot-name="周期" data-hot-pos="outer-top-right"
+          data-hot-label="月 / 季 / 年三档；M1 只支持月度（选「月」），季度与年度属 ②（M2），点按只给未交付提示，不落半成品数据">
+          <button type="button" aria-selected="true">月</button>
+          <button type="button" disabled>季<span class="fx-seg-tag">②</span></button>
+          <button type="button" disabled>年<span class="fx-seg-tag">②</span></button>
+        </div>
+        <div class="help">每月 1 日按家庭时区归零，已用从 0 开始累计；结转（上期剩余带到下期）属 ②（M2）。</div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">提醒阈值</span>
+        <div class="segmented fx-seg-full" id="fx-th"
+          data-hot="⑥" data-hot-name="阈值" data-hot-pos="outer-top-right"
+          data-hot-label="默认 100%（超支才算超）；选 80% 会提前一条预警，之后到 100% 再提醒一次；同一预算同一周期只提醒一次，提醒由 HomeOS 家庭消息下发">
+          <button type="button" aria-selected="true" data-th="100">100% 超支提醒</button>
+          <button type="button" aria-selected="false" data-th="80">80% 提前预警</button>
+        </div>
+        <div class="fx-thpanel" id="fx-thpanel">
+          <div class="fx-thbox">
+            <div class="fx-thline">
+              <span class="fx-thk">预警线</span>
+              <span class="fx-thv"><span class="num">80%</span> · ¥6,400.00</span>
+            </div>
+            <div class="fx-thline">
+              <span class="fx-thk">超支线</span>
+              <span class="fx-thv"><span class="num">100%</span> · ¥8,000.00</span>
+            </div>
+            <span class="tiny">两条线各提醒一次，同周期同预算不重复；累计支出刚好等于阈值不算超支。提醒由 HomeOS 家庭消息下发，财务面不自建定时器。</span>
+          </div>
+        </div>
+        <div class="help" id="fx-th-help">只在超过 100%（已用 &gt; 预算）时提醒一次。</div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">固定预算</span>
+        <div class="fx-switch-row"
+          data-hot="⑦" data-hot-name="固定预算" data-hot-pos="outer-bottom-right"
+          data-hot-label="打开后本期金额固定、每月自动带出，不随上月实际支出变化；关掉则是每月手填的浮动预算，两者都按周期归零，口径同一条">
+          <span class="fx-switch-text">
+            <span class="fx-switch-k">每月自动带出这条预算</span>
+            <span class="fx-switch-sub">固定预算用于房租、宽带、保洁这类每月一样的花销</span>
+          </span>
+          <label class="switch" aria-label="是否设为固定预算">
+            <input type="checkbox" id="fx-fixed">
+            <span class="track"></span><span class="thumb"></span>
+          </label>
+        </div>
+        <div class="help">固定预算到期自动带出，不用每月新建；金额仍可在列表里点进编辑页调整。</div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">生效周期</span>
+        <div class="fx-ro">
+          <span class="fx-ro-v"><span class="num">2026 年 11 月</span> 起 · 每月</span>
+          <span class="tag">按周期归零</span>
+        </div>
+        <div class="help">本期已开始（10 月 29 日）时，新建预算默认从下一个整期生效，避免出现半程预算拉低进度。</div>
+      </div>
+    </div>
+
+    <p class="tiny" style="margin-top:4px;line-height:var(--lh-normal)">预算只影响进度与提醒，不锁定记账：超支后照常可以记，只是列表里会挂「已超支」并由家庭消息下发一条提醒。</p>
+  </div>
+
+  <div class="fx-foot">
+    <button class="btn btn-primary btn-block" type="button" id="fx-save"
+      data-hot="⑧" data-hot-name="保存" data-hot-pos="outer-bottom-right"
+      data-hot-label="校验金额大于 0；缺项时只标红对应字段并在顶部给一条错误，不弹全局层；成功回预算列表并出现在对应分组里，生效期为下个整月、其已用从 0 起算">
+      保存预算
+    </button>
+    <div class="fx-foot-note tiny">保存后即时生效，超支提醒随家庭消息下发</div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var fxState = new URLSearchParams(location.search).get('state') || 'default';
+  var panel = document.getElementById('fx-catpanel');
+  var thPanel = document.getElementById('fx-thpanel');
+  var scopeHelp = document.getElementById('fx-scope-help');
+  var thHelp = document.getElementById('fx-th-help');
+  var amount = document.getElementById('fx-amount');
+
+  function setScope(scope) {
+    document.querySelectorAll('[data-scope]').forEach(function (b) {
+      b.setAttribute('aria-selected', String(b.getAttribute('data-scope') === scope));
+    });
+    panel.classList.toggle('is-open', scope === 'category');
+    scopeHelp.textContent = scope === 'category'
+      ? '分类预算只统计该分类的支出；同一分类同一周期只允许一条，已有预算的分类需回列表编辑。'
+      : '总预算管全家当月上限，与各分类预算各自独立校验。';
+  }
+
+  document.querySelectorAll('[data-scope]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      setScope(b.getAttribute('data-scope'));
+    });
+  });
+
+  document.querySelectorAll('.fx-cat').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (b.getAttribute('aria-disabled') === 'true') {
+        window.HC.toast('「' + b.getAttribute('data-cat') + '」本月已有预算，请回列表点它编辑，不新建第二条');
+        return;
+      }
+      document.querySelectorAll('.fx-cat').forEach(function (x) {
+        x.setAttribute('aria-pressed', String(x === b));
+      });
+      window.HC.toast('分类已选「' + b.getAttribute('data-cat') + '」，保存后只统计该分类支出');
+    });
+  });
+
+  function setThreshold(v) {
+    document.querySelectorAll('[data-th]').forEach(function (b) {
+      b.setAttribute('aria-selected', String(b.getAttribute('data-th') === v));
+    });
+    thPanel.classList.toggle('is-open', v === '80');
+    thHelp.textContent = v === '80'
+      ? '到 80% 先预警一次，到 100% 再提醒一次；同一预算同一周期不重复。'
+      : '只在超过 100%（已用 > 预算）时提醒一次。';
+  }
+
+  document.querySelectorAll('[data-th]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      setThreshold(b.getAttribute('data-th'));
+    });
+  });
+
+  document.getElementById('fx-fixed').addEventListener('change', function () {
+    window.HC.toast(this.checked ? '已设为固定预算，每月自动带出' : '已改为浮动预算，每月手填');
+  });
+
+  if (fxState === 'category-pick') {
+    setScope('category');
+    amount.value = '1500.00';
+  } else {
+    setScope('total');
+  }
+
+  if (fxState === 'threshold') {
+    setThreshold('80');
+  } else {
+    setThreshold('100');
+  }
+
+  if (fxState === 'error') {
+    amount.value = '';
+    amount.classList.add('is-error');
+  }
+
+  amount.addEventListener('input', function () {
+    if (amount.value.trim() && Number(amount.value.replace(/,/g, '')) > 0) {
+      amount.classList.remove('is-error');
+      document.body.setAttribute('data-state', 'default');
+    }
+  });
+
+  document.getElementById('fx-save').addEventListener('click', function () {
+    var v = amount.value.trim();
+    if (!v || !(Number(v.replace(/,/g, '')) > 0)) {
+      amount.classList.add('is-error');
+      document.body.setAttribute('data-state', 'error');
+      amount.focus();
+      return;
+    }
+    window.HC.toast('预算已创建，从 11 月起生效');
+    setTimeout(function () { location.href = 'finance-budget.html'; }, 1000);
+  });
+</script>
+</body>
+</html>

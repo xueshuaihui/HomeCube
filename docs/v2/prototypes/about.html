@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>帮助与关于 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .about-body { padding-bottom: 32px; }
+  .about-hero {
+    display: flex; align-items: center; gap: 16px;
+    margin: 4px 0 4px; padding: 20px;
+    border-radius: var(--radius-xl);
+    background: linear-gradient(135deg, var(--brand-soft) 0%, var(--surface) 70%);
+    border: 1px solid var(--brand-soft-border);
+  }
+  .about-mark {
+    width: 56px; height: 56px; flex: none;
+    border-radius: var(--radius-lg);
+    background: var(--brand); color: var(--on-brand);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--shadow-2);
+  }
+  .about-name { font-size: var(--fs-20); font-weight: 700; letter-spacing: .02em; }
+  .about-ver { margin-top: 3px; font-size: var(--fs-12); color: var(--text-2); }
+  .about-tag { margin-top: 6px; font-size: var(--fs-12); color: var(--text-3); }
+  .about-flag {
+    flex: none; padding: 1px 6px; border-radius: var(--radius-pill);
+    background: var(--warning-soft); color: var(--warning);
+    font-size: var(--fs-11); font-weight: 600;
+  }
+  .about-row-ver {
+    flex: none; font-family: var(--font-num); font-size: var(--fs-13); color: var(--text-2);
+  }
+  .about-check { align-items: center; }
+  .about-sub-default { display: block; }
+  .about-sub-checking, .about-sub-latest { display: none; }
+  body[data-state="checking"] .about-sub-default { display: none; }
+  body[data-state="checking"] .about-sub-checking { display: block; }
+  body[data-state="latest"] .about-sub-default { display: none; }
+  body[data-state="latest"] .about-sub-latest { display: block; }
+  .about-trail { flex: none; display: flex; align-items: center; justify-content: flex-end; width: 22px; }
+  .about-trail .chevron { color: var(--text-3); }
+  .about-trail .about-spin, .about-trail .about-ok { display: none; }
+  body[data-state="checking"] .about-trail .chevron { display: none; }
+  body[data-state="checking"] .about-trail .about-spin { display: inline-block; }
+  body[data-state="latest"] .about-trail .chevron { display: none; }
+  body[data-state="latest"] .about-trail .about-ok { display: inline-flex; color: var(--success); }
+  .about-spin {
+    width: 16px; height: 16px; border-radius: var(--radius-pill);
+    border: 2px solid var(--border-strong);
+    border-top-color: var(--brand-text);
+    animation: spin .8s linear infinite;
+  }
+  body[data-state="latest"] .about-check .li-text { color: var(--success); }
+  .about-foot { margin: 18px 2px 0; text-align: center; line-height: var(--lh-loose); }
+  .about-policy-row .li-text { display: flex; align-items: center; gap: 8px; }
+  .about-sheet-list { margin-top: 16px; }
+  .about-sheet-item { display: flex; gap: 10px; padding: 10px 0; font-size: var(--fs-13); line-height: var(--lh-normal); }
+  .about-sheet-item + .about-sheet-item { border-top: 1px solid var(--border); }
+  .about-sheet-item .n {
+    flex: none; width: 20px; height: 20px; border-radius: var(--radius-pill);
+    background: var(--surface-2); color: var(--text-2);
+    font-family: var(--font-num); font-size: var(--fs-11); font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  body[data-state="policy"] #sheet-policy { display: flex; }
+</style>
+</head>
+<body data-screen="31 帮助与关于" data-tab="" data-states="default,checking,latest,policy">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <button class="icon-btn" type="button" data-go="me.html" aria-label="返回">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </button>
+    </div>
+    <div class="nav-title">帮助与关于</div>
+    <div class="nav-right"></div>
+  </div>
+
+  <div class="content">
+    <div class="about-body">
+      <div class="about-hero">
+        <span class="about-mark" aria-hidden="true">
+          <svg width="30" height="30" viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M17 4 29 11v13l-12 7-12-7V11z"/><path d="M17 4v13l12 7" opacity=".55"/><path d="M17 17 5 11" opacity=".55"/></svg>
+        </span>
+        <div>
+          <div class="about-name">家立方</div>
+          <div class="about-ver num">版本 1.0.0 · build 20261006</div>
+          <div class="about-tag">一家人的账、事与时间，都在这里</div>
+        </div>
+      </div>
+
+      <div class="section-title">帮助中心</div>
+      <div class="list">
+        <button class="list-item" type="button" data-unbuilt="P1 末（帮助中心）"
+          data-hot="①" data-hot-name="常见问题" data-hot-pos="top-right" data-hot-label="帮助中心分组入口，P1 末随合规文本一起上线；当前点击只提示交付批次">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M7.8 7.6a2.3 2.3 0 0 1 4.4.9c0 1.6-2.2 1.8-2.2 3.2M10 14.3v.1"/></svg>
+          </span>
+          <span class="li-text">常见问题<span class="li-sub">账号、家庭、同步与权限</span></span>
+          <span class="chevron">›</span>
+        </button>
+        <button class="list-item" type="button" data-unbuilt="P1 末（帮助中心）"
+          data-hot="②" data-hot-name="使用指南" data-hot-pos="top-right" data-hot-label="按面组织的使用说明；未出生面不出章节">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h5.5A2.5 2.5 0 0 1 12 7v9a2 2 0 0 0-2-2H4z"/><path d="M16 4.5h-4A2.5 2.5 0 0 0 9.5 7v9a2 2 0 0 1 2-2H16z"/></svg>
+          </span>
+          <span class="li-text">使用指南<span class="li-sub">记账、提醒与数据导出</span></span>
+          <span class="chevron">›</span>
+        </button>
+        <button class="list-item" type="button" data-unbuilt="P1 末（反馈与客服）"
+          data-hot="③" data-hot-name="反馈与客服" data-hot-pos="top-right" data-hot-label="反馈工单与客服入口；提交时自动带版本号与设备信息，不带家庭数据">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M17 9.6c0 3.2-3.1 5.8-7 5.8-.8 0-1.6-.1-2.3-.3L4 17l1-2.6c-1.2-1-1.9-2.4-1.9-4.1 0-3.2 3.1-5.8 7-5.8s6.9 2.3 6.9 5.1z"/></svg>
+          </span>
+          <span class="li-text">反馈与客服<span class="li-sub">工作日 9:00–18:00 响应</span></span>
+          <span class="chevron">›</span>
+        </button>
+      </div>
+
+      <div class="section-title">条款与政策</div>
+      <div class="list">
+        <button class="list-item about-policy-row" type="button" data-sheet-open="sheet-policy"
+          data-hot="④" data-hot-name="隐私政策" data-hot-pos="top-right" data-hot-label="P1 显示「文本待定版」；点击只弹说明，不跳外链、不展示未定稿条款">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3.5h7l3 3v10H5z"/><path d="M8 9h4M8 12h4"/></svg>
+          </span>
+          <span class="li-text">隐私政策<span class="li-sub">个人信息收集、分级与保留期</span></span>
+          <span class="about-flag">文本待定版</span>
+          <span class="chevron">›</span>
+        </button>
+        <button class="list-item about-policy-row" type="button" data-sheet-open="sheet-policy"
+          data-hot="⑤" data-hot-name="用户协议" data-hot-pos="top-right" data-hot-label="同样显示「文本待定版」；定版前不提供全文与外部链接">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3.5h7l3 3v10H5z"/><path d="M7.5 10.5l1.6 1.6 3-3.2"/></svg>
+          </span>
+          <span class="li-text">用户协议<span class="li-sub">服务范围、使用规范与责任</span></span>
+          <span class="about-flag">文本待定版</span>
+          <span class="chevron">›</span>
+        </button>
+      </div>
+
+      <div class="section-title">版本与更新</div>
+      <div class="list">
+        <div class="list-item">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.6v.1"/></svg>
+          </span>
+          <span class="li-text">当前版本<span class="li-sub">wgt 1.0.0 · 已登录</span></span>
+          <span class="about-row-ver">1.0.0</span>
+        </div>
+        <button class="list-item about-check" type="button" id="check-update"
+          data-hot="⑥" data-hot-name="检查更新" data-hot-pos="top-right" data-hot-label="登录后静默检查；手动点击进入检查中，完成后提示已是最新；仅 min_compat 不满足时强制更新">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v9M6.5 8.5 10 12l3.5-3.5"/><path d="M4 14.5v1a1.5 1.5 0 0 0 1.5 1.5h9a1.5 1.5 0 0 0 1.5-1.5v-1"/></svg>
+          </span>
+          <span class="li-text">检查更新<span class="li-sub">
+            <span class="about-sub-default">登录后静默检查，有新版本可跳过</span>
+            <span class="about-sub-checking">正在检查 wgt 版本…</span>
+            <span class="about-sub-latest">已是最新版本 · 刚刚检查</span>
+          </span></span>
+          <span class="about-trail">
+            <span class="chevron">›</span>
+            <span class="about-spin" aria-hidden="true"></span>
+            <span class="about-ok" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-8.5"/></svg>
+            </span>
+          </span>
+        </button>
+      </div>
+      <div class="tiny" style="margin:8px 2px 0;line-height:var(--lh-loose)">仅当服务端标记的 min_compat 高于当前版本时才强制更新；未登录冷启动不做版本检查，更新不打断当前操作。</div>
+
+      <div class="tiny about-foot">家立方 · 家庭操作系统 v2 原型<br>本页文本与版本号为演示样例</div>
+    </div>
+  </div>
+
+  <div class="sheet-mask" id="sheet-policy" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>隐私政策 · 文本待定版</h3>
+      <p class="sheet-sub">隐私政策与用户协议属 P1 末附加门禁，文本需经人类与法务确认并入库留痕。当前入口只说明状态，不跳转外链，也不展示未定稿条款。</p>
+      <div class="about-sheet-list">
+        <div class="about-sheet-item"><span class="n">1</span><span>当前状态：文本待定版，P1 末随合规门禁定版。</span></div>
+        <div class="about-sheet-item"><span class="n">2</span><span>定版后：在本页打开全文，首次登录展示确认并留痕。</span></div>
+        <div class="about-sheet-item"><span class="n">3</span><span>一致性：正文需与 L2/L3 字段清单、埋点字典、数据保留期底稿逐项核对，不新增未登记字段。</span></div>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-secondary btn-block" type="button" id="policy-ok" data-sheet-close>我知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var st = new URLSearchParams(location.search).get('state') || 'default';
+
+  document.getElementById('check-update').addEventListener('click', function () {
+    location.href = 'about.html?state=checking';
+  });
+
+  document.getElementById('policy-ok').addEventListener('click', function () {
+    if (st === 'policy') setTimeout(function () { location.href = 'about.html'; }, 160);
+  });
+
+  if (st === 'checking') {
+    setTimeout(function () { location.href = 'about.html?state=latest'; }, 1600);
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>回收站 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-content { padding-bottom: 28px; }
+
+  .fx-note {
+    display: flex; gap: 10px;
+    margin-top: 4px; padding: 12px 14px;
+    border-radius: var(--radius-lg);
+    background: var(--brand-soft);
+    border: 1px solid var(--brand-soft-border);
+    color: var(--text-2);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-note > svg { flex: none; margin-top: 1px; color: var(--brand-text); }
+  .fx-note b { display: block; margin-bottom: 3px; font-size: var(--fs-13); color: var(--text); }
+  .fx-note-sub { display: block; }
+  .fx-note-sub + .fx-note-sub { margin-top: 4px; }
+
+  .fx-sum {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    margin: 14px 2px 8px;
+    font-size: var(--fs-12); color: var(--text-3);
+  }
+  .fx-sum b { font-weight: 600; color: var(--text-2); }
+
+  .fx-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .fx-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 12px 12px 14px;
+  }
+  .fx-item + .fx-item { border-top: 1px solid var(--border); }
+  .fx-item:hover { background: var(--surface-2); }
+
+  .fx-ico {
+    width: 34px; height: 34px; flex: none;
+    border-radius: 10px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--surface-2); color: var(--text-3);
+  }
+  .fx-ico.is-transfer { background: var(--surface-2); color: var(--text-2); }
+
+  .fx-item-body { flex: 1; min-width: 0; }
+  .fx-item-top { display: flex; align-items: baseline; gap: 8px; }
+  .fx-item-name {
+    flex: 1; min-width: 0;
+    display: flex; align-items: center; gap: 6px;
+    font-size: var(--fs-15); font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .fx-item-amt { flex: none; font-family: var(--font-num); font-size: var(--fs-15); font-weight: 600; white-space: nowrap; color: var(--text-2); }
+  .fx-item-meta {
+    display: block; margin-top: 3px;
+    font-size: var(--fs-11); color: var(--text-3);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .fx-item-meta b { font-weight: 700; color: var(--warning); }
+  .fx-item-sub {
+    display: block; margin-top: 2px;
+    font-size: var(--fs-11); color: var(--text-3);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  .fx-restore {
+    flex: none; height: 32px; padding: 0 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    font-family: inherit; font-size: var(--fs-12); font-weight: 700;
+    color: var(--brand-text); cursor: pointer;
+  }
+  .fx-restore:hover { background: var(--surface-2); }
+
+  .fx-foot-note { margin-top: 14px; line-height: var(--lh-normal); }
+
+  .fx-sk { display: none; padding-top: 12px; }
+  .fx-sk .sk-line:first-child { width: 46%; }
+  .fx-sk .sk-block { height: 74px; }
+  body[data-state="loading"] .fx-sk { display: block; }
+  body[data-state="loading"] .fx-data,
+  body[data-state="loading"] .fx-sum { display: none; }
+
+  .fx-empty { display: none; }
+  body[data-state="empty"] .fx-empty { display: flex; }
+  body[data-state="empty"] .fx-data,
+  body[data-state="empty"] .fx-sum { display: none; }
+
+  .fx-sheet-line {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 14px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+  }
+  .fx-sheet-title { flex: 1; min-width: 0; font-size: var(--fs-14); font-weight: 600; }
+  .fx-sheet-amt { flex: none; font-size: var(--fs-14); }
+</style>
+</head>
+<body data-screen="F05 回收站" data-states="default,restore-confirm,empty,loading">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <header class="navbar">
+    <div class="nav-left">
+      <a class="icon-btn" href="finance-flow.html" aria-label="返回流水"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回流水列表；本页是二级页，不带 L2 Tab 与底部五项。从流水页「更多」或编辑页删除后进来时都回到流水">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </a>
+    </div>
+    <div class="nav-title">回收站</div>
+    <div class="nav-right"></div>
+  </header>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 回收站内容为最近一次同步
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-note"
+      data-hot="②" data-hot-name="口径说明" data-hot-pos="bottom-right"
+      data-hot-label="常驻说明、不随列表状态消失：删除是软删，30 天后自动清除；只有作者与管理员能打开这一页；恢复后回到删除前的日期分组，金额与分类原样">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.2v4.2l2.6 1.6"/></svg>
+      <span>
+        <b>删除后 30 天自动清除</b>
+        <span class="fx-note-sub">删掉的流水只在这里保留 30 天，到期自动清除，之后不再出现在任何统计与报表里。</span>
+        <span class="fx-note-sub">仅作者与管理员可进：其他成员在流水页看不到入口，深链进来显示无权限；回收站里的流水只读，恢复后才能改。</span>
+      </span>
+    </div>
+
+    <div class="fx-sum">
+      <span><b>4</b> 笔 · 30 天内删除</span>
+      <span class="num">最早 11 月 29 日 21:05 清除</span>
+    </div>
+
+    <div class="fx-data">
+      <div class="fx-list">
+        <div class="fx-item" data-toast="回收站里的流水只读：不能编辑，也不能再次删除；恢复后回到流水里才能改"
+          data-hot="③" data-hot-name="回收行" data-hot-pos="bottom-right"
+          data-hot-label="一行四件套：分类与备注摘要、金额、删除时间与剩余天数、删除人；剩余天数按 30 天倒计时，到期由服务端清除，客户端不自行推算">
+          <span class="fx-ico">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11h14"/><path d="M4 11a6 6 0 0 1 12 0"/><path d="M7.5 7.6 6 4.4M12.5 7.6 14 4.4"/></svg>
+          </span>
+          <span class="fx-item-body">
+            <span class="fx-item-top">
+              <span class="fx-item-name">餐饮 · 早餐</span>
+              <span class="fx-item-amt num">-¥28.00</span>
+            </span>
+            <span class="fx-item-meta">删除于 11 月 2 日 09:12 · <b>剩 27 天</b></span>
+            <span class="fx-item-sub">妈妈 删除 · 原属 10 月 29 日</span>
+          </span>
+          <button class="fx-restore" type="button" data-sheet-open="sheet-restore"
+            data-hot="④" data-hot-name="恢复" data-hot-pos="top-right"
+            data-hot-label="先弹恢复确认层，不在行内直接恢复；确认后回到删除前的日期分组，金额、分类、标签与附件原样，转账两笔一起恢复">
+            恢复
+          </button>
+        </div>
+
+        <div class="fx-item" data-toast="回收站里的流水只读：恢复后才能再编辑">
+          <span class="fx-ico">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13.5h12l-1.2 2.6a1.5 1.5 0 0 1-1.3.9H6.5a1.5 1.5 0 0 1-1.3-.9z"/><path d="M5.6 13.5 7 8.6A2.4 2.4 0 0 1 9.3 7h1.4A2.4 2.4 0 0 1 13 8.6l1.4 4.9"/><circle cx="7" cy="16" r="1"/><circle cx="13" cy="16" r="1"/></svg>
+          </span>
+          <span class="fx-item-body">
+            <span class="fx-item-top">
+              <span class="fx-item-name">交通 · 打车</span>
+              <span class="fx-item-amt num">-¥38.00</span>
+            </span>
+            <span class="fx-item-meta">删除于 11 月 1 日 18:40 · <b>剩 26 天</b></span>
+            <span class="fx-item-sub">我 删除 · 原属 10 月 29 日</span>
+          </span>
+          <button class="fx-restore" type="button" data-sheet-open="sheet-restore">恢复</button>
+        </div>
+
+        <div class="fx-item" data-toast="转账是成对流水：恢复时转出与转入两笔一起回到流水，不做单边恢复">
+          <span class="fx-ico is-transfer">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10.5"/><path d="M11.8 4.3 14.5 7l-2.7 2.7"/><path d="M16 13H5.5"/><path d="M8.2 10.3 5.5 13l2.7 2.7"/></svg>
+          </span>
+          <span class="fx-item-body">
+            <span class="fx-item-top">
+              <span class="fx-item-name">转账 <span class="tag">成对</span></span>
+              <span class="fx-item-amt num">¥500.00</span>
+            </span>
+            <span class="fx-item-meta">删除于 10 月 31 日 08:05 · <b>剩 25 天</b></span>
+            <span class="fx-item-sub">招商银行 → 微信钱包 · 我 删除 · 两笔一起恢复</span>
+          </span>
+          <button class="fx-restore" type="button" data-sheet-open="sheet-restore">恢复</button>
+        </div>
+
+        <div class="fx-item" data-toast="这条由别人删除；作者与管理员都能恢复，恢复后回到原日期分组">
+          <span class="fx-ico">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6.5h14l-1.1 9.2a1.6 1.6 0 0 1-1.6 1.4H5.7a1.6 1.6 0 0 1-1.6-1.4z"/><path d="M7.2 8V5.6a2.8 2.8 0 0 1 5.6 0V8"/></svg>
+          </span>
+          <span class="fx-item-body">
+            <span class="fx-item-top">
+              <span class="fx-item-name">日用 · 超市</span>
+              <span class="fx-item-amt num">-¥100.00</span>
+            </span>
+            <span class="fx-item-meta">删除于 10 月 30 日 21:05 · <b>剩 24 天</b></span>
+            <span class="fx-item-sub">爸爸 删除 · 原属 10 月 29 日</span>
+          </span>
+          <button class="fx-restore" type="button" data-sheet-open="sheet-restore">恢复</button>
+        </div>
+      </div>
+
+      <div class="fx-foot-note tiny">剩余天数按删除时间 + 30 天由服务端算，客户端不自行推算；到期清除后不可恢复，导出与备份里也不再出现。</div>
+    </div>
+
+    <div class="fx-sk" aria-hidden="true">
+      <div class="skeleton sk-line"></div>
+      <div class="skeleton sk-block"></div>
+      <div class="skeleton sk-block"></div>
+      <div class="skeleton sk-block"></div>
+    </div>
+
+    <div class="state fx-empty">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10h20"/><path d="M9 10V8h14v2"/><path d="M8.5 10l1.2 15a2 2 0 0 0 2 1.8h8.6a2 2 0 0 0 2-1.8L23.5 10"/></svg>
+      </div>
+      <div class="state-title">回收站是空的</div>
+      <div class="state-desc">删掉的流水会在这里保留 30 天，期间可由作者或管理员恢复；到期后自动清除。</div>
+      <button class="btn btn-secondary" type="button" data-go="finance-flow.html"
+        data-hot="⑤" data-hot-name="空态返回" data-hot-pos="bottom-right"
+        data-hot-label="空态给可执行动作：回流水列表，不留在空页；不给「去别处看看」这类空话">返回流水</button>
+    </div>
+  </div>
+
+  <!-- 恢复确认层 -->
+  <div class="sheet-mask" id="sheet-restore" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>恢复这笔流水？</h3>
+      <p class="sheet-sub">恢复后回到删除前的日期分组，金额、分类、标签与附件原样；由周期规则自动入账的流水恢复后仍是那一笔，不会与规则重复入账。</p>
+      <div class="fx-sheet-line">
+        <span class="fx-sheet-title">餐饮 · 早餐<br><span class="tiny">删除于 11 月 2 日 09:12 · 剩 27 天</span></span>
+        <span class="fx-sheet-amt num">-¥28.00</span>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" data-go="finance-flow.html">恢复这笔</button>
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var trashState = new URLSearchParams(location.search).get('state') || 'default';
+
+  setTimeout(function () {
+    if (trashState === 'restore-confirm') window.HC.openSheet('sheet-restore');
+  }, 0);
+</script>
+</body>
+</html>

@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>安全与设备锁 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .sec-body { padding-bottom: 32px; }
+  .sec-lock-card { padding: 16px; }
+  .sec-lock-head { display: flex; align-items: center; gap: 14px; }
+  .sec-lock-icon {
+    width: 44px; height: 44px; flex: none;
+    border-radius: var(--radius-md);
+    background: var(--brand-soft); color: var(--brand-text);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .sec-lock-icon svg { display: block; }
+  .sec-lock-info { flex: 1; min-width: 0; }
+  .sec-lock-title { font-size: var(--fs-17); font-weight: 700; }
+  .sec-lock-info .tiny { margin-top: 2px; }
+  .sec-lock-switch { flex: none; display: flex; }
+  .sec-lock-state {
+    margin-top: 12px; padding-top: 12px;
+    border-top: 1px solid var(--border);
+    font-size: var(--fs-12); color: var(--text-2);
+  }
+  .sec-only-off { display: none; }
+  body[data-state="lockoff"] .sec-only-on { display: none; }
+  body[data-state="lockoff"] .sec-only-off { display: block; }
+  .sec-pin-note {
+    display: flex; gap: 10px; align-items: flex-start;
+    margin-top: 12px; padding: 14px;
+    border-radius: var(--radius-md);
+    background: var(--brand-soft);
+    color: var(--brand-text);
+    font-size: var(--fs-12); line-height: var(--lh-loose);
+  }
+  .sec-pin-note svg { flex: none; margin-top: 1px; }
+  .sec-device { align-items: flex-start; }
+  .sec-device .li-text { padding-top: 1px; }
+  .sec-dev-mark {
+    display: inline-flex; align-items: center;
+    margin-left: 6px; padding: 1px 6px;
+    border-radius: var(--radius-pill);
+    background: var(--brand-soft); color: var(--brand-text);
+    font-size: var(--fs-11); font-weight: 600; vertical-align: 1px;
+  }
+  .sec-dev-off { flex: none; color: var(--danger); }
+  .sec-dev-off:hover { border-color: var(--danger); }
+  .sec-pver { padding: 16px; }
+  .sec-pver-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .sec-pver-head .sec-pver-title { font-size: var(--fs-15); font-weight: 700; }
+  .sec-pver-head .tiny { margin-top: 3px; }
+  .sec-pver-num {
+    flex: none; font-size: var(--fs-17); font-weight: 700;
+    color: var(--brand-text);
+    padding: 2px 10px; border-radius: var(--radius-pill);
+    background: var(--brand-soft);
+  }
+  .sec-pver-rows { margin-top: 14px; border-top: 1px solid var(--border); }
+  .sec-pver-row {
+    display: flex; justify-content: space-between; gap: 12px;
+    padding: 9px 0; font-size: var(--fs-13);
+  }
+  .sec-pver-row + .sec-pver-row { border-top: 1px solid var(--border); }
+  .sec-pver-row .k { color: var(--text-3); }
+  .sec-pver-row .v { font-weight: 600; text-align: right; }
+  .sec-pver-note { margin: 12px 0 14px; font-size: var(--fs-12); color: var(--text-2); line-height: var(--lh-loose); }
+  .sec-sheet-device {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 16px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    font-size: var(--fs-13);
+  }
+  .sec-sheet-device b { font-weight: 700; }
+  .sec-sheet-device .tiny { margin-left: auto; }
+  .sec-sk { display: none; padding-top: 8px; }
+  .sec-sk .sk-block { height: 96px; }
+  body[data-state="loading"] .sec-body { display: none; }
+  body[data-state="loading"] .sec-sk { display: block; }
+  body[data-state="unlink"] #sheet-unlink { display: flex; }
+</style>
+</head>
+<body data-screen="28 安全与设备锁" data-tab="" data-states="default,lockoff,unlink,loading">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <button class="icon-btn" type="button" data-go="settings.html" aria-label="返回">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </button>
+    </div>
+    <div class="nav-title">安全与设备锁</div>
+    <div class="nav-right"></div>
+  </div>
+
+  <div class="content">
+    <div class="sec-body">
+      <div class="card sec-lock-card" style="margin-top:4px">
+        <div class="sec-lock-head">
+          <span class="sec-lock-icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 19 6v5.2c0 4.1-2.9 7.6-7 9.3-4.1-1.7-7-5.2-7-9.3V6z"/><path d="M9.2 12.2l2 2 3.6-3.9"/></svg>
+          </span>
+          <div class="sec-lock-info">
+            <div class="sec-lock-title"><span class="sec-only-on">设备锁已开启</span><span class="sec-only-off">设备锁未开启</span></div>
+            <div class="tiny"><span class="sec-only-on">进入私密内容需 6 位 PIN 解锁</span><span class="sec-only-off">私密内容进入前仅做会话内确认</span></div>
+          </div>
+          <div class="sec-lock-switch" data-hot="①" data-hot-name="设备锁开关" data-hot-pos="top-right" data-hot-label="开启走 pin-set；关闭需先验证 PIN，关闭后本机不再要求解锁">
+            <label class="switch"><input type="checkbox" checked id="lock-switch"><span class="track"></span><span class="thumb"></span></label>
+          </div>
+        </div>
+        <div class="sec-lock-state sec-only-on">后台停留超过 5 分钟、冷启动均需重新解锁；连续 5 次输错锁定本机 L3 访问，按 30 秒 / 1 分钟 / 5 分钟退避。</div>
+        <div class="sec-lock-state sec-only-off">未开启时不要求本地口令，仅在进入 L3 内容时做一次会话内二次确认；建议开启。</div>
+      </div>
+
+      <div class="sec-pin-note">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="7" width="10" height="7" rx="2"/><path d="M5.2 7V5.2a2.8 2.8 0 0 1 5.6 0V7"/></svg>
+        <span>PIN 只以不可逆散列保存在本机：不上传服务端，服务端不托管也不存储。忘记口令只能通过手机号重验后重置，重置会清除本机加密缓存与未提交草稿。</span>
+      </div>
+
+      <div class="section-title">设备锁</div>
+      <div class="list">
+        <button class="list-item" type="button" data-go="pin-set.html"
+          data-hot="②" data-hot-name="设备锁 PIN" data-hot-pos="top-right" data-hot-label="已设置时进入修改流程，需先验证原 PIN；未设置时直接进入两步设置">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="4.5" y="9" width="11" height="8" rx="2"/><path d="M7 9V6.8a3 3 0 0 1 6 0V9"/></svg>
+          </span>
+          <span class="li-text">设备锁 PIN<span class="li-sub"><span class="sec-only-on">已设置 6 位 · 修改需验证原 PIN</span><span class="sec-only-off">未设置 · 现在去设置</span></span></span>
+          <span class="chevron">›</span>
+        </button>
+      </div>
+
+      <div class="section-title">登录设备</div>
+      <div class="list">
+        <div class="list-item sec-device">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="6" y="3" width="8" height="14" rx="2"/><path d="M9 14.6h2"/></svg>
+          </span>
+          <span class="li-text">iPhone 15 Pro<span class="sec-dev-mark">当前设备</span><span class="li-sub">本机 · 刚刚活跃</span></span>
+          <span class="tiny">iOS 18</span>
+        </div>
+        <div class="list-item sec-device">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3.5" y="4.5" width="13" height="9.5" rx="1.8"/><path d="M2.5 16.5h15"/></svg>
+          </span>
+          <span class="li-text">iPad Air<span class="li-sub">杭州 · 2 天前活跃</span></span>
+          <button class="btn btn-sm btn-secondary sec-dev-off" type="button" data-sheet-open="sheet-unlink" data-device="iPad Air"
+            data-hot="③" data-hot-name="下线其他设备" data-hot-pos="top-right" data-hot-label="其余设备逐个下线，需二次确认；下线后该设备需重新登录，本机不受影响">下线</button>
+        </div>
+        <div class="list-item sec-device">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="6" y="3" width="8" height="14" rx="2"/><path d="M9 14.6h2"/></svg>
+          </span>
+          <span class="li-text">Xiaomi 14<span class="li-sub">上海 · 7 天前活跃</span></span>
+          <button class="btn btn-sm btn-secondary sec-dev-off" type="button" data-sheet-open="sheet-unlink" data-device="Xiaomi 14">下线</button>
+        </div>
+      </div>
+      <div class="tiny" style="margin:8px 2px 0;line-height:var(--lh-loose)">登录设备列表只显示最近 30 天活跃的设备，最多 10 台；下线只影响该设备会话，不删除家庭数据。</div>
+
+      <div class="section-title">账号安全</div>
+      <div class="list">
+        <button class="list-item" type="button" data-toast="验证码已发送至 138****8000，验证后可修改密码"
+          data-hot="④" data-hot-name="修改密码" data-hot-pos="top-right" data-hot-label="先发短信验证码到当前绑定手机号，验证通过后才进入改密">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="8" cy="7" r="3"/><path d="M3 16c.6-2.6 2.6-4 5-4s4.4 1.4 5 4"/><path d="M14.5 6.5v4M12.5 8.5h4"/></svg>
+          </span>
+          <span class="li-text">修改密码<span class="li-sub">需短信验证 · 上次修改 3 个月前</span></span>
+          <span class="chevron">›</span>
+        </button>
+        <button class="list-item" type="button" data-toast="新手机号需通过短信验证；改号后旧号立即失效"
+          data-hot="⑤" data-hot-name="修改手机号" data-hot-pos="top-right" data-hot-label="旧号验证 + 新号验证两步；改号后旧号立即失效，其他设备需重新登录">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="5" y="3" width="10" height="14" rx="2.4"/><path d="M8.5 13.6h3"/></svg>
+          </span>
+          <span class="li-text">修改手机号<span class="li-sub">138****8000</span></span>
+          <span class="chevron">›</span>
+        </button>
+      </div>
+
+      <div class="section-title">权限版本</div>
+      <div class="card sec-pver">
+        <div class="sec-pver-head">
+          <div>
+            <div class="sec-pver-title">当前家庭权限版本</div>
+            <div class="tiny">随角色变更自动更新</div>
+          </div>
+          <span class="sec-pver-num num">pver 12</span>
+        </div>
+        <div class="sec-pver-rows">
+          <div class="sec-pver-row"><span class="k">最近变更</span><span class="v">09-28 管理员调整角色</span></div>
+          <div class="sec-pver-row"><span class="k">本机权限缓存</span><span class="v">已失效 · 待下次请求刷新</span></div>
+        </div>
+        <div class="sec-pver-note">角色或权限变更后版本号自动 +1，客户端收到权限更新事件立即失效缓存，无需重新登录；跨服务生效 ≤ 1 秒，客户端以「下一次请求」为准。</div>
+        <button class="btn btn-secondary btn-sm" type="button" id="pver-recheck"
+          data-hot="⑥" data-hot-name="权限版本自查" data-hot-pos="top-right" data-hot-label="重新拉取快照比对 pver；一致提示已是最新，不一致自动刷新本机权限缓存">重新校验</button>
+      </div>
+    </div>
+
+    <div class="sec-sk" aria-hidden="true">
+      <div class="skeleton sk-block"></div>
+      <div class="skeleton sk-line" style="width:44%"></div>
+      <div class="skeleton sk-block" style="height:120px"></div>
+      <div class="skeleton sk-line" style="width:60%"></div>
+      <div class="skeleton sk-block"></div>
+    </div>
+  </div>
+
+  <div class="sheet-mask" id="sheet-unlink" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>下线这台设备？</h3>
+      <p class="sheet-sub">下线后该设备需重新登录才能访问家庭数据；本机和其他设备不受影响。</p>
+      <div class="sec-sheet-device">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3.5" y="4.5" width="13" height="9.5" rx="1.8"/><path d="M2.5 16.5h15"/></svg>
+        <b id="unlink-name">iPad Air</b>
+        <span class="tiny">杭州 · 2 天前</span>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-danger btn-block" type="button" id="confirm-unlink">确认下线</button>
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var state = new URLSearchParams(location.search).get('state') || 'default';
+  var lock = document.getElementById('lock-switch');
+
+  if (state === 'lockoff') lock.checked = false;
+
+  lock.addEventListener('change', function () {
+    if (state === 'lockoff' && lock.checked) {
+      window.HC.toast('已了解，正在前往设置设备锁');
+      setTimeout(function () { location.href = 'pin-set.html'; }, 500);
+      return;
+    }
+    if (!lock.checked) {
+      lock.checked = true;
+      window.HC.toast('关闭设备锁需先验证 PIN');
+      return;
+    }
+  });
+
+  document.querySelectorAll('[data-device]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.getElementById('unlink-name').textContent = b.getAttribute('data-device');
+    });
+  });
+
+  document.getElementById('confirm-unlink').addEventListener('click', function () {
+    var name = document.getElementById('unlink-name').textContent;
+    window.HC.closeSheet(document.getElementById('sheet-unlink'));
+    window.HC.toast(name + ' 已下线，需重新登录');
+  });
+
+  document.getElementById('pver-recheck').addEventListener('click', function () {
+    window.HC.toast('权限版本已是最新（pver 12）');
+  });
+</script>
+</body>
+</html>

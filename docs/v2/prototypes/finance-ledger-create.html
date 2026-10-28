@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>新建账本 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-content { padding-bottom: 24px; }
+
+  .fx-cancel {
+    height: 36px; padding: 0 2px;
+    display: inline-flex; align-items: center;
+    border: 0; background: none;
+    font-family: inherit; font-size: var(--fs-15); font-weight: 500;
+    color: var(--text-2); cursor: pointer;
+  }
+
+  .fx-banner {
+    display: none; align-items: flex-start; gap: 8px;
+    margin: 4px 0 14px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-banner svg { flex: none; margin-top: 1px; }
+  .fx-banner b { display: block; font-size: var(--fs-13); margin-bottom: 2px; }
+  .fx-banner-error { background: var(--danger-soft); color: var(--danger); }
+  body[data-state="error"] .fx-banner-error { display: flex; }
+
+  .fx-note {
+    display: flex; gap: 10px;
+    margin: 4px 0 16px; padding: 12px 14px;
+    border-radius: var(--radius-lg);
+    background: var(--brand-soft);
+    border: 1px solid var(--brand-soft-border);
+    color: var(--text-2);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-note > svg { flex: none; margin-top: 1px; color: var(--brand-text); }
+  .fx-note b { display: block; margin-bottom: 3px; font-size: var(--fs-13); color: var(--text); }
+
+  .fx-form { padding-top: 2px; }
+  .fx-required { margin-left: 4px; font-size: var(--fs-11); font-weight: 600; color: var(--text-3); }
+
+  .fx-seg-full { width: 100%; }
+  .fx-seg-full button { flex: 1; padding: 9px 6px; }
+
+  .fx-pick {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    padding: 10px 14px; min-height: 56px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-family: inherit; text-align: left; color: var(--text);
+    cursor: pointer;
+  }
+  .fx-pick:hover { border-color: var(--border-strong); }
+  .fx-pick .chevron { flex: none; color: var(--text-3); }
+  .fx-pick-body { flex: 1; min-width: 0; }
+  .fx-pick-v { display: block; font-size: var(--fs-15); font-weight: 600; }
+  .fx-pick-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
+  .fx-pick-avs { display: inline-flex; align-items: center; flex: none; }
+  .fx-pick-avs .avatar { width: 24px; height: 24px; font-size: 10px; }
+  .fx-pick-avs .avatar + .avatar { margin-left: -7px; border: 1px solid var(--surface); }
+
+  /* 成员多选区：默认收起 */
+  .fx-mpanel { display: none; margin-top: 8px; }
+  .fx-mpanel.is-open { display: block; }
+  body[data-state="members"] .fx-mpanel { display: block; }
+
+  .fx-mrow {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 14px;
+    font-size: var(--fs-14);
+    cursor: pointer;
+  }
+  .fx-mrow + .fx-mrow { border-top: 1px solid var(--border); }
+  .fx-mrow:hover { background: var(--surface-2); }
+  .fx-mrow input { margin: 0; }
+  .fx-mrow input:disabled { opacity: .4; cursor: not-allowed; }
+  .fx-av-1 { background: var(--brand); color: var(--on-brand); border-color: transparent; }
+  .fx-av-2 { background: var(--accent-soft); color: var(--accent); }
+  .fx-av-3 { background: var(--info-soft); color: var(--info); }
+  .fx-mbody { flex: 1; min-width: 0; }
+  .fx-mname { display: block; font-size: var(--fs-14); font-weight: 600; }
+  .fx-msub { display: block; margin-top: 1px; font-size: var(--fs-11); color: var(--text-3); }
+  .fx-msub .tag { margin-left: 4px; }
+
+  .fx-mnote {
+    display: none; align-items: flex-start; gap: 8px;
+    margin-top: 8px; padding: 9px 11px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2); color: var(--text-2);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-mnote svg { flex: none; margin-top: 1px; color: var(--text-3); }
+  .fx-mnote.is-on { display: flex; }
+  body[data-type="private"] .fx-mnote { display: flex; }
+
+  .fx-tag-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .fx-tag-add {
+    display: inline-flex; align-items: center; gap: 4px;
+    height: 32px; padding: 0 12px;
+    border: 1px dashed var(--border-strong); border-radius: var(--radius-pill);
+    background: transparent; color: var(--text-2);
+    font-family: inherit; font-size: var(--fs-13); font-weight: 600;
+    cursor: pointer;
+  }
+  .fx-tag-add:hover { border-color: var(--brand-text); color: var(--brand-text); }
+
+  .fx-foot {
+    flex: none;
+    padding: 10px 16px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+  .fx-foot-note { margin-top: 8px; text-align: center; line-height: var(--lh-normal); }
+</style>
+</head>
+<body data-screen="F23 新建账本" data-states="default,members,error">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <button class="fx-cancel" type="button" data-go="finance-ledger.html"
+        data-hot="①" data-hot-name="取消" data-hot-pos="outer-top-left"
+        data-hot-label="回账本列表；未保存内容直接丢弃，不落草稿、不入离线队列，也不会改动任何流水的归属">
+        取消</button>
+    </div>
+    <div class="nav-title">新建账本</div>
+    <div class="nav-right"></div>
+  </div>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 保存后先排队
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-banner fx-banner-error">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
+      <div>
+        <b>还有 1 项需要补全</b>
+        账本名称必填，最多 12 个字；其余字段都有默认值。
+      </div>
+    </div>
+
+    <div class="fx-note"
+      data-hot="⑦" data-hot-name="口径说明" data-hot-pos="bottom-right"
+      data-hot-label="常驻一句「分组，不是隔离」：账本只做归集分组，不建权限边界；成员范围决定谁往这里记账，谁能看到什么仍由角色与单笔流水的可见性决定">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5h5l1.6 2H17v10.5H3z"/><path d="M3 5.5V4h5"/><path d="M7.5 12h5"/></svg>
+      <span>
+        <b>账本是分组，不是隔离</b>
+        它只是把流水与报表按范围归到一起，不建权限边界；成员范围决定谁往这里记账，谁能看到什么仍由角色与单笔流水的可见性决定。
+      </span>
+    </div>
+
+    <div class="fx-form">
+      <div class="field">
+        <label class="field-label" for="fx-name">名称<span class="fx-required">必填</span></label>
+        <input class="input" id="fx-name" type="text" maxlength="12" value="旅行 2026"
+          placeholder="例如：旅行 2026、装修" autocomplete="off"
+          data-hot="②" data-hot-name="名称" data-hot-pos="outer-top-right"
+          data-hot-label="必填、上限 12 字，只做首尾空白裁剪；同名账本允许存在（用类型与标签区分）；为空时红框 + 行内错误，不弹全局层">
+        <div class="field-error" role="alert">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
+          请填写账本名称
+        </div>
+        <div class="help">名称出现在流水筛选、报表图例与记账页的账本选择器里。</div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">类型</span>
+        <div class="segmented fx-seg-full" id="fx-type" role="tablist"
+          data-hot="③" data-hot-name="类型" data-hot-pos="outer-top-right"
+          data-hot-label="共享 / 私有 / 项目三选一：共享全家一起记，私有只归你自己记账，项目用于旅行装修这类阶段性归集；三种类型都不是隔离域，只影响记账入口与报表分组">
+          <button type="button" role="tab" aria-selected="true" data-type="shared">共享</button>
+          <button type="button" role="tab" aria-selected="false" data-type="private">私有</button>
+          <button type="button" role="tab" aria-selected="false" data-type="project">项目</button>
+        </div>
+        <div class="help" id="fx-type-help">共享：全家一起记，范围里的成员都能往这里记账。</div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">成员范围</span>
+        <button class="fx-pick" type="button" id="fx-mtoggle"
+          data-hot="④" data-hot-name="成员范围" data-hot-pos="outer-bottom-right"
+          data-hot-label="点开就地展开多选，不跳页；只决定谁往这个账本记账，不决定谁能看到流水；选「私有」时范围自动收敛为本人并置灰其他人">
+          <span class="fx-pick-avs" aria-hidden="true">
+            <span class="avatar fx-av-1">我</span>
+            <span class="avatar fx-av-2">妈</span>
+            <span class="avatar fx-av-3">满</span>
+          </span>
+          <span class="fx-pick-body">
+            <span class="fx-pick-v" id="fx-mcount">3 位成员</span>
+            <span class="fx-pick-sub">你、妈妈、小满可以往这个账本记账</span>
+          </span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+
+        <div class="fx-mpanel" id="fx-mpanel">
+          <div class="list">
+            <label class="checkbox fx-mrow">
+              <input type="checkbox" checked data-member="我" aria-label="我">
+              <span class="avatar fx-av-1">我</span>
+              <span class="fx-mbody">
+                <span class="fx-mname">李建国</span>
+                <span class="fx-msub">爸爸 · 你 · 管理员</span>
+              </span>
+            </label>
+            <label class="checkbox fx-mrow">
+              <input type="checkbox" checked data-member="妈妈" aria-label="妈妈">
+              <span class="avatar fx-av-2">妈</span>
+              <span class="fx-mbody">
+                <span class="fx-mname">李妈妈</span>
+                <span class="fx-msub">妈妈 · 成人成员</span>
+              </span>
+            </label>
+            <label class="checkbox fx-mrow">
+              <input type="checkbox" checked data-member="小满" aria-label="小满">
+              <span class="avatar fx-av-3">满</span>
+              <span class="fx-mbody">
+                <span class="fx-mname">小满</span>
+                <span class="fx-msub">女儿 · 儿童账号 · 只读</span>
+              </span>
+            </label>
+            <label class="checkbox fx-mrow">
+              <input type="checkbox" data-member="爷爷" aria-label="爷爷">
+              <span class="avatar">爷</span>
+              <span class="fx-mbody">
+                <span class="fx-mname">爷爷<span class="tag">无账号</span></span>
+                <span class="fx-msub">爷爷 · 代管：李建国</span>
+              </span>
+            </label>
+          </div>
+          <div class="fx-mnote is-on">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
+            <span>范围只决定谁往这里记账。没被选中的成员照样能按流水可见性看到该看到的记录——账本不会把数据藏起来。</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">标签</span>
+        <div class="fx-tag-row"
+          data-hot="⑤" data-hot-name="标签" data-hot-pos="bottom-right"
+          data-hot-label="标签可多选，用于流水筛选与报表图例，与账本共用同一套标签语义、不另建标签表；取消全部标签时按账本自身归集">
+          <button class="chip" type="button" aria-pressed="true" data-toast="已选标签「旅行」：记账时带这个标签的流水会同时进入本账本的报表">旅行</button>
+          <button class="chip" type="button" aria-pressed="false" data-toast="已选标签「自驾」">自驾</button>
+          <button class="chip" type="button" aria-pressed="false" data-toast="已选标签「住宿」">住宿</button>
+          <button class="chip" type="button" aria-pressed="false" data-toast="已选标签「大额」">大额</button>
+          <button class="chip fx-tag-add" type="button" data-toast="新建标签随标签能力接入；P1 先在记账页临时新增，保存后进入家庭标签集"
+            data-hot="⑥" data-hot-name="新建标签" data-hot-pos="outer-bottom-right"
+            data-hot-label="新建标签不跳页，在本页给未交付提示；P1 标签集由记账页临时新增后沉淀，账本页只做多选，避免两处维护同一份标签">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
+            新建
+          </button>
+        </div>
+        <div class="help">标签是筛选条件，不参与权限判断；同名的成员标签与项目标签共用一份。</div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">说明</span>
+        <textarea class="textarea" id="fx-note" maxlength="60" rows="2"
+          placeholder="例如：甘南自驾 10 月 1—7 日，费用归到这里">甘南自驾 10 月 1—7 日，费用归到这里</textarea>
+        <div class="help">说明只在本家庭成员内可见，用于区分同名账本。</div>
+      </div>
+    </div>
+
+    <p class="tiny" style="margin-top:4px;line-height:var(--lh-normal)">新建账本不会搬动已有流水：之后记账时选它才会落进来，历史流水仍留在原账本，必要时在单笔详情里改归属。</p>
+  </div>
+
+  <div class="fx-foot">
+    <button class="btn btn-primary btn-block" type="button" id="fx-save"
+      data-hot="⑧" data-hot-name="保存" data-hot-pos="outer-bottom-right"
+      data-hot-label="名称缺失时只标红该字段并在顶部给一条错误，不弹全局层；成功回账本列表并出现在对应类型分组里，刚建好的账本不会自动切成当前账本">
+      创建账本
+    </button>
+    <div class="fx-foot-note tiny">创建后可在流水页的账本选择器里切过去</div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var fxState = new URLSearchParams(location.search).get('state') || 'default';
+  var panel = document.getElementById('fx-mpanel');
+  var nameInput = document.getElementById('fx-name');
+  var typeHelp = document.getElementById('fx-type-help');
+  var mcount = document.getElementById('fx-mcount');
+
+  var typeText = {
+    shared: '共享：全家一起记，范围里的成员都能往这里记账。',
+    private: '私有：只归到你自己名下记账；家人视图不变，也不改变可见范围。',
+    project: '项目：把旅行、装修这类阶段性的流水与预算归到一起。'
+  };
+
+  function setType(t) {
+    document.body.setAttribute('data-type', t);
+    document.querySelectorAll('#fx-type button').forEach(function (b) {
+      b.setAttribute('aria-selected', String(b.getAttribute('data-type') === t));
+    });
+    typeHelp.textContent = typeText[t];
+    var boxes = panel.querySelectorAll('input[data-member]');
+    if (t === 'private') {
+      boxes.forEach(function (x) {
+        x.checked = x.getAttribute('data-member') === '我';
+        x.disabled = x.getAttribute('data-member') !== '我';
+      });
+      mcount.textContent = '1 位成员';
+    } else {
+      boxes.forEach(function (x) { x.disabled = false; });
+      syncCount();
+    }
+  }
+
+  function syncCount() {
+    var n = 0;
+    panel.querySelectorAll('input[data-member]').forEach(function (x) { if (x.checked) n += 1; });
+    mcount.textContent = n + ' 位成员';
+  }
+
+  document.querySelectorAll('#fx-type button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      setType(b.getAttribute('data-type'));
+    });
+  });
+
+  document.getElementById('fx-mtoggle').addEventListener('click', function () {
+    panel.classList.toggle('is-open');
+  });
+
+  panel.querySelectorAll('input[data-member]').forEach(function (x) {
+    x.addEventListener('change', function () {
+      syncCount();
+      window.HC.toast(x.checked
+        ? '已加入「' + x.getAttribute('data-member') + '」：可以往这里记账'
+        : '已移出「' + x.getAttribute('data-member') + '」：仍可按流水可见性查看记录');
+    });
+  });
+
+  if (fxState === 'members') {
+    panel.classList.add('is-open');
+  } else {
+    setType('shared');
+  }
+
+  if (fxState === 'error') {
+    nameInput.value = '';
+    nameInput.classList.add('is-error');
+  }
+
+  nameInput.addEventListener('input', function () {
+    if (nameInput.value.trim()) {
+      nameInput.classList.remove('is-error');
+      document.body.setAttribute('data-state', 'default');
+    }
+  });
+
+  document.getElementById('fx-save').addEventListener('click', function () {
+    if (!nameInput.value.trim()) {
+      nameInput.classList.add('is-error');
+      document.body.setAttribute('data-state', 'error');
+      nameInput.focus();
+      return;
+    }
+    window.HC.toast('账本已创建，可在流水的账本选择器里切过去');
+    setTimeout(function () { location.href = 'finance-ledger.html'; }, 1000);
+  });
+</script>
+</body>
+</html>

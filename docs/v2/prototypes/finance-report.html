@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>报表 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-period { flex: none; }
+  .fx-content { padding-bottom: 24px; }
+
+  .fx-viewbar { padding: 2px 0 10px; }
+  .fx-viewbar .segmented { width: 100%; }
+  .fx-viewbar .segmented button { flex: 1; padding: 7px 4px; }
+
+  .fx-view { display: none; }
+  .fx-view.is-on { display: block; }
+
+  .fx-kpi-card { padding: 14px var(--sp-4); }
+  .fx-kpi-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    font-size: var(--fs-13); font-weight: 700;
+  }
+  .fx-kpi-head .tiny { font-weight: 500; }
+  .fx-kpis {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 8px; margin-top: 12px;
+  }
+  .fx-kpi { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .fx-kpi-k { font-size: var(--fs-11); color: var(--text-3); }
+  .fx-kpi-v { font-size: var(--fs-15); letter-spacing: -.02em; }
+  .fx-delta { display: inline-flex; align-items: center; gap: 2px; font-size: var(--fs-11); font-weight: 600; color: var(--text-3); }
+  .fx-delta.is-up { color: var(--success); }
+  .fx-delta.is-down { color: var(--danger); }
+
+  .fx-card-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .fx-card-title { font-size: var(--fs-13); font-weight: 700; }
+  .fx-card-title .tiny { font-weight: 500; margin-left: 6px; }
+
+  .fx-line-wrap { position: relative; }
+  .fx-line { display: block; width: 100%; height: auto; }
+  .fx-line-tag {
+    position: absolute; top: 0; left: 0;
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: var(--fs-11); color: var(--text-3);
+  }
+  .fx-line-tag b { font-family: var(--font-num); font-size: var(--fs-12); color: var(--text); font-weight: 700; }
+  .fx-xlabels {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    margin-top: 2px; font-size: var(--fs-11); color: var(--text-3);
+    font-family: var(--font-num);
+  }
+  .fx-xlabels span:nth-child(2), .fx-xlabels span:nth-child(3) { text-align: center; }
+  .fx-xlabels span:last-child { text-align: right; }
+
+  .fx-link {
+    display: flex; align-items: center; justify-content: flex-end; gap: 4px;
+    margin-top: 10px; padding-top: 10px;
+    border-top: 1px solid var(--border);
+    font-size: var(--fs-12); font-weight: 600; color: var(--brand-text);
+    text-decoration: none;
+  }
+
+  .fx-legend { display: flex; align-items: center; gap: 14px; font-size: var(--fs-11); color: var(--text-3); }
+  .fx-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .fx-swatch-bar { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+  .fx-bars { display: block; width: 100%; height: auto; margin-top: 8px; }
+  .fx-bars-x {
+    display: grid; grid-template-columns: repeat(6, 1fr);
+    margin-top: 4px; font-size: var(--fs-11); color: var(--text-3);
+    text-align: center; font-family: var(--font-num);
+  }
+
+  .fx-rank {
+    display: block; padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    text-decoration: none; color: var(--text);
+  }
+  .fx-rank:last-of-type { border-bottom: 0; }
+  .fx-rank-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .fx-rank-name { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-14); font-weight: 600; }
+  .fx-rank-amt { font-size: var(--fs-13); color: var(--text); }
+  .fx-rank-bar {
+    display: block; height: 6px; margin-top: 7px;
+    border-radius: 3px; background: var(--surface-2); overflow: hidden;
+  }
+  .fx-rank-bar i { display: block; height: 100%; border-radius: 3px; background: var(--brand); }
+  .fx-rank-sub {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 5px; font-size: var(--fs-11); color: var(--text-3);
+  }
+  .fx-rank-sub .num { color: var(--text-2); }
+
+  .fx-member { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); text-decoration: none; color: var(--text); }
+  .fx-member:last-of-type { border-bottom: 0; }
+  .fx-member-body { flex: 1; min-width: 0; }
+  .fx-member-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .fx-member-name { font-size: var(--fs-14); font-weight: 600; }
+  .fx-member-amt { font-size: var(--fs-13); }
+  .fx-member .fx-rank-bar { margin-top: 6px; }
+  .fx-member-sub { margin-top: 4px; font-size: var(--fs-11); color: var(--text-3); }
+
+  .fx-tip {
+    margin-top: 12px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2); color: var(--text-2);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+
+  .fx-empty { display: none; }
+  body[data-state="empty"] .fx-empty { display: flex; }
+  body[data-state="empty"] .fx-views { display: none; }
+</style>
+</head>
+<body data-screen="F17 报表" data-states="default,trend,category,member,empty">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <header class="navbar">
+    <div class="nav-left">
+      <a class="icon-btn" href="home.html" aria-label="返回首页"
+        data-hot="①" data-hot-name="返回首页" data-hot-pos="outer-top-left"
+        data-hot-label="回首页面矩阵；面内不提供面切换器，切面只能回首页点格（⑫）">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </a>
+    </div>
+    <div class="nav-title">财务</div>
+    <div class="nav-right">
+      <a class="icon-btn" href="finance-report-export.html" aria-label="导出报表"
+        data-hot="⑩" data-hot-name="导出" data-hot-pos="outer-top-right"
+        data-hot-label="进导出页 finance/report/export，并把当前时间窗与视图带过去；范围、格式、type 三参数在导出页可见可改">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v9"/><path d="M6.5 8.5 10 12l3.5-3.5"/><path d="M4 14v2.5h12V14"/></svg>
+      </a>
+    </div>
+  </header>
+
+  <nav class="l2-tabs" aria-label="财务二级导航"
+    data-hot="②" data-hot-name="面内二级 Tab" data-hot-pos="outer-top-right"
+    data-hot-label="流水 / 报表 / 预算 / 账本 / 账户与设置五个一级页互切，本页高亮「报表」；面内切页不叠加底部五项，也不出现面切换器">
+    <a class="l2-tab" href="finance-flow.html">流水</a>
+    <a class="l2-tab" href="finance-report.html" aria-current="page">报表</a>
+    <a class="l2-tab" href="finance-budget.html">预算</a>
+    <a class="l2-tab" href="finance-ledger.html">账本</a>
+    <a class="l2-tab" href="finance-settings.html">账户与设置</a>
+  </nav>
+
+  <div class="period-bar fx-period"
+    data-hot="③" data-hot-name="时间窗条" data-hot-pos="bottom-right"
+    data-hot-label="月 / 季 / 年三档，与流水、预算、首页四处同源（4.5.3）；只设月度预算时切到季/年显「未设该周期预算」，不折算。切档后四个视图与本页数字一起变">
+    <span class="period-label">
+      2026 年 10 月
+      <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5 6 7.5l3-3"/></svg>
+    </span>
+    <div class="segmented">
+      <button type="button" aria-selected="true">月</button>
+      <button type="button" aria-selected="false" data-toast="切到季度：报表重算本期与「上一自然季」环比；只有月度预算时预算页显「未设该周期预算」">季</button>
+      <button type="button" aria-selected="false" data-toast="切到年度：环比对比「上一自然年」；首页、流水、预算同步为该时间窗">年</button>
+    </div>
+  </div>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 显示本机缓存的报表，截至 08:10
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-viewbar"
+      data-hot="④" data-hot-name="四视图分段" data-hot-pos="outer-top-right"
+      data-hot-label="概览 / 趋势 / 分类 / 成员同页切换，不新增路由、不重发四个接口（一次报表聚合按视图取数）">
+      <div class="segmented" role="tablist">
+        <button type="button" role="tab" aria-selected="true" data-view-btn="overview">概览</button>
+        <button type="button" role="tab" aria-selected="false" data-view-btn="trend">趋势</button>
+        <button type="button" role="tab" aria-selected="false" data-view-btn="category">分类</button>
+        <button type="button" role="tab" aria-selected="false" data-view-btn="member">成员</button>
+      </div>
+    </div>
+
+    <div class="fx-views">
+      <!-- 概览 -->
+      <section class="fx-view" data-view="overview">
+        <div class="card fx-kpi-card"
+          data-hot="⑤" data-hot-name="收支三数与环比" data-hot-pos="outer-top-right"
+          data-hot-label="收入 / 支出 / 结余三数 + 环比：上期随粒度（上月/上季/上年），上期为空显「无对比期」不除以 0；负值走 danger。明细入口在下方折线卡的「查看本期明细」">
+          <div class="fx-kpi-head">
+            <span>2026 年 10 月</span>
+            <span class="tiny">与 9 月对比</span>
+          </div>
+          <div class="fx-kpis">
+            <div class="fx-kpi">
+              <span class="fx-kpi-k">收入</span>
+              <span class="amount fx-kpi-v">¥12,480.00</span>
+              <span class="fx-delta is-up">
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5v-7M3 5.5 6 2.5l3 3"/></svg>
+                6.1%</span>
+            </div>
+            <div class="fx-kpi">
+              <span class="fx-kpi-k">支出</span>
+              <span class="amount fx-kpi-v">-¥8,632.40</span>
+              <span class="fx-delta">
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5v-7M3 5.5 6 2.5l3 3"/></svg>
+                11.4%</span>
+            </div>
+            <div class="fx-kpi">
+              <span class="fx-kpi-k">结余</span>
+              <span class="amount fx-kpi-v">¥3,847.60</span>
+              <span class="fx-delta is-down">
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.5v7M3 6.5 6 9.5l3-3"/></svg>
+                4.1%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-title"><span>累计余额</span><span class="tiny">服务端逐期累加</span></div>
+        <div class="card"
+          data-hot="⑥" data-hot-name="累计余额折线" data-hot-pos="outer-top-right"
+          data-hot-label="按账户余额逐期累加，累加由服务端做、前端不二次累加（4.5.3、19.3#9）；卡内「查看本期明细」进流水筛选态">
+          <div class="fx-line-wrap">
+            <span class="fx-line-tag">10 月末 <b>¥24,600.00</b></span>
+            <svg class="fx-line" viewBox="0 0 320 120" role="img" aria-label="累计余额折线：1 月 ¥12,400 升至 10 月 ¥24,600">
+              <line x1="0" y1="26" x2="320" y2="26" stroke="currentColor" opacity=".1"/>
+              <line x1="0" y1="56" x2="320" y2="56" stroke="currentColor" opacity=".1"/>
+              <line x1="0" y1="86" x2="320" y2="86" stroke="currentColor" opacity=".1"/>
+              <path d="M10 84.6 L43 81.3 L76 85.6 L110 69.4 L143 65.6 L176 71.3 L210 53.7 L243 49.4 L276 42.8 L310 26.6 L310 100 L10 100 Z"
+                fill="var(--brand)" opacity=".1"/>
+              <polyline points="10,84.6 43,81.3 76,85.6 110,69.4 143,65.6 176,71.3 210,53.7 243,49.4 276,42.8 310,26.6"
+                fill="none" stroke="var(--brand)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="210" cy="53.7" r="2.6" fill="currentColor" opacity=".45"/>
+              <circle cx="243" cy="49.4" r="2.6" fill="currentColor" opacity=".45"/>
+              <circle cx="276" cy="42.8" r="2.6" fill="currentColor" opacity=".45"/>
+              <circle cx="310" cy="26.6" r="6.5" fill="none" stroke="var(--brand)" opacity=".3"/>
+              <circle cx="310" cy="26.6" r="3.4" fill="var(--brand)"/>
+            </svg>
+            <div class="fx-xlabels"><span>1 月</span><span>4 月</span><span>7 月</span><span>10 月</span></div>
+          </div>
+          <a class="fx-link" href="finance-flow.html?state=filter">查看本期明细
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>
+          </a>
+        </div>
+
+        <div class="fx-tip">环比的上期随粒度走：月比上月、季比上季、年比上年；上期没有数据时显示「无对比期」，不按 0 代入除法。</div>
+      </section>
+
+      <!-- 趋势 -->
+      <section class="fx-view" data-view="trend">
+        <div class="section-title"><span>按月 · 近 6 个月</span><span class="tiny">收入与支出</span></div>
+        <div class="card"
+          data-hot="⑦" data-hot-name="趋势柱状" data-hot-pos="outer-top-right"
+          data-hot-label="近 6 个月收入/支出柱状；每根柱点进该月流水筛选态（带 2026-10 + type 两个参数）。切到季/年档时换成分季/分年柱">
+          <div class="fx-card-head">
+            <span class="fx-card-title">收支趋势</span>
+            <span class="fx-legend">
+              <span><i class="fx-swatch-bar" style="background:currentColor;opacity:.3"></i>收入</span>
+              <span><i class="fx-swatch-bar" style="background:var(--brand)"></i>支出</span>
+            </span>
+          </div>
+          <svg class="fx-bars" viewBox="0 0 320 132" role="img" aria-label="近 6 个月收支柱状图，10 月收入 12480 元、支出 8632 元">
+            <line x1="0" y1="120" x2="320" y2="120" stroke="currentColor" opacity=".15"/>
+            <rect x="20" y="29.2" width="15" height="90.8" rx="3" fill="currentColor" opacity=".28"/>
+            <rect x="38" y="64.6" width="15" height="55.4" rx="3" fill="var(--brand)"/>
+            <rect x="68" y="24.6" width="15" height="95.4" rx="3" fill="currentColor" opacity=".28"/>
+            <rect x="86" y="67.7" width="15" height="52.3" rx="3" fill="var(--brand)"/>
+            <rect x="116" y="28.5" width="15" height="91.5" rx="3" fill="currentColor" opacity=".28"/>
+            <rect x="134" y="57.7" width="15" height="62.3" rx="3" fill="var(--brand)"/>
+            <rect x="164" y="21.5" width="15" height="98.5" rx="3" fill="currentColor" opacity=".28"/>
+            <rect x="182" y="61.5" width="15" height="58.5" rx="3" fill="var(--brand)"/>
+            <rect x="212" y="29.5" width="15" height="90.5" rx="3" fill="currentColor" opacity=".28"/>
+            <rect x="230" y="60.4" width="15" height="59.6" rx="3" fill="var(--brand)"/>
+            <rect x="260" y="24" width="15" height="96" rx="3" fill="currentColor" opacity=".28"/>
+            <rect x="278" y="53.6" width="15" height="66.4" rx="3" fill="var(--brand)"/>
+            <rect x="276" y="49" width="19" height="2" rx="1" fill="var(--brand)" opacity=".55"/>
+          </svg>
+          <div class="fx-bars-x"><span>5 月</span><span>6 月</span><span>7 月</span><span>8 月</span><span>9 月</span><span>10 月</span></div>
+          <a class="fx-link" href="finance-flow.html?state=filter">查看 10 月流水
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>
+          </a>
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <div class="fx-card-head"><span class="fx-card-title">本月极值</span></div>
+          <div class="fx-rank-sub" style="margin-top:0"><span>支出最高</span><span class="num">10 月 · -¥8,632.40</span></div>
+          <div class="fx-rank-sub"><span>收入最高</span><span class="num">8 月 · ¥12,800.00</span></div>
+          <div class="fx-rank-sub"><span>结余最高</span><span class="num">8 月 · ¥5,200.00</span></div>
+        </div>
+
+        <div class="fx-tip">趋势只取时间窗内的自然月；跨年时按家庭时区切月，不按设备时区。</div>
+      </section>
+
+      <!-- 分类 -->
+      <section class="fx-view" data-view="category">
+        <div class="section-title"><span>支出分类 · 本月</span><span class="tiny">占比按支出合计</span></div>
+        <div class="card"
+          data-hot="⑧" data-hot-name="分类排行" data-hot-pos="outer-top-right"
+          data-hot-label="按支出金额降序的条形排行 + 占比；整行点进流水筛选态（带 category_id），顺序与分类排序页一致">
+          <a class="fx-rank" href="finance-flow.html?state=filter">
+            <span class="fx-rank-top"><span class="fx-rank-name">餐饮</span><span class="fx-rank-amt num">-¥2,486.40</span></span>
+            <span class="fx-rank-bar"><i style="width:100%"></i></span>
+            <span class="fx-rank-sub"><span>36 笔</span><span class="num">28.8%</span></span>
+          </a>
+          <a class="fx-rank" href="finance-flow.html?state=filter">
+            <span class="fx-rank-top"><span class="fx-rank-name">其他</span><span class="fx-rank-amt num">-¥1,874.00</span></span>
+            <span class="fx-rank-bar"><i style="width:75.4%"></i></span>
+            <span class="fx-rank-sub"><span>8 笔</span><span class="num">21.7%</span></span>
+          </a>
+          <a class="fx-rank" href="finance-flow.html?state=filter">
+            <span class="fx-rank-top"><span class="fx-rank-name">居家</span><span class="fx-rank-amt num">-¥1,576.00</span></span>
+            <span class="fx-rank-bar"><i style="width:63.4%"></i></span>
+            <span class="fx-rank-sub"><span>6 笔</span><span class="num">18.3%</span></span>
+          </a>
+          <a class="fx-rank" href="finance-flow.html?state=filter">
+            <span class="fx-rank-top"><span class="fx-rank-name">交通</span><span class="fx-rank-amt num">-¥1,262.00</span></span>
+            <span class="fx-rank-bar"><i style="width:50.8%"></i></span>
+            <span class="fx-rank-sub"><span>14 笔</span><span class="num">14.6%</span></span>
+          </a>
+          <a class="fx-rank" href="finance-flow.html?state=filter">
+            <span class="fx-rank-top"><span class="fx-rank-name">教育</span><span class="fx-rank-amt num">-¥810.00</span></span>
+            <span class="fx-rank-bar"><i style="width:32.6%"></i></span>
+            <span class="fx-rank-sub"><span>2 笔 · 已停用分类，历史照常统计</span><span class="num">9.4%</span></span>
+          </a>
+          <a class="fx-rank" href="finance-flow.html?state=filter">
+            <span class="fx-rank-top"><span class="fx-rank-name">娱乐</span><span class="fx-rank-amt num">-¥624.00</span></span>
+            <span class="fx-rank-bar"><i style="width:25.1%"></i></span>
+            <span class="fx-rank-sub"><span>3 笔</span><span class="num">7.2%</span></span>
+          </a>
+          <a class="fx-link" href="finance-flow.html?state=filter">查看分类明细
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>
+          </a>
+        </div>
+
+        <div class="fx-tip">私密流水计入合计但不展开明细；他人视角下只显示「私密」，不显示分类名与金额。</div>
+      </section>
+
+      <!-- 成员 -->
+      <section class="fx-view" data-view="member">
+        <div class="section-title"><span>成员支出 · 本月</span><span class="tiny">共 4 位成员</span></div>
+        <div class="card"
+          data-hot="⑨" data-hot-name="成员排行" data-hot-pos="outer-top-right"
+          data-hot-label="按成员汇总支出并排行 + 占比；点某成员进流水筛选态（带 member_id）。含无账号成员，其流水记在代管人名下">
+          <a class="fx-member" href="finance-flow.html?state=filter">
+            <span class="avatar" style="background:var(--accent-soft);color:var(--accent)">妈</span>
+            <span class="fx-member-body">
+              <span class="fx-member-top"><span class="fx-member-name">妈妈</span><span class="fx-member-amt amount">-¥3,240.00</span></span>
+              <span class="fx-rank-bar"><i style="width:100%"></i></span>
+              <span class="fx-member-sub">12 笔 · 占比 <span class="num">37.5%</span></span>
+            </span>
+          </a>
+          <a class="fx-member" href="finance-flow.html?state=filter">
+            <span class="avatar" style="background:var(--brand-soft);color:var(--brand-text)">我</span>
+            <span class="fx-member-body">
+              <span class="fx-member-top"><span class="fx-member-name">我</span><span class="fx-member-amt amount">-¥2,860.00</span></span>
+              <span class="fx-rank-bar"><i style="width:88.3%"></i></span>
+              <span class="fx-member-sub">21 笔 · 占比 <span class="num">33.1%</span></span>
+            </span>
+          </a>
+          <a class="fx-member" href="finance-flow.html?state=filter">
+            <span class="avatar">爸</span>
+            <span class="fx-member-body">
+              <span class="fx-member-top"><span class="fx-member-name">爸爸</span><span class="fx-member-amt amount">-¥1,742.00</span></span>
+              <span class="fx-rank-bar"><i style="width:53.8%"></i></span>
+              <span class="fx-member-sub">8 笔 · 占比 <span class="num">20.2%</span></span>
+            </span>
+          </a>
+          <a class="fx-member" href="finance-flow.html?state=filter">
+            <span class="avatar" style="background:var(--face-calendar-soft);color:var(--face-calendar)">女</span>
+            <span class="fx-member-body">
+              <span class="fx-member-top"><span class="fx-member-name">女儿</span><span class="fx-member-amt amount">-¥790.00</span></span>
+              <span class="fx-rank-bar"><i style="width:24.4%"></i></span>
+              <span class="fx-member-sub">5 笔 · 占比 <span class="num">9.2%</span></span>
+            </span>
+          </a>
+          <a class="fx-link" href="finance-flow.html?state=filter">查看成员明细
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>
+          </a>
+        </div>
+
+        <div class="fx-tip">成员维度是「谁的流水」而非「谁记的账」；代人记账记在被记录成员名下。访客与儿童按 16.4 裁剪，不出现他人私密流水。</div>
+      </section>
+    </div>
+
+    <div class="state fx-empty">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 24V12M13 24V7M20 24V15M27 24V10"/><path d="M4 26h24"/></svg>
+      </div>
+      <div class="state-title">2026 年 10 月没有数据</div>
+      <div class="state-desc">这个时间窗里还没有流水；记一笔，或换一个时间窗再看。空周期不画 0 值图表，也不显示「无对比期」以外的环比。</div>
+      <a class="btn btn-secondary" href="finance-tx-create.html">去记一笔</a>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  (function () {
+    var st = new URLSearchParams(location.search).get('state') || 'default';
+    var valid = { trend: 1, category: 1, member: 1 };
+
+    function show(view) {
+      document.querySelectorAll('[data-view]').forEach(function (v) {
+        v.classList.toggle('is-on', v.getAttribute('data-view') === view);
+      });
+      document.querySelectorAll('[data-view-btn]').forEach(function (b) {
+        b.setAttribute('aria-selected', String(b.getAttribute('data-view-btn') === view));
+      });
+    }
+
+    show(valid[st] ? st : 'overview');
+
+    document.querySelectorAll('[data-view-btn]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (document.body.getAttribute('data-state') === 'empty') {
+          document.body.setAttribute('data-state', 'default');
+        }
+        show(b.getAttribute('data-view-btn'));
+      });
+    });
+  })();
+</script>
+</body>
+</html>

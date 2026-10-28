@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>净资产与资产负债 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-content { padding-bottom: 20px; }
+
+  .fx-same {
+    display: flex; align-items: flex-start; gap: 9px;
+    margin-top: 6px; padding: 11px 12px;
+    border-radius: var(--radius-md);
+    background: var(--brand-soft);
+    border: 1px solid var(--brand-soft-border);
+    font-size: var(--fs-11); line-height: var(--lh-normal); color: var(--text-2);
+  }
+  .fx-same svg { flex: none; margin-top: 1px; color: var(--brand-text); }
+  .fx-same b { display: block; margin-bottom: 2px; font-size: var(--fs-12); color: var(--text); }
+  .fx-same .tag { margin-left: 4px; vertical-align: 1px; }
+
+  .fx-hero {
+    margin-top: 10px; padding: 17px 18px 15px;
+    border-radius: var(--radius-xl);
+    background: linear-gradient(135deg, var(--brand-soft) 0%, var(--surface) 70%);
+    border: 1px solid var(--brand-soft-border);
+  }
+  .fx-hero-k { font-size: var(--fs-13); color: var(--text-2); }
+  .fx-hero-v { margin-top: 4px; font-size: var(--fs-30); line-height: var(--lh-tight); letter-spacing: -.01em; }
+  .fx-hero-split {
+    display: grid; grid-template-columns: 1fr 1fr auto;
+    gap: 4px 14px;
+    margin-top: 13px; padding-top: 11px;
+    border-top: 1px solid var(--brand-soft-border);
+  }
+  .fx-hs { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .fx-hk { font-size: var(--fs-11); color: var(--text-3); }
+  .fx-hv { font-size: var(--fs-14); }
+  .fx-hv.is-liab { color: var(--danger); }
+  .fx-hero-note { margin-top: 9px; font-size: var(--fs-11); color: var(--text-3); }
+
+  .fx-sec {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin: 18px 2px 8px;
+    font-size: var(--fs-13); font-weight: 700; color: var(--text-2);
+  }
+  .fx-sec .tiny { font-weight: 500; }
+
+  .fx-group-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 9px 0; }
+  .fx-group-name { display: inline-flex; align-items: center; gap: 7px; font-size: var(--fs-14); font-weight: 600; }
+  .fx-group-name .tiny { font-weight: 500; }
+  .fx-group-amt { font-size: var(--fs-13); }
+  .fx-group-pct { width: 46px; flex: none; text-align: right; font-family: var(--font-num); font-size: var(--fs-11); color: var(--text-3); }
+  .fx-bar { display: block; height: 7px; margin: 1px 0 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+  .fx-bar i { display: block; height: 100%; border-radius: 4px; background: var(--brand); }
+  .fx-bar.is-liab i { background: var(--danger); }
+  .fx-bar-sub { display: flex; align-items: baseline; justify-content: space-between; margin-top: -4px; padding-bottom: 8px; font-size: var(--fs-11); color: var(--text-3); }
+  .fx-bar-sub .num { color: var(--text-3); }
+
+  .fx-total-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; margin: 2px 0 10px; background: var(--surface-2); }
+  .fx-total-bar i { display: block; height: 100%; }
+  .fx-total-bar i + i { border-left: 1px solid var(--surface); }
+
+  .fx-liab-list { display: block; }
+  .fx-noliab {
+    display: none; align-items: center; gap: 9px;
+    padding: 14px;
+    border-radius: var(--radius-lg);
+    border: 1px dashed var(--border-strong);
+    font-size: var(--fs-12); color: var(--text-2);
+  }
+  .fx-noliab svg { flex: none; color: var(--success); }
+  body[data-state="no-liability"] .fx-liab-list { display: none; }
+  body[data-state="no-liability"] .fx-noliab { display: flex; }
+
+  .fx-trend-wrap { position: relative; }
+  .fx-trend { display: block; width: 100%; height: auto; }
+  .fx-trend-tag {
+    position: absolute; top: 0; right: 0;
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: var(--fs-11); color: var(--text-3);
+  }
+  .fx-trend-tag b { font-family: var(--font-num); font-size: var(--fs-12); color: var(--text); }
+  .fx-xlabels {
+    display: grid; grid-template-columns: repeat(6, 1fr);
+    margin-top: 2px; font-size: var(--fs-11); color: var(--text-3);
+    font-family: var(--font-num); text-align: center;
+  }
+  .fx-delta {
+    display: inline-flex; align-items: center; gap: 2px;
+    margin-top: 8px; font-size: var(--fs-11); font-weight: 600; color: var(--success);
+  }
+
+  .fx-link-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px;
+    text-decoration: none; color: var(--text);
+    background: var(--surface);
+  }
+  .fx-link-row:hover { background: var(--surface-2); }
+  .fx-link-row .li-icon { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 9px; background: var(--surface-2); color: var(--text-2); }
+  .fx-link-row .li-text { flex: 1; min-width: 0; font-size: var(--fs-14); font-weight: 600; }
+  .fx-link-row .li-sub { display: block; margin-top: 2px; font-size: var(--fs-11); color: var(--text-3); font-weight: 400; }
+  .fx-link-row .chevron { flex: none; color: var(--text-3); }
+
+  .fx-note {
+    margin-top: 12px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    font-size: var(--fs-11); color: var(--text-3); line-height: var(--lh-normal);
+  }
+
+  .fx-error { display: none; }
+  body[data-state="error"] .fx-error { display: flex; }
+  body[data-state="error"] .fx-real { display: none; }
+
+  .fx-sk { display: none; padding-top: 6px; }
+  body[data-state="loading"] .fx-sk { display: block; }
+  body[data-state="loading"] .fx-real { display: none; }
+</style>
+</head>
+<body data-screen="F40 净资产" data-states="default,no-liability,loading,error">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <header class="navbar">
+    <div class="nav-left">
+      <a class="icon-btn" href="finance-settings.html" aria-label="返回账户与设置"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回「账户与设置」；净资产是本面二级页，不带 L2 Tab。入口在账户页的资产负债汇总，也可从首页财务格的状态句进入">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </a>
+    </div>
+    <div class="nav-title">净资产</div>
+    <div class="nav-right"></div>
+  </header>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 显示本机缓存的账户汇总
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-real">
+      <div class="fx-same"
+        data-hot="②" data-hot-name="与首页同源说明" data-hot-pos="bottom-right"
+        data-hot-label="本页与首页财务格的状态句读同一份账户汇总（4.5.8 / 18.2）：总资产、总负债、净资产三数一起变；前端不二次累加，也不允许两处各算一套">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 11.5 11.5 8.5"/><path d="M7.2 13.8 5.6 15.4a2.8 2.8 0 0 1-4-4l2.8-2.8a2.8 2.8 0 0 1 4 0"/><path d="M12.8 6.2l1.6-1.6a2.8 2.8 0 0 1 4 4l-2.8 2.8a2.8 2.8 0 0 1-4 0"/></svg>
+        <div>
+          <b>此页与首页财务格的状态句同源<span class="tag is-brand">同源</span></b>
+          两处读同一份账户汇总，账户余额一变两处一起变；本页只展示，不在前端把账户余额再加一遍。
+        </div>
+      </div>
+
+      <section class="fx-hero"
+        data-hot="③" data-hot-name="资产三数" data-hot-pos="bottom-right"
+        data-hot-label="总资产、总负债、净资产三数同屏：净资产 = 总资产 − 总负债。信用卡欠款计入负债；归档账户的历史流水仍计入，但归档账户余额不再计入账户汇总">
+        <div class="fx-hero-k">净资产</div>
+        <div class="amount fx-hero-v" id="fx-net">¥120,070.00</div>
+        <div class="fx-hero-split">
+          <div class="fx-hs"><span class="fx-hk">总资产</span><span class="amount fx-hv" id="fx-assets">¥138,720.00</span></div>
+          <div class="fx-hs"><span class="fx-hk">总负债</span><span class="amount fx-hv is-liab" id="fx-liab">¥18,650.00</span></div>
+          <div class="fx-hs"><span class="fx-hk">负债率</span><span class="num fx-hv" id="fx-ratio">13.4%</span></div>
+        </div>
+        <div class="fx-hero-note" id="fx-hero-note">截至 10 月 29 日 09:20 · 家庭币种 CNY · 含 7 个账户</div>
+      </section>
+
+      <div class="fx-sec"><span>资产构成</span><span class="tiny">按账户类型</span></div>
+      <div class="card"
+        data-hot="④" data-hot-name="资产构成" data-hot-pos="bottom-right"
+        data-hot-label="按账户类型分组占比：银行卡 91.1%、其他 8.0%、现金 0.9%，合计 100.0%。占比按总资产算，归档账户不计入；点底部入口去账户页看逐个账户">
+        <div class="fx-total-bar" aria-hidden="true">
+          <i style="width:91.1%;background:var(--brand)"></i>
+          <i style="width:8%;background:var(--accent)"></i>
+          <i style="width:.9%;background:var(--border-strong)"></i>
+        </div>
+
+        <div class="fx-group-row">
+          <span class="fx-group-name">银行卡 <span class="tiny">1 个</span></span>
+          <span class="amount fx-group-amt">¥126,400.00</span>
+          <span class="fx-group-pct">91.1%</span>
+        </div>
+        <span class="fx-bar"><i style="width:91.1%"></i></span>
+        <div class="fx-bar-sub"><span>招商银行储蓄卡 · 默认账户</span></div>
+
+        <div class="fx-group-row">
+          <span class="fx-group-name">其他 <span class="tiny">3 个</span></span>
+          <span class="amount fx-group-amt">¥11,040.00</span>
+          <span class="fx-group-pct">8.0%</span>
+        </div>
+        <span class="fx-bar"><i style="width:8%"></i></span>
+        <div class="fx-bar-sub"><span>支付宝 · 微信零钱 · 饭卡</span><span class="num">已归档 2 个未计入</span></div>
+
+        <div class="fx-group-row">
+          <span class="fx-group-name">现金 <span class="tiny">1 个</span></span>
+          <span class="amount fx-group-amt">¥1,280.00</span>
+          <span class="fx-group-pct">0.9%</span>
+        </div>
+        <span class="fx-bar"><i style="width:.9%"></i></span>
+        <div class="fx-bar-sub"><span>现金钱包</span><span class="num">合计 ¥138,720.00</span></div>
+      </div>
+
+      <div class="fx-sec"><span>负债构成</span><span class="tiny">信用卡欠款</span></div>
+      <div class="card"
+        data-hot="⑤" data-hot-name="负债构成" data-hot-pos="bottom-right"
+        data-hot-label="负债按信用卡逐张列出：交通银行 ¥15,400.00 占 82.6%，招商银行 ¥3,250.00 占 17.4%；没有负债账户时显示「无负债」空态，不用 0 值条形充数">
+        <div class="fx-liab-list">
+          <div class="fx-group-row">
+            <span class="fx-group-name">交通银行信用卡</span>
+            <span class="amount fx-group-amt">¥15,400.00</span>
+            <span class="fx-group-pct">82.6%</span>
+          </div>
+          <span class="fx-bar is-liab"><i style="width:82.6%"></i></span>
+          <div class="fx-bar-sub"><span>额度 ¥30,000 · 还款日 18 日</span><span class="num">-¥15,400.00</span></div>
+
+          <div class="fx-group-row">
+            <span class="fx-group-name">招商银行信用卡</span>
+            <span class="amount fx-group-amt">¥3,250.00</span>
+            <span class="fx-group-pct">17.4%</span>
+          </div>
+          <span class="fx-bar is-liab"><i style="width:17.4%"></i></span>
+          <div class="fx-bar-sub"><span>额度 ¥50,000 · 还款日 20 日</span><span class="num">-¥3,250.00</span></div>
+        </div>
+        <div class="fx-noliab">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 10.5 8 14l7.5-8"/></svg>
+          没有负债账户 · 总负债 ¥0.00，净资产等于总资产
+        </div>
+      </div>
+
+      <div class="fx-sec"><span>净资产趋势</span><span class="tiny">近 6 个月</span></div>
+      <div class="card"
+        data-hot="⑥" data-hot-name="趋势简图" data-hot-pos="bottom-right"
+        data-hot-label="近 6 个月净资产折线，只取月末账户余额相减；线只使用 currentColor 与品牌色。趋势是账户汇总的历史，不是把每月收支再累加一遍">
+        <div class="fx-trend-wrap">
+          <span class="fx-trend-tag">10 月 <b>¥120,070.00</b></span>
+          <svg class="fx-trend" viewBox="0 0 320 118" role="img" aria-label="近 6 个月净资产折线：5 月 102300 元升至 10 月 120070 元">
+            <line x1="0" y1="30" x2="320" y2="30" stroke="currentColor" opacity=".1"/>
+            <line x1="0" y1="60" x2="320" y2="60" stroke="currentColor" opacity=".1"/>
+            <line x1="0" y1="90" x2="320" y2="90" stroke="currentColor" opacity=".1"/>
+            <path d="M10 92.64 L70 84.64 L130 73.12 L190 64.16 L250 50.08 L310 35.78 L310 104 L10 104 Z" fill="var(--brand)" opacity=".1"/>
+            <polyline points="10,92.64 70,84.64 130,73.12 190,64.16 250,50.08 310,35.78" fill="none" stroke="var(--brand)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="70" cy="84.64" r="2.4" fill="currentColor" opacity=".35"/>
+            <circle cx="130" cy="73.12" r="2.4" fill="currentColor" opacity=".35"/>
+            <circle cx="190" cy="64.16" r="2.4" fill="currentColor" opacity=".35"/>
+            <circle cx="250" cy="50.08" r="2.4" fill="currentColor" opacity=".35"/>
+            <circle cx="310" cy="35.78" r="6" fill="none" stroke="var(--brand)" opacity=".3"/>
+            <circle cx="310" cy="35.78" r="3.2" fill="var(--brand)"/>
+          </svg>
+          <div class="fx-xlabels"><span>5 月</span><span>6 月</span><span>7 月</span><span>8 月</span><span>9 月</span><span>10 月</span></div>
+        </div>
+        <div class="fx-delta">
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5v-7M3 5.5 6 2.5l3 3"/></svg>
+          较上月 +¥4,470.00
+        </div>
+      </div>
+
+      <div class="list" style="margin-top:14px">
+        <a class="fx-link-row" href="finance-account.html"
+          data-hot="⑦" data-hot-name="管理账户" data-hot-pos="bottom-right"
+          data-hot-label="进账户列表看逐个账户与余额；本页只做汇总与趋势，改账户名、类型、归档都在账户页，避免在总览页做行内编辑">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="15" height="10" rx="2.5"/><path d="M2.5 9h15"/></svg>
+          </span>
+          <span class="li-text">管理账户<span class="li-sub">逐个账户余额、归档与默认账户</span></span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </a>
+      </div>
+
+      <p class="fx-note">口径：净资产 = 总资产 − 总负债；信用卡欠款计入负债。归档账户余额不计入账户汇总，但历史流水仍参与统计与净资产；两处同源，首页财务格不会出现与本页不同的数。</p>
+    </div>
+
+    <div class="state fx-error">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 5 28 26H4z"/><path d="M16 13v6M16 22.5v.1"/></svg>
+      </div>
+      <div class="state-title">资产负债暂时读不到</div>
+      <div class="state-desc">账户汇总没有返回，本页与首页财务格会一起显示「暂时读不到」，不拿缓存拼一个数。稍后重试，或先去账户页确认账户状态。</div>
+      <button class="btn btn-secondary" type="button" data-toast="正在重新汇总账户余额；返回前不会改动任何数字"
+        data-hot="⑧" data-hot-name="重试" data-hot-pos="top-right"
+        data-hot-label="重试只重发账户汇总，不本地重算；失败保持错误态，不退回缓存数值">
+        重试</button>
+    </div>
+
+    <div class="fx-sk" aria-hidden="true">
+      <div class="skeleton" style="height:56px;border-radius:var(--radius-md);margin-bottom:12px"></div>
+      <div class="skeleton" style="height:156px;border-radius:var(--radius-xl);margin-bottom:18px"></div>
+      <div class="skeleton sk-line" style="width:28%"></div>
+      <div class="skeleton" style="height:150px;border-radius:var(--radius-lg);margin-bottom:14px"></div>
+      <div class="skeleton sk-line" style="width:24%"></div>
+      <div class="skeleton" style="height:120px;border-radius:var(--radius-lg)"></div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var assetState = new URLSearchParams(location.search).get('state') || 'default';
+
+  if (assetState === 'no-liability') {
+    document.getElementById('fx-net').textContent = '¥138,720.00';
+    document.getElementById('fx-liab').textContent = '¥0.00';
+    document.getElementById('fx-liab').classList.remove('is-liab');
+    document.getElementById('fx-ratio').textContent = '0.0%';
+    document.getElementById('fx-hero-note').textContent = '截至 10 月 29 日 09:20 · 家庭币种 CNY · 无负债账户 · 5 个账户';
+  }
+</script>
+</body>
+</html>

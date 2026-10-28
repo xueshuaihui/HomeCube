@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>编辑提醒 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .rem-content { padding-bottom: 24px; }
+
+  .rem-save {
+    height: 36px; padding: 0 2px;
+    border: 0; background: none;
+    font-family: inherit; font-size: var(--fs-15); font-weight: 700;
+    color: var(--brand-text); cursor: pointer;
+  }
+  .rem-save:hover { color: var(--brand-hover); }
+  body[data-state="conflict"] .rem-save { color: var(--text-3); pointer-events: none; }
+
+  .rem-ver {
+    display: flex; align-items: center; gap: 8px;
+    margin: 6px 2px 14px;
+    font-size: var(--fs-12); color: var(--text-3);
+  }
+  .rem-ver-tag {
+    flex: none; padding: 1px 7px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-2); color: var(--text-2);
+    font-family: var(--font-num); font-size: var(--fs-11); font-weight: 600;
+  }
+  .rem-ver-tag.is-paused { background: var(--warning-soft); color: var(--warning); }
+  .rem-ver-note { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .rem-banner {
+    display: none; align-items: flex-start; gap: 8px;
+    margin: 6px 0 12px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .rem-banner svg { flex: none; margin-top: 1px; }
+  .rem-banner b { display: block; font-size: var(--fs-13); margin-bottom: 2px; }
+  .rem-banner-paused { background: var(--warning-soft); color: var(--warning); }
+  body[data-state="paused"] .rem-banner-paused { display: flex; }
+
+  .rem-pause {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; margin-bottom: var(--sp-4);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .rem-pause-body { flex: 1; min-width: 0; }
+  .rem-pause-k { display: block; font-size: var(--fs-14); font-weight: 600; }
+  .rem-pause-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
+
+  .rem-form { padding-top: 2px; }
+  body[data-state="conflict"] .rem-form,
+  body[data-state="conflict"] .rem-pause,
+  body[data-state="conflict"] .rem-ver { opacity: .55; pointer-events: none; }
+
+  .rem-required { margin-left: 4px; font-size: var(--fs-11); font-weight: 600; color: var(--text-3); }
+  .rem-title-err { display: none; }
+  .rem-title-input.is-error + .rem-title-err { display: flex; }
+
+  .rem-pick {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    padding: 10px 14px; min-height: 56px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-family: inherit; text-align: left; color: var(--text);
+    cursor: pointer;
+  }
+  .rem-pick:hover { border-color: var(--border-strong); }
+  .rem-pick .chevron { flex: none; color: var(--text-3); }
+  .rem-pick-icon {
+    width: 32px; height: 32px; flex: none;
+    border-radius: 10px;
+    background: var(--surface-2); color: var(--text-2);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .rem-pick-body { flex: 1; min-width: 0; }
+  .rem-pick-v { display: block; font-size: var(--fs-15); font-weight: 600; }
+  .rem-pick-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
+
+  .rem-seg { width: 100%; }
+  .rem-seg .segmented { display: flex; width: 100%; }
+  .rem-seg .segmented button { flex: 1; padding: 7px 4px; font-size: var(--fs-12); }
+
+  .rem-del {
+    margin-top: 18px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .rem-del .btn { width: 100%; }
+  .rem-del-note { text-align: center; line-height: var(--lh-normal); }
+
+  .rem-foot-note {
+    margin-top: 12px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    color: var(--text-2); font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .rem-foot-note b { color: var(--text); }
+
+  /* 冲突弹层 */
+  .rem-diff {
+    margin-top: 14px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    display: grid; gap: 8px;
+    font-size: var(--fs-12); color: var(--text-2);
+  }
+  .rem-diff-row { display: flex; align-items: baseline; gap: 8px; }
+  .rem-diff-k { width: 56px; flex: none; color: var(--text-3); }
+  .rem-diff-v { flex: 1; min-width: 0; }
+  .rem-diff-old { text-decoration: line-through; color: var(--text-3); }
+  .rem-diff-arrow { margin: 0 6px; color: var(--text-3); }
+  .rem-diff-new { font-weight: 600; color: var(--text); }
+  .rem-warn {
+    display: flex; align-items: flex-start; gap: 6px;
+    margin-top: 12px; font-size: var(--fs-12); color: var(--warning); line-height: var(--lh-normal);
+  }
+  .rem-warn svg { flex: none; margin-top: 1px; }
+
+  /* 删除弹层 */
+  .rem-del-line {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 14px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+  }
+  .rem-del-line-body { flex: 1; min-width: 0; }
+  .rem-del-line-v { display: block; font-size: var(--fs-14); font-weight: 600; }
+  .rem-del-line-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
+  .rem-cal-warn {
+    display: flex; align-items: flex-start; gap: 6px;
+    margin-top: 12px; font-size: var(--fs-12); color: var(--danger); line-height: var(--lh-normal);
+  }
+  .rem-cal-warn svg { flex: none; margin-top: 1px; }
+</style>
+</head>
+<body data-screen="18 编辑提醒 · 日历面" data-tab="" data-states="default,paused,conflict,deleted">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <button class="icon-btn" type="button" data-go="reminder.html"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回提醒列表；未保存的改动直接丢弃，不做草稿；暂停状态改动在离开时即时生效，不等保存" aria-label="返回">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </button>
+    </div>
+    <div class="nav-title">编辑提醒</div>
+    <div class="nav-right">
+      <button class="rem-save" type="button" id="rem-save"
+        data-hot="④" data-hot-name="保存" data-hot-pos="outer-top-right"
+        data-hot-label="带 version 提交；版本不一致不静默覆盖，弹三选一冲突层；保存成功后重发到期注册，旧注册项由撤销事件失效">
+        保存
+      </button>
+    </div>
+  </div>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 改动保存后先排队
+  </div>
+
+  <div class="content rem-content">
+    <div class="rem-banner rem-banner-paused">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="6" y="4.5" width="3" height="11" rx="1"/><rect x="11" y="4.5" width="3" height="11" rx="1"/></svg>
+      <div>
+        <b>已暂停</b>
+        这条提醒不再触发，但时间与周期规则保留；打开开关即按原规则继续，无需重建。
+      </div>
+    </div>
+
+    <div class="rem-ver">
+      <span class="rem-ver-tag" id="ver-tag">版本 3</span>
+      <span class="rem-ver-note" id="ver-note">上次修改：我 · 今天 08:12（提前量）</span>
+    </div>
+
+    <div class="rem-pause">
+      <span class="rem-pause-body">
+        <span class="rem-pause-k">暂停提醒</span>
+        <span class="rem-pause-sub">暂停后不触发、保留规则；开关即时生效，不等保存</span>
+      </span>
+      <label class="switch"
+        data-hot="②" data-hot-name="暂停" data-hot-pos="outer-top-right"
+        data-hot-label="暂停即时生效：关掉后不再触发，周期、时间与渠道规则原样保留；恢复时按原规则算下一次触发，不改版本">
+        <input type="checkbox" id="pause-switch" checked aria-label="启用提醒">
+        <span class="track"></span>
+        <span class="thumb"></span>
+      </label>
+    </div>
+
+    <div class="rem-form"
+      data-hot="③" data-hot-name="字段" data-hot-pos="outer-top-right"
+      data-hot-label="标题、时间、周期、提前量、渠道五项与新建同构；改动只在本页，保存才提交，并整条重发到期注册">
+      <div class="field">
+        <label class="field-label" for="rem-title">标题<span class="rem-required">必填</span></label>
+        <input class="input rem-title-input" id="rem-title" type="text" maxlength="40"
+          placeholder="例如：吃药" value="吃药" autocomplete="off">
+        <div class="field-error rem-title-err" role="alert">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
+          请填写标题
+        </div>
+        <div class="help">标题会出现在站内信、推送与到期中心。</div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">时间</span>
+        <button class="rem-pick" type="button" data-sheet-open="sheet-time">
+          <span class="rem-pick-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.2v4.2l2.6 1.6"/></svg>
+          </span>
+          <span class="rem-pick-body">
+            <span class="rem-pick-v num" id="time-value">08:00</span>
+            <span class="rem-pick-sub" id="time-sub">周期提醒只取时分 · 家庭时区 Asia/Shanghai</span>
+          </span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+      </div>
+
+      <div class="field">
+        <span class="field-label">周期</span>
+        <div class="rem-seg">
+          <div class="segmented" role="group" aria-label="周期">
+            <button type="button" aria-selected="false" data-cycle="不重复">不重复</button>
+            <button type="button" aria-selected="true" data-cycle="每天">每天</button>
+            <button type="button" aria-selected="false" data-cycle="每周">每周</button>
+            <button type="button" aria-selected="false" data-cycle="每月">每月</button>
+          </div>
+        </div>
+        <div class="help">改周期会整条重发到期注册，旧注册项由撤销事件失效。</div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">提前量</span>
+        <div class="rem-seg">
+          <div class="segmented" role="group" aria-label="提前量">
+            <button type="button" aria-selected="true" data-lead="准时">准时</button>
+            <button type="button" aria-selected="false" data-lead="提前 10 分钟">提前 10 分钟</button>
+            <button type="button" aria-selected="false" data-lead="提前 1 小时">提前 1 小时</button>
+            <button type="button" aria-selected="false" data-lead="提前 1 天">提前 1 天</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">渠道</span>
+        <div class="rem-seg">
+          <div class="segmented" role="group" aria-label="渠道">
+            <button type="button" aria-selected="false" data-channel="推送">推送</button>
+            <button type="button" aria-selected="false" data-channel="站内信">站内信</button>
+            <button type="button" aria-selected="true" data-channel="两者">两者</button>
+          </div>
+        </div>
+        <div class="help">推送不可用时保存会自动改为站内信，行内提示降级，不阻断保存。</div>
+      </div>
+    </div>
+
+    <div class="rem-del">
+      <button class="btn btn-danger" type="button" id="rem-delete"
+        data-hot="⑤" data-hot-name="删除" data-hot-pos="outer-top-right"
+        data-hot-label="删除不即时生效，先弹确认层；确认后发出撤销事件，已注册的日历项与到期项同步移除，不可恢复">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h12M8 6.5V5a1.5 1.5 0 0 1 1.5-1.5h1A1.5 1.5 0 0 1 12 5v1.5"/><path d="M5.5 6.5l.8 9a1.5 1.5 0 0 0 1.5 1.4h4.4a1.5 1.5 0 0 0 1.5-1.4l.8-9"/></svg>
+        删除提醒
+      </button>
+      <div class="rem-del-note tiny">删除只在确认后执行；暂停请用上方开关。</div>
+    </div>
+
+    <div class="rem-foot-note">
+      <b>保存口径</b>：对象级 version 乐观锁，版本不一致返回冲突；本页不静默覆盖，也不自动合并字段。
+    </div>
+  </div>
+
+  <!-- 冲突层：默认隐藏，保存时版本不一致才出现 -->
+  <div class="sheet-mask" id="sheet-conflict" aria-hidden="true">
+    <div class="sheet"
+      data-hot="⑥" data-hot-name="冲突弹层" data-hot-pos="outer-top-left"
+      data-hot-label="版本不一致时弹出：说明这条提醒已被他人修改，给查看最新 / 覆盖保存 / 放弃修改三选一；不做字段自动合并，也不静默覆盖">
+      <div class="sheet-grabber"></div>
+      <h3>这条提醒已被他人修改</h3>
+      <p class="sheet-sub">你打开的是版本 3，服务器上已是版本 4。为不静默覆盖家人的改动，请选择接下来的处理方式。</p>
+
+      <div class="rem-diff">
+        <div class="rem-diff-row">
+          <span class="rem-diff-k">修改人</span>
+          <span class="rem-diff-v">妈妈 · 今天 09:12</span>
+        </div>
+        <div class="rem-diff-row">
+          <span class="rem-diff-k">时间</span>
+          <span class="rem-diff-v">
+            <span class="rem-diff-old num">08:00</span>
+            <span class="rem-diff-arrow">→</span>
+            <span class="rem-diff-new num">09:00</span>
+          </span>
+        </div>
+        <div class="rem-diff-row">
+          <span class="rem-diff-k">你改的</span>
+          <span class="rem-diff-v">提前量（提前 10 分钟）与渠道（仅站内信）</span>
+        </div>
+      </div>
+
+      <div class="rem-warn">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 3.5 17.5 17h-15z"/><path d="M10 8v4M10 14.4v.1"/></svg>
+        <span>覆盖保存会用你的字段整体替换版本 4，妈妈的改动不再保留；查看最新会丢弃你本次未保存的改动；两者都会重发到期注册。</span>
+      </div>
+
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" data-go="reminder.html">查看最新</button>
+        <button class="btn btn-danger btn-block" type="button" data-go="reminder-edit.html">覆盖保存</button>
+        <button class="btn btn-secondary btn-block" type="button" data-go="reminder.html">放弃修改</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 删除确认层：默认隐藏，点「删除提醒」出现 -->
+  <div class="sheet-mask" id="sheet-delete" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>删除这条提醒？</h3>
+      <p class="sheet-sub">删除后不再触发，规则不可恢复；要暂时停用请回到编辑页用「暂停提醒」。</p>
+
+      <div class="rem-del-line">
+        <span class="rem-del-line-body">
+          <span class="rem-del-line-v">吃药</span>
+          <span class="rem-del-line-sub num">每天 08:00 · 提前准时 · 推送 + 站内信</span>
+        </span>
+        <span class="tiny">版本 3</span>
+      </div>
+
+      <div class="rem-cal-warn">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="12" height="11" rx="2"/><path d="M4 8.5h12M7.5 3.5V6M12.5 3.5V6"/></svg>
+        <span>已注册的日历项会同步移除；家人此前收到的站内信不会被撤回。</span>
+      </div>
+
+      <div class="sheet-actions">
+        <button class="btn btn-danger btn-block" type="button" data-go="reminder.html">删除提醒</button>
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 时间选择层 -->
+  <div class="sheet-mask" id="sheet-time" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>触发时间</h3>
+      <p class="sheet-sub">改时间会整条重发到期注册；旧注册项由撤销事件失效，不由客户端删日历条目。</p>
+      <div class="list" style="margin-top:16px">
+        <button class="list-item" type="button" data-time="07:30" data-sheet-close>
+          <span class="li-text">07:30<span class="li-sub">早于常用起床时间</span></span>
+        </button>
+        <button class="list-item" type="button" data-time="08:00" data-sheet-close>
+          <span class="li-text">08:00<span class="li-sub">当前设置</span></span>
+        </button>
+        <button class="list-item" type="button" data-time="09:00" data-sheet-close>
+          <span class="li-text">09:00<span class="li-sub">妈妈在版本 4 里改成的时刻</span></span>
+        </button>
+        <button class="list-item" type="button" data-time="20:00" data-sheet-close>
+          <span class="li-text">20:00<span class="li-sub">晚间</span></span>
+        </button>
+        <button class="list-item" type="button" data-toast="自定义时间随系统时间选择器接入；P1 先给常用时刻">
+          <span class="li-text">自定义时间<span class="li-sub">精确到分钟</span></span>
+          <span class="chevron">›</span>
+        </button>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var remState = new URLSearchParams(location.search).get('state') || 'default';
+  var title = document.getElementById('rem-title');
+  var save = document.getElementById('rem-save');
+  var pause = document.getElementById('pause-switch');
+
+  if (remState === 'paused') {
+    pause.checked = false;
+    var tag = document.getElementById('ver-tag');
+    tag.textContent = '版本 3 · 已暂停';
+    tag.classList.add('is-paused');
+    document.getElementById('ver-note').textContent = '暂停不产生新版本 · 规则原样保留';
+  }
+
+  if (remState === 'conflict') {
+    document.getElementById('ver-note').textContent = '你打开的是版本 3 · 服务器已更新到版本 4';
+    var cf = document.getElementById('sheet-conflict');
+    cf.classList.add('is-open');
+    cf.setAttribute('aria-hidden', 'false');
+  }
+
+  if (remState === 'deleted') {
+    var del = document.getElementById('sheet-delete');
+    del.classList.add('is-open');
+    del.setAttribute('aria-hidden', 'false');
+  }
+
+  pause.addEventListener('change', function () {
+    window.HC.toast(pause.checked ? '已恢复，按原周期继续触发' : '已暂停，规则保留');
+  });
+
+  document.getElementById('rem-delete').addEventListener('click', function () {
+    window.HC.openSheet('sheet-delete');
+  });
+
+  document.querySelectorAll('[data-cycle], [data-lead], [data-channel]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var group = b.parentNode.querySelectorAll('button');
+      group.forEach(function (x) { x.setAttribute('aria-selected', String(x === b)); });
+    });
+  });
+
+  document.querySelectorAll('[data-time]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.getElementById('time-value').textContent = b.getAttribute('data-time');
+      window.HC.toast('时间已设为 ' + b.getAttribute('data-time'));
+    });
+  });
+
+  title.addEventListener('input', function () {
+    title.classList.remove('is-error');
+  });
+
+  save.addEventListener('click', function () {
+    if (remState === 'conflict') return;
+    if (!title.value.trim()) {
+      title.classList.add('is-error');
+      title.focus();
+      return;
+    }
+    if (remState === 'paused') {
+      window.HC.toast('已保存，仍保持暂停');
+      return;
+    }
+    location.href = 'reminder-edit.html?state=conflict';
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>我的 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 0 16px; height: var(--navbar-h); flex: none; }
+  .topbar h1 { font-size: var(--fs-20); font-weight: 700; }
+  .profile {
+    display: flex; align-items: center; gap: 14px;
+    margin: 4px 0 20px; padding: 18px;
+    border-radius: var(--radius-xl);
+    background: linear-gradient(135deg, var(--brand-soft) 0%, var(--surface) 70%);
+    border: 1px solid var(--brand-soft-border);
+  }
+  .profile .p-info { flex: 1; min-width: 0; }
+  .profile .p-name { font-size: var(--fs-17); font-weight: 700; }
+  .profile .p-sub { margin-top: 3px; font-size: var(--fs-12); color: var(--text-2); }
+  .group { margin-top: 18px; }
+  .me-member [data-admin-only] { display: none; }
+  .version-tag { font-size: var(--fs-12); color: var(--text-3); font-family: var(--font-num); }
+  .logout { margin: 20px 0 8px; }
+</style>
+</head>
+<body data-screen="06 我的" data-tab="me" data-states="default,member">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="topbar">
+    <h1>我的</h1>
+    <button class="icon-btn" type="button" data-sheet-open="sheet-theme" aria-label="外观设置">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 3v14" opacity=".5"/><path d="M10 3a7 7 0 0 1 0 14z" fill="currentColor" stroke="none" opacity=".25"/></svg>
+    </button>
+  </div>
+
+  <div class="content bottom-space" id="me-root">
+    <div class="profile"
+      data-hot="①" data-hot-name="账号区" data-hot-pos="bottom-right"
+      data-hot-label="头像与昵称仅本人可改；手机号显示掩码，改号需旧号验证">
+      <span class="avatar lg" style="background:var(--brand);color:var(--on-brand);border:0">我</span>
+      <div class="p-info">
+        <div class="p-name">我</div>
+        <div class="p-sub">138****8000 · 三口之家 · 管理员</div>
+      </div>
+      <span class="chevron" style="color:var(--text-3)">›</span>
+    </div>
+
+    <div class="group">
+      <div class="list">
+        <a class="list-item" href="family.html"
+          data-hot="②" data-hot-name="家庭" data-hot-pos="top-right"
+          data-hot-label="成员管理 / 邀请 / 权限只读视图；管理员可写，其余角色只读">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="7.5" cy="7" r="2.5"/><circle cx="13.5" cy="8" r="2"/><path d="M3 16c.6-2.4 2.4-3.8 4.5-3.8S11.4 13.6 12 16"/><path d="M13 13.2c1.8.1 3.2 1.3 3.7 3"/></svg>
+          </span>
+          <span class="li-text">家庭与成员<span class="li-sub">3 位成员 · 邀请待接受 1</span></span>
+          <span class="chevron">›</span>
+        </a>
+        <a class="list-item" href="family-modules.html" data-admin-only
+          data-hot="③" data-hot-name="开通更多面" data-hot-pos="top-right"
+          data-hot-label="面目录唯一写入口：已启用 / 可开通 / 即将上线三态；只对管理员渲染可选面的开关，日历面是必选面——恒启用、不渲染开关；非管理员整行不渲染（不是置灰）">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="3" width="6" height="6" rx="1.5"/><rect x="11" y="3" width="6" height="6" rx="1.5"/><rect x="3" y="11" width="6" height="6" rx="1.5"/><path d="M14 11.5v5M11.5 14h5"/></svg>
+          </span>
+          <span class="li-text">开通更多面<span class="li-sub">已启用 2 面（含必选面日历）· 其余 5 面即将上线</span></span>
+          <span class="chevron">›</span>
+        </a>
+        <a class="list-item" href="family-permission.html" data-admin-only>
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l6 2.5v4.2c0 3.3-2.4 6.1-6 7.3-3.6-1.2-6-4-6-7.3V5.5z"/></svg>
+          </span>
+          <span class="li-text">权限与角色<span class="li-sub">P1 为角色默认矩阵只读视图</span></span>
+          <span class="chevron">›</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="list">
+        <button class="list-item" type="button" data-sheet-open="sheet-theme"
+          data-hot="④" data-hot-name="主题" data-hot-pos="top-right"
+          data-hot-label="跟随系统 / 亮 / 暗三态；亮暗是同一组件同一文案，只换令牌值">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="3.2"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4"/></svg>
+          </span>
+          <span class="li-text">外观主题<span class="li-sub">跟随系统</span></span>
+          <span class="chevron">›</span>
+        </button>
+        <button class="list-item" type="button" data-go="settings-security.html"
+          data-hot="⑤" data-hot-name="设备锁" data-hot-pos="top-right"
+          data-hot-label="开启后进入私密内容需 PIN；散列只存本机，忘记走手机号重验">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="4.5" y="9" width="11" height="8" rx="2"/><path d="M7 9V6.8a3 3 0 0 1 6 0V9"/></svg>
+          </span>
+          <span class="li-text">安全与设备锁<span class="li-sub">未开启</span></span>
+          <span class="chevron">›</span>
+        </button>
+        <a class="list-item" href="settings.html">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="2.6"/><path d="M10 3.2v1.6M10 15.2v1.6M3.2 10h1.6M15.2 10h1.6M5.2 5.2l1.1 1.1M13.7 13.7l1.1 1.1M14.8 5.2l-1.1 1.1M6.3 13.7l-1.1 1.1"/></svg>
+          </span>
+          <span class="li-text">时区与免打扰<span class="li-sub">时区 Asia/Shanghai · 免打扰 22:00–07:00</span></span>
+          <span class="chevron">›</span>
+        </a>
+        <a class="list-item" href="privacy.html" data-hot="⑦" data-hot-name="隐私" data-hot-pos="top-right"
+          data-hot-label="L2/L3 可见性开关与删除请求；家庭级开关仅管理员可写">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10c1.8-3.2 4.2-4.8 7-4.8s5.2 1.6 7 4.8c-1.8 3.2-4.2 4.8-7 4.8S4.8 13.2 3 10z"/><circle cx="10" cy="10" r="2"/></svg>
+          </span>
+          <span class="li-text">隐私<span class="li-sub">L2/L3 可见性 · 删除请求</span></span>
+          <span class="chevron">›</span>
+        </a>
+        <a class="list-item" href="data.html" data-hot="⑧" data-hot-name="数据" data-hot-pos="top-right"
+          data-hot-label="导出需选择范围与格式；导出的是全量筛选结果，不是当前页">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><ellipse cx="10" cy="5.5" rx="6" ry="2.5"/><path d="M4 5.5v9c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5v-9"/><path d="M4 10c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5"/></svg>
+          </span>
+          <span class="li-text">数据<span class="li-sub">导出 · 备份状态 · 跨设备迁移</span></span>
+          <span class="chevron">›</span>
+        </a>
+        <a class="list-item" href="about.html"
+          data-hot="⑥" data-hot-name="关于与更新" data-hot-pos="top-right"
+          data-hot-label="登录后静默检查 wgt 版本；可跳过；只有 min_compat 高于当前版本才强制更新">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.6v.1"/></svg>
+          </span>
+          <span class="li-text">帮助与关于</span>
+          <span class="version-tag">1.0.0</span>
+          <span class="chevron">›</span>
+        </a>
+      </div>
+    </div>
+
+    <button class="btn btn-secondary btn-block logout" type="button" data-go="login.html">退出登录</button>
+    <div class="tiny" style="text-align:center;padding:4px 0 12px">家立方 P1 原型 · 数据为演示样例</div>
+  </div>
+
+  <nav class="tabbar" data-tabbar>
+    <a class="tab" href="home.html" data-tab="home">
+      <svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5 11 3.5l7.5 6v8a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5z"/><path d="M8.5 19v-6h5v6"/></svg>
+      首页
+    </a>
+    <a class="tab" href="dynamic.html" data-tab="dynamic">
+      <svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 5.5h12M5 11h8M5 16.5h10"/></svg>
+      动态
+    </a>
+    <a class="tab" href="quick-add.html" data-tab="plus" aria-label="快速添加">
+      <span class="tab-plus">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 4.5v11M4.5 10h11"/></svg>
+      </span>
+    </a>
+    <a class="tab" href="message.html" data-tab="message" style="position:relative">
+      <span class="dot" style="top:-2px;right:14px"></span>
+      <svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18.5 10.2c0 3.6-3.4 6.5-7.5 6.5-.9 0-1.7-.1-2.5-.4L5 18l1-2.9c-1.2-1.1-2-2.7-2-4.6 0-3.6 3.4-6.5 7.5-6.5s7 2.9 7 6.2z"/></svg>
+      消息
+    </a>
+    <a class="tab" href="me.html" data-tab="me">
+      <svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="8" r="3.5"/><path d="M4.5 18.5c.9-3.2 3.4-5 6.5-5s5.6 1.8 6.5 5"/></svg>
+      我的
+    </a>
+  </nav>
+
+  <!-- 主题弹层 -->
+  <div class="sheet-mask" id="sheet-theme" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>外观主题</h3>
+      <p class="sheet-sub">亮色与暗色是同一套组件与文案，只有令牌值不同；家庭内不做页面级覆盖。</p>
+      <div class="list" style="margin-top:16px">
+        <button class="list-item" type="button" data-theme-pick="system">
+          <span class="li-text">跟随系统<span class="li-sub">系统切换时自动跟随</span></span>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-check><path d="M3 8.5l3.2 3.2L13 5"/></svg>
+        </button>
+        <button class="list-item" type="button" data-theme-pick="light">
+          <span class="li-text">亮色</span>
+        </button>
+        <button class="list-item" type="button" data-theme-pick="dark">
+          <span class="li-text">暗色</span>
+        </button>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>完成</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var state = new URLSearchParams(location.search).get('state') || 'default';
+  if (state === 'member') {
+    document.getElementById('me-root').classList.add('me-member');
+    document.querySelector('.profile .p-sub').textContent = '138****8000 · 三口之家 · 成人成员';
+  }
+
+  document.querySelectorAll('[data-theme-pick]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      window.HC.setTheme(b.getAttribute('data-theme-pick'));
+      var cur = b.querySelector('[data-check]');
+      document.querySelectorAll('[data-theme-pick]').forEach(function (x) {
+        var c = x.querySelector('[data-check]');
+        if (c) c.remove();
+      });
+      if (!cur) {
+        b.insertAdjacentHTML('beforeend', '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-check><path d="M3 8.5l3.2 3.2L13 5"/></svg>');
+      }
+      window.HC.toast('已切换外观');
+    });
+  });
+</script>
+</body>
+</html>

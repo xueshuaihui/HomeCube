@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>编辑待办 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .todo-content { padding-bottom: 24px; }
+
+  .todo-save {
+    height: 36px; padding: 0 2px;
+    border: 0; background: none;
+    font-family: inherit; font-size: var(--fs-15); font-weight: 700;
+    color: var(--brand-text); cursor: pointer;
+  }
+  .todo-save:hover { color: var(--brand-hover); }
+  body[data-state="conflict"] .todo-save { color: var(--text-3); pointer-events: none; }
+  body[data-state="saved"] .todo-save { color: var(--brand-text); }
+
+  .todo-ver {
+    display: flex; align-items: center; gap: 8px;
+    margin: 6px 2px 14px;
+    font-size: var(--fs-12); color: var(--text-3);
+  }
+  .todo-ver-tag {
+    flex: none; padding: 1px 7px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-2); color: var(--text-2);
+    font-family: var(--font-num); font-size: var(--fs-11); font-weight: 600;
+  }
+  .todo-ver-note { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .todo-banner {
+    display: none; align-items: flex-start; gap: 8px;
+    margin: 6px 0 12px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .todo-banner svg { flex: none; margin-top: 1px; }
+  .todo-banner b { display: block; font-size: var(--fs-13); margin-bottom: 2px; }
+  .todo-banner-saved { background: var(--success-soft); color: var(--success); }
+  .todo-banner-offline { background: var(--warning-soft); color: var(--warning); }
+  body[data-state="saved"] .todo-banner-saved { display: flex; }
+  body[data-state="offline"] .todo-banner-offline { display: flex; }
+  body[data-state="offline"] .offline-bar { display: flex; }
+
+  .todo-form { padding-top: 2px; }
+  body[data-state="conflict"] .todo-form { opacity: .55; pointer-events: none; }
+
+  .todo-required { margin-left: 4px; font-size: var(--fs-11); font-weight: 600; color: var(--text-3); }
+  .todo-title-err { display: none; }
+  .todo-title-input.is-error + .todo-title-err { display: flex; }
+
+  .todo-pick {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    padding: 10px 14px; min-height: 56px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-family: inherit; text-align: left; color: var(--text);
+    cursor: pointer;
+  }
+  .todo-pick:hover { border-color: var(--border-strong); }
+  .todo-pick .chevron { flex: none; color: var(--text-3); }
+  .todo-pick-av { width: 32px; height: 32px; font-size: var(--fs-12); }
+  .todo-pick-icon {
+    width: 32px; height: 32px; flex: none;
+    border-radius: 10px;
+    background: var(--surface-2); color: var(--text-2);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .todo-pick-body { flex: 1; min-width: 0; }
+  .todo-pick-v { display: block; font-size: var(--fs-15); font-weight: 600; }
+  .todo-pick-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
+
+  .todo-av-me { background: var(--brand); color: var(--on-brand); border-color: transparent; }
+  .todo-av-mom { background: var(--accent-soft); color: var(--accent); }
+  .todo-av-dad { background: var(--brand-soft); color: var(--brand-text); }
+  .todo-av-girl { background: var(--surface-2); color: var(--text-2); }
+
+  .todo-source {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; margin-bottom: var(--sp-4);
+    border-radius: var(--radius-md);
+    border: 1px dashed var(--border-strong);
+    background: var(--surface-2);
+  }
+  .todo-source-main { flex: 1; min-width: 0; }
+  .todo-source-k { flex: none; font-size: var(--fs-13); color: var(--text-3); }
+  .todo-source-v { display: block; font-size: var(--fs-14); font-weight: 600; }
+  .todo-source-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
+  .todo-ro {
+    flex: none; padding: 1px 7px;
+    border-radius: var(--radius-pill);
+    background: var(--surface); color: var(--text-3);
+    border: 1px solid var(--border);
+    font-size: var(--fs-11); font-weight: 600;
+  }
+
+  .todo-foot-note {
+    margin-top: 4px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    color: var(--text-2); font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .todo-foot-note b { color: var(--text); }
+
+  /* 冲突弹层 */
+  .todo-diff {
+    margin-top: 14px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    display: grid; gap: 8px;
+    font-size: var(--fs-12); color: var(--text-2);
+  }
+  .todo-diff-row { display: flex; align-items: baseline; gap: 8px; }
+  .todo-diff-k { width: 56px; flex: none; color: var(--text-3); }
+  .todo-diff-v { flex: 1; min-width: 0; }
+  .todo-diff-old { text-decoration: line-through; color: var(--text-3); }
+  .todo-diff-arrow { margin: 0 6px; color: var(--text-3); }
+  .todo-diff-new { font-weight: 600; color: var(--text); }
+  .todo-warn {
+    display: flex; align-items: flex-start; gap: 6px;
+    margin-top: 12px; font-size: var(--fs-12); color: var(--warning); line-height: var(--lh-normal);
+  }
+  .todo-warn svg { flex: none; margin-top: 1px; }
+</style>
+</head>
+<body data-screen="14 编辑待办 · 日历面" data-tab="" data-states="default,conflict,saved,offline">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <button class="icon-btn" type="button" data-go="todo-detail.html"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回待办详情；未保存的改动直接丢弃，不做草稿；版本冲突时不因返回而合并" aria-label="返回">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </button>
+    </div>
+    <div class="nav-title">编辑待办</div>
+    <div class="nav-right">
+      <button class="todo-save" type="button" id="todo-save"
+        data-hot="④" data-hot-name="保存" data-hot-pos="outer-top-right"
+        data-hot-label="带 version 提交；版本不一致时不静默覆盖，弹三选一冲突层；保存成功后回到已保存态并提示到期注册已重发">
+        <span class="todo-save-on">保存</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 改动保存后先排队
+  </div>
+
+  <div class="content todo-content">
+    <div class="todo-banner todo-banner-saved">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M6.4 10.3l2.4 2.4 4.8-4.9"/></svg>
+      <div>
+        <b>已保存</b>
+        版本已更新为 4；到期注册已按新截止重新发出，稍后在到期中心生效。
+      </div>
+    </div>
+
+    <div class="todo-banner todo-banner-offline">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 10a7 7 0 0 1 11.5-5.4M17 10a7 7 0 0 1-11.5 5.4"/><path d="M4 3l12 14"/></svg>
+      <div>
+        <b>当前离线</b>
+        改动先存本机，联网后带 version 重放；那时若版本已变，仍会走冲突三选一，不静默覆盖。
+      </div>
+    </div>
+
+    <div class="todo-ver">
+      <span class="todo-ver-tag" id="ver-tag">版本 3</span>
+      <span class="todo-ver-note" id="ver-note">上次修改：妈妈 · 今天 09:12（截止时间）</span>
+    </div>
+
+    <div class="todo-form">
+      <div class="field">
+        <label class="field-label" for="todo-title">标题<span class="todo-required">必填</span></label>
+        <input class="input todo-title-input" id="todo-title" type="text" maxlength="60"
+          placeholder="例如：交物业费" value="交物业费" autocomplete="off"
+          data-hot="②" data-hot-name="标题" data-hot-pos="outer-top-right"
+          data-hot-label="必填、上限 60 字；为空时红框 + 行内错误，不弹全局错误；改动只在本页，保存才提交">
+        <div class="field-error todo-title-err" role="alert">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
+          请填写标题
+        </div>
+        <div class="help">标题会显示在到期中心、首页今日区与通知里。</div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">负责人</span>
+        <button class="todo-pick" type="button" data-sheet-open="sheet-owner">
+          <span class="avatar todo-pick-av todo-av-me" id="owner-av">我</span>
+          <span class="todo-pick-body">
+            <span class="todo-pick-v" id="owner-name">我</span>
+            <span class="todo-pick-sub">可指派给本家庭的任一成员</span>
+          </span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+      </div>
+
+      <div class="field">
+        <span class="field-label">截止时间</span>
+        <button class="todo-pick" type="button" data-sheet-open="sheet-due"
+          data-hot="③" data-hot-name="截止时间" data-hot-pos="outer-top-right"
+          data-hot-label="改截止会重发到期注册（幂等键含 source_id + due_at）；旧注册项由撤销事件失效，不由客户端删日历条目">
+          <span class="todo-pick-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.2v4.2l2.6 1.6"/></svg>
+          </span>
+          <span class="todo-pick-body">
+            <span class="todo-pick-v num" id="due-value">今天 20:00</span>
+            <span class="todo-pick-sub" id="due-sub">10 月 29 日 · 周四</span>
+          </span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+        <div class="help">改期后由 HomeOS 重新注册，通常几秒内生效。</div>
+      </div>
+
+      <div class="todo-source">
+        <span class="todo-source-k">来源面</span>
+        <span class="todo-source-main">
+          <span class="todo-source-v">HomeOS · 待办</span>
+          <span class="todo-source-sub">由创建入口决定，编辑不改变来源</span>
+        </span>
+        <span class="todo-ro">只读</span>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="todo-note">备注</label>
+        <textarea class="textarea" id="todo-note" maxlength="200" rows="3"
+          placeholder="可选：写清账期、地点或注意事项">物业费 10 月账期，缴完把回执拍照存到附件。</textarea>
+      </div>
+    </div>
+
+    <div class="todo-foot-note">
+      <b>保存口径</b>：对象级 version 乐观锁，版本不一致返回冲突；本页不静默覆盖、也不自动合并字段。
+    </div>
+  </div>
+
+  <!-- 冲突层：默认隐藏，保存时版本不一致才出现 -->
+  <div class="sheet-mask" id="sheet-conflict" aria-hidden="true"
+    data-hot="⑤" data-hot-name="冲突弹层" data-hot-pos="outer-top-left"
+    data-hot-label="版本不一致时弹出：说明这条待办已被他人修改，给查看最新 / 覆盖保存 / 放弃修改三选一；不做字段自动合并，也不静默覆盖">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>这条待办已被他人修改</h3>
+      <p class="sheet-sub">你打开的是版本 3，服务器上已是版本 4。为不静默覆盖别人的改动，请选择接下来的处理方式。</p>
+
+      <div class="todo-diff">
+        <div class="todo-diff-row">
+          <span class="todo-diff-k">修改人</span>
+          <span class="todo-diff-v">妈妈 · 今天 09:12</span>
+        </div>
+        <div class="todo-diff-row">
+          <span class="todo-diff-k">截止时间</span>
+          <span class="todo-diff-v">
+            <span class="todo-diff-old num">今天 20:00</span>
+            <span class="todo-diff-arrow">→</span>
+            <span class="todo-diff-new num">明天 10:00</span>
+          </span>
+        </div>
+        <div class="todo-diff-row">
+          <span class="todo-diff-k">你改的</span>
+          <span class="todo-diff-v">截止时间（今天 22:00）与备注</span>
+        </div>
+      </div>
+
+      <div class="todo-warn">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 3.5 17.5 17h-15z"/><path d="M10 8v4M10 14.4v.1"/></svg>
+        <span>覆盖保存会用你的字段整体替换版本 4，妈妈的改动不再保留；查看最新会丢弃你本次未保存的改动。</span>
+      </div>
+
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" data-go="todo-detail.html">查看最新</button>
+        <button class="btn btn-danger btn-block" type="button" data-go="todo-edit.html?state=saved">覆盖保存</button>
+        <button class="btn btn-secondary btn-block" type="button" data-go="todo-detail.html">放弃修改</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 负责人选择层 -->
+  <div class="sheet-mask" id="sheet-owner" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>选择负责人</h3>
+      <p class="sheet-sub">改负责人只影响这条待办的指派，不改变创建人；被指派者会在「分配给我」里看到。</p>
+      <div class="list" style="margin-top:16px">
+        <button class="list-item" type="button" data-owner="我" data-owner-av="我" data-owner-cls="todo-av-me" data-sheet-close>
+          <span class="avatar todo-av-me">我</span>
+          <span class="li-text">我<span class="li-sub">管理员 · 当前负责人</span></span>
+        </button>
+        <button class="list-item" type="button" data-owner="妈妈" data-owner-av="妈" data-owner-cls="todo-av-mom" data-sheet-close>
+          <span class="avatar todo-av-mom">妈</span>
+          <span class="li-text">妈妈<span class="li-sub">成人成员</span></span>
+        </button>
+        <button class="list-item" type="button" data-owner="爸爸" data-owner-av="爸" data-owner-cls="todo-av-dad" data-sheet-close>
+          <span class="avatar todo-av-dad">爸</span>
+          <span class="li-text">爸爸<span class="li-sub">成人成员</span></span>
+        </button>
+        <button class="list-item" type="button" data-owner="女儿" data-owner-av="女" data-owner-cls="todo-av-girl" data-sheet-close>
+          <span class="avatar todo-av-girl">女</span>
+          <span class="li-text">女儿<span class="li-sub">儿童成员 · 由监护人代管</span></span>
+        </button>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 截止时间选择层 -->
+  <div class="sheet-mask" id="sheet-due" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>截止时间</h3>
+      <p class="sheet-sub">改截止后由 HomeOS 撤销旧注册、登记新注册；页面不承诺立即在日历上看到变化。</p>
+      <div class="list" style="margin-top:16px">
+        <button class="list-item" type="button" data-due="今天 18:00" data-due-sub="10 月 29 日 · 周四" data-sheet-close>
+          <span class="li-text">今天 18:00<span class="li-sub">2 小时后</span></span>
+        </button>
+        <button class="list-item" type="button" data-due="今天 22:00" data-due-sub="10 月 29 日 · 周四" data-sheet-close>
+          <span class="li-text">今天 22:00<span class="li-sub">你本次改动的时间</span></span>
+        </button>
+        <button class="list-item" type="button" data-due="明天 09:00" data-due-sub="10 月 30 日 · 周五" data-sheet-close>
+          <span class="li-text">明天 09:00<span class="li-sub">10 月 30 日 · 周五</span></span>
+        </button>
+        <button class="list-item" type="button" data-due="10 月 31 日 10:00" data-due-sub="10 月 31 日 · 周六" data-sheet-close>
+          <span class="li-text">10 月 31 日 10:00<span class="li-sub">本周六上午</span></span>
+        </button>
+        <button class="list-item" type="button" data-toast="自定义日期与时间选择器随系统组件接入；P1 先给常用快捷时间">
+          <span class="li-text">自定义日期与时间<span class="li-sub">精确到分钟</span></span>
+          <span class="chevron">›</span>
+        </button>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var todoState = new URLSearchParams(location.search).get('state') || 'default';
+  var title = document.getElementById('todo-title');
+  var save = document.getElementById('todo-save');
+
+  if (todoState === 'conflict') {
+    document.getElementById('ver-note').textContent = '你打开的是版本 3 · 服务器已更新到版本 4';
+    document.getElementById('sheet-conflict').classList.add('is-open');
+    document.getElementById('sheet-conflict').setAttribute('aria-hidden', 'false');
+  }
+
+  if (todoState === 'saved') {
+    document.getElementById('ver-tag').textContent = '版本 4';
+    document.getElementById('ver-note').textContent = '刚刚保存 · 到期注册已重新发出';
+  }
+
+  document.querySelectorAll('[data-owner]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var av = document.getElementById('owner-av');
+      av.textContent = b.getAttribute('data-owner-av');
+      av.className = 'avatar todo-pick-av ' + b.getAttribute('data-owner-cls');
+      document.getElementById('owner-name').textContent = b.getAttribute('data-owner');
+      window.HC.toast('负责人已改为「' + b.getAttribute('data-owner') + '」');
+    });
+  });
+
+  document.querySelectorAll('[data-due]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.getElementById('due-value').textContent = b.getAttribute('data-due');
+      document.getElementById('due-sub').textContent = b.getAttribute('data-due-sub');
+      window.HC.toast('截止时间已设为 ' + b.getAttribute('data-due'));
+    });
+  });
+
+  title.addEventListener('input', function () {
+    title.classList.remove('is-error');
+  });
+
+  save.addEventListener('click', function () {
+    if (todoState === 'conflict') return;
+    if (!title.value.trim()) {
+      title.classList.add('is-error');
+      title.focus();
+      return;
+    }
+    if (todoState === 'offline') {
+      window.HC.toast('已存入待同步队列，联网后带 version 重放');
+      return;
+    }
+    if (todoState === 'saved') {
+      window.HC.toast('已是最新版本');
+      return;
+    }
+    location.href = 'todo-edit.html?state=conflict';
+  });
+</script>
+</body>
+</html>

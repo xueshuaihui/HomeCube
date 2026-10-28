@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>新建账户 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-content { padding-bottom: 24px; }
+
+  .fx-cancel {
+    height: 36px; padding: 0 2px;
+    border: 0; background: none;
+    font-family: inherit; font-size: var(--fs-15); font-weight: 500;
+    color: var(--text-2); cursor: pointer;
+  }
+  .fx-cancel:hover { color: var(--text); }
+
+  .fx-banner {
+    display: none; align-items: flex-start; gap: 8px;
+    margin: 6px 0 12px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-banner svg { flex: none; margin-top: 1px; }
+  .fx-banner b { display: block; font-size: var(--fs-13); margin-bottom: 2px; }
+  .fx-banner-error { background: var(--danger-soft); color: var(--danger); }
+  body[data-state="error"] .fx-banner-error { display: flex; }
+
+  body[data-state="error"] .fx-name-input.is-error { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
+  body[data-state="error"] .fx-name-err { display: flex; }
+  .fx-name-err { display: none; }
+  .fx-amt-err { display: none; }
+  body[data-state="error"] .fx-amt-err { display: flex; }
+  body[data-state="error"] .fx-amt-input.is-error { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
+
+  .fx-amt { position: relative; }
+  .fx-amt-cur {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    z-index: 1; pointer-events: none;
+    font-family: var(--font-num); font-size: var(--fs-20); font-weight: 700; color: var(--text-2);
+  }
+  .fx-amt-input {
+    height: 56px; padding-left: 34px;
+    font-family: var(--font-num); font-size: var(--fs-20); font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .fx-type-row { padding: 2px 0 0; }
+  .fx-type-row .chip { flex: 1; justify-content: center; }
+
+  .fx-ro {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    border: 1px dashed var(--border-strong);
+    background: var(--surface-2);
+  }
+  .fx-ro-k { font-size: var(--fs-13); color: var(--text-3); flex: none; }
+  .fx-ro-v { flex: 1; min-width: 0; font-size: var(--fs-15); font-weight: 600; }
+  .fx-ro .tag { flex: none; }
+
+  .fx-switch-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .fx-switch-text { flex: 1; min-width: 0; }
+  .fx-switch-k { display: block; font-size: var(--fs-15); font-weight: 600; }
+  .fx-switch-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
+
+  .fx-liab-note {
+    display: none; align-items: flex-start; gap: 8px;
+    margin-top: 8px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--warning-soft); color: var(--warning);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-liab-note.is-on { display: flex; }
+  .fx-liab-note svg { flex: none; margin-top: 1px; }
+
+  .fx-foot-note {
+    margin-top: 4px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    color: var(--text-2); font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-foot-note b { color: var(--text); }
+
+  .fx-foot {
+    flex: none;
+    padding: 10px 16px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body data-screen="F10 新建账户" data-states="default,liability,error">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <button class="fx-cancel" type="button" data-go="finance-account.html"
+        data-hot="①" data-hot-name="取消" data-hot-pos="outer-top-left"
+        data-hot-label="回账户列表；未保存内容直接丢弃，不落草稿、不入离线队列，也不产生余额变动">取消</button>
+    </div>
+    <div class="nav-title">新建账户</div>
+    <div class="nav-right"></div>
+  </div>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 保存后先排队
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-banner fx-banner-error">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
+      <div>
+        <b>还有 2 项需要补全</b>
+        账户名称与初始余额必填；初始余额可填 0，但必须是数字。
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="fx-name">名称<span class="fx-required" style="margin-left:4px;font-size:var(--fs-11);font-weight:600;color:var(--text-3)">必填</span></label>
+      <input class="input fx-name-input" id="fx-name" type="text" maxlength="24"
+        placeholder="例如：招商银行储蓄卡" value="招商银行储蓄卡" autocomplete="off"
+        data-hot="②" data-hot-name="名称" data-hot-pos="outer-top-right"
+        data-hot-label="必填、上限 24 字；同名账户允许存在（用类型与尾号区分），只做首尾空白裁剪；为空时红框 + 行内错误，不弹全局错误">
+      <div class="field-error fx-name-err" role="alert">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
+        请填写账户名称
+      </div>
+      <div class="help">名称会出现在记一笔的账户选择器、账户列表与报表筛选里。</div>
+    </div>
+
+    <div class="field">
+      <span class="field-label">类型</span>
+      <div class="chip-row fx-type-row" id="fx-type-row"
+        data-hot="③" data-hot-name="类型" data-hot-pos="outer-top-right"
+        data-hot-label="现金 / 储蓄卡 / 信用卡 / 其他四选一；选信用卡会自动打开负债开关，也允许手动关掉（例如额度为 0 的副卡）">
+        <button class="chip" type="button" aria-pressed="false" data-type="cash">现金</button>
+        <button class="chip" type="button" aria-pressed="true" data-type="debit">储蓄卡</button>
+        <button class="chip" type="button" aria-pressed="false" data-type="credit">信用卡</button>
+        <button class="chip" type="button" aria-pressed="false" data-type="other">其他</button>
+      </div>
+      <div class="help" id="fx-type-help">储蓄卡与现金默认是资产账户。</div>
+    </div>
+
+    <div class="field">
+      <span class="field-label">币种</span>
+      <div class="fx-ro">
+        <span class="fx-ro-v">人民币 · CNY</span>
+        <span class="tag">家庭币种</span>
+      </div>
+      <div class="help">多币种账户 ②（M2）；P1 新建账户统一使用家庭币种，不改动历史流水的币种。</div>
+    </div>
+
+    <div class="field">
+      <span class="field-label">负债账户</span>
+      <div class="fx-switch-row"
+        data-hot="④" data-hot-name="负债开关" data-hot-pos="outer-bottom-right"
+        data-hot-label="类型选信用卡时自动打开；打开后余额计入总负债、净资产按「资产 − 负债」算；关掉不删除已记的流水，只改统计归属">
+        <span class="fx-switch-text">
+          <span class="fx-switch-k">计入负债</span>
+          <span class="fx-switch-sub" id="fx-liab-sub">储蓄卡默认不计入负债</span>
+        </span>
+        <label class="switch" aria-label="是否计入负债">
+          <input type="checkbox" id="fx-liab">
+          <span class="track"></span><span class="thumb"></span>
+        </label>
+      </div>
+      <div class="fx-liab-note" id="fx-liab-note">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
+        <span>信用卡的余额按「待还」计入总负债；账单日与还款日 ②（M2）开放，P1 先在资料里记录额度。</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="fx-balance" id="fx-balance-label">初始余额<span class="fx-required" style="margin-left:4px;font-size:var(--fs-11);font-weight:600;color:var(--text-3)">必填</span></label>
+      <div class="fx-amt">
+        <span class="fx-amt-cur">¥</span>
+        <input class="input fx-amt-input" id="fx-balance" type="text" inputmode="decimal" value="0.00" autocomplete="off"
+          data-hot="⑤" data-hot-name="初始余额" data-hot-pos="outer-top-right"
+          data-hot-label="初始余额只作账户起点，不产生流水、不改历史报表；可填 0；信用卡账户填待还金额。保存后余额只由流水累计">
+      </div>
+      <div class="field-error fx-amt-err" role="alert">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
+        请填写有效金额，可填 0
+      </div>
+      <div class="help" id="fx-balance-help">初始余额不产生流水，只作为账户起点；之后余额由流水累计。</div>
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="fx-note">备注</label>
+      <textarea class="textarea" id="fx-note" maxlength="120" rows="3"
+        placeholder="可选：卡号尾号、用途或开户行">工资代发行，尾号 4021。</textarea>
+      <div class="help">备注只在本家庭成员内可见，不出现在记账选择器里。</div>
+    </div>
+
+    <div class="fx-foot-note">
+      <b>保存后</b>：账户立即出现在账户列表与记账选择器里；不会生成流水，净资产按初始余额计入。前三个账户可随时改默认标记。
+    </div>
+  </div>
+
+  <div class="fx-foot">
+    <button class="btn btn-primary btn-block" type="button" id="fx-save"
+      data-hot="⑥" data-hot-name="保存" data-hot-pos="outer-bottom-right"
+      data-hot-label="名称或金额不合法时只标红对应字段并给行内错误，不弹全局层；保存成功回账户列表，新账户默认排在所属分组末尾">
+      保存账户
+    </button>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var fxState = new URLSearchParams(location.search).get('state') || 'default';
+  var liab = document.getElementById('fx-liab');
+  var liabNote = document.getElementById('fx-liab-note');
+  var typeBtns = Array.prototype.slice.call(document.querySelectorAll('[data-type]'));
+
+  var typeHelp = {
+    cash: '现金账户默认是资产账户，适合记录钱包与备用金。',
+    debit: '储蓄卡与现金默认是资产账户。',
+    credit: '信用卡默认是负债账户，余额按待还金额展示。',
+    other: '支付宝、微信零钱等第三方账户按资产账户处理；也可手动改为负债。'
+  };
+
+  function syncLiab() {
+    liabNote.classList.toggle('is-on', liab.checked);
+    document.getElementById('fx-balance-label').innerHTML = (liab.checked ? '初始待还' : '初始余额') +
+      '<span style="margin-left:4px;font-size:var(--fs-11);font-weight:600;color:var(--text-3)">必填</span>';
+    document.getElementById('fx-balance-help').textContent = liab.checked
+      ? '初始待还不产生流水，只作为负债起点；之后按流水累计待还金额。'
+      : '初始余额不产生流水，只作为账户起点；之后余额由流水累计。';
+    document.getElementById('fx-liab-sub').textContent = liab.checked
+      ? '余额计入总负债，净资产按「资产 − 负债」算'
+      : '当前不计入负债';
+  }
+
+  typeBtns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      typeBtns.forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+      var t = b.getAttribute('data-type');
+      document.getElementById('fx-type-help').textContent = typeHelp[t];
+      if (t === 'credit') liab.checked = true;
+      syncLiab();
+      if (t === 'credit') window.HC.toast('信用卡账户已自动打开「计入负债」');
+    });
+  });
+
+  liab.addEventListener('change', syncLiab);
+
+  if (fxState === 'liability') {
+    typeBtns.forEach(function (x) {
+      x.setAttribute('aria-pressed', String(x.getAttribute('data-type') === 'credit'));
+    });
+    document.getElementById('fx-type-help').textContent = typeHelp.credit;
+    liab.checked = true;
+    document.getElementById('fx-name').value = '招商银行信用卡';
+    document.getElementById('fx-balance').value = '3250.00';
+  }
+
+  if (fxState === 'error') {
+    document.getElementById('fx-name').value = '';
+    document.getElementById('fx-balance').value = '';
+    document.getElementById('fx-name').classList.add('is-error');
+    document.getElementById('fx-balance').classList.add('is-error');
+  }
+
+  syncLiab();
+
+  document.getElementById('fx-name').addEventListener('input', function () {
+    if (this.value.trim()) {
+      this.classList.remove('is-error');
+      if (document.body.getAttribute('data-state') === 'error' && document.getElementById('fx-balance').value.trim()) {
+        document.body.setAttribute('data-state', 'default');
+      }
+    }
+  });
+
+  document.getElementById('fx-save').addEventListener('click', function () {
+    var name = document.getElementById('fx-name');
+    var bal = document.getElementById('fx-balance');
+    if (!name.value.trim() || !bal.value.trim()) {
+      name.classList.toggle('is-error', !name.value.trim());
+      bal.classList.add('is-error');
+      document.body.setAttribute('data-state', 'error');
+      name.focus();
+      return;
+    }
+    window.HC.toast('账户已创建，余额由流水累计');
+    setTimeout(function () { location.href = 'finance-account.html'; }, 1000);
+  });
+</script>
+</body>
+</html>

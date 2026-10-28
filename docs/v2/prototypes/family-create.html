@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>创建家庭 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .content { padding-bottom: 96px; }
+  .wrap { padding: 0 20px 24px; }
+  .lead { padding: 8px 0 20px; }
+  .lead h2 { font-size: var(--fs-24); font-weight: 700; letter-spacing: .01em; }
+  .lead p { margin-top: 6px; font-size: var(--fs-13); color: var(--text-2); line-height: var(--lh-normal); }
+  .avatar-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .avatar-pick {
+    width: 52px; height: 52px; border-radius: 18px; border: 2px solid transparent;
+    display: flex; align-items: center; justify-content: center;
+    font-size: var(--fs-15); font-weight: 700; color: var(--neutral-0); cursor: pointer;
+  }
+  .avatar-pick[aria-pressed="true"] { border-color: var(--text); }
+  .select-wrap { position: relative; }
+  .select-wrap::after {
+    content: ""; position: absolute; right: 16px; top: 50%; width: 7px; height: 7px;
+    border-right: 1.5px solid var(--text-3); border-bottom: 1.5px solid var(--text-3);
+    transform: translateY(-70%) rotate(45deg); pointer-events: none;
+  }
+  select.select { appearance: none; }
+  .cta { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 20px calc(16px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, var(--bg) 24%); }
+  .name-err { display: none; }
+  body[data-state="error"] .name-err { display: flex; }
+  body[data-state="error"] .js-name { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
+  body[data-state="loading"] .js-submit { color: transparent; pointer-events: none; position: relative; }
+  body[data-state="loading"] .js-submit::after {
+    content: ""; position: absolute; width: 18px; height: 18px; border-radius: 50%;
+    border: 2px solid var(--on-brand); border-top-color: transparent; animation: spin .8s linear infinite;
+  }
+</style>
+</head>
+<body data-screen="02 创建家庭" data-tab="" data-states="default,loading,error">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left"></div>
+    <div class="nav-title">创建家庭</div>
+    <div class="nav-right"></div>
+  </div>
+
+  <div class="content">
+    <div class="wrap">
+      <div class="lead">
+        <h2>给家起个名字</h2>
+        <p>家庭是数据边界：账目、成员与权限都只在本家庭内可见。一个账号最多加入 5 个家庭。</p>
+      </div>
+
+      <div class="field" data-hot="①" data-hot-name="家庭名称" data-hot-pos="top-right" data-hot-label="必填 2–20 字；重名不拦截，但同一账号下不允许同名，提交时在字段下方提示">
+        <label class="field-label" for="fname">家庭名称</label>
+        <input class="input js-name" id="fname" type="text" maxlength="20" placeholder="例如：三口之家" value="三口之家">
+        <div class="field-error name-err" data-state-block="error">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.8v3.8M8 11.2v.1" stroke-linecap="round"/></svg>
+          你已有一个同名家庭，请换一个名称
+        </div>
+      </div>
+
+      <div class="field" data-hot="②" data-hot-name="家庭头像" data-hot-pos="top-right" data-hot-label="八色可选，不传图片；选择即时生效，仅影响 App 内标识">
+        <span class="field-label">家庭头像</span>
+        <div class="avatar-row">
+          <button class="avatar-pick" type="button" aria-pressed="true" style="background:var(--av-1)">家</button>
+          <button class="avatar-pick" type="button" aria-pressed="false" style="background:var(--av-2)">家</button>
+          <button class="avatar-pick" type="button" aria-pressed="false" style="background:var(--av-3)">家</button>
+          <button class="avatar-pick" type="button" aria-pressed="false" style="background:var(--av-4)">家</button>
+          <button class="avatar-pick" type="button" aria-pressed="false" style="background:var(--av-5)">家</button>
+        </div>
+      </div>
+
+      <div class="field" data-hot="③" data-hot-name="时区" data-hot-pos="top-right" data-hot-label="默认取系统时区；影响到期中心与提醒的「今天」边界，创建后管理员可改">
+        <label class="field-label" for="tz">时区</label>
+        <div class="select-wrap">
+          <select class="select" id="tz">
+            <option selected>Asia/Shanghai（UTC+8）</option>
+            <option>Asia/Tokyo（UTC+9）</option>
+            <option>Europe/London（UTC+0）</option>
+            <option>America/Los_Angeles（UTC-8）</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field" data-hot="④" data-hot-name="币种" data-hot-pos="top-right" data-hot-label="默认人民币；只做展示与符号，不换算汇率；创建后管理员可改">
+        <label class="field-label" for="cur">记账币种</label>
+        <div class="select-wrap">
+          <select class="select" id="cur">
+            <option selected>人民币 CNY ¥</option>
+            <option>美元 USD $</option>
+            <option>港币 HKD HK$</option>
+          </select>
+        </div>
+        <div class="help">金额一律按「分」存储，页面只负责显示</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cta">
+    <button class="btn btn-primary btn-block js-submit" type="button" data-hot="⑤" data-hot-name="创建并选面" data-hot-pos="top-right" data-hot-label="提交成功后进入「选择要开通的面」引导态，至少选择一项才能继续；失败停留本页并提示原因">创建并继续</button>
+  </div>
+
+  <div class="sheet-mask" id="sheet-next" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>家庭已创建</h3>
+      <p class="sheet-sub">下一步选择要开通的面。至少选择一项才能进入首页，之后可随时在「我的 → 开通更多面」调整。</p>
+      <div class="sheet-actions">
+        <a class="btn btn-primary btn-block" href="family-modules.html?state=onboarding">去选择面</a>
+        <button class="btn btn-ghost btn-block" type="button" data-go="home.html">先用默认面（财务 + 记账）进入首页</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  document.querySelectorAll('.avatar-pick').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('.avatar-pick').forEach(function (x) { x.setAttribute('aria-pressed', 'false'); });
+      b.setAttribute('aria-pressed', 'true');
+    });
+  });
+  document.querySelector('.js-submit').addEventListener('click', function () {
+    if (!document.getElementById('fname').value.trim()) {
+      window.HC.toast('请填写家庭名称');
+      return;
+    }
+    window.HC.openSheet('sheet-next');
+  });
+</script>
+</body>
+</html>

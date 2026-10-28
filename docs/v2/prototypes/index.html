@@ -1,0 +1,1186 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P1 原型 · 家立方</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  body { display: block; padding: 0 32px 96px; }
+  .wall { max-width: 1180px; margin: 0 auto; }
+  .head {
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 20px;
+    padding: 40px 0 24px; border-bottom: 1px solid var(--border);
+  }
+  .head .mark {
+    width: 44px; height: 44px; border-radius: 14px;
+    background: var(--brand); color: var(--on-brand);
+    display: flex; align-items: center; justify-content: center; margin-bottom: 14px;
+  }
+  .head h1 { font-size: var(--fs-24); font-weight: 700; }
+  .head .sub { margin-top: 6px; font-size: var(--fs-13); color: var(--text-2); line-height: 1.6; max-width: 640px; }
+  .head .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .theme-switch { display: flex; gap: 6px; }
+  .theme-switch button {
+    font-family: inherit; font-size: var(--fs-12); padding: 7px 12px;
+    border-radius: var(--radius-pill); border: 1px solid var(--border);
+    background: var(--surface); color: var(--text-2); cursor: pointer;
+  }
+  .theme-switch button[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  h2.block-title { margin: 40px 0 16px; font-size: var(--fs-17); font-weight: 700; display: flex; align-items: baseline; gap: 10px; }
+  h2.block-title .hint { font-size: var(--fs-12); font-weight: 400; color: var(--text-3); }
+
+  .feature {
+    display: grid; grid-template-columns: 1.1fr 1fr; gap: 0;
+    border-radius: var(--radius-xl); overflow: hidden;
+    border: 1px solid var(--brand-soft-border);
+    background: linear-gradient(135deg, var(--brand-soft) 0%, var(--surface) 60%);
+  }
+  .feature .txt { padding: 28px; }
+  .feature h3 { font-size: var(--fs-20); font-weight: 700; }
+  .feature p { margin-top: 10px; font-size: var(--fs-13); color: var(--text-2); line-height: 1.75; }
+  .feature .swatches { display: flex; gap: 6px; margin-top: 18px; }
+  .feature .swatches span { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border); }
+  .feature .preview { background: var(--bg); border-left: 1px solid var(--border); display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .mini-frame { width: 168px; height: 300px; border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-2); border: 1px solid var(--border); background: var(--bg); position: relative; }
+  .mini-frame iframe { width: 390px; height: 844px; transform: scale(.43); transform-origin: top left; border: 0; pointer-events: none; }
+
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .screen-card {
+    border-radius: var(--radius-lg); border: 1px solid var(--border);
+    background: var(--surface); overflow: hidden; text-decoration: none; color: inherit;
+    display: flex; flex-direction: column; transition: border-color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+  }
+  .screen-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow-1); }
+  .thumb { height: 420px; background: var(--bg); position: relative; overflow: hidden; display: flex; justify-content: center; }
+  .thumb::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 72px; background: linear-gradient(to bottom, transparent, var(--bg)); pointer-events: none; }
+  .thumb iframe { width: 390px; height: 844px; transform: scale(.62); transform-origin: top center; border: 0; pointer-events: none; flex: none; }
+  .screen-card .meta { padding: 12px 14px; border-top: 1px solid var(--border); }
+  .screen-card .no { font-size: 11px; font-family: var(--font-num); color: var(--brand-text); font-weight: 700; letter-spacing: .06em; }
+  .screen-card .name { margin-top: 3px; font-size: var(--fs-15); font-weight: 700; }
+  .screen-card .route { margin-top: 3px; font-size: 11px; color: var(--text-3); font-family: var(--font-num); }
+  .screen-card .links { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .screen-card .links a {
+    font-size: 11px; padding: 5px 9px; border-radius: 7px; white-space: nowrap;
+    border: 1px solid var(--border); color: var(--text-2); text-decoration: none;
+  }
+  .screen-card .links a:hover { border-color: var(--brand); color: var(--brand-text); }
+
+  .batch-list { display: grid; gap: 10px; }
+  .batch-row {
+    display: flex; align-items: center; gap: 14px; padding: 14px 18px;
+    border-radius: var(--radius-md); border: 1px dashed var(--border-strong);
+    font-size: var(--fs-13); color: var(--text-2);
+  }
+  .batch-row b { color: var(--text); font-weight: 700; min-width: 64px; }
+  .batch-row .count { margin-left: auto; font-size: var(--fs-12); color: var(--text-3); font-family: var(--font-num); }
+
+  .howto { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+  .howto .box { padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--surface); font-size: var(--fs-12); line-height: 1.8; color: var(--text-2); }
+  .howto .box b { display: block; color: var(--text); font-size: var(--fs-13); margin-bottom: 6px; }
+
+  @media (max-width: 1040px) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 860px) {
+    body { padding: 0 16px 64px; }
+    .feature { grid-template-columns: 1fr; }
+    .feature .preview { border-left: 0; border-top: 1px solid var(--border); }
+    .head { flex-direction: column; align-items: flex-start; }
+  }
+  @media (max-width: 560px) {
+    .grid { grid-template-columns: 1fr; }
+    .thumb { height: 380px; }
+    .thumb iframe { transform: scale(.55); }
+  }
+</style>
+</head>
+<body>
+<div class="wall">
+  <header class="head">
+    <div>
+      <div class="mark">
+        <svg width="24" height="24" viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M17 4 29 11v13l-12 7-12-7V11z"/><path d="M17 4v13l12 7" opacity=".55"/><path d="M17 17 5 11" opacity=".55"/></svg>
+      </div>
+      <h1>P1 原型 · 全量 73 屏</h1>
+      <div class="sub">HomeOS 主包 22 屏 + 日历面 9 屏 + 财务面 42 屏（M1 29 / M2 13）。点开任意一屏可真实点击跳转、切换状态与查看交互热区；每屏配一张屏卡说明交互与异常。</div>
+    </div>
+    <div class="actions">
+      <div class="theme-switch" data-theme-switch>
+        <button type="button" data-theme-value="system">跟随系统</button>
+        <button type="button" data-theme-value="light">亮</button>
+        <button type="button" data-theme-value="dark">暗</button>
+      </div>
+      <a class="btn btn-primary btn-sm" href="theme.html">主题与组件规范</a>
+    </div>
+  </header>
+
+  <h2 class="block-title">主题 <span class="hint">先看它：配色、尺度、组件与十个全局态</span></h2>
+  <div class="feature">
+    <div class="txt">
+      <h3>温暖可信 · 焦糖橙 + 橄榄绿</h3>
+      <p>品牌只占四个固定位置；亮/暗是同一套令牌两套值；页面不得写死色值。组件基线覆盖按钮、输入、列表、分段、开关、卡片与十个全局态。</p>
+      <div class="swatches">
+        <span style="background:var(--brand-500)"></span>
+        <span style="background:var(--brand-600)"></span>
+        <span style="background:var(--accent-600)"></span>
+        <span style="background:var(--neutral-100)"></span>
+        <span style="background:var(--neutral-900)"></span>
+      </div>
+      <div style="margin-top:18px"><a class="btn btn-secondary btn-sm" href="theme.html">打开规范页</a></div>
+    </div>
+    <div class="preview">
+      <div class="mini-frame"><iframe src="login.html?embed=1" title="主题预览"></iframe></div>
+    </div>
+  </div>
+
+  <h2 class="block-title">入口与主框架 6 屏 <span class="hint">登录 → 创建/加入家庭 → 设备锁 → 首页 → 我的</span></h2>
+  <div class="grid">
+    <div class="screen-card">
+      <div class="thumb"><iframe src="login.html?embed=1" title="登录预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">01</div>
+        <div class="name">登录</div>
+        <div class="route">homeos/auth/login</div>
+        <div class="links"><a href="login.html">打开原型</a>
+          <a href="../screens/homeos/01-login.md">屏卡</a>
+          <a href="login.html?state=loading">加载</a>
+          <a href="login.html?state=error">失败</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="family-create.html?embed=1" title="创建家庭预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">02</div>
+        <div class="name">创建家庭</div>
+        <div class="route">homeos/auth/family-create</div>
+        <div class="links"><a href="family-create.html">打开原型</a>
+          <a href="../screens/homeos/02-family-create.md">屏卡</a>
+          <a href="family-create.html?state=loading">加载</a>
+          <a href="family-create.html?state=error">失败</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="family-join.html?embed=1" title="加入家庭预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">03</div>
+        <div class="name">加入家庭</div>
+        <div class="route">homeos/auth/family-join</div>
+        <div class="links"><a href="family-join.html">打开原型</a>
+          <a href="../screens/homeos/03-family-join.md">屏卡</a>
+          <a href="family-join.html?state=preview">preview</a>
+          <a href="family-join.html?state=invalid">invalid</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="pin-set.html?embed=1" title="设备锁 PIN预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">04</div>
+        <div class="name">设备锁 PIN</div>
+        <div class="route">homeos/auth/pin-set</div>
+        <div class="links"><a href="pin-set.html">打开原型</a>
+          <a href="../screens/homeos/04-pin-set.md">屏卡</a>
+          <a href="pin-set.html?state=confirm">confirm</a>
+          <a href="pin-set.html?state=mismatch">mismatch</a>
+          <a href="pin-set.html?state=locked">locked</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="home.html?embed=1" title="首页（家庭服务矩阵）预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">05</div>
+        <div class="name">首页（家庭服务矩阵）</div>
+        <div class="route">homeos/home/index</div>
+        <div class="links"><a href="home.html">打开原型</a>
+          <a href="../screens/homeos/05-home.md">屏卡</a>
+          <a href="home.html?state=loading">加载</a>
+          <a href="home.html?state=empty">空态</a>
+          <a href="home.html?state=offline">离线</a>
+          <a href="home.html?state=unavailable">unavailable</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="me.html?embed=1" title="我的预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">06</div>
+        <div class="name">我的</div>
+        <div class="route">homeos/me/index</div>
+        <div class="links"><a href="me.html">打开原型</a>
+          <a href="../screens/homeos/06-me.md">屏卡</a>
+          <a href="me.html?state=member">member</a></div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="block-title">HomeOS 其余 16 屏 <span class="hint">动态流 / 消息 / 留言板 / 搜索 / 全局＋ / 成员治理 11 屏</span></h2>
+  <div class="grid">
+    <div class="screen-card">
+      <div class="thumb"><iframe src="dynamic.html?embed=1" title="动态流预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">07</div>
+        <div class="name">动态流</div>
+        <div class="route">homeos/dynamic/index</div>
+        <div class="links"><a href="dynamic.html">打开原型</a>
+          <a href="../screens/homeos/07-dynamic.md">屏卡</a>
+          <a href="dynamic.html?state=loading">加载</a>
+          <a href="dynamic.html?state=empty">空态</a>
+          <a href="dynamic.html?state=filtered">filtered</a>
+          <a href="dynamic.html?state=offline">离线</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="message.html?embed=1" title="消息（站内通知）预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">08</div>
+        <div class="name">消息（站内通知）</div>
+        <div class="route">homeos/message/index</div>
+        <div class="links"><a href="message.html">打开原型</a>
+          <a href="../screens/homeos/08-message.md">屏卡</a>
+          <a href="message.html?state=empty">空态</a>
+          <a href="message.html?state=loading">加载</a>
+          <a href="message.html?state=offline">离线</a>
+          <a href="message.html?state=allread">allread</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="board.html?embed=1" title="家庭留言板预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">09</div>
+        <div class="name">家庭留言板</div>
+        <div class="route">homeos/message/board</div>
+        <div class="links"><a href="board.html">打开原型</a>
+          <a href="../screens/homeos/09-board.md">屏卡</a>
+          <a href="board.html?state=empty">空态</a>
+          <a href="board.html?state=sending">sending</a>
+          <a href="board.html?state=offline">离线</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="search.html?embed=1" title="搜索预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">19</div>
+        <div class="name">搜索</div>
+        <div class="route">homeos/search/index</div>
+        <div class="links"><a href="search.html">打开原型</a>
+          <a href="../screens/homeos/19-search.md">屏卡</a>
+          <a href="search.html?state=typing">typing</a>
+          <a href="search.html?state=empty">空态</a>
+          <a href="search.html?state=offline">离线</a>
+          <a href="search.html?state=loading">加载</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="quick-add.html?embed=1" title="全局「＋」预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">20</div>
+        <div class="name">全局「＋」</div>
+        <div class="route">homeos/quick-add/index</div>
+        <div class="links"><a href="quick-add.html">打开原型</a>
+          <a href="../screens/homeos/20-quick-add.md">屏卡</a>
+          <a href="quick-add.html?state=recording">recording</a>
+          <a href="quick-add.html?state=ocr">ocr</a>
+          <a href="quick-add.html?state=error">失败</a>
+          <a href="quick-add.html?state=offline">离线</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="family.html?embed=1" title="家庭成员预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">21</div>
+        <div class="name">家庭成员</div>
+        <div class="route">homeos/family/index</div>
+        <div class="links"><a href="family.html">打开原型</a>
+          <a href="../screens/homeos/21-family.md">屏卡</a>
+          <a href="family.html?state=noaccount">noaccount</a>
+          <a href="family.html?state=member">member</a>
+          <a href="family.html?state=empty">空态</a>
+          <a href="family.html?state=loading">加载</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="family-invite.html?embed=1" title="邀请成员预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">22</div>
+        <div class="name">邀请成员</div>
+        <div class="route">homeos/family/invite</div>
+        <div class="links"><a href="family-invite.html">打开原型</a>
+          <a href="../screens/homeos/22-family-invite.md">屏卡</a>
+          <a href="family-invite.html?state=link">link</a>
+          <a href="family-invite.html?state=qr">qr</a>
+          <a href="family-invite.html?state=revoke">revoke</a>
+          <a href="family-invite.html?state=noperm">noperm</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="family-detail.html?embed=1" title="成员治理预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">23</div>
+        <div class="name">成员治理</div>
+        <div class="route">homeos/family/detail</div>
+        <div class="links"><a href="family-detail.html">打开原型</a>
+          <a href="../screens/homeos/23-family-detail.md">屏卡</a>
+          <a href="family-detail.html?state=roleconfirm">roleconfirm</a>
+          <a href="family-detail.html?state=remove">remove</a>
+          <a href="family-detail.html?state=lastadmin">lastadmin</a>
+          <a href="family-detail.html?state=loading">加载</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="member-detail.html?embed=1" title="成员主页预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">24</div>
+        <div class="name">成员主页</div>
+        <div class="route">homeos/member/detail</div>
+        <div class="links"><a href="member-detail.html">打开原型</a>
+          <a href="../screens/homeos/24-member-detail.md">屏卡</a>
+          <a href="member-detail.html?state=empty">空态</a>
+          <a href="member-detail.html?state=guardian">guardian</a>
+          <a href="member-detail.html?state=loading">加载</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="family-permission.html?embed=1" title="权限设置预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">25</div>
+        <div class="name">权限设置</div>
+        <div class="route">homeos/family/permission</div>
+        <div class="links"><a href="family-permission.html">打开原型</a>
+          <a href="../screens/homeos/25-family-permission.md">屏卡</a>
+          <a href="family-permission.html?state=member">member</a>
+          <a href="family-permission.html?state=loading">加载</a>
+          <a href="family-permission.html?state=error">失败</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="family-modules.html?embed=1" title="面目录与开通预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">26</div>
+        <div class="name">面目录与开通</div>
+        <div class="route">homeos/family/modules</div>
+        <div class="links"><a href="family-modules.html">打开原型</a>
+          <a href="../screens/homeos/26-family-modules.md">屏卡</a>
+          <a href="family-modules.html?state=confirm">confirm</a>
+          <a href="family-modules.html?state=onboarding">onboarding</a>
+          <a href="family-modules.html?state=onboarding-selected">onboarding-selected</a>
+          <a href="family-modules.html?state=readonly">readonly</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="settings.html?embed=1" title="设置预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">27</div>
+        <div class="name">设置</div>
+        <div class="route">homeos/settings/index</div>
+        <div class="links"><a href="settings.html">打开原型</a>
+          <a href="../screens/homeos/27-settings.md">屏卡</a>
+          <a href="settings.html?state=dark">dark</a>
+          <a href="settings.html?state=readonly">readonly</a>
+          <a href="settings.html?state=loading">加载</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="settings-security.html?embed=1" title="安全与设备锁预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">28</div>
+        <div class="name">安全与设备锁</div>
+        <div class="route">homeos/settings/security</div>
+        <div class="links"><a href="settings-security.html">打开原型</a>
+          <a href="../screens/homeos/28-settings-security.md">屏卡</a>
+          <a href="settings-security.html?state=lockoff">lockoff</a>
+          <a href="settings-security.html?state=unlink">unlink</a>
+          <a href="settings-security.html?state=loading">加载</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="privacy.html?embed=1" title="隐私预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">29</div>
+        <div class="name">隐私</div>
+        <div class="route">homeos/privacy/index</div>
+        <div class="links"><a href="privacy.html">打开原型</a>
+          <a href="../screens/homeos/29-privacy.md">屏卡</a>
+          <a href="privacy.html?state=readonly">readonly</a>
+          <a href="privacy.html?state=delete">delete</a>
+          <a href="privacy.html?state=loading">加载</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="data.html?embed=1" title="数据预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">30</div>
+        <div class="name">数据</div>
+        <div class="route">homeos/data/index</div>
+        <div class="links"><a href="data.html">打开原型</a>
+          <a href="../screens/homeos/30-data.md">屏卡</a>
+          <a href="data.html?state=exporting">exporting</a>
+          <a href="data.html?state=exported">exported</a>
+          <a href="data.html?state=restore">restore</a>
+          <a href="data.html?state=failed">failed</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="about.html?embed=1" title="帮助与关于预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">31</div>
+        <div class="name">帮助与关于</div>
+        <div class="route">homeos/about/index</div>
+        <div class="links"><a href="about.html">打开原型</a>
+          <a href="../screens/homeos/31-about.md">屏卡</a>
+          <a href="about.html?state=checking">checking</a>
+          <a href="about.html?state=latest">latest</a>
+          <a href="about.html?state=policy">policy</a></div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="block-title">日历面 9 屏 <span class="hint">定版 ㉚：日历与财务同级的业务面 · 路由域 calendar/* · 到期中心 2 + 待办 4 + 提醒 3</span></h2>
+  <div class="grid">
+    <div class="screen-card">
+      <div class="thumb"><iframe src="calendar.html?embed=1" title="到期中心预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">10</div>
+        <div class="name">到期中心</div>
+        <div class="route">calendar/calendar/index</div>
+        <div class="links"><a href="calendar.html">打开原型</a>
+          <a href="../screens/calendar/10-calendar.md">屏卡</a>
+          <a href="calendar.html?state=week">week</a>
+          <a href="calendar.html?state=empty">空态</a>
+          <a href="calendar.html?state=loading">加载</a>
+          <a href="calendar.html?state=offline">离线</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="calendar-detail.html?embed=1" title="事件详情预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">11</div>
+        <div class="name">事件详情</div>
+        <div class="route">calendar/calendar/detail</div>
+        <div class="links"><a href="calendar-detail.html">打开原型</a>
+          <a href="../screens/calendar/11-calendar-detail.md">屏卡</a>
+          <a href="calendar-detail.html?state=homeos">homeos</a>
+          <a href="calendar-detail.html?state=sourceUnavailable">sourceUnavailable</a>
+          <a href="calendar-detail.html?state=offline">离线</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="todo.html?embed=1" title="待办列表预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">12</div>
+        <div class="name">待办列表</div>
+        <div class="route">calendar/todo/index</div>
+        <div class="links"><a href="todo.html">打开原型</a>
+          <a href="../screens/calendar/12-todo.md">屏卡</a>
+          <a href="todo.html?state=empty">空态</a>
+          <a href="todo.html?state=loading">加载</a>
+          <a href="todo.html?state=offline">离线</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="todo-create.html?embed=1" title="新建待办预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">13</div>
+        <div class="name">新建待办</div>
+        <div class="route">calendar/todo/create</div>
+        <div class="links"><a href="todo-create.html">打开原型</a>
+          <a href="../screens/calendar/13-todo-create.md">屏卡</a>
+          <a href="todo-create.html?state=error">失败</a>
+          <a href="todo-create.html?state=submitting">submitting</a>
+          <a href="todo-create.html?state=offline">离线</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="todo-edit.html?embed=1" title="编辑待办预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">14</div>
+        <div class="name">编辑待办</div>
+        <div class="route">calendar/todo/edit</div>
+        <div class="links"><a href="todo-edit.html">打开原型</a>
+          <a href="../screens/calendar/14-todo-edit.md">屏卡</a>
+          <a href="todo-edit.html?state=conflict">冲突</a>
+          <a href="todo-edit.html?state=saved">saved</a>
+          <a href="todo-edit.html?state=offline">离线</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="todo-detail.html?embed=1" title="待办详情预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">15</div>
+        <div class="name">待办详情</div>
+        <div class="route">calendar/todo/detail</div>
+        <div class="links"><a href="todo-detail.html">打开原型</a>
+          <a href="../screens/calendar/15-todo-detail.md">屏卡</a>
+          <a href="todo-detail.html?state=completed">completed</a>
+          <a href="todo-detail.html?state=saving">saving</a>
+          <a href="todo-detail.html?state=offline">离线</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="reminder.html?embed=1" title="提醒列表预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">16</div>
+        <div class="name">提醒列表</div>
+        <div class="route">calendar/reminder/index</div>
+        <div class="links"><a href="reminder.html">打开原型</a>
+          <a href="../screens/calendar/16-reminder.md">屏卡</a>
+          <a href="reminder.html?state=empty">空态</a>
+          <a href="reminder.html?state=loading">加载</a>
+          <a href="reminder.html?state=offline">离线</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="reminder-create.html?embed=1" title="新建提醒预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">17</div>
+        <div class="name">新建提醒</div>
+        <div class="route">calendar/reminder/create</div>
+        <div class="links"><a href="reminder-create.html">打开原型</a>
+          <a href="../screens/calendar/17-reminder-create.md">屏卡</a>
+          <a href="reminder-create.html?state=fallback">fallback</a>
+          <a href="reminder-create.html?state=error">失败</a>
+          <a href="reminder-create.html?state=submitting">submitting</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="reminder-edit.html?embed=1" title="编辑提醒预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">18</div>
+        <div class="name">编辑提醒</div>
+        <div class="route">calendar/reminder/edit</div>
+        <div class="links"><a href="reminder-edit.html">打开原型</a>
+          <a href="../screens/calendar/18-reminder-edit.md">屏卡</a>
+          <a href="reminder-edit.html?state=paused">paused</a>
+          <a href="reminder-edit.html?state=conflict">冲突</a>
+          <a href="reminder-edit.html?state=deleted">deleted</a></div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="block-title">财务面 M1 29 屏 <span class="hint">流水 5 · 周期 3 · 账户 4 · 分类 4 · 报表 2 · 预算 3 · 账本 3 · 账单 4 · 设置 1</span></h2>
+  <div class="grid">
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-flow.html?embed=1" title="流水预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F01</div>
+        <div class="name">流水</div>
+        <div class="route">finance/flow/index</div>
+        <div class="links"><a href="finance-flow.html">打开原型</a>
+          <a href="../screens/finance/01-flow.md">屏卡</a>
+          <a href="finance-flow.html?state=select">select</a>
+          <a href="finance-flow.html?state=filter">filter</a>
+          <a href="finance-flow.html?state=private">private</a>
+          <a href="finance-flow.html?state=loading">加载</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-tx-create.html?embed=1" title="记一笔预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F02</div>
+        <div class="name">记一笔</div>
+        <div class="route">finance/tx/create</div>
+        <div class="links"><a href="finance-tx-create.html">打开原型</a>
+          <a href="../screens/finance/02-tx-create.md">屏卡</a>
+          <a href="finance-tx-create.html?state=transfer">transfer</a>
+          <a href="finance-tx-create.html?state=ocr-result">ocr-result</a>
+          <a href="finance-tx-create.html?state=saving">saving</a>
+          <a href="finance-tx-create.html?state=error">失败</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-tx-edit.html?embed=1" title="编辑流水预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F03</div>
+        <div class="name">编辑流水</div>
+        <div class="route">finance/tx/edit</div>
+        <div class="links"><a href="finance-tx-edit.html">打开原型</a>
+          <a href="../screens/finance/03-tx-edit.md">屏卡</a>
+          <a href="finance-tx-edit.html?state=conflict">冲突</a>
+          <a href="finance-tx-edit.html?state=delete-confirm">delete-confirm</a>
+          <a href="finance-tx-edit.html?state=saved-toast">saved-toast</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-tx-detail.html?embed=1" title="单笔详情预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F04</div>
+        <div class="name">单笔详情</div>
+        <div class="route">finance/tx/detail</div>
+        <div class="links"><a href="finance-tx-detail.html">打开原型</a>
+          <a href="../screens/finance/04-tx-detail.md">屏卡</a>
+          <a href="finance-tx-detail.html?state=transfer">transfer</a>
+          <a href="finance-tx-detail.html?state=attachments">attachments</a>
+          <a href="finance-tx-detail.html?state=private-other">private-other</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-tx-trash.html?embed=1" title="回收站预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F05</div>
+        <div class="name">回收站</div>
+        <div class="route">finance/tx/trash</div>
+        <div class="links"><a href="finance-tx-trash.html">打开原型</a>
+          <a href="../screens/finance/05-tx-trash.md">屏卡</a>
+          <a href="finance-tx-trash.html?state=restore-confirm">restore-confirm</a>
+          <a href="finance-tx-trash.html?state=empty">空态</a>
+          <a href="finance-tx-trash.html?state=loading">加载</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-recurring.html?embed=1" title="周期记账预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F06</div>
+        <div class="name">周期记账</div>
+        <div class="route">finance/recurring/index</div>
+        <div class="links"><a href="finance-recurring.html">打开原型</a>
+          <a href="../screens/finance/06-recurring.md">屏卡</a>
+          <a href="finance-recurring.html?state=paused">paused</a>
+          <a href="finance-recurring.html?state=empty">空态</a>
+          <a href="finance-recurring.html?state=loading">加载</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-recurring-create.html?embed=1" title="新建周期规则预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F07</div>
+        <div class="name">新建周期规则</div>
+        <div class="route">finance/recurring/create</div>
+        <div class="links"><a href="finance-recurring-create.html">打开原型</a>
+          <a href="../screens/finance/07-recurring-create.md">屏卡</a>
+          <a href="finance-recurring-create.html?state=advanced">advanced</a>
+          <a href="finance-recurring-create.html?state=error">失败</a>
+          <a href="finance-recurring-create.html?state=saving">saving</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-recurring-edit.html?embed=1" title="编辑周期规则预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F08</div>
+        <div class="name">编辑周期规则</div>
+        <div class="route">finance/recurring/edit</div>
+        <div class="links"><a href="finance-recurring-edit.html">打开原型</a>
+          <a href="../screens/finance/08-recurring-edit.md">屏卡</a>
+          <a href="finance-recurring-edit.html?state=pause-confirm">pause-confirm</a>
+          <a href="finance-recurring-edit.html?state=delete-confirm">delete-confirm</a>
+          <a href="finance-recurring-edit.html?state=conflict">冲突</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-account.html?embed=1" title="账户预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F09</div>
+        <div class="name">账户</div>
+        <div class="route">finance/account/index</div>
+        <div class="links"><a href="finance-account.html">打开原型</a>
+          <a href="../screens/finance/09-account.md">屏卡</a>
+          <a href="finance-account.html?state=archived-folded">archived-folded</a>
+          <a href="finance-account.html?state=empty">空态</a>
+          <a href="finance-account.html?state=loading">加载</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-account-create.html?embed=1" title="新建账户预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F10</div>
+        <div class="name">新建账户</div>
+        <div class="route">finance/account/create</div>
+        <div class="links"><a href="finance-account-create.html">打开原型</a>
+          <a href="../screens/finance/10-account-create.md">屏卡</a>
+          <a href="finance-account-create.html?state=liability">liability</a>
+          <a href="finance-account-create.html?state=error">失败</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-account-edit.html?embed=1" title="编辑账户预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F11</div>
+        <div class="name">编辑账户</div>
+        <div class="route">finance/account/edit</div>
+        <div class="links"><a href="finance-account-edit.html">打开原型</a>
+          <a href="../screens/finance/11-account-edit.md">屏卡</a>
+          <a href="finance-account-edit.html?state=conflict">冲突</a>
+          <a href="finance-account-edit.html?state=archive-blocked">archive-blocked</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-account-archive.html?embed=1" title="归档与恢复预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F12</div>
+        <div class="name">归档与恢复</div>
+        <div class="route">finance/account/archive</div>
+        <div class="links"><a href="finance-account-archive.html">打开原型</a>
+          <a href="../screens/finance/12-account-archive.md">屏卡</a>
+          <a href="finance-account-archive.html?state=balance-block">balance-block</a>
+          <a href="finance-account-archive.html?state=restore-confirm">restore-confirm</a>
+          <a href="finance-account-archive.html?state=empty">空态</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-category.html?embed=1" title="分类管理（两级）预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F13</div>
+        <div class="name">分类管理（两级）</div>
+        <div class="route">finance/category/index</div>
+        <div class="links"><a href="finance-category.html">打开原型</a>
+          <a href="../screens/finance/13-category.md">屏卡</a>
+          <a href="finance-category.html?state=expanded">expanded</a>
+          <a href="finance-category.html?state=preset-disabled">preset-disabled</a>
+          <a href="finance-category.html?state=loading">加载</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-category-create.html?embed=1" title="新建分类预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F14</div>
+        <div class="name">新建分类</div>
+        <div class="route">finance/category/create</div>
+        <div class="links"><a href="finance-category-create.html">打开原型</a>
+          <a href="../screens/finance/14-category-create.md">屏卡</a>
+          <a href="finance-category-create.html?state=picker">picker</a>
+          <a href="finance-category-create.html?state=error">失败</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-category-edit.html?embed=1" title="编辑分类预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F15</div>
+        <div class="name">编辑分类</div>
+        <div class="route">finance/category/edit</div>
+        <div class="links"><a href="finance-category-edit.html">打开原型</a>
+          <a href="../screens/finance/15-category-edit.md">屏卡</a>
+          <a href="finance-category-edit.html?state=disable-confirm">disable-confirm</a>
+          <a href="finance-category-edit.html?state=error">失败</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-category-sort.html?embed=1" title="分类排序预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F16</div>
+        <div class="name">分类排序</div>
+        <div class="route">finance/category/sort</div>
+        <div class="links"><a href="finance-category-sort.html">打开原型</a>
+          <a href="../screens/finance/16-category-sort.md">屏卡</a>
+          <a href="finance-category-sort.html?state=dragging">dragging</a>
+          <a href="finance-category-sort.html?state=saving">saving</a>
+          <a href="finance-category-sort.html?state=saved">saved</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-report.html?embed=1" title="报表预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F17</div>
+        <div class="name">报表</div>
+        <div class="route">finance/report/index</div>
+        <div class="links"><a href="finance-report.html">打开原型</a>
+          <a href="../screens/finance/17-report.md">屏卡</a>
+          <a href="finance-report.html?state=trend">trend</a>
+          <a href="finance-report.html?state=category">category</a>
+          <a href="finance-report.html?state=member">member</a>
+          <a href="finance-report.html?state=empty">空态</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-report-export.html?embed=1" title="导出报表预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F18</div>
+        <div class="name">导出报表</div>
+        <div class="route">finance/report/export</div>
+        <div class="links"><a href="finance-report-export.html">打开原型</a>
+          <a href="../screens/finance/18-report-export.md">屏卡</a>
+          <a href="finance-report-export.html?state=exporting">exporting</a>
+          <a href="finance-report-export.html?state=done">done</a>
+          <a href="finance-report-export.html?state=error">失败</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-budget.html?embed=1" title="预算预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F19</div>
+        <div class="name">预算</div>
+        <div class="route">finance/budget/index</div>
+        <div class="links"><a href="finance-budget.html">打开原型</a>
+          <a href="../screens/finance/19-budget.md">屏卡</a>
+          <a href="finance-budget.html?state=over">over</a>
+          <a href="finance-budget.html?state=empty">空态</a>
+          <a href="finance-budget.html?state=loading">加载</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-budget-create.html?embed=1" title="新建预算预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F20</div>
+        <div class="name">新建预算</div>
+        <div class="route">finance/budget/create</div>
+        <div class="links"><a href="finance-budget-create.html">打开原型</a>
+          <a href="../screens/finance/20-budget-create.md">屏卡</a>
+          <a href="finance-budget-create.html?state=category-pick">category-pick</a>
+          <a href="finance-budget-create.html?state=threshold">threshold</a>
+          <a href="finance-budget-create.html?state=error">失败</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-budget-edit.html?embed=1" title="编辑预算预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F21</div>
+        <div class="name">编辑预算</div>
+        <div class="route">finance/budget/edit</div>
+        <div class="links"><a href="finance-budget-edit.html">打开原型</a>
+          <a href="../screens/finance/21-budget-edit.md">屏卡</a>
+          <a href="finance-budget-edit.html?state=delete-confirm">delete-confirm</a>
+          <a href="finance-budget-edit.html?state=conflict">冲突</a>
+          <a href="finance-budget-edit.html?state=saved">saved</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-ledger.html?embed=1" title="账本预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F22</div>
+        <div class="name">账本</div>
+        <div class="route">finance/ledger/index</div>
+        <div class="links"><a href="finance-ledger.html">打开原型</a>
+          <a href="../screens/finance/22-ledger.md">屏卡</a>
+          <a href="finance-ledger.html?state=private">private</a>
+          <a href="finance-ledger.html?state=project">project</a>
+          <a href="finance-ledger.html?state=empty">空态</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-ledger-create.html?embed=1" title="新建账本预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F23</div>
+        <div class="name">新建账本</div>
+        <div class="route">finance/ledger/create</div>
+        <div class="links"><a href="finance-ledger-create.html">打开原型</a>
+          <a href="../screens/finance/23-ledger-create.md">屏卡</a>
+          <a href="finance-ledger-create.html?state=members">members</a>
+          <a href="finance-ledger-create.html?state=error">失败</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-ledger-edit.html?embed=1" title="编辑账本预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F24</div>
+        <div class="name">编辑账本</div>
+        <div class="route">finance/ledger/edit</div>
+        <div class="links"><a href="finance-ledger-edit.html">打开原型</a>
+          <a href="../screens/finance/24-ledger-edit.md">屏卡</a>
+          <a href="finance-ledger-edit.html?state=members-changed">members-changed</a>
+          <a href="finance-ledger-edit.html?state=delete-confirm">delete-confirm</a>
+          <a href="finance-ledger-edit.html?state=conflict">冲突</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-bill.html?embed=1" title="账单预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F25</div>
+        <div class="name">账单</div>
+        <div class="route">finance/bill/index</div>
+        <div class="links"><a href="finance-bill.html">打开原型</a>
+          <a href="../screens/finance/25-bill.md">屏卡</a>
+          <a href="finance-bill.html?state=overdue">overdue</a>
+          <a href="finance-bill.html?state=empty">空态</a>
+          <a href="finance-bill.html?state=loading">加载</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-bill-detail.html?embed=1" title="账单详情预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F26</div>
+        <div class="name">账单详情</div>
+        <div class="route">finance/bill/detail</div>
+        <div class="links"><a href="finance-bill-detail.html">打开原型</a>
+          <a href="../screens/finance/26-bill-detail.md">屏卡</a>
+          <a href="finance-bill-detail.html?state=paid-confirm">paid-confirm</a>
+          <a href="finance-bill-detail.html?state=paid">paid</a>
+          <a href="finance-bill-detail.html?state=unregistered">unregistered</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-bill-create.html?embed=1" title="新建账单预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F27</div>
+        <div class="name">新建账单</div>
+        <div class="route">finance/bill/create</div>
+        <div class="links"><a href="finance-bill-create.html">打开原型</a>
+          <a href="../screens/finance/27-bill-create.md">屏卡</a>
+          <a href="finance-bill-create.html?state=repeat">repeat</a>
+          <a href="finance-bill-create.html?state=error">失败</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-bill-edit.html?embed=1" title="编辑账单预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F28</div>
+        <div class="name">编辑账单</div>
+        <div class="route">finance/bill/edit</div>
+        <div class="links"><a href="finance-bill-edit.html">打开原型</a>
+          <a href="../screens/finance/28-bill-edit.md">屏卡</a>
+          <a href="finance-bill-edit.html?state=date-changed">date-changed</a>
+          <a href="finance-bill-edit.html?state=delete-confirm">delete-confirm</a>
+          <a href="finance-bill-edit.html?state=conflict">冲突</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-settings.html?embed=1" title="账户与设置预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F29</div>
+        <div class="name">账户与设置</div>
+        <div class="route">finance/settings/index</div>
+        <div class="links"><a href="finance-settings.html">打开原型</a>
+          <a href="../screens/finance/29-settings.md">屏卡</a>
+          <a href="finance-settings.html?state=defaults">defaults</a>
+          <a href="finance-settings.html?state=non-admin">non-admin</a>
+          <a href="finance-settings.html?state=loading">加载</a></div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="block-title">财务面 M2 13 屏 <span class="hint">借贷 3 · 储蓄目标 3 · 分账 4 · 资产负债 1 · 发票 2</span></h2>
+  <div class="grid">
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-loan.html?embed=1" title="借贷预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F30</div>
+        <div class="name">借贷</div>
+        <div class="route">finance/loan/index</div>
+        <div class="links"><a href="finance-loan.html">打开原型</a>
+          <a href="../screens/finance/30-loan.md">屏卡</a>
+          <a href="finance-loan.html?state=borrow">borrow</a>
+          <a href="finance-loan.html?state=empty">空态</a>
+          <a href="finance-loan.html?state=loading">加载</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-loan-create.html?embed=1" title="登记借出 / 借入预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F31</div>
+        <div class="name">登记借出 / 借入</div>
+        <div class="route">finance/loan/create</div>
+        <div class="links"><a href="finance-loan-create.html">打开原型</a>
+          <a href="../screens/finance/31-loan-create.md">屏卡</a>
+          <a href="finance-loan-create.html?state=installment">installment</a>
+          <a href="finance-loan-create.html?state=error">失败</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-loan-detail.html?embed=1" title="借还款详情预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F32</div>
+        <div class="name">借还款详情</div>
+        <div class="route">finance/loan/detail</div>
+        <div class="links"><a href="finance-loan-detail.html">打开原型</a>
+          <a href="../screens/finance/32-loan-detail.md">屏卡</a>
+          <a href="finance-loan-detail.html?state=repay-sheet">repay-sheet</a>
+          <a href="finance-loan-detail.html?state=overdue">overdue</a>
+          <a href="finance-loan-detail.html?state=settled">settled</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-goal.html?embed=1" title="储蓄目标预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F33</div>
+        <div class="name">储蓄目标</div>
+        <div class="route">finance/goal/index</div>
+        <div class="links"><a href="finance-goal.html">打开原型</a>
+          <a href="../screens/finance/33-goal.md">屏卡</a>
+          <a href="finance-goal.html?state=empty">空态</a>
+          <a href="finance-goal.html?state=achieved">achieved</a>
+          <a href="finance-goal.html?state=loading">加载</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-goal-create.html?embed=1" title="新建目标预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F34</div>
+        <div class="name">新建目标</div>
+        <div class="route">finance/goal/create</div>
+        <div class="links"><a href="finance-goal-create.html">打开原型</a>
+          <a href="../screens/finance/34-goal-create.md">屏卡</a>
+          <a href="finance-goal-create.html?state=auto-deposit">auto-deposit</a>
+          <a href="finance-goal-create.html?state=error">失败</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-goal-detail.html?embed=1" title="目标详情预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F35</div>
+        <div class="name">目标详情</div>
+        <div class="route">finance/goal/detail</div>
+        <div class="links"><a href="finance-goal-detail.html">打开原型</a>
+          <a href="../screens/finance/35-goal-detail.md">屏卡</a>
+          <a href="finance-goal-detail.html?state=deposit-sheet">deposit-sheet</a>
+          <a href="finance-goal-detail.html?state=achieved">achieved</a>
+          <a href="finance-goal-detail.html?state=archived">archived</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-split.html?embed=1" title="AA 分账预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F36</div>
+        <div class="name">AA 分账</div>
+        <div class="route">finance/split/index</div>
+        <div class="links"><a href="finance-split.html">打开原型</a>
+          <a href="../screens/finance/36-split.md">屏卡</a>
+          <a href="finance-split.html?state=settled">settled</a>
+          <a href="finance-split.html?state=empty">空态</a>
+          <a href="finance-split.html?state=loading">加载</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-split-create.html?embed=1" title="新建分账预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F37</div>
+        <div class="name">新建分账</div>
+        <div class="route">finance/split/create</div>
+        <div class="links"><a href="finance-split-create.html">打开原型</a>
+          <a href="../screens/finance/37-split-create.md">屏卡</a>
+          <a href="finance-split-create.html?state=ratio">ratio</a>
+          <a href="finance-split-create.html?state=remainder">remainder</a>
+          <a href="finance-split-create.html?state=error">失败</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-split-detail.html?embed=1" title="分账详情预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F38</div>
+        <div class="name">分账详情</div>
+        <div class="route">finance/split/detail</div>
+        <div class="links"><a href="finance-split-detail.html">打开原型</a>
+          <a href="../screens/finance/38-split-detail.md">屏卡</a>
+          <a href="finance-split-detail.html?state=settled">settled</a>
+          <a href="finance-split-detail.html?state=remainder">remainder</a>
+          <a href="finance-split-detail.html?state=loading">加载</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-split-settlement.html?embed=1" title="结算中心预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F39</div>
+        <div class="name">结算中心</div>
+        <div class="route">finance/split/settlement</div>
+        <div class="links"><a href="finance-split-settlement.html">打开原型</a>
+          <a href="../screens/finance/39-split-settlement.md">屏卡</a>
+          <a href="finance-split-settlement.html?state=settle-confirm">settle-confirm</a>
+          <a href="finance-split-settlement.html?state=all-settled">all-settled</a>
+          <a href="finance-split-settlement.html?state=loading">加载</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-asset.html?embed=1" title="净资产预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F40</div>
+        <div class="name">净资产</div>
+        <div class="route">finance/asset/index</div>
+        <div class="links"><a href="finance-asset.html">打开原型</a>
+          <a href="../screens/finance/40-asset.md">屏卡</a>
+          <a href="finance-asset.html?state=no-liability">no-liability</a>
+          <a href="finance-asset.html?state=loading">加载</a>
+          <a href="finance-asset.html?state=error">失败</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-invoice.html?embed=1" title="发票与报销预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F41</div>
+        <div class="name">发票与报销</div>
+        <div class="route">finance/invoice/index</div>
+        <div class="links"><a href="finance-invoice.html">打开原型</a>
+          <a href="../screens/finance/41-invoice.md">屏卡</a>
+          <a href="finance-invoice.html?state=reimbursed">reimbursed</a>
+          <a href="finance-invoice.html?state=empty">空态</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="finance-invoice-detail.html?embed=1" title="发票详情预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">F42</div>
+        <div class="name">发票详情</div>
+        <div class="route">finance/invoice/detail</div>
+        <div class="links"><a href="finance-invoice-detail.html">打开原型</a>
+          <a href="../screens/finance/42-invoice-detail.md">屏卡</a>
+          <a href="finance-invoice-detail.html?state=ocr-review">ocr-review</a>
+          <a href="finance-invoice-detail.html?state=reimbursed">reimbursed</a>
+          <a href="finance-invoice-detail.html?state=unlinked">unlinked</a></div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="block-title">怎么看 <span class="hint">原型工具层不属于产品 UI</span></h2>
+  <div class="howto">
+    <div class="box"><b>切换主题</b>右上角「跟随系统 / 亮 / 暗」。暗色与亮色组件、文案完全一致，只换令牌值。</div>
+    <div class="box"><b>看交互</b>每屏左上「交互标注」：图上出现 ①②③ 热区，右侧列出每个热区的触发与反馈。URL 加 ?annotate=1 可直接打开。</div>
+    <div class="box"><b>看异常</b>左上「页面状态」下拉，或 URL 加 ?state=loading / empty / error 等直接落到该帧。</div>
+    <div class="box"><b>看说明</b>每屏的屏卡写交互表、状态矩阵与文案校验；接口与数据契约另卷，暂不混写。</div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>权限设置 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fperm-note {
+    margin-top: 8px;
+    padding: 14px;
+    border-radius: var(--radius-lg);
+    background: var(--brand-soft);
+    border: 1px solid var(--brand-soft-border);
+  }
+  .fperm-note.is-info {
+    background: var(--info-soft);
+    border-color: var(--border);
+  }
+  .fperm-head { display: flex; align-items: center; gap: 8px; font-size: var(--fs-14); font-weight: 700; }
+  .fperm-head .fn-icon {
+    width: 28px; height: 28px; flex: none;
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--brand-text);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .fperm-note.is-info .fperm-head .fn-icon { color: var(--info); }
+  .fperm-note p { margin-top: 8px; font-size: var(--fs-12); color: var(--text-2); line-height: var(--lh-loose); }
+  .fperm-links { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 14px; }
+  .fperm-links a {
+    display: inline-flex; align-items: center; gap: 2px;
+    font-size: var(--fs-12); font-weight: 600;
+    color: var(--brand-text); text-decoration: none;
+  }
+  .fperm-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    margin-top: 10px; padding: 3px 8px;
+    border-radius: var(--radius-pill);
+    background: var(--surface);
+    font-size: var(--fs-11); color: var(--text-3);
+  }
+
+  .fperm-matrix { padding: 0; overflow: hidden; }
+  .fperm-row {
+    display: grid;
+    grid-template-columns: 88px repeat(4, 1fr);
+    align-items: stretch;
+  }
+  .fperm-row + .fperm-row { border-top: 1px solid var(--border); }
+  .fperm-row.is-head { background: var(--surface-2); }
+  .fperm-row.is-me { background: var(--brand-soft); }
+  .fperm-th {
+    padding: 8px 3px;
+    text-align: center;
+    font-size: var(--fs-11);
+    font-weight: 700;
+    color: var(--text-2);
+    line-height: 1.3;
+  }
+  .fperm-th span { display: block; margin-top: 1px; font-size: 10px; font-weight: 500; color: var(--text-3); }
+  .fperm-th.is-role { text-align: left; padding-left: 12px; }
+  .fperm-rh {
+    padding: 13px 6px 13px 12px;
+    font-size: var(--fs-12);
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  .fperm-rh small { display: block; margin-top: 2px; font-size: 10px; font-weight: 500; color: var(--text-3); }
+  .fperm-td {
+    display: flex; align-items: center; justify-content: center;
+    padding: 13px 3px;
+    font-size: var(--fs-14);
+    line-height: 1;
+  }
+  .fperm-yes { color: var(--brand-text); font-weight: 700; }
+  .fperm-no { color: var(--text-3); }
+  .fperm-legend {
+    margin-top: 8px;
+    display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px;
+    font-size: var(--fs-11); color: var(--text-3);
+  }
+
+  .fperm-foot {
+    margin-top: 16px;
+    padding: 14px;
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .fperm-foot h4 { font-size: var(--fs-13); font-weight: 700; }
+  .fperm-foot ul { margin: 8px 0 0; padding-left: 16px; font-size: var(--fs-12); color: var(--text-2); line-height: var(--lh-loose); }
+  .fperm-foot li + li { margin-top: 4px; }
+  .fperm-foot b { color: var(--text); }
+
+  .fperm-sk { padding-top: 12px; }
+  .fperm-sk .sk-line:first-child { width: 44%; }
+  .fperm-state[hidden] { display: none; }
+</style>
+</head>
+<body data-screen="25 权限设置" data-tab="" data-states="default,member,loading,error">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <button class="icon-btn" type="button" data-go="family.html"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回到成员管理列表；角色与权限的调整入口在成员治理页，不在本页" aria-label="返回">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </button>
+    </div>
+    <div class="nav-title">权限设置</div>
+    <div class="nav-right"></div>
+  </div>
+
+  <div class="content bottom-space">
+    <!-- 管理员只读视图 -->
+    <div data-state-block="default">
+      <div class="fperm-note"
+        data-hot="②" data-hot-name="只读说明条" data-hot-pos="bottom-right"
+        data-hot-label="写明本页只读：改角色去成员治理页，改「本家庭启用哪些面」去面目录页；后者给真实链接，本页不重复面挂载开关">
+        <div class="fperm-head">
+          <span class="fn-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l6 2.5v4.2c0 3.3-2.4 6.1-6 7.3-3.6-1.2-6-4-6-7.3V5.5z"/><path d="M7.6 9.8l1.7 1.7 3.1-3.2"/></svg>
+          </span>
+          本页只读，改不了角色
+        </div>
+        <p>权限按「角色默认矩阵」生效。要改某位家人的角色，请到成员管理打开该成员，在治理页里调整；要决定本家庭启用哪些面，请去面目录页。</p>
+        <div class="fperm-links">
+          <a href="family.html">成员管理 ›</a>
+          <a href="family-modules.html">面目录 ›</a>
+        </div>
+        <span class="fperm-chip">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3.5" y="7" width="9" height="6" rx="1.8"/><path d="M5.8 7V5.4a2.2 2.2 0 0 1 4.4 0V7"/></svg>
+          P1 只读 · 本页不产生权限版本变更
+        </span>
+      </div>
+
+      <div class="section-title">
+        <span>角色默认矩阵</span>
+        <span class="tiny">三口之家 · 已启用 1 面</span>
+      </div>
+
+      <div class="card fperm-matrix"
+        data-hot="③" data-hot-name="角色默认矩阵" data-hot-pos="bottom-right"
+        data-hot-label="行 = 角色，列 = 已启用面与基础能力；✓ 可见、— 不可见。整张表只读，单元格上没有开关、没有覆盖层、没有对象级 ACL 控件">
+        <div class="fperm-row is-head">
+          <div class="fperm-th is-role">角色</div>
+          <div class="fperm-th">财务<span>已启用面</span></div>
+          <div class="fperm-th">家庭动态<span>可查看</span></div>
+          <div class="fperm-th">管理成员<span>可管理</span></div>
+          <div class="fperm-th">开通面<span>仅管理员</span></div>
+        </div>
+        <div class="fperm-row">
+          <div class="fperm-rh">管理员<small>家庭创建者</small></div>
+          <div class="fperm-td fperm-yes">✓</div>
+          <div class="fperm-td fperm-yes">✓</div>
+          <div class="fperm-td fperm-yes">✓</div>
+          <div class="fperm-td fperm-yes">✓</div>
+        </div>
+        <div class="fperm-row">
+          <div class="fperm-rh">成人成员<small>默认角色</small></div>
+          <div class="fperm-td fperm-yes">✓</div>
+          <div class="fperm-td fperm-yes">✓</div>
+          <div class="fperm-td fperm-no">—</div>
+          <div class="fperm-td fperm-no">—</div>
+        </div>
+        <div class="fperm-row">
+          <div class="fperm-rh">访客<small>限时只读</small></div>
+          <div class="fperm-td fperm-no">—</div>
+          <div class="fperm-td fperm-yes">✓</div>
+          <div class="fperm-td fperm-no">—</div>
+          <div class="fperm-td fperm-no">—</div>
+        </div>
+      </div>
+      <div class="fperm-legend">
+        <span>✓ 可见　— 不可见</span>
+        <span>财务：成人成员本人可写、全家可读</span>
+      </div>
+      <div class="tiny" style="margin-top:6px;line-height:var(--lh-normal)">其余面尚未上线，不出现在矩阵列里；全量清单见<a href="family-modules.html" style="color:var(--brand-text);font-weight:600;text-decoration:none">面目录页</a>。</div>
+
+      <div class="fperm-foot"
+        data-hot="④" data-hot-name="边界说明卡" data-hot-pos="bottom-right"
+        data-hot-label="说明为什么没有开关：P1 只有角色默认矩阵、面挂载（在面目录页）与字段级可见性三层；覆盖层与对象级 ACL 不渲染任何控件，本页也不产生权限版本变更">
+        <h4>为什么这一页没有开关</h4>
+        <ul>
+          <li>P1 只实现三层：<b>角色默认矩阵</b>、<b>面挂载</b>（唯一入口在面目录页）、<b>字段级可见性</b>。</li>
+          <li>家庭级覆盖与对象级 ACL 尚未出生，本页不为它们渲染任何控件，也不留占位入口。</li>
+          <li>权限版本只由「改成员角色」推进；本页任何操作都不改权限版本。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 非管理员：只看自己的范围 -->
+    <div data-state-block="member">
+      <div class="fperm-note is-info"
+        data-hot="⑤" data-hot-name="非管理员提示条" data-hot-pos="bottom-right"
+        data-hot-label="成人成员进入时整页只读，只展示本人角色这一行；提示调整角色要找家庭管理员，不出现任何开关">
+        <div class="fperm-head">
+          <span class="fn-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="7.2" r="2.8"/><path d="M4.5 16.5c.8-2.8 3.1-4.3 5.5-4.3s4.7 1.5 5.5 4.3"/></svg>
+          </span>
+          你当前是成人成员
+        </div>
+        <p>本页只读，只展示你所在角色的可见范围。要调整角色或权限，请联系家庭管理员在成员治理页操作。</p>
+        <div class="fperm-links">
+          <a href="family-modules.html">面目录 ›</a>
+        </div>
+      </div>
+
+      <div class="section-title">
+        <span>你的可见范围</span>
+        <span class="tiny">成人成员 · 只读</span>
+      </div>
+
+      <div class="card fperm-matrix">
+        <div class="fperm-row is-head">
+          <div class="fperm-th is-role">角色</div>
+          <div class="fperm-th">财务<span>已启用面</span></div>
+          <div class="fperm-th">家庭动态<span>可查看</span></div>
+          <div class="fperm-th">管理成员<span>可管理</span></div>
+          <div class="fperm-th">开通面<span>仅管理员</span></div>
+        </div>
+        <div class="fperm-row is-me">
+          <div class="fperm-rh">成人成员<small>我</small></div>
+          <div class="fperm-td fperm-yes">✓</div>
+          <div class="fperm-td fperm-yes">✓</div>
+          <div class="fperm-td fperm-no">—</div>
+          <div class="fperm-td fperm-no">—</div>
+        </div>
+      </div>
+      <div class="fperm-legend">
+        <span>✓ 可见　— 不可见</span>
+        <span>其他角色的范围不对你展示</span>
+      </div>
+
+      <div class="fperm-foot">
+        <h4>需要更多权限？</h4>
+        <ul>
+          <li>管理成员、开通面只对家庭管理员开放；其他角色的这些格子恒为 —。</li>
+          <li>本页不提供申请或临时授权：管理员在成员治理页改角色后，下一次请求即按新权限生效。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 加载 -->
+    <div class="fperm-sk" data-state-block="loading" aria-hidden="true">
+      <div class="skeleton sk-block" style="height:96px"></div>
+      <div class="skeleton sk-line" style="width:38%;margin-top:20px"></div>
+      <div class="skeleton sk-block" style="height:172px"></div>
+      <div class="skeleton sk-line" style="width:70%"></div>
+      <div class="skeleton sk-line" style="width:52%"></div>
+    </div>
+
+    <!-- 失败 -->
+    <div class="state fperm-state" data-state-block="error" style="padding-top:72px">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="16" cy="16" r="12"/><path d="M16 9.5v8M16 21.6v.1"/></svg>
+      </div>
+      <div class="state-title">权限矩阵没加载出来</div>
+      <div class="state-desc">角色与可见范围来自服务端，本地不做推断。请检查网络后重试；重试不会改动任何权限。</div>
+      <div class="state-code">HC-4201</div>
+      <button class="btn btn-secondary" type="button" style="margin-top:8px" data-go="family-permission.html"
+        data-hot="⑥" data-hot-name="重试" data-hot-pos="top-right"
+        data-hot-label="只重发矩阵请求；失败期间不展示任何旧矩阵，避免把过期可见范围当成当前权限">重新加载</button>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+</body>
+</html>

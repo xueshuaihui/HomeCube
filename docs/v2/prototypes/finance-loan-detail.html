@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>借还款详情 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-content { padding-bottom: 16px; }
+
+  .fx-alert {
+    display: none; align-items: flex-start; gap: 8px;
+    margin: 8px 0 10px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-alert svg { flex: none; margin-top: 1px; }
+  .fx-alert b { display: block; font-size: var(--fs-13); margin-bottom: 2px; }
+  .fx-alert-late { background: var(--danger-soft); color: var(--danger); }
+  .fx-alert-done { background: var(--success-soft); color: var(--success); }
+  body[data-state="overdue"] .fx-alert-late { display: flex; }
+  body[data-state="settled"] .fx-alert-done { display: flex; }
+
+  .fx-hero {
+    margin-top: 6px; padding: 16px 18px 16px;
+    border-radius: var(--radius-xl);
+    background: linear-gradient(135deg, var(--brand-soft) 0%, var(--surface) 72%);
+    border: 1px solid var(--brand-soft-border);
+  }
+  .fx-hero-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .fx-dir {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: var(--radius-pill);
+    background: var(--brand-soft); color: var(--brand-text);
+    font-size: var(--fs-11); font-weight: 700;
+  }
+  .fx-st {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: var(--radius-pill);
+    font-size: var(--fs-11); font-weight: 700;
+  }
+  .fx-st-run { background: var(--info-soft); color: var(--info); }
+  .fx-st-late { display: none; background: var(--danger-soft); color: var(--danger); }
+  .fx-st-done { display: none; background: var(--success-soft); color: var(--success); }
+  body[data-state="overdue"] .fx-st-run { display: none; }
+  body[data-state="overdue"] .fx-st-late { display: inline-flex; }
+  body[data-state="settled"] .fx-st-run { display: none; }
+  body[data-state="settled"] .fx-st-done { display: inline-flex; }
+  .fx-ver { margin-left: auto; flex: none; font-family: var(--font-num); font-size: var(--fs-11); color: var(--text-3); }
+
+  .fx-party-line { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+  .fx-party-name { font-size: var(--fs-24); font-weight: 700; letter-spacing: .01em; }
+  .fx-party-line .tag { flex: none; }
+
+  .fx-hero-sub { margin-top: 4px; font-size: var(--fs-12); color: var(--text-2); line-height: var(--lh-normal); }
+  .fx-sub-def, .fx-sub-od, .fx-sub-set { display: none; }
+  .fx-sub-def { display: inline; }
+  body[data-state="overdue"] .fx-sub-def,
+  body[data-state="settled"] .fx-sub-def { display: none; }
+  body[data-state="overdue"] .fx-sub-od { display: inline; color: var(--danger); font-weight: 700; }
+  body[data-state="settled"] .fx-sub-set { display: inline; color: var(--success); font-weight: 700; }
+
+  .fx-split {
+    display: flex; align-items: stretch; gap: 10px;
+    margin-top: 14px; padding-top: 12px;
+    border-top: 1px solid var(--brand-soft-border);
+  }
+  .fx-sp { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .fx-sp-k { font-size: var(--fs-11); color: var(--text-3); }
+  .fx-sp-v { font-size: var(--fs-15); font-weight: 700; }
+  .fx-sp-v.is-paid { color: var(--success); }
+  .fx-sp-v.is-left { color: var(--danger); }
+  body[data-state="settled"] .fx-sp-v.is-left { color: var(--text-2); }
+
+  .fx-num-def { display: inline; }
+  .fx-num-od, .fx-num-set { display: none; }
+  body[data-state="overdue"] .fx-num-def,
+  body[data-state="settled"] .fx-num-def { display: none; }
+  body[data-state="overdue"] .fx-num-od { display: inline; }
+  body[data-state="settled"] .fx-num-set { display: inline; }
+
+  .fx-bar {
+    display: block; height: 6px; margin-top: 12px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-2);
+    overflow: hidden;
+  }
+  .fx-bar-fill { display: block; height: 100%; border-radius: var(--radius-pill); background: var(--brand); width: 67%; }
+  body[data-state="overdue"] .fx-bar-fill { width: 50%; background: var(--danger); }
+  body[data-state="settled"] .fx-bar-fill { width: 100%; background: var(--success); }
+  .fx-bar-note { margin-top: 6px; display: flex; justify-content: space-between; gap: 8px; font-size: var(--fs-11); color: var(--text-3); }
+
+  .fx-sec {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    margin: 20px 2px 8px;
+    font-size: var(--fs-13); font-weight: 700; color: var(--text-2);
+  }
+  .fx-sec .tiny { font-weight: 500; }
+
+  .fx-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .fx-plan-row {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%; padding: 11px 14px;
+    border: 0; background: var(--surface);
+    font-family: inherit; text-align: left; color: var(--text);
+    font-size: var(--fs-13); cursor: pointer;
+  }
+  .fx-plan-row + .fx-plan-row { border-top: 1px solid var(--border); }
+  .fx-plan-row:hover { background: var(--surface-2); }
+  .fx-plan-row.is-static { cursor: default; }
+  .fx-plan-row.is-static:hover { background: var(--surface); }
+  body[data-state="overdue"] .fx-plan-row.fx-row-4 { background: var(--danger-soft); }
+  body[data-state="overdue"] .fx-plan-row.fx-row-4:hover { background: var(--danger-soft); }
+
+  .fx-pn {
+    flex: none; width: 22px; height: 22px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: var(--radius-pill);
+    background: var(--surface-2); color: var(--text-2);
+    font-family: var(--font-num); font-size: var(--fs-11); font-weight: 700;
+  }
+  body[data-state="overdue"] .fx-row-4 .fx-pn { background: var(--danger); color: var(--on-danger); }
+  .fx-pd { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fx-pa { flex: none; font-size: var(--fs-13); }
+  .fx-ps {
+    flex: none; width: 64px; text-align: right;
+    font-size: var(--fs-11); font-weight: 700;
+  }
+  .fx-ps.is-done { color: var(--success); }
+  .fx-ps.is-wait { color: var(--text-3); }
+  .fx-ps.is-late { color: var(--danger); }
+
+  .fx-p4-done { color: var(--success); }
+  .fx-p4-late { display: none; color: var(--danger); }
+  body[data-state="overdue"] .fx-p4-done { display: none; }
+  body[data-state="overdue"] .fx-p4-late { display: inline; }
+
+  .fx-p56-wait { color: var(--text-3); }
+  .fx-p56-done { display: none; color: var(--success); }
+  body[data-state="settled"] .fx-p56-wait { display: none; }
+  body[data-state="settled"] .fx-p56-done { display: inline; }
+
+  .fx-plan-note { margin: 8px 2px 0; line-height: var(--lh-normal); }
+
+  .fx-rel {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    text-decoration: none; color: var(--text);
+  }
+  .fx-rel:hover { background: var(--surface-2); }
+  .fx-rel-ic {
+    width: 32px; height: 32px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    background: var(--brand-soft); color: var(--brand-text);
+  }
+  .fx-rel-body { flex: 1; min-width: 0; }
+  .fx-rel-k { display: block; font-size: var(--fs-14); font-weight: 600; }
+  .fx-rel-sub { display: block; margin-top: 2px; font-size: var(--fs-11); color: var(--text-3); }
+  .fx-rel .chevron { flex: none; color: var(--text-3); }
+  .fx-rel-n-def { display: inline; }
+  .fx-rel-n-od, .fx-rel-n-set { display: none; }
+  body[data-state="overdue"] .fx-rel-n-def,
+  body[data-state="settled"] .fx-rel-n-def { display: none; }
+  body[data-state="overdue"] .fx-rel-n-od { display: inline; }
+  body[data-state="settled"] .fx-rel-n-set { display: inline; }
+
+  .fx-info {
+    margin-top: 12px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    overflow: hidden;
+  }
+  .fx-info-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 14px;
+    font-size: var(--fs-13);
+  }
+  .fx-info-row + .fx-info-row { border-top: 1px solid var(--border); }
+  .fx-info-k { width: 68px; flex: none; font-size: var(--fs-12); color: var(--text-3); }
+  .fx-info-v { flex: 1; min-width: 0; }
+  .fx-info-v-sub { display: block; margin-top: 2px; font-size: var(--fs-11); color: var(--text-3); }
+
+  .fx-foot {
+    flex: none;
+    padding: 10px 16px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+
+  .fx-sh-k { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 14px; font-size: var(--fs-12); color: var(--text-3); }
+  .fx-sh-k b { color: var(--text); font-weight: 600; }
+  .fx-sh-field { margin-top: 8px; }
+  .fx-sh-field .input { height: 44px; }
+  .fx-sh-acc {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 10px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-family: inherit; text-align: left; color: var(--text);
+    font-size: var(--fs-13); cursor: pointer;
+    width: 100%;
+  }
+  .fx-sh-acc:hover { border-color: var(--border-strong); }
+  .fx-sh-acc-body { flex: 1; min-width: 0; }
+  .fx-sh-acc-k { display: block; font-size: var(--fs-11); color: var(--text-3); }
+  .fx-sh-acc-v { display: block; margin-top: 1px; font-weight: 600; }
+  .fx-sh-acc .chevron { flex: none; color: var(--text-3); }
+</style>
+</head>
+<body data-screen="F32 借还款详情" data-states="default,repay-sheet,overdue,settled">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <header class="navbar">
+    <div class="nav-left">
+      <a class="icon-btn" href="finance-loan.html" aria-label="返回借贷"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回借贷列表并落在进入时的分组（借出 / 借入）；从日历的还款提醒深链进入时返回进入前的页面，不强制落回列表">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </a>
+    </div>
+    <div class="nav-title">借还款详情</div>
+    <div class="nav-right"></div>
+  </header>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 还款登记会先入队
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-alert fx-alert-late">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 18 17H2z"/><path d="M10 8v4M10 14.6v.1"/></svg>
+      <span>
+        <b>第 4 期已逾期 24 天</b>
+        应还 ¥800.00 未登记。逾期只影响本笔的提示与报表口径，不会从账户自动扣款；登记后该期转为已还。
+      </span>
+    </div>
+
+    <div class="fx-alert fx-alert-done">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M6.4 10.3l2.4 2.4 4.8-4.9"/></svg>
+      <span>
+        <b>已结清 · 10 月 20 日</b>
+        6 期全部还完，未还 ¥0.00。已结清的借贷不再提醒，也不再计入待收 / 待还；记录保留，可随时回看流水。
+      </span>
+    </div>
+
+    <section class="fx-hero"
+      data-hot="②" data-hot-name="对手方与金额" data-hot-pos="bottom-right"
+      data-hot-label="头部回答三件事：借给谁（对手方可非成员）、本金多少、已还 / 未还各多少；三个数由服务端按还款计划汇总，已还 + 未还 = 本金，前端不二次累加">
+      <div class="fx-hero-top">
+        <span class="fx-dir">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10"/><path d="M9 4l4 4-4 4"/></svg>
+          借出 · 待收
+        </span>
+        <span class="fx-st fx-st-run">还款中</span>
+        <span class="fx-st fx-st-late">有逾期</span>
+        <span class="fx-st fx-st-done">已结清</span>
+        <span class="fx-ver">版本 3</span>
+      </div>
+      <div class="fx-party-line">
+        <span class="fx-party-name">陈默</span>
+        <span class="tag">非成员</span>
+      </div>
+      <div class="fx-hero-sub">
+        <span class="fx-sub-def">下次还款 <span class="num">11 月 5 日</span> · 还完 6 期后结清</span>
+        <span class="fx-sub-od">第 4 期逾期 24 天 · 下一期 <span class="num">11 月 5 日</span></span>
+        <span class="fx-sub-set">6 期全部还完 · 结清于 <span class="num">10 月 20 日</span></span>
+        <br>
+        <span>借出日 <span class="num">6 月 29 日</span> · 6 期 · 每月 5 日 · 对手方不在家庭成员里</span>
+      </div>
+      <div class="fx-split">
+        <div class="fx-sp">
+          <span class="fx-sp-k">本金</span>
+          <span class="amount fx-sp-v">¥4,800.00</span>
+        </div>
+        <div class="fx-sp">
+          <span class="fx-sp-k">已还</span>
+          <span class="amount fx-sp-v is-paid">
+            <span class="fx-num-def">¥3,200.00</span>
+            <span class="fx-num-od">¥2,400.00</span>
+            <span class="fx-num-set">¥4,800.00</span>
+          </span>
+        </div>
+        <div class="fx-sp">
+          <span class="fx-sp-k">未还</span>
+          <span class="amount fx-sp-v is-left">
+            <span class="fx-num-def">¥1,600.00</span>
+            <span class="fx-num-od">¥2,400.00</span>
+            <span class="fx-num-set">¥0.00</span>
+          </span>
+        </div>
+      </div>
+      <span class="fx-bar"><span class="fx-bar-fill"></span></span>
+      <div class="fx-bar-note">
+        <span>进度按已还期次算</span>
+        <span><span class="fx-num-def">4 / 6 期</span><span class="fx-num-od">3 / 6 期</span><span class="fx-num-set">6 / 6 期</span></span>
+      </div>
+    </section>
+
+    <div class="fx-sec">
+      <span>还款计划</span>
+      <span class="tiny"><span class="fx-num-def">已还 4 / 6 期</span><span class="fx-num-od">已还 3 / 6 期</span><span class="fx-num-set">已还 6 / 6 期</span></span>
+    </div>
+    <div class="fx-list"
+      data-hot="③" data-hot-name="还款计划逐期状态" data-hot-pos="bottom-right"
+      data-hot-label="每期四件套：期次、应还日、金额、状态（已还 / 待还 / 逾期）；点「待还」或「逾期」的期次会打开还款弹层并预填该期金额，点已还期次只提示无需重复登记">
+      <div class="fx-plan-row is-static">
+        <span class="fx-pn">1</span>
+        <span class="fx-pd num">7 月 5 日</span>
+        <span class="amount fx-pa">¥800.00</span>
+        <span class="fx-ps is-done">已还</span>
+      </div>
+      <div class="fx-plan-row is-static">
+        <span class="fx-pn">2</span>
+        <span class="fx-pd num">8 月 5 日</span>
+        <span class="amount fx-pa">¥800.00</span>
+        <span class="fx-ps is-done">已还</span>
+      </div>
+      <div class="fx-plan-row is-static">
+        <span class="fx-pn">3</span>
+        <span class="fx-pd num">9 月 5 日</span>
+        <span class="amount fx-pa">¥800.00</span>
+        <span class="fx-ps is-done">已还</span>
+      </div>
+      <button class="fx-plan-row fx-row-4" type="button" data-period="第 4 期 · 10 月 5 日" data-amount="800.00" data-only-overdue="true">
+        <span class="fx-pn">4</span>
+        <span class="fx-pd num">10 月 5 日</span>
+        <span class="amount fx-pa">¥800.00</span>
+        <span class="fx-ps">
+          <span class="fx-p4-done">已还</span>
+          <span class="fx-p4-late">逾期 24 天</span>
+        </span>
+      </button>
+      <button class="fx-plan-row" type="button" data-period="第 5 期 · 11 月 5 日" data-amount="800.00">
+        <span class="fx-pn">5</span>
+        <span class="fx-pd num">11 月 5 日</span>
+        <span class="amount fx-pa">¥800.00</span>
+        <span class="fx-ps">
+          <span class="fx-p56-wait">待还</span>
+          <span class="fx-p56-done">已还</span>
+        </span>
+      </button>
+      <button class="fx-plan-row" type="button" data-period="第 6 期 · 12 月 5 日" data-amount="800.00">
+        <span class="fx-pn">6</span>
+        <span class="fx-pd num">12 月 5 日</span>
+        <span class="amount fx-pa">¥800.00</span>
+        <span class="fx-ps">
+          <span class="fx-p56-wait">待还</span>
+          <span class="fx-p56-done">已还</span>
+        </span>
+      </button>
+    </div>
+    <p class="fx-plan-note tiny">还款计划到期已注册到家庭日历，每期前 3 天提醒一次；登记还款后本页立即改为已还，日历与到期中心可能稍晚撤销该期提醒。</p>
+
+    <div class="fx-sec"><span>关联流水</span><span class="tiny">只读</span></div>
+    <a class="fx-rel" href="finance-flow.html"
+      data-hot="⑥" data-hot-name="关联流水" data-hot-pos="bottom-right"
+      data-hot-label="进流水列表并定位到这笔借贷的还款流水；每登记一期生成一笔，转账不在这里改；流水侧删除要回借贷详情重登记，避免台账与流水对不上">
+      <span class="fx-rel-ic">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h12M4 10h12M4 15h8"/></svg>
+      </span>
+      <span class="fx-rel-body">
+        <span class="fx-rel-k">还款流水</span>
+        <span class="fx-rel-sub">
+          <span class="fx-rel-n-def">4 笔 · 最近 10 月 5 日 ¥800.00</span>
+          <span class="fx-rel-n-od">3 笔 · 最近 9 月 5 日 ¥800.00</span>
+          <span class="fx-rel-n-set">6 笔 · 最近 10 月 20 日 ¥800.00</span>
+        </span>
+      </span>
+      <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+    </a>
+
+    <div class="fx-info">
+      <div class="fx-info-row">
+        <span class="fx-info-k">对手方</span>
+        <span class="fx-info-v">陈默 · 非成员<span class="fx-info-v-sub">不在家庭成员里，不产生邀请，也不进成员维度报表</span></span>
+      </div>
+      <div class="fx-info-row">
+        <span class="fx-info-k">到期注册</span>
+        <span class="fx-info-v">已注册到家庭日历<span class="fx-info-v-sub">每期前 3 天与当天各提醒一次；触发由日历面负责，财务面不自建定时器</span></span>
+      </div>
+      <div class="fx-info-row">
+        <span class="fx-info-k">备注</span>
+        <span class="fx-info-v">装修周转，每月 5 日还 800，年底前结清。<span class="fx-info-v-sub">备注全家可见 · 最多 200 字</span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="fx-foot">
+    <button class="btn btn-primary btn-block" type="button" id="fx-open-repay"
+      data-hot="④" data-hot-name="登记还款" data-hot-pos="outer-bottom-right"
+      data-hot-label="打开还款弹层（金额、日期、账户）；不在列表里直接改状态。已结清时按钮置灰显示「已结清」，不再接受还款登记">
+      登记还款
+    </button>
+  </div>
+
+  <!-- 还款弹层 -->
+  <div class="sheet-mask" id="sheet-repay" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>登记一笔还款</h3>
+      <p class="sheet-sub">登记后这一期标记已还，并在所选账户生成一笔「收回借款」流水；金额可小于本期应还，差额留在该期继续显示待还。</p>
+      <div class="fx-sh-k">
+        <span>还款期次</span>
+        <b id="fx-sh-period">第 5 期 · 11 月 5 日</b>
+      </div>
+      <div class="fx-sh-field">
+        <label class="field-label" for="fx-sh-amount">金额</label>
+        <input class="input num" id="fx-sh-amount" type="text" inputmode="decimal" value="800.00">
+      </div>
+      <div class="fx-sh-field">
+        <label class="field-label" for="fx-sh-date">日期</label>
+        <input class="input num" id="fx-sh-date" type="date" value="2026-10-29">
+      </div>
+      <button class="fx-sh-acc" type="button" data-toast="选择账户：只列未归档账户；归档账户的历史流水仍在，但不能作为新的还款入账账户">
+        <span class="fx-sh-acc-body">
+          <span class="fx-sh-acc-k">账户</span>
+          <span class="fx-sh-acc-v num">招商银行储蓄卡 · 尾号 6882</span>
+        </span>
+        <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+      </button>
+      <p class="tiny" style="margin-top:8px">流水计入所选账户余额；重复提交按幂等键只记一次，不会生成第二笔。</p>
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" id="fx-confirm-repay"
+          data-hot="⑤" data-hot-name="确认登记还款" data-hot-pos="outer-bottom-right"
+          data-hot-label="确认后该期转已还、剩余金额递减，并生成一笔流水；只承诺「回写已提交」，不等日历撤销结果；已结清或已还期次不再接受登记">
+          确认登记还款
+        </button>
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var fxState = new URLSearchParams(location.search).get('state') || 'default';
+  var sheet = document.getElementById('sheet-repay');
+  var periodEl = document.getElementById('fx-sh-period');
+  var amountEl = document.getElementById('fx-sh-amount');
+  var footBtn = document.getElementById('fx-open-repay');
+
+  if (fxState === 'settled') {
+    footBtn.disabled = true;
+    footBtn.textContent = '已结清';
+    footBtn.removeAttribute('data-hot');
+  }
+
+  function openRepay(period, amount) {
+    if (period) periodEl.textContent = period;
+    if (amount) amountEl.value = amount;
+    window.HC.openSheet('sheet-repay');
+  }
+
+  footBtn.addEventListener('click', function () {
+    if (footBtn.disabled) return;
+    openRepay('第 5 期 · 11 月 5 日', '800.00');
+  });
+
+  document.querySelectorAll('.fx-plan-row[data-period]').forEach(function (row) {
+    row.addEventListener('click', function () {
+      var state = document.body.getAttribute('data-state');
+      if (state === 'settled') {
+        window.HC.toast('这笔借贷已结清，不再接受还款登记');
+        return;
+      }
+      if (row.getAttribute('data-only-overdue') === 'true' && state !== 'overdue') {
+        window.HC.toast('这一期已还，无需重复登记');
+        return;
+      }
+      openRepay(row.getAttribute('data-period'), row.getAttribute('data-amount'));
+    });
+  });
+
+  document.getElementById('fx-confirm-repay').addEventListener('click', function () {
+    var amt = amountEl.value.trim();
+    if (!amt || !(Number(amt.replace(/,/g, '')) > 0)) {
+      amountEl.classList.add('is-error');
+      amountEl.focus();
+      window.HC.toast('请填写大于 0 的还款金额');
+      return;
+    }
+    window.HC.closeSheet(sheet);
+    window.HC.toast('已登记还款，流水已生成；日历回写已提交');
+  });
+
+  document.addEventListener('DOMContentLoaded', function () {
+    if (fxState === 'repay-sheet') openRepay('第 5 期 · 11 月 5 日', '800.00');
+  });
+</script>
+</body>
+</html>

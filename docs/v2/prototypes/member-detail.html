@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>成员主页 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .mbr-content { padding-bottom: 28px; }
+
+  .mbr-hero {
+    display: flex; flex-direction: column; align-items: center;
+    margin-top: 6px; padding: 22px 18px 20px;
+    text-align: center;
+    border-radius: var(--radius-xl);
+    background: linear-gradient(135deg, var(--brand-soft) 0%, var(--surface) 72%);
+    border: 1px solid var(--brand-soft-border);
+  }
+  .mbr-ava {
+    width: 84px; height: 84px;
+    font-size: var(--fs-30);
+    border-radius: 28px;
+    background: var(--accent-soft); color: var(--accent);
+    border: 1px solid var(--border);
+  }
+  .mbr-name { margin-top: 12px; font-size: var(--fs-20); font-weight: 700; }
+  .mbr-rel { margin-top: 4px; font-size: var(--fs-13); color: var(--text-2); }
+  .mbr-guard {
+    display: none; align-items: center; gap: 5px;
+    margin-top: 10px; padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    background: var(--surface); color: var(--brand-text);
+    border: 1px solid var(--brand-soft-border);
+    font-size: var(--fs-11); font-weight: 700;
+  }
+  body[data-state="guardian"] .mbr-guard { display: inline-flex; }
+
+  .mbr-info { margin-top: 16px; }
+  .mbr-info .li-text { font-size: var(--fs-14); }
+  .mbr-info .li-sub { color: var(--text); font-size: var(--fs-13); margin-top: 2px; }
+
+  .mbr-filter { display: flex; justify-content: center; margin: 4px 0 12px; }
+
+  .mbr-dyn-card {
+    padding: 4px 16px;
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .mbr-dyn-card .dynamic-item { align-items: flex-start; }
+  .mbr-dyn-card .dynamic-item[hidden] { display: none; }
+  .mbr-ic-fin { background: var(--brand-soft); color: var(--brand-text); }
+  .mbr-ic-home { background: var(--accent-soft); color: var(--accent); }
+  .mbr-dyn-text b { font-weight: 600; }
+  .mbr-onbehalf {
+    display: inline-block; margin-left: 6px; padding: 0 5px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-2); color: var(--text-3);
+    font-size: 10px; font-weight: 600;
+    vertical-align: 1px;
+  }
+
+  .mbr-empty { display: none; }
+  body[data-state="empty"] .mbr-empty { display: block; }
+  body[data-state="empty"] .mbr-filter { display: none; }
+  body[data-state="empty"] .mbr-list { display: none; }
+
+  .mbr-filter-empty {
+    padding: 18px 0; text-align: center;
+    font-size: var(--fs-12); color: var(--text-3);
+  }
+
+  .mbr-foot { margin: 18px 4px 0; line-height: var(--lh-normal); text-align: center; }
+
+  .mbr-skeleton { display: none; padding-top: 6px; }
+  body[data-state="loading"] .mbr-skeleton { display: block; }
+  body[data-state="loading"] .mbr-real { display: none; }
+  .mbr-sk-item { display: flex; gap: 12px; padding: 12px 0; }
+  .mbr-sk-av { width: 36px; height: 36px; border-radius: var(--radius-pill); }
+</style>
+</head>
+<body data-screen="24 成员主页" data-tab="" data-states="default,empty,guardian,loading">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <button class="icon-btn" type="button" data-go="family.html"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回家庭成员列表；从深链或动态进入时也以此页为唯一落点，不把治理页当返回目标" aria-label="返回">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </button>
+    </div>
+    <div class="nav-title">成员主页</div>
+    <div class="nav-right"></div>
+  </div>
+
+  <div class="content mbr-content">
+    <div class="mbr-skeleton">
+      <div class="skeleton" style="height:212px;border-radius:var(--radius-xl);margin-bottom:18px"></div>
+      <div class="skeleton sk-block" style="height:132px"></div>
+      <div class="skeleton sk-line" style="width:34%;height:14px;margin-top:18px"></div>
+      <div class="mbr-sk-item"><div class="skeleton mbr-sk-av"></div><div style="flex:1"><div class="skeleton sk-line" style="width:64%"></div><div class="skeleton sk-line" style="width:32%;margin-bottom:0"></div></div></div>
+      <div class="mbr-sk-item"><div class="skeleton mbr-sk-av"></div><div style="flex:1"><div class="skeleton sk-line" style="width:58%"></div><div class="skeleton sk-line" style="width:28%;margin-bottom:0"></div></div></div>
+    </div>
+
+    <div class="mbr-real">
+      <section class="mbr-hero"
+        data-hot="②" data-hot-name="成员头" data-hot-pos="bottom-right"
+        data-hot-label="大头像、昵称与家庭内称谓；字段按 16.4 裁剪，姓名头像关系对全家可见。本页全角色只读，没有任何治理按钮">
+        <span class="avatar mbr-ava" id="mbr-avatar">妈</span>
+        <div class="mbr-name" id="mbr-name">李妈妈</div>
+        <div class="mbr-rel"><span id="mbr-relation">妈妈</span> · 三口之家</div>
+        <div class="mbr-guard">
+          <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l6 2.5v4.2c0 3.3-2.4 6.1-6 7.3-3.6-1.2-6-4-6-7.3V5.5z"/></svg>
+          由你代管
+        </div>
+      </section>
+
+      <div class="list mbr-info">
+        <div class="list-item">
+          <span class="li-text">加入时间<span class="li-sub" id="mbr-join">2025 年 3 月 12 日</span></span>
+        </div>
+        <div class="list-item"
+          data-hot="⑤" data-hot-name="代管人" data-hot-pos="bottom-right"
+          data-hot-label="代管人只对有 guardian 关系的成员显示；无账号被记录成员由代管人代写，内容归属该成员而非代管人，公开页不展示角色与手机号">
+          <span class="li-text">代管人<span class="li-sub" id="mbr-guardian">无 · 本人有账号，自主使用</span></span>
+        </div>
+        <div class="list-item">
+          <span class="li-text">家庭<span class="li-sub">三口之家 · 家庭内称谓由管理员维护</span></span>
+        </div>
+      </div>
+
+      <div class="section-title">
+        <span>TA 的动态</span>
+        <a class="more" href="dynamic.html"
+          data-hot="⑥" data-hot-name="查看全部" data-hot-pos="outer-bottom-right"
+          data-hot-label="进动态流并按该成员过滤；动态条目的可见性由服务端按角色与字段级可见性裁剪，客户端不自行过滤">查看全部 ›</a>
+      </div>
+
+      <div class="mbr-filter"
+        data-hot="③" data-hot-name="动态筛选" data-hot-pos="top-right"
+        data-hot-label="只在这位成员的动态里按面筛；未启用或 TA 不可见的面不出现在筛选里，也不补空组">
+        <div class="segmented" role="tablist" aria-label="按面筛选">
+          <button type="button" role="tab" aria-selected="true" data-face-filter="all">全部</button>
+          <button type="button" role="tab" aria-selected="false" data-face-filter="finance">财务</button>
+          <button type="button" role="tab" aria-selected="false" data-face-filter="todo">待办</button>
+          <button type="button" role="tab" aria-selected="false" data-face-filter="board">留言</button>
+        </div>
+      </div>
+
+      <div class="mbr-dyn-card mbr-list" id="mbr-list-default"
+        data-hot="④" data-hot-name="动态条目" data-hot-pos="bottom-right"
+        data-hot-label="只展示服务端下发的前若干条；点条目进动态流并定位，公开页不提供编辑与删除">
+        <div class="dynamic-item" data-dyn role="link" data-go="dynamic.html" data-face="finance">
+          <span class="av mbr-ic-fin">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/></svg>
+          </span>
+          <div class="dy-body">
+            <div class="dy-text">记了一笔 · 餐饮 <span class="amount">¥128.00</span></div>
+            <div class="dy-meta"><span>财务</span><span>12 分钟前</span></div>
+          </div>
+        </div>
+        <div class="dynamic-item" data-dyn role="link" data-go="dynamic.html" data-face="todo">
+          <span class="av mbr-ic-home">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l3 3 9-9"/></svg>
+          </span>
+          <div class="dy-body">
+            <div class="dy-text">完成了待办 · 交物业费</div>
+            <div class="dy-meta"><span>HomeOS</span><span>昨天 20:12</span></div>
+          </div>
+        </div>
+        <div class="dynamic-item" data-dyn role="link" data-go="dynamic.html" data-face="board">
+          <span class="av mbr-ic-home">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h12v8H9l-3.5 3v-3H4z"/></svg>
+          </span>
+          <div class="dy-body">
+            <div class="dy-text">在留言板留了一条 · 周末一起吃饭吧</div>
+            <div class="dy-meta"><span>HomeOS</span><span>3 天前</span></div>
+          </div>
+        </div>
+        <div class="dynamic-item" data-dyn role="link" data-go="dynamic.html" data-face="finance">
+          <span class="av mbr-ic-fin">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/></svg>
+          </span>
+          <div class="dy-body">
+            <div class="dy-text">调整了预算 · 10 月餐饮 <span class="amount">¥2,000.00</span></div>
+            <div class="dy-meta"><span>财务</span><span>上周</span></div>
+          </div>
+        </div>
+        <div class="mbr-filter-empty" id="mbr-filter-empty" hidden>这个面下还没有 TA 的动态</div>
+      </div>
+
+      <div class="mbr-dyn-card mbr-list" id="mbr-list-guardian" hidden>
+        <div class="dynamic-item" data-dyn role="link" data-go="dynamic.html" data-face="finance">
+          <span class="av mbr-ic-fin">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/></svg>
+          </span>
+          <div class="dy-body">
+            <div class="dy-text">代记了一笔 · 药品 <span class="amount">¥86.40</span><span class="mbr-onbehalf">代管写入</span></div>
+            <div class="dy-meta"><span>财务</span><span>昨天</span></div>
+          </div>
+        </div>
+        <div class="dynamic-item" data-dyn role="link" data-go="dynamic.html" data-face="todo">
+          <span class="av mbr-ic-home">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.2v4.2l2.6 1.6"/></svg>
+          </span>
+          <div class="dy-body">
+            <div class="dy-text">代建了一条提醒 · 吃降压药<span class="mbr-onbehalf">代管写入</span></div>
+            <div class="dy-meta"><span>HomeOS</span><span>前天</span></div>
+          </div>
+        </div>
+        <div class="dynamic-item" data-dyn role="link" data-go="dynamic.html" data-face="finance">
+          <span class="av mbr-ic-fin">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/></svg>
+          </span>
+          <div class="dy-body">
+            <div class="dy-text">代记了一笔 · 鸡蛋 <span class="amount">¥32.00</span><span class="mbr-onbehalf">代管写入</span></div>
+            <div class="dy-meta"><span>财务</span><span>上周</span></div>
+          </div>
+        </div>
+        <div class="mbr-filter-empty" hidden>这个面下还没有 TA 的动态</div>
+      </div>
+
+      <div class="mbr-empty">
+        <div class="state is-inline">
+          <div class="state-icon">
+            <svg width="28" height="28" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 12h16M8 17h11M8 22h13"/></svg>
+          </div>
+          <div class="state-title">还没有动态</div>
+          <div class="state-desc">TA 记账、完成待办或在留言板留言后，会出现在这里；被裁掉的条目不会占位。</div>
+          <button class="btn btn-secondary btn-sm" type="button" data-go="dynamic.html">去家庭动态</button>
+        </div>
+      </div>
+
+      <div class="tiny mbr-foot">公开页只展示姓名、头像、关系、加入时间与代管人；手机号、角色与权限不在这里展示。家人从动态或成员列表点进来，都会落到这一页。</div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var mbrState = new URLSearchParams(location.search).get('state') || 'default';
+  var listDefault = document.getElementById('mbr-list-default');
+  var listGuardian = document.getElementById('mbr-list-guardian');
+
+  if (mbrState === 'guardian') {
+    document.getElementById('mbr-avatar').textContent = '奶';
+    document.getElementById('mbr-name').textContent = '奶奶';
+    document.getElementById('mbr-relation').textContent = '奶奶';
+    document.getElementById('mbr-join').textContent = '2024 年 9 月 8 日';
+    document.getElementById('mbr-guardian').textContent = '我（李建国）· 无账号被记录成员，代写标注 on_behalf_of';
+    listDefault.hidden = true;
+    listGuardian.hidden = false;
+  }
+
+  var chips = Array.prototype.slice.call(document.querySelectorAll('[data-face-filter]'));
+
+  chips.forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      var face = chip.getAttribute('data-face-filter');
+      chips.forEach(function (c) { c.setAttribute('aria-selected', String(c === chip)); });
+
+      var active = (mbrState === 'guardian') ? listGuardian : listDefault;
+      var items = Array.prototype.slice.call(active.querySelectorAll('[data-dyn]'));
+      var shown = 0;
+      items.forEach(function (item) {
+        var ok = face === 'all' || item.getAttribute('data-face') === face;
+        item.hidden = !ok;
+        if (ok) shown += 1;
+      });
+      var empty = active.querySelector('.mbr-filter-empty');
+      if (empty) empty.hidden = shown > 0;
+    });
+  });
+</script>
+</body>
+</html>

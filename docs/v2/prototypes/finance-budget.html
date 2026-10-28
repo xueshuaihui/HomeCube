@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>预算 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-period { flex: none; }
+  .fx-content { padding-bottom: 28px; }
+
+  .fx-new {
+    height: 36px; padding: 0 2px;
+    border: 0; background: none;
+    font-family: inherit; font-size: var(--fs-15); font-weight: 600;
+    color: var(--brand-text); cursor: pointer;
+  }
+  .fx-new:hover { color: var(--brand-hover); }
+
+  /* 时间窗条标签：季度窗与月度窗说法不同 */
+  .fx-pl-q { display: none; }
+  body[data-state="empty"] .fx-pl-m { display: none; }
+  body[data-state="empty"] .fx-pl-q { display: inline; }
+
+  /* 状态值切换 */
+  .fx-v-over { display: none; }
+  body[data-state="over"] .fx-v-over { display: inline; }
+  body[data-state="over"] .fx-v-default { display: none; }
+
+  /* 总预算卡 */
+  .fx-hero {
+    margin-top: 4px; padding: 16px 18px 14px;
+    border-radius: var(--radius-xl);
+    background: linear-gradient(135deg, var(--brand-soft) 0%, var(--surface) 72%);
+    border: 1px solid var(--brand-soft-border);
+  }
+  .fx-hero-top { display: flex; align-items: center; gap: 16px; }
+  .fx-ring { position: relative; width: 104px; height: 104px; flex: none; }
+  .fx-ring svg { display: block; }
+  .fx-ring-track { fill: none; stroke: var(--surface-2); stroke-width: 10; }
+  .fx-ring-fill {
+    fill: none; stroke: var(--brand); stroke-width: 10; stroke-linecap: round;
+    stroke-dasharray: 255 327;
+    transform: rotate(-90deg); transform-origin: 60px 60px;
+  }
+  body[data-state="over"] .fx-ring-fill { stroke: var(--danger); stroke-dasharray: 327 327; }
+  .fx-ring-c {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  }
+  .fx-ring-pct { font-family: var(--font-num); font-size: var(--fs-20); font-weight: 700; line-height: 1; }
+  body[data-state="over"] .fx-ring-pct { color: var(--danger); }
+  .fx-ring-k { font-size: var(--fs-11); color: var(--text-3); }
+
+  .fx-hero-body { flex: 1; min-width: 0; }
+  .fx-hero-k { display: flex; align-items: center; gap: 6px; font-size: var(--fs-13); color: var(--text-2); }
+  .fx-hero-v {
+    margin-top: 3px;
+    font-size: var(--fs-24); font-weight: 700; line-height: var(--lh-tight);
+    letter-spacing: .01em;
+  }
+  .fx-hero-split { display: flex; align-items: stretch; gap: 14px; margin-top: 9px; }
+  .fx-hs { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .fx-hk { font-size: var(--fs-11); color: var(--text-3); }
+  .fx-hv { font-size: var(--fs-14); font-weight: 700; }
+  .fx-hv.is-neg { color: var(--danger); }
+  .fx-hv.is-ok { color: var(--success); }
+  .fx-hero-note { margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--brand-soft-border); font-size: var(--fs-11); color: var(--text-3); }
+
+  .fx-alert {
+    display: none; align-items: flex-start; gap: 8px;
+    margin-top: 10px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--danger-soft); color: var(--danger);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-alert svg { flex: none; margin-top: 1px; }
+  .fx-alert b { display: block; font-size: var(--fs-13); margin-bottom: 2px; }
+  body[data-state="over"] .fx-alert { display: flex; }
+
+  .fx-rule-note { margin: 10px 2px 0; line-height: var(--lh-normal); }
+
+  .fx-ghead {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    margin: 18px 2px 8px;
+  }
+  .fx-gtitle { font-size: var(--fs-13); font-weight: 700; color: var(--text-2); }
+  .fx-gcount { font-size: var(--fs-11); color: var(--text-3); white-space: nowrap; }
+
+  .fx-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .fx-brow {
+    display: block; padding: 11px 14px;
+    text-decoration: none; color: var(--text);
+  }
+  .fx-brow + .fx-brow { border-top: 1px solid var(--border); }
+  .fx-brow:hover { background: var(--surface-2); }
+
+  .fx-brow-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .fx-bic {
+    width: 30px; height: 30px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 9px;
+    background: var(--surface-2); color: var(--text-2);
+  }
+  .fx-bname {
+    flex: 1; min-width: 0;
+    font-size: var(--fs-15); font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .fx-brow-line .tag { flex: none; }
+  .fx-tag-over { display: none; }
+  body[data-state="over"] .fx-is-over .fx-tag-over { display: inline-flex; }
+  .fx-fixed-tag { flex: none; }
+  .fx-bpct { flex: none; font-family: var(--font-num); font-size: var(--fs-13); font-weight: 700; color: var(--text-2); }
+
+  .fx-bar {
+    display: block; height: 6px; margin: 8px 0 6px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-2);
+    overflow: hidden;
+  }
+  .fx-bar-fill { display: block; height: 100%; border-radius: var(--radius-pill); background: var(--brand); }
+  .fx-bar-fill.is-full { background: var(--accent); }
+  .fx-bar-fill.is-food { width: 52%; }
+  .fx-bar-fill.is-move { width: 53%; }
+  .fx-bar-fill.is-kid { width: 42%; }
+  .fx-bar-fill.is-full { width: 100%; }
+  body[data-state="over"] .fx-is-over .fx-bar-fill { background: var(--danger); width: 100%; }
+  body[data-state="over"] .fx-is-over .fx-bpct { color: var(--danger); }
+
+  .fx-bmeta {
+    display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px;
+    font-size: var(--fs-12); color: var(--text-3);
+  }
+  .fx-bmeta b { font-weight: 600; color: var(--text-2); }
+  .fx-sep { opacity: .6; }
+  .fx-rest { margin-left: auto; font-family: var(--font-num); font-size: var(--fs-12); }
+  .fx-rest-full { color: var(--text-3); }
+  .fx-rest-over { display: none; color: var(--danger); font-weight: 700; }
+  body[data-state="over"] .fx-rest-over { display: inline; }
+  body[data-state="over"] .fx-rest-ok { display: none; }
+
+  .fx-foot-note { margin-top: 16px; line-height: var(--lh-normal); }
+
+  .fx-sk { display: none; padding-top: 6px; }
+  body[data-state="loading"] .fx-sk { display: block; }
+  body[data-state="loading"] .fx-real { display: none; }
+  .fx-sk-row { display: flex; align-items: center; gap: 10px; padding: 12px 0; }
+  .fx-sk-ic { width: 30px; height: 30px; border-radius: 9px; flex: none; }
+  .fx-sk-lines { flex: 1; }
+
+  .fx-empty { display: none; }
+  body[data-state="empty"] .fx-empty { display: flex; }
+  body[data-state="empty"] .fx-real { display: none; }
+</style>
+</head>
+<body data-screen="F19 预算" data-states="default,over,empty,loading">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <header class="navbar">
+    <div class="nav-left">
+      <a class="icon-btn" href="home.html" aria-label="返回首页"
+        data-hot="①" data-hot-name="返回首页" data-hot-pos="outer-top-left"
+        data-hot-label="回 HomeOS 首页；财务面没有面切换器，去别的面只能回首页矩阵点格">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </a>
+    </div>
+    <div class="nav-title">财务</div>
+    <div class="nav-right">
+      <button class="fx-new" type="button" data-go="finance-budget-create.html"
+        data-hot="②" data-hot-name="新建预算" data-hot-pos="outer-top-right"
+        data-hot-label="进新建预算页（finance/budget/create）：范围、金额、周期、阈值、是否固定五项；空态也指向同一路由，不出现「只有管理员能建」的灰按钮">
+        新建</button>
+    </div>
+  </header>
+
+  <nav class="l2-tabs" aria-label="财务二级导航"
+    data-hot="③" data-hot-name="面内二级 Tab" data-hot-pos="bottom-right"
+    data-hot-label="流水 / 报表 / 预算 / 账本 / 账户与设置五页在本分包内互切，本页高亮「预算」；不叠加底部五项、不放面切换器；末位叫「账户与设置」不叫「我的」">
+    <a class="l2-tab" href="finance-flow.html">流水</a>
+    <a class="l2-tab" href="finance-report.html">报表</a>
+    <a class="l2-tab" href="finance-budget.html" aria-current="page">预算</a>
+    <a class="l2-tab" href="finance-ledger.html">账本</a>
+    <a class="l2-tab" href="finance-settings.html">账户与设置</a>
+  </nav>
+
+  <div class="period-bar fx-period"
+    data-hot="④" data-hot-name="时间窗条" data-hot-pos="bottom-right"
+    data-hot-label="月 / 季 / 年三档，与首页、流水、报表共用同一个 shell 级 period；M1 只设了月度预算，切到季或年时不按月×3/×12 折算，直接给「未设该周期预算」空态（⑬ 红线）">
+    <span class="period-label">
+      <span class="fx-pl-m">2026 年 10 月</span>
+      <span class="fx-pl-q">2026 年第 3 季度</span>
+      <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5 6 7.5l3-3"/></svg>
+    </span>
+    <div class="segmented">
+      <button type="button" aria-selected="true" data-period-go="month">月</button>
+      <button type="button" aria-selected="false" data-period-go="quarter">季</button>
+      <button type="button" aria-selected="false" data-period-go="year">年</button>
+    </div>
+  </div>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 进度显示本机缓存
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-real">
+      <section class="fx-hero"
+        data-hot="⑤" data-hot-name="总预算进度" data-hot-pos="bottom-right"
+        data-hot-label="环内百分比 = 已用 ÷ 总预算，已用 / 总额 / 剩余三个数都取服务端，前端不二次累加；超支时环与剩余数字转 danger，剩余带负号且负号在 ¥ 前；未分配到分类的余额单列，不摊进分类行">
+        <div class="fx-hero-top">
+          <div class="fx-ring" role="img"
+            aria-label="总预算已用 78%，超支时显示 104%">
+            <svg width="104" height="104" viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="fx-ring-track" cx="60" cy="60" r="52"/>
+              <circle class="fx-ring-fill" cx="60" cy="60" r="52"/>
+            </svg>
+            <span class="fx-ring-c">
+              <b class="fx-ring-pct"><span class="fx-v-default">78</span><span class="fx-v-over">104</span>%</b>
+              <span class="fx-ring-k">已用</span>
+            </span>
+          </div>
+          <div class="fx-hero-body">
+            <div class="fx-hero-k">总预算<span class="tag">每月归零</span></div>
+            <div class="amount fx-hero-v">¥8,000.00</div>
+            <div class="fx-hero-split">
+              <div class="fx-hs">
+                <span class="fx-hk">已用</span>
+                <span class="amount fx-hv"><span class="fx-v-default">¥6,240.00</span><span class="fx-v-over">¥8,329.00</span></span>
+              </div>
+              <div class="fx-hs">
+                <span class="fx-hk">剩余</span>
+                <span class="amount fx-hv fx-hv-ok"><span class="fx-v-default">¥1,760.00</span><span class="fx-v-over is-neg">-¥329.00</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="fx-hero-note">2026 年 10 月 · 分类预算 6 项（含固定 / 周期 3 项）· 未分配到分类 <span class="num">¥471.00</span></div>
+      </section>
+
+      <div class="fx-alert">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 18 17H2z"/><path d="M10 8v4M10 14.6v.1"/></svg>
+        <span>
+          <b>本月已超预算 ¥329.00</b>
+          餐饮与交通两个分类超支。提醒已由家庭消息下发，本面不再另发通知、也不设定时器。
+        </span>
+      </div>
+
+      <p class="fx-rule-note tiny">预算按周期归零：每期开始时已用清零，结转属 ②（M2）。超支提醒由 HomeOS 家庭消息下发，财务面不自建定时器。</p>
+
+      <section class="fx-group">
+        <div class="fx-ghead"
+          data-hot="⑦" data-hot-name="固定与周期分组" data-hot-pos="outer-bottom-right"
+          data-hot-label="固定 / 周期预算按周期自动带出，已计入总预算，不在列表里静默改金额；刚好用满 100% 不算超支（阈值默认 100%），只有超过阈值才挂「已超支」并触发提醒">
+          <span class="fx-gtitle">固定与周期</span>
+          <span class="fx-gcount">3 项 · 按周期自动带出</span>
+        </div>
+        <div class="fx-list">
+          <a class="fx-brow" href="finance-budget-edit.html">
+            <span class="fx-brow-line">
+              <span class="fx-bic">
+                <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 10 3.5l7 6"/><path d="M5 9v7.5h10V9"/><path d="M8.4 16.5v-4h3.2v4"/></svg>
+              </span>
+              <span class="fx-bname">房租</span>
+              <span class="tag fx-fixed-tag">固定</span>
+              <span class="fx-bpct">100%</span>
+            </span>
+            <span class="fx-bar"><span class="fx-bar-fill is-full"></span></span>
+            <span class="fx-bmeta">
+              <span>已用 <b class="amount">¥4,200.00</b></span><span class="fx-sep">/</span>
+              <span>预算 <b class="amount">¥4,200.00</b></span>
+              <span class="fx-rest"><span class="fx-rest-full">用满</span></span>
+            </span>
+          </a>
+          <a class="fx-brow" href="finance-budget-edit.html">
+            <span class="fx-brow-line">
+              <span class="fx-bic">
+                <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 8.2a11 11 0 0 1 15 0"/><path d="M5.4 11.2a7 7 0 0 1 9.2 0"/><path d="M8.2 14.1a3.2 3.2 0 0 1 3.6 0"/><circle cx="10" cy="16.6" r=".9"/></svg>
+              </span>
+              <span class="fx-bname">宽带</span>
+              <span class="tag fx-fixed-tag">周期</span>
+              <span class="fx-bpct">100%</span>
+            </span>
+            <span class="fx-bar"><span class="fx-bar-fill is-full"></span></span>
+            <span class="fx-bmeta">
+              <span>已用 <b class="amount">¥129.00</b></span><span class="fx-sep">/</span>
+              <span>预算 <b class="amount">¥129.00</b></span>
+              <span class="fx-rest"><span class="fx-rest-full">用满</span></span>
+            </span>
+          </a>
+          <a class="fx-brow" href="finance-budget-edit.html">
+            <span class="fx-brow-line">
+              <span class="fx-bic">
+                <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v3.4M10 9.4v1.6M10 15.6V17"/><path d="M6.6 6.4h6.8l1.4 5.2H5.2z"/><path d="M5.2 11.6h9.6V17H5.2z"/></svg>
+              </span>
+              <span class="fx-bname">家政保洁</span>
+              <span class="tag fx-fixed-tag">周期</span>
+              <span class="fx-bpct">100%</span>
+            </span>
+            <span class="fx-bar"><span class="fx-bar-fill is-full"></span></span>
+            <span class="fx-bmeta">
+              <span>已用 <b class="amount">¥600.00</b></span><span class="fx-sep">/</span>
+              <span>预算 <b class="amount">¥600.00</b></span>
+              <span class="fx-rest"><span class="fx-rest-full">用满</span></span>
+            </span>
+          </a>
+        </div>
+        <p class="fx-gnote tiny">固定预算跟着周期记账自动带出；改金额只在编辑页，用满 100% 不算超支。</p>
+      </section>
+
+      <section class="fx-group">
+        <div class="fx-ghead">
+          <span class="fx-gtitle">日常分类</span>
+          <span class="fx-gcount">3 项 · 随流水累计</span>
+        </div>
+        <div class="fx-list">
+          <a class="fx-brow fx-is-over" href="finance-budget-edit.html"
+            data-hot="⑥" data-hot-name="分类预算行" data-hot-pos="bottom-right"
+            data-hot-label="整行进编辑页并带 version；行内五件套：图标、名称、已用 / 预算、进度条、百分比；超阈值后挂「已超支」并把条与百分比转 danger，剩余改显「超 ¥」；刚好 100% 不挂标">
+            <span class="fx-brow-line">
+              <span class="fx-bic">
+                <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.5v6.2a2 2 0 0 0 4 0V2.5"/><path d="M8 8.7v8.8"/><path d="M14 2.5c1.6 1.2 2.2 2.8 2.2 4.6 0 1.3-.8 2.2-2.2 2.4v8"/></svg>
+              </span>
+              <span class="fx-bname">餐饮</span>
+              <span class="tag is-danger fx-tag-over">已超支</span>
+              <span class="fx-bpct"><span class="fx-v-default">52%</span><span class="fx-v-over">120%</span></span>
+            </span>
+            <span class="fx-bar"><span class="fx-bar-fill is-food"></span></span>
+            <span class="fx-bmeta">
+              <span>已用 <b class="amount"><span class="fx-v-default">¥780.00</span><span class="fx-v-over">¥1,800.00</span></b></span>
+              <span class="fx-sep">/</span>
+              <span>预算 <b class="amount">¥1,500.00</b></span>
+              <span class="fx-rest">
+                <span class="fx-rest-ok">剩余 ¥720.00</span>
+                <span class="fx-rest-over">超 ¥300.00</span>
+              </span>
+            </span>
+          </a>
+          <a class="fx-brow fx-is-over" href="finance-budget-edit.html">
+            <span class="fx-brow-line">
+              <span class="fx-bic">
+                <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.2 13.4 5.6 8h8.8l2.4 5.4"/><path d="M3.2 13.4h13.6v3.1H3.2z"/><circle cx="6.4" cy="16.5" r="1.4"/><circle cx="13.6" cy="16.5" r="1.4"/></svg>
+              </span>
+              <span class="fx-bname">交通</span>
+              <span class="tag is-danger fx-tag-over">已超支</span>
+              <span class="fx-bpct"><span class="fx-v-default">53%</span><span class="fx-v-over">220%</span></span>
+            </span>
+            <span class="fx-bar"><span class="fx-bar-fill is-move"></span></span>
+            <span class="fx-bmeta">
+              <span>已用 <b class="amount"><span class="fx-v-default">¥320.00</span><span class="fx-v-over">¥1,320.00</span></b></span>
+              <span class="fx-sep">/</span>
+              <span>预算 <b class="amount">¥600.00</b></span>
+              <span class="fx-rest">
+                <span class="fx-rest-ok">剩余 ¥280.00</span>
+                <span class="fx-rest-over">超 ¥720.00</span>
+              </span>
+            </span>
+          </a>
+          <a class="fx-brow" href="finance-budget-edit.html">
+            <span class="fx-brow-line">
+              <span class="fx-bic">
+                <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5 5.4 4h9.2L16 5.5V16H4z"/><path d="M4 8h12"/><path d="M8 4v4"/></svg>
+              </span>
+              <span class="fx-bname">孩子</span>
+              <span class="fx-bpct"><span class="fx-v-default">42%</span><span class="fx-v-over">56%</span></span>
+            </span>
+            <span class="fx-bar"><span class="fx-bar-fill is-kid"></span></span>
+            <span class="fx-bmeta">
+              <span>已用 <b class="amount"><span class="fx-v-default">¥211.00</span><span class="fx-v-over">¥280.00</span></b></span>
+              <span class="fx-sep">/</span>
+              <span>预算 <b class="amount">¥500.00</b></span>
+              <span class="fx-rest"><span class="fx-rest-ok">剩余 ¥289.00</span><span class="fx-rest-over">剩余 ¥220.00</span></span>
+            </span>
+          </a>
+        </div>
+      </section>
+
+      <p class="fx-foot-note tiny">分类预算合计 <span class="num">¥7,529.00</span>，与总预算的差额是未分配额度；总预算与分类预算各自独立校验，页面数字一律取服务端，前端不做二次累加。</p>
+    </div>
+
+    <div class="fx-sk" aria-hidden="true">
+      <div class="skeleton" style="height:150px;border-radius:var(--radius-xl);margin-bottom:18px"></div>
+      <div class="skeleton sk-line" style="width:34%"></div>
+      <div class="fx-sk-row"><div class="skeleton fx-sk-ic"></div><div class="fx-sk-lines"><div class="skeleton sk-line" style="width:52%"></div><div class="skeleton sk-line" style="width:76%;margin-bottom:0"></div></div></div>
+      <div class="fx-sk-row"><div class="skeleton fx-sk-ic"></div><div class="fx-sk-lines"><div class="skeleton sk-line" style="width:44%"></div><div class="skeleton sk-line" style="width:68%;margin-bottom:0"></div></div></div>
+      <div class="fx-sk-row"><div class="skeleton fx-sk-ic"></div><div class="fx-sk-lines"><div class="skeleton sk-line" style="width:48%"></div><div class="skeleton sk-line" style="width:72%;margin-bottom:0"></div></div></div>
+      <div class="skeleton sk-line" style="width:30%;margin-top:16px"></div>
+      <div class="fx-sk-row"><div class="skeleton fx-sk-ic"></div><div class="fx-sk-lines"><div class="skeleton sk-line" style="width:40%"></div><div class="skeleton sk-line" style="width:64%;margin-bottom:0"></div></div></div>
+      <div class="fx-sk-row"><div class="skeleton fx-sk-ic"></div><div class="fx-sk-lines"><div class="skeleton sk-line" style="width:46%"></div><div class="skeleton sk-line" style="width:58%;margin-bottom:0"></div></div></div>
+    </div>
+
+    <div class="state fx-empty">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="16" r="11"/><circle cx="16" cy="16" r="5"/><path d="M16 5v4M16 23v4M5 16h4M23 16h4"/></svg>
+      </div>
+      <div class="state-title">这个周期还没有预算</div>
+      <div class="state-desc">M1 只支持月度预算：切到季度或年度时不会把月度预算乘 3、乘 12 折算，需要就那个周期单独建一条。季度 / 年度预算与结转属 ②（M2）。</div>
+      <button class="btn btn-secondary" type="button" data-go="finance-budget-create.html"
+        data-hot="⑧" data-hot-name="空态行动" data-hot-pos="top-right"
+        data-hot-label="该周期零预算时给可执行动作「新建预算」，直接进新建页并带上当前时间窗；不只放一句空话，也不展示折算出来的假剩余">
+        新建预算</button>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var fxState = new URLSearchParams(location.search).get('state') || 'default';
+
+  document.querySelectorAll('[data-period-go]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var go = b.getAttribute('data-period-go');
+      if (fxState === 'empty') {
+        if (go === 'month') location.href = 'finance-budget.html';
+        return;
+      }
+      if (go === 'month') return;
+      location.href = 'finance-budget.html?state=empty';
+    });
+  });
+
+  if (fxState === 'empty') {
+    /* 空态就是季度窗：月 / 季 / 年三档里只高亮「季」，且不出现折算后的预算数字 */
+    document.querySelectorAll('[data-period-go]').forEach(function (b) {
+      b.setAttribute('aria-selected', String(b.getAttribute('data-period-go') === 'quarter'));
+    });
+  }
+</script>
+</body>
+</html>

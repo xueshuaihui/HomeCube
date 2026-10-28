@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>新建周期规则 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-content { padding-bottom: 24px; }
+
+  .fx-cancel {
+    height: 36px; padding: 0 2px;
+    border: 0; background: none;
+    font-family: inherit; font-size: var(--fs-15); font-weight: 500;
+    color: var(--text-2); cursor: pointer;
+  }
+  .fx-cancel:hover { color: var(--text); }
+
+  .fx-banner {
+    display: none; align-items: flex-start; gap: 8px;
+    margin: 6px 0 12px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-banner svg { flex: none; margin-top: 1px; }
+  .fx-banner b { display: block; font-size: var(--fs-13); margin-bottom: 2px; }
+  .fx-banner-error { background: var(--danger-soft); color: var(--danger); }
+  .fx-banner-saving { background: var(--info-soft); color: var(--info); }
+  body[data-state="error"] .fx-banner-error { display: flex; }
+  body[data-state="saving"] .fx-banner-saving { display: flex; }
+
+  .fx-form { padding-top: 2px; }
+  body[data-state="saving"] .fx-form,
+  body[data-state="saving"] .fx-foot-note { opacity: .55; pointer-events: none; }
+
+  .fx-required { margin-left: 4px; font-size: var(--fs-11); font-weight: 600; color: var(--text-3); }
+
+  .fx-amt { position: relative; }
+  .fx-amt-cur {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    z-index: 1; pointer-events: none;
+    font-family: var(--font-num); font-size: var(--fs-20); font-weight: 700; color: var(--text-2);
+  }
+  .fx-amt-input {
+    height: 56px; padding-left: 34px;
+    font-family: var(--font-num); font-size: var(--fs-20); font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .fx-amt-err { display: none; }
+  body[data-state="error"] .fx-amt-err { display: flex; }
+  body[data-state="error"] .fx-amt-input.is-error { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
+
+  .fx-pick {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    padding: 10px 14px; min-height: 56px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-family: inherit; text-align: left; color: var(--text);
+    cursor: pointer;
+  }
+  .fx-pick:hover { border-color: var(--border-strong); }
+  .fx-pick .chevron { flex: none; color: var(--text-3); }
+  .fx-pick-ic {
+    width: 32px; height: 32px; flex: none;
+    border-radius: 10px;
+    background: var(--surface-2); color: var(--text-2);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .fx-pick-body { flex: 1; min-width: 0; }
+  .fx-pick-v { display: block; font-size: var(--fs-15); font-weight: 600; }
+  .fx-pick-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
+  .fx-pick.is-error { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
+  .fx-date-err { display: none; }
+  .fx-date-err.is-on { display: flex; }
+
+  .fx-period-seg { width: 100%; }
+  .fx-period-seg button { flex: 1; padding: 9px 6px; }
+
+  .fx-day-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    margin-top: 8px; padding: 13px 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    width: 100%;
+    font-family: inherit; text-align: left; color: var(--text);
+    cursor: pointer;
+  }
+  .fx-day-row:hover { border-color: var(--border-strong); }
+  .fx-day-v { font-size: var(--fs-15); font-weight: 600; }
+  .fx-day-row svg { flex: none; color: var(--text-3); }
+
+  .fx-end-extra { display: none; margin-top: 8px; }
+  body[data-state="advanced"] .fx-end-extra { display: block; }
+  body[data-state="advanced"] .fx-end-hint { display: none; }
+  .fx-end-hint { margin-top: 6px; }
+  .fx-end-count { display: flex; align-items: center; gap: 8px; }
+  .fx-end-count .input { flex: 1; }
+  .fx-end-unit { font-size: var(--fs-13); color: var(--text-3); flex: none; }
+  .fx-end-sum {
+    display: flex; align-items: flex-start; gap: 8px;
+    margin-top: 8px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2); color: var(--text-2);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-end-sum svg { flex: none; margin-top: 1px; color: var(--text-3); }
+
+  .fx-foot-note {
+    margin-top: 4px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    color: var(--text-2); font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-foot-note b { color: var(--text); }
+
+  .fx-foot {
+    flex: none;
+    padding: 10px 16px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+
+  .fx-sheet-line {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 14px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+  }
+  .fx-sheet-line span { flex: 1; min-width: 0; font-size: var(--fs-14); font-weight: 600; }
+</style>
+</head>
+<body data-screen="F07 新建周期规则" data-states="default,advanced,error,saving">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <button class="fx-cancel" type="button" data-go="finance-recurring.html"
+        data-hot="①" data-hot-name="取消" data-hot-pos="outer-top-left"
+        data-hot-label="回周期规则列表；未保存内容直接丢弃，不落草稿、不入离线队列，也不产生流水">取消</button>
+    </div>
+    <div class="nav-title">新建周期规则</div>
+    <div class="nav-right"></div>
+  </div>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 保存后先排队，首笔入账不受影响
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-banner fx-banner-error">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
+      <div>
+        <b>还有 2 项需要补全</b>
+        金额与开始日期是必填项；补齐后即可保存，其余字段都有默认值。
+      </div>
+    </div>
+
+    <div class="fx-banner fx-banner-saving">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.2v4.2l2.6 1.6"/></svg>
+      <div>
+        <b>正在保存规则</b>
+        规则落库后，到点由财务服务自动入账并计入预算；自动入账带幂等键，重试不会重复记账。
+      </div>
+    </div>
+
+    <div class="fx-form">
+      <div class="field">
+        <label class="field-label" for="fx-amount">金额<span class="fx-required">必填</span></label>
+        <div class="fx-amt">
+          <span class="fx-amt-cur">¥</span>
+          <input class="input fx-amt-input" id="fx-amount" type="text" inputmode="decimal" value="4200.00" autocomplete="off"
+            data-hot="②" data-hot-name="金额" data-hot-pos="outer-top-right"
+            data-hot-label="以「分」存储、按家庭币种展示；支出记负数、收入记正数由类型决定；为空或非数字时给红框与行内错误，不弹全局错误层">
+        </div>
+        <div class="field-error fx-amt-err" role="alert">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
+          请填写金额
+        </div>
+        <div class="help">金额按家庭币种（CNY）录入；自动入账的流水类型由此处决定。</div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">分类</span>
+        <button class="fx-pick" type="button" data-sheet-open="sheet-cat"
+          data-hot="③" data-hot-name="分类" data-hot-pos="outer-top-right"
+          data-hot-label="从二级分类里选一项，选择器与记一笔、报表图例、筛选 chips 同源同序；P1 只允许叶子分类">
+          <span class="fx-pick-ic">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5h5l1.6 2H17v8.5H3z"/><path d="M3 5.5V4h5"/></svg>
+          </span>
+          <span class="fx-pick-body">
+            <span class="fx-pick-v" id="fx-cat-v">居住 · 房租</span>
+            <span class="fx-pick-sub">二级分类，自动入账按它归到报表</span>
+          </span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+      </div>
+
+      <div class="field">
+        <span class="field-label">账户</span>
+        <button class="fx-pick" type="button" data-sheet-open="sheet-acc"
+          data-hot="④" data-hot-name="账户" data-hot-pos="outer-top-right"
+          data-hot-label="只列未归档账户；归档账户不出现在这里，但它的历史流水仍计入报表。选负债账户时自动入账会让总负债上升">
+          <span class="fx-pick-ic">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="15" height="10" rx="2.5"/><path d="M2.5 9h15"/></svg>
+          </span>
+          <span class="fx-pick-body">
+            <span class="fx-pick-v" id="fx-acc-v">招商银行储蓄卡</span>
+            <span class="fx-pick-sub" id="fx-acc-sub">储蓄卡 · 当前余额 <span class="num">¥126,400.00</span></span>
+          </span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+      </div>
+
+      <div class="field">
+        <span class="field-label">周期</span>
+        <div class="segmented fx-period-seg" role="tablist"
+          data-hot="⑤" data-hot-name="周期" data-hot-pos="outer-top-right"
+          data-hot-label="每周 / 每月 / 每年三档同页切换，切换后「记账日」的说法随之改变；具体日由服务端按家庭时区换算下次生效时间，客户端不自行推算">
+          <button type="button" role="tab" aria-selected="false" data-period="week">每周</button>
+          <button type="button" role="tab" aria-selected="true" data-period="month">每月</button>
+          <button type="button" role="tab" aria-selected="false" data-period="year">每年</button>
+        </div>
+        <button class="fx-day-row" type="button" data-toast="具体日选择随系统日期组件接入；P1 支持每月 1-28 日、每周一至周日、每年固定月日">
+          <span>
+            <span class="fx-day-v" id="fx-day-v">每月 5 日</span>
+            <span class="fx-pick-sub" id="fx-day-sub">避开 29-31 日，免得小月缺日漏记</span>
+          </span>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+      </div>
+
+      <div class="field">
+        <span class="field-label">开始日期<span class="fx-required">必填</span></span>
+        <button class="fx-pick" type="button" id="fx-date-pick" data-sheet-open="sheet-date"
+          data-hot="⑥" data-hot-name="开始日期" data-hot-pos="outer-top-right"
+          data-hot-label="首笔入账日期；当天已过则从下一个周期开始；缺失时红框 + 行内错误，不默认成今天">
+          <span class="fx-pick-ic">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="4.5" width="14" height="12" rx="2.5"/><path d="M3 8.5h14M7 2.8v3.4M13 2.8v3.4"/></svg>
+          </span>
+          <span class="fx-pick-body">
+            <span class="fx-pick-v num" id="fx-date-v">2026 年 11 月 5 日</span>
+            <span class="fx-pick-sub" id="fx-date-sub">首笔在 11 月 5 日入账</span>
+          </span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+        <div class="field-error fx-date-err" id="fx-date-err" role="alert">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
+          请选择开始日期
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">结束条件</span>
+        <div class="chip-row" id="fx-end-row"
+          data-hot="⑦" data-hot-name="结束条件" data-hot-pos="outer-top-right"
+          data-hot-label="永不 / 指定次数 / 指定日期三选一；选「指定次数」或「指定日期」才展开补充项（终态即 advanced），默认永不结束，直到手动暂停或删除">
+          <button class="chip" type="button" aria-pressed="true" data-end="never">永不</button>
+          <button class="chip" type="button" aria-pressed="false" data-end="count">指定次数</button>
+          <button class="chip" type="button" aria-pressed="false" data-end="date">指定日期</button>
+        </div>
+        <div class="help fx-end-hint">不设结束，直到手动暂停或删除。</div>
+        <div class="fx-end-extra">
+          <div class="fx-end-count">
+            <input class="input num" type="text" inputmode="numeric" value="12" aria-label="共入账次数">
+            <span class="fx-end-unit">次</span>
+          </div>
+          <div class="fx-end-sum">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
+            <span>从 <span class="num">2026 年 11 月 5 日</span> 起共入账 12 次，最后一笔在 <span class="num">2027 年 10 月 5 日</span>；到期后规则自动停用，不会多记一笔。</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="fx-note">备注</label>
+        <textarea class="textarea" id="fx-note" maxlength="200" rows="3"
+          placeholder="可选：写清扣款渠道、账单期或注意事项">每月 5 日自动扣房租，含物业费。</textarea>
+        <div class="help">备注只在本家庭成员内可见，不进入自动入账的通知正文。</div>
+      </div>
+    </div>
+
+    <div class="fx-foot-note">
+      <b>保存后</b>：规则进入列表并显示下次生效时间；到点由财务服务自动入账，入账同时计入当月预算，超支后由家庭消息通知。
+    </div>
+  </div>
+
+  <div class="fx-foot">
+    <button class="btn btn-primary btn-block" type="button" id="fx-save"
+      data-hot="⑧" data-hot-name="保存" data-hot-pos="outer-bottom-right"
+      data-hot-label="金额或开始日期缺失时只标红对应字段并给行内错误，不弹全局错误；保存中按钮变转圈且表单只读；保存成功回列表">
+      保存规则
+    </button>
+  </div>
+
+  <!-- 分类选择层 -->
+  <div class="sheet-mask" id="sheet-cat" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>选择分类</h3>
+      <p class="sheet-sub">只列未停用的二级分类；顺序与记一笔、报表图例、筛选 chips 一致。</p>
+      <div class="list" style="margin-top:16px">
+        <button class="list-item" type="button" data-cat="居住 · 房租" data-sheet-close>
+          <span class="li-text">居住 · 房租<span class="li-sub">当前选择</span></span>
+        </button>
+        <button class="list-item" type="button" data-cat="收入 · 工资" data-sheet-close>
+          <span class="li-text">收入 · 工资<span class="li-sub">记账类型为收入</span></span>
+        </button>
+        <button class="list-item" type="button" data-cat="居住 · 宽带" data-sheet-close>
+          <span class="li-text">居住 · 宽带</span>
+        </button>
+        <button class="list-item" type="button" data-cat="家务 · 保洁" data-sheet-close>
+          <span class="li-text">家务 · 保洁</span>
+        </button>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 账户选择层 -->
+  <div class="sheet-mask" id="sheet-acc" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>选择账户</h3>
+      <p class="sheet-sub">只列未归档账户；归档账户不出现在这里，它的历史流水仍计入报表与净资产。</p>
+      <div class="list" style="margin-top:16px">
+        <button class="list-item" type="button" data-acc="招商银行储蓄卡" data-acc-sub="储蓄卡 · 当前余额 ¥126,400.00" data-sheet-close>
+          <span class="li-text">招商银行储蓄卡<span class="li-sub">默认记账账户</span></span>
+        </button>
+        <button class="list-item" type="button" data-acc="支付宝" data-acc-sub="其他 · 当前余额 ¥8,900.00" data-sheet-close>
+          <span class="li-text">支付宝<span class="li-sub">其他 · 当前余额 ¥8,900.00</span></span>
+        </button>
+        <button class="list-item" type="button" data-acc="微信零钱" data-acc-sub="其他 · 当前余额 ¥2,140.00" data-sheet-close>
+          <span class="li-text">微信零钱<span class="li-sub">其他 · 当前余额 ¥2,140.00</span></span>
+        </button>
+        <button class="list-item" type="button" data-acc="招商银行信用卡" data-acc-sub="信用卡 · 负债账户，已用 ¥3,250.00" data-sheet-close>
+          <span class="li-text">招商银行信用卡<span class="li-sub">信用卡 · 负债账户</span></span>
+        </button>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 开始日期选择层 -->
+  <div class="sheet-mask" id="sheet-date" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>开始日期</h3>
+      <p class="sheet-sub">首笔按所选日期入账；当天已过则顺延到下一个周期。</p>
+      <div class="list" style="margin-top:16px">
+        <button class="list-item" type="button" data-date="2026 年 11 月 5 日" data-date-sub="首笔在 11 月 5 日入账" data-sheet-close>
+          <span class="li-text">2026 年 11 月 5 日<span class="li-sub">下个扣款日 · 当前选择</span></span>
+        </button>
+        <button class="list-item" type="button" data-date="2026 年 12 月 5 日" data-date-sub="首笔在 12 月 5 日入账" data-sheet-close>
+          <span class="li-text">2026 年 12 月 5 日<span class="li-sub">从下下个周期开始</span></span>
+        </button>
+        <button class="list-item" type="button" data-date="2026 年 11 月 10 日" data-date-sub="首笔在 11 月 10 日入账" data-sheet-close>
+          <span class="li-text">2026 年 11 月 10 日<span class="li-sub">自定义日期</span></span>
+        </button>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var fxState = new URLSearchParams(location.search).get('state') || 'default';
+  var save = document.getElementById('fx-save');
+
+  document.querySelectorAll('[data-cat]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.getElementById('fx-cat-v').textContent = b.getAttribute('data-cat');
+      window.HC.toast('分类已改为「' + b.getAttribute('data-cat') + '」');
+    });
+  });
+
+  document.querySelectorAll('[data-acc]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.getElementById('fx-acc-v').textContent = b.getAttribute('data-acc');
+      document.getElementById('fx-acc-sub').innerHTML = b.getAttribute('data-acc-sub');
+      window.HC.toast('账户已改为「' + b.getAttribute('data-acc') + '」');
+    });
+  });
+
+  document.querySelectorAll('[data-date]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.getElementById('fx-date-v').textContent = b.getAttribute('data-date');
+      document.getElementById('fx-date-sub').textContent = b.getAttribute('data-date-sub');
+      document.getElementById('fx-date-pick').classList.remove('is-error');
+      document.getElementById('fx-date-err').classList.remove('is-on');
+      window.HC.toast('开始日期已设为 ' + b.getAttribute('data-date'));
+    });
+  });
+
+  var periodMap = {
+    week: { v: '每周一', sub: '每周一自动入账，遇节假日不跳' },
+    month: { v: '每月 5 日', sub: '避开 29-31 日，免得小月缺日漏记' },
+    year: { v: '每年 4 月 1 日', sub: '每年同一月日入账，2 月 29 日按 28 日处理' }
+  };
+
+  document.querySelectorAll('[data-period]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('[data-period]').forEach(function (x) {
+        x.setAttribute('aria-selected', String(x === b));
+      });
+      var cfg = periodMap[b.getAttribute('data-period')];
+      document.getElementById('fx-day-v').textContent = cfg.v;
+      document.getElementById('fx-day-sub').textContent = cfg.sub;
+    });
+  });
+
+  var endBtns = Array.prototype.slice.call(document.querySelectorAll('[data-end]'));
+  endBtns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      endBtns.forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+      document.body.setAttribute('data-state', b.getAttribute('data-end') === 'never' ? 'default' : 'advanced');
+    });
+  });
+
+  if (fxState === 'advanced') {
+    endBtns.forEach(function (x) {
+      x.setAttribute('aria-pressed', String(x.getAttribute('data-end') === 'count'));
+    });
+    document.getElementById('fx-end-row').scrollIntoView({ block: 'center' });
+  }
+
+  if (fxState === 'error') {
+    var amt = document.getElementById('fx-amount');
+    amt.value = '';
+    amt.classList.add('is-error');
+    document.getElementById('fx-date-v').textContent = '未选择';
+    document.getElementById('fx-date-sub').textContent = '必选：首笔入账日期';
+    document.getElementById('fx-date-pick').classList.add('is-error');
+    document.getElementById('fx-date-err').classList.add('is-on');
+  } else {
+    document.getElementById('fx-date-err').classList.remove('is-on');
+  }
+
+  if (fxState === 'saving') save.classList.add('is-loading');
+
+  document.getElementById('fx-amount').addEventListener('input', function () {
+    if (this.value.trim()) {
+      this.classList.remove('is-error');
+      if (document.body.getAttribute('data-state') === 'error' && document.getElementById('fx-date-v').textContent !== '未选择') {
+        document.body.setAttribute('data-state', 'default');
+      }
+    }
+  });
+
+  save.addEventListener('click', function () {
+    if (fxState === 'saving') return;
+    var amount = document.getElementById('fx-amount');
+    var dateMissing = document.getElementById('fx-date-v').textContent === '未选择';
+    if (!amount.value.trim() || dateMissing) {
+      amount.classList.add('is-error');
+      if (dateMissing) document.getElementById('fx-date-pick').classList.add('is-error');
+      document.body.setAttribute('data-state', 'error');
+      document.getElementById('fx-date-err').classList.toggle('is-on', dateMissing);
+      amount.focus();
+      return;
+    }
+    window.HC.toast('规则已保存，下次生效 11 月 5 日');
+    setTimeout(function () { location.href = 'finance-recurring.html'; }, 1100);
+  });
+</script>
+</body>
+</html>

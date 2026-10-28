@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>待办详情 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .todo-content { padding-bottom: 16px; }
+
+  .todo-edit {
+    height: 36px; padding: 0 2px;
+    border: 0; background: none;
+    font-family: inherit; font-size: var(--fs-15); font-weight: 600;
+    color: var(--brand-text); cursor: pointer;
+  }
+  .todo-edit:hover { color: var(--brand-hover); }
+
+  .todo-cache {
+    display: none; align-items: center; gap: 6px;
+    margin: 6px 0 0; padding: 7px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--warning-soft); color: var(--warning);
+    font-size: var(--fs-12);
+  }
+  body[data-state="offline"] .todo-cache { display: flex; }
+  body[data-state="offline"] .offline-bar { display: flex; }
+
+  .todo-banner {
+    display: none; align-items: flex-start; gap: 8px;
+    margin: 8px 0 0; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .todo-banner svg { flex: none; margin-top: 1px; }
+  .todo-banner b { display: block; font-size: var(--fs-13); margin-bottom: 2px; }
+  .todo-banner-done { background: var(--success-soft); color: var(--success); }
+  .todo-banner-saving { background: var(--info-soft); color: var(--info); }
+  body[data-state="completed"] .todo-banner-done { display: flex; }
+  body[data-state="saving"] .todo-banner-saving { display: flex; }
+
+  .todo-hero {
+    margin-top: 10px; padding: 18px 20px 18px;
+    border-radius: var(--radius-xl);
+    background: linear-gradient(135deg, var(--brand-soft) 0%, var(--surface) 68%);
+    border: 1px solid var(--brand-soft-border);
+  }
+  .todo-hero-top { display: flex; align-items: center; gap: 8px; }
+  .todo-st {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: var(--radius-pill);
+    font-size: var(--fs-11); font-weight: 700;
+  }
+  .todo-st-open { background: var(--info-soft); color: var(--info); }
+  .todo-st-done { display: none; background: var(--success-soft); color: var(--success); }
+  body[data-state="completed"] .todo-st-open { display: none; }
+  body[data-state="completed"] .todo-st-done { display: inline-flex; }
+  .todo-ver-tag {
+    margin-left: auto; flex: none;
+    font-family: var(--font-num); font-size: var(--fs-11); color: var(--text-3);
+  }
+  .todo-hero-title { margin-top: 10px; font-size: var(--fs-24); font-weight: 700; line-height: var(--lh-tight); }
+  .todo-hero-due {
+    margin-top: 8px; display: flex; align-items: center; gap: 6px;
+    font-size: var(--fs-13); color: var(--text-2);
+  }
+  .todo-hero-due svg { flex: none; color: var(--brand-text); }
+  .todo-hero-due b { font-size: var(--fs-15); color: var(--text); }
+  .todo-due-open { display: inline-flex; align-items: center; gap: 6px; }
+  .todo-due-done { display: none; align-items: center; gap: 6px; color: var(--success); font-weight: 600; }
+  body[data-state="completed"] .todo-due-open { display: none; }
+  body[data-state="completed"] .todo-due-done { display: inline-flex; }
+  .todo-hero-note { margin-top: 8px; font-size: var(--fs-12); color: var(--text-3); }
+
+  .todo-sec-title {
+    margin: 20px 2px 8px;
+    display: flex; align-items: baseline; justify-content: space-between;
+    font-size: var(--fs-13); font-weight: 700; color: var(--text-2);
+  }
+  .todo-sec-count { font-size: var(--fs-11); font-weight: 600; color: var(--text-3); }
+
+  .todo-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); overflow: hidden;
+  }
+
+  .todo-sub { display: flex; align-items: center; gap: 10px; padding: 12px 14px; font-size: var(--fs-14); color: var(--text); }
+  .todo-sub + .todo-sub { border-top: 1px solid var(--border); }
+  .todo-sub span { flex: 1; min-width: 0; }
+  .todo-sub input:checked + span { color: var(--text-3); text-decoration: line-through; }
+  body[data-state="saving"] .todo-sub input,
+  body[data-state="completed"] .todo-sub input { pointer-events: none; opacity: .7; }
+
+  .todo-row { display: flex; align-items: center; gap: 12px; padding: 13px 16px; width: 100%; font-size: var(--fs-14); }
+  .todo-row + .todo-row { border-top: 1px solid var(--border); }
+  .todo-k { width: 64px; flex: none; font-size: var(--fs-13); color: var(--text-3); }
+  .todo-v { flex: 1; min-width: 0; }
+  .todo-v-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
+  .todo-row-btn {
+    border: 0; background: var(--surface);
+    font-family: inherit; color: var(--text); text-align: left;
+    cursor: pointer;
+  }
+  .todo-row-btn:hover { background: var(--surface-2); }
+  .todo-row-btn .chevron { flex: none; color: var(--text-3); }
+  .todo-person { display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-14); }
+  .todo-person .avatar { width: 26px; height: 26px; font-size: var(--fs-11); }
+  .todo-av-me { background: var(--brand); color: var(--on-brand); border-color: transparent; }
+  .todo-av-mom { background: var(--accent-soft); color: var(--accent); }
+  .todo-person .tiny { margin-left: 2px; }
+
+  .todo-attach { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
+  .todo-attach + .todo-attach { border-top: 1px solid var(--border); }
+  .todo-attach-icon {
+    width: 36px; height: 36px; flex: none;
+    border-radius: 10px;
+    background: var(--brand-soft); color: var(--brand-text);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .todo-attach-body { flex: 1; min-width: 0; }
+  .todo-attach-name { display: block; font-size: var(--fs-14); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .todo-attach-act {
+    flex: none; height: 30px; padding: 0 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong); background: var(--surface);
+    font-family: inherit; font-size: var(--fs-12); font-weight: 600;
+    color: var(--text-2); cursor: pointer;
+  }
+  .todo-attach-act:hover { background: var(--surface-2); }
+
+  .todo-foot {
+    flex: none;
+    display: flex; gap: 10px;
+    padding: 10px 16px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+  .todo-done { flex: 1.4; }
+  .todo-archive { flex: 1; }
+  .todo-foot-note { margin-top: 8px; text-align: center; line-height: var(--lh-normal); }
+
+  .todo-sheet-line {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 14px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+  }
+  .todo-sheet-title { flex: 1; min-width: 0; font-size: var(--fs-14); font-weight: 600; }
+  .todo-sheet-due { flex: none; font-size: var(--fs-12); color: var(--text-3); }
+</style>
+</head>
+<body data-screen="15 待办详情 · 日历面" data-tab="" data-states="default,completed,saving,offline">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <button class="icon-btn" type="button" data-go="todo.html"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回待办列表并保持进入前的分段；完成后返回，该条已从「分配给我」移除" aria-label="返回">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </button>
+    </div>
+    <div class="nav-title">待办详情</div>
+    <div class="nav-right">
+      <button class="todo-edit" type="button" data-go="todo-edit.html"
+        data-hot="②" data-hot-name="编辑" data-hot-pos="outer-top-right"
+        data-hot-label="进编辑页并带上当前 version；编辑与完成是两条路径，编辑不会顺手改动完成状态">编辑</button>
+    </div>
+  </div>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 完成会先入队
+  </div>
+
+  <div class="content todo-content">
+    <div class="todo-cache">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="5.5"/><path d="M8 4.8V8l2.2 1.3"/></svg>
+      显示本机缓存 · 截至 10 月 29 日 08:10
+    </div>
+
+    <div class="todo-banner todo-banner-done">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M6.4 10.3l2.4 2.4 4.8-4.9"/></svg>
+      <div>
+        <b>已完成</b>
+        回写已送达，到期中心与首页今日区已同步移除；完成状态只进不退。
+      </div>
+    </div>
+
+    <div class="todo-banner todo-banner-saving">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.2v4.2l2.6 1.6"/></svg>
+      <div>
+        <b>完成已提交 · 正在回写</b>
+        本页不等回写结果，可以离开；回写失败会进对账并由到期中心重试，不会让你的完成操作消失。
+      </div>
+    </div>
+
+    <section class="todo-hero">
+      <div class="todo-hero-top">
+        <span class="todo-st todo-st-open">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="8" cy="8" r="5.5"/><path d="M8 5.2V8l1.8 1.1"/></svg>
+          待处理
+        </span>
+        <span class="todo-st todo-st-done">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
+          已完成
+        </span>
+        <span class="todo-ver-tag">版本 3</span>
+      </div>
+      <h2 class="todo-hero-title">交物业费</h2>
+      <div class="todo-hero-due">
+        <span class="todo-due-open">
+          <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.2v4.2l2.6 1.6"/></svg>
+          <b class="num">今天 20:00</b>
+          <span>10 月 29 日 · 周四 · 还剩约 10 小时</span>
+        </span>
+        <span class="todo-due-done">
+          <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M6.4 10.3l2.4 2.4 4.8-4.9"/></svg>
+          <b class="num">10 月 29 日 20:12</b>
+          <span>完成 · 记录已写入家庭动态</span>
+        </span>
+      </div>
+      <div class="todo-hero-note">完成会从到期中心与首页今日区同步移除；不产生费用记录。</div>
+    </section>
+
+    <div class="todo-sec-title">
+      <span>子任务</span>
+      <span class="todo-sec-count" id="sub-count">1/3 已完成</span>
+    </div>
+    <div class="todo-card"
+      data-hot="③" data-hot-name="子任务" data-hot-pos="bottom-right"
+      data-hot-label="子任务可单独勾选，勾选即时生效、不影响主待办状态；主待办完成时未勾子任务一并按已完成处理">
+      <label class="checkbox todo-sub">
+        <input type="checkbox" checked aria-label="核对账期金额">
+        <span>核对账期金额</span>
+      </label>
+      <label class="checkbox todo-sub">
+        <input type="checkbox" aria-label="线上缴费">
+        <span>线上缴费并保留凭证</span>
+      </label>
+      <label class="checkbox todo-sub">
+        <input type="checkbox" aria-label="拍照存回执">
+        <span>把回执拍照存到附件</span>
+      </label>
+    </div>
+
+    <div class="todo-sec-title"><span>详情</span></div>
+    <div class="todo-card">
+      <div class="todo-row">
+        <span class="todo-k">截止时间</span>
+        <span class="todo-v">
+          <span class="num">2026 年 10 月 29 日 20:00</span>
+          <span class="todo-v-sub">按家庭时区（Asia/Shanghai）显示；改期在编辑页</span>
+        </span>
+      </div>
+      <div class="todo-row">
+        <span class="todo-k">负责人</span>
+        <span class="todo-v">
+          <span class="todo-person"><span class="avatar todo-av-me">我</span>我</span>
+        </span>
+      </div>
+      <div class="todo-row">
+        <span class="todo-k">创建人</span>
+        <span class="todo-v">
+          <span class="todo-person">
+            <span class="avatar todo-av-mom">妈</span>妈妈
+            <span class="tiny">今天 08:40 创建</span>
+          </span>
+        </span>
+      </div>
+      <button class="todo-row todo-row-btn" type="button"
+        data-hot="⑥" data-hot-name="来源" data-hot-pos="bottom-right"
+        data-hot-label="来源面由创建时登记决定，只读；来源为 HomeOS 时到期注册也由 HomeOS 聚合，业务面不得改写来源或另建待办"
+        data-toast="来源面为创建时登记（HomeOS · 待办），不由客户端改写；到期中心按此标记聚合">
+        <span class="todo-k">来源</span>
+        <span class="todo-v">
+          HomeOS · 待办
+          <span class="todo-v-sub">到期注册由 HomeOS 聚合，业务面不自建定时器</span>
+        </span>
+        <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+      </button>
+    </div>
+
+    <div class="todo-sec-title"><span>附件</span><span class="todo-sec-count">1 个</span></div>
+    <div class="todo-card">
+      <div class="todo-attach">
+        <span class="todo-attach-icon">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2.5h6.5L16 7v10.5H5z"/><path d="M11.5 2.5V7H16"/><path d="M7.5 11h6M7.5 14h4"/></svg>
+        </span>
+        <span class="todo-attach-body">
+          <span class="todo-attach-name">物业费通知单.pdf</span>
+          <span class="tiny">428 KB · 妈妈 今天 09:12 上传</span>
+        </span>
+        <button class="todo-attach-act" type="button" data-toast="附件预览随文件能力接入；P1 先支持下载原文件">下载</button>
+      </div>
+    </div>
+
+    <div class="todo-foot-note tiny">完成与归档都会同步到「分配给我 / 我创建的 / 已归档」与到期中心。</div>
+  </div>
+
+  <div class="todo-foot">
+    <button class="btn btn-primary todo-done" type="button" id="btn-done"
+      data-hot="④" data-hot-name="完成" data-hot-pos="bottom-right"
+      data-hot-label="先弹完成确认层，不在按钮上直接改状态；确认后走完成回写，本页不等结果；已完成时按钮置灰并显示「已完成」">
+      完成
+    </button>
+    <button class="btn btn-secondary todo-archive" type="button" id="btn-archive"
+      data-hot="⑤" data-hot-name="归档" data-hot-pos="bottom-right"
+      data-hot-label="先弹归档确认层；归档后移入「已归档」、不再提醒，完成状态不变，可在已归档里查看">
+      归档
+    </button>
+  </div>
+
+  <!-- 完成确认层 -->
+  <div class="sheet-mask" id="sheet-done" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>完成这条待办？</h3>
+      <p class="sheet-sub">确认后向 HomeOS 发出完成回写，到期中心与首页今日区会同步移除；完成状态只进不退，不能再改回待处理。</p>
+      <div class="todo-sheet-line">
+        <span class="todo-sheet-title">交物业费</span>
+        <span class="todo-sheet-due num">今天 20:00</span>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" id="confirm-done">标记完成</button>
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 归档确认层 -->
+  <div class="sheet-mask" id="sheet-archive" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>归档这条待办？</h3>
+      <p class="sheet-sub">归档后移入「已归档」，不再提醒、也不再出现在到期中心；完成状态不变，之后仍可在已归档里查看。</p>
+      <div class="todo-sheet-line">
+        <span class="todo-sheet-title">交物业费</span>
+        <span class="todo-sheet-due">子任务 1/3</span>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" data-go="todo.html">确认归档</button>
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var params = new URLSearchParams(location.search);
+  var todoState = params.get('state') || 'default';
+  var subs = Array.prototype.slice.call(document.querySelectorAll('.todo-sub input'));
+  var counter = document.getElementById('sub-count');
+  var btnDone = document.getElementById('btn-done');
+  var btnArchive = document.getElementById('btn-archive');
+
+  function syncCount() {
+    var done = subs.filter(function (x) { return x.checked; }).length;
+    counter.textContent = done + '/' + subs.length + ' 已完成';
+  }
+
+  subs.forEach(function (box) {
+    box.addEventListener('change', function () {
+      syncCount();
+      window.HC.toast(box.checked ? '子任务已勾选，不影响主待办状态' : '已取消勾选该子任务');
+    });
+  });
+
+  if (todoState === 'completed') {
+    subs.forEach(function (x) { x.checked = true; x.disabled = true; });
+    syncCount();
+    btnDone.disabled = true;
+    btnDone.textContent = '已完成';
+  }
+
+  if (todoState === 'saving') {
+    btnDone.classList.add('is-loading');
+    btnArchive.disabled = true;
+    syncCount();
+    if (params.get('from') === 'confirm') {
+      setTimeout(function () { location.href = 'todo-detail.html?state=completed'; }, 1800);
+    }
+  }
+
+  document.getElementById('btn-done').addEventListener('click', function () {
+    if (todoState === 'completed' || todoState === 'saving') return;
+    window.HC.openSheet('sheet-done');
+  });
+
+  document.getElementById('btn-archive').addEventListener('click', function () {
+    if (todoState === 'saving') return;
+    window.HC.openSheet('sheet-archive');
+  });
+
+  document.getElementById('confirm-done').addEventListener('click', function () {
+    window.HC.closeSheet(document.getElementById('sheet-done'));
+    if (todoState === 'offline') {
+      window.HC.toast('离线完成已入队，联网后自动回写');
+      return;
+    }
+    location.href = 'todo-detail.html?state=saving&from=confirm';
+  });
+</script>
+</body>
+</html>

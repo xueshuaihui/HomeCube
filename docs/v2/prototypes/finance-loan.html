@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>借贷 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-content { padding-bottom: 24px; }
+
+  .fx-hero {
+    margin-top: 4px; padding: 16px 18px 14px;
+    border-radius: var(--radius-xl);
+    background: linear-gradient(135deg, var(--brand-soft) 0%, var(--surface) 70%);
+    border: 1px solid var(--brand-soft-border);
+  }
+  .fx-hero-split { display: flex; align-items: stretch; gap: 14px; }
+  .fx-hs { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+  .fx-hk { display: flex; align-items: center; gap: 5px; font-size: var(--fs-12); color: var(--text-2); }
+  .fx-hv { font-size: var(--fs-24); font-weight: 700; line-height: var(--lh-tight); letter-spacing: .01em; }
+  .fx-hv.is-rec { color: var(--success); }
+  .fx-hv.is-pay { color: var(--danger); }
+  .fx-hc { font-size: var(--fs-11); color: var(--text-3); }
+  .fx-hdiv { width: 1px; flex: none; background: var(--brand-soft-border); }
+  .fx-hero-note {
+    margin-top: 12px; padding-top: 10px;
+    border-top: 1px solid var(--brand-soft-border);
+    font-size: var(--fs-11); color: var(--text-3); line-height: var(--lh-normal);
+  }
+
+  .fx-tabs-wrap { margin-top: 14px; }
+  .fx-seg-full { width: 100%; }
+  .fx-seg-full button { flex: 1; padding: 9px 6px; }
+  .fx-seg-n { margin-left: 4px; font-family: var(--font-num); font-size: var(--fs-11); opacity: .75; }
+
+  .fx-ghead {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    margin: 16px 2px 8px;
+  }
+  .fx-gtitle { font-size: var(--fs-13); font-weight: 700; color: var(--text-2); }
+  .fx-gcount { font-size: var(--fs-11); color: var(--text-3); white-space: nowrap; }
+
+  .fx-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .fx-loan {
+    display: block; padding: 12px 14px;
+    text-decoration: none; color: var(--text);
+  }
+  .fx-loan + .fx-loan { border-top: 1px solid var(--border); }
+  .fx-loan:hover { background: var(--surface-2); }
+
+  .fx-loan-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .fx-loan-name {
+    flex: 1; min-width: 0;
+    font-size: var(--fs-15); font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .fx-loan-top .tag { flex: none; }
+  .fx-loan-amt-wrap { flex: none; display: inline-flex; align-items: baseline; gap: 4px; }
+  .fx-loan-amt-k { font-size: var(--fs-11); color: var(--text-3); }
+  .fx-loan-amt { font-size: var(--fs-15); }
+  .fx-loan-amt.is-rec { color: var(--success); }
+  .fx-loan-amt.is-pay { color: var(--danger); }
+
+  .fx-bar {
+    display: block; height: 6px; margin: 8px 0 6px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-2);
+    overflow: hidden;
+  }
+  .fx-bar-fill { display: block; height: 100%; border-radius: var(--radius-pill); background: var(--brand); }
+  .fx-bar-fill.is-rec { background: var(--success); }
+  .fx-bar-fill.is-pay { background: var(--accent); }
+
+  .fx-loan-meta {
+    display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px;
+    font-size: var(--fs-12); color: var(--text-3);
+  }
+  .fx-loan-meta b { font-weight: 600; color: var(--text-2); }
+  .fx-sep { opacity: .6; }
+  .fx-next { margin-left: auto; font-size: var(--fs-12); color: var(--text-2); white-space: nowrap; }
+  .fx-next.is-late { color: var(--danger); font-weight: 700; }
+
+  .fx-list-out { display: block; }
+  .fx-list-in { display: none; }
+  body[data-state="borrow"] .fx-list-out { display: none; }
+  body[data-state="borrow"] .fx-list-in { display: block; }
+
+  .fx-note {
+    display: flex; align-items: flex-start; gap: 8px;
+    margin-top: 12px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2); color: var(--text-2);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-note svg { flex: none; margin-top: 1px; color: var(--text-3); }
+  .fx-note b { color: var(--text); font-weight: 600; }
+
+  .fx-foot {
+    flex: none;
+    padding: 10px 16px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+  .fx-foot-note { margin-top: 8px; text-align: center; line-height: var(--lh-normal); }
+
+  .fx-sk { display: none; padding-top: 6px; }
+  body[data-state="loading"] .fx-sk { display: block; }
+  body[data-state="loading"] .fx-real { display: none; }
+  .fx-sk-row { display: flex; align-items: center; gap: 10px; padding: 12px 0; }
+  .fx-sk-lines { flex: 1; }
+
+  .fx-empty { display: none; }
+  body[data-state="empty"] .fx-empty { display: flex; }
+  body[data-state="empty"] .fx-real,
+  body[data-state="empty"] .fx-foot { display: none; }
+</style>
+</head>
+<body data-screen="F30 借贷" data-states="default,borrow,empty,loading">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <header class="navbar">
+    <div class="nav-left">
+      <a class="icon-btn" href="finance-settings.html" aria-label="返回账户与设置"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回「账户与设置」（finance/settings/index）；借贷是面内二级页，不由五个 L2 Tab 直接承载，入口在账户与设置的对象维护区，返回时保留上次看的借出 / 借入分组">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </a>
+    </div>
+    <div class="nav-title">借贷</div>
+    <div class="nav-right"></div>
+  </header>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 还款状态显示本机缓存
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-real">
+      <section class="fx-hero"
+        data-hot="②" data-hot-name="待收 / 待还汇总" data-hot-pos="bottom-right"
+        data-hot-label="两个数分开算、不互相抵消：待收 = 借出未收回的本金，待还 = 借入未还完的本金；都按剩余未还本金汇总（含逾期期次），由服务端按家庭币种算好，前端不二次累加">
+        <div class="fx-hero-split">
+          <div class="fx-hs">
+            <span class="fx-hk">待收 · 借出</span>
+            <span class="amount fx-hv is-rec">¥4,100.00</span>
+            <span class="fx-hc">3 笔 · 2 笔分期</span>
+          </div>
+          <span class="fx-hdiv" aria-hidden="true"></span>
+          <div class="fx-hs">
+            <span class="fx-hk">待还 · 借入</span>
+            <span class="amount fx-hv is-pay">¥8,000.00</span>
+            <span class="fx-hc">2 笔 · 1 笔逾期</span>
+          </div>
+        </div>
+        <div class="fx-hero-note">借出与借入分开统计，不把欠别人的钱和我借出去的钱相互抵消；每笔按还款计划的剩余期次累计。</div>
+      </section>
+
+      <div class="fx-tabs-wrap">
+        <div class="segmented fx-seg-full" id="fx-tabs" role="tablist" aria-label="借出与借入"
+          data-hot="③" data-hot-name="借出 / 借入分组" data-hot-pos="outer-top-right"
+          data-hot-label="两个分组共用同一套行结构与金额口径：借出看「待收」，借入看「待还」；切换只换列表，不改顶部汇总，也不把两组混排；默认落在借出">
+          <button type="button" role="tab" aria-selected="true" data-mode="out">借出<span class="fx-seg-n">3</span></button>
+          <button type="button" role="tab" aria-selected="false" data-mode="in">借入<span class="fx-seg-n">2</span></button>
+        </div>
+      </div>
+
+      <!-- 借出 -->
+      <div class="fx-list-out">
+        <div class="fx-ghead">
+          <span class="fx-gtitle">借出 · 待收</span>
+          <span class="fx-gcount">3 笔 · 待收 ¥4,100.00</span>
+        </div>
+        <div class="fx-list">
+          <a class="fx-loan" href="finance-loan-detail.html">
+            <span class="fx-loan-top">
+              <span class="fx-loan-name">陈默</span>
+              <span class="tag" data-hot="⑤" data-hot-name="非成员对手方" data-hot-pos="bottom-right"
+                data-hot-label="对手方不是家庭成员时挂「非成员」：借贷属家庭外往来，只要求填一个名字，不要求先邀请对方进家庭；非成员不进成员维度报表，也不产生待办或邀请">非成员</span>
+              <span class="fx-loan-amt-wrap">
+                <span class="fx-loan-amt-k">待收</span>
+                <span class="amount fx-loan-amt is-rec">¥1,600.00</span>
+              </span>
+            </span>
+            <span class="fx-bar"><span class="fx-bar-fill is-rec" style="width:67%"></span></span>
+            <span class="fx-loan-meta">
+              <span>本金 <b class="amount">¥4,800.00</b></span>
+              <span class="fx-sep">·</span>
+              <span>已还 4 / 6 期</span>
+              <span class="fx-next">下次 <span class="num">11 月 5 日</span></span>
+            </span>
+          </a>
+          <a class="fx-loan" href="finance-loan-detail.html"
+            data-hot="④" data-hot-name="借贷行" data-hot-pos="bottom-right"
+            data-hot-label="整行进借还款详情；行内五件套：对手方（非成员带标签）、待收 / 待还金额、还款进度、已还期数、下次还款日；逾期时「下次还款日」改显「已逾期 N 天」并走 danger">
+            <span class="fx-loan-top">
+              <span class="fx-loan-name">周晴</span>
+              <span class="tag">非成员</span>
+              <span class="fx-loan-amt-wrap">
+                <span class="fx-loan-amt-k">待收</span>
+                <span class="amount fx-loan-amt is-rec">¥1,500.00</span>
+              </span>
+            </span>
+            <span class="fx-bar"><span class="fx-bar-fill is-rec" style="width:50%"></span></span>
+            <span class="fx-loan-meta">
+              <span>本金 <b class="amount">¥3,000.00</b></span>
+              <span class="fx-sep">·</span>
+              <span>已还 3 / 6 期</span>
+              <span class="fx-next">下次 <span class="num">12 月 1 日</span></span>
+            </span>
+          </a>
+          <a class="fx-loan" href="finance-loan-detail.html">
+            <span class="fx-loan-top">
+              <span class="fx-loan-name">妈妈</span>
+              <span class="fx-loan-amt-wrap">
+                <span class="fx-loan-amt-k">待收</span>
+                <span class="amount fx-loan-amt is-rec">¥1,000.00</span>
+              </span>
+            </span>
+            <span class="fx-bar"><span class="fx-bar-fill is-rec" style="width:50%"></span></span>
+            <span class="fx-loan-meta">
+              <span>本金 <b class="amount">¥2,000.00</b></span>
+              <span class="fx-sep">·</span>
+              <span>已还 ¥1,000.00 · 不分期</span>
+              <span class="fx-next">约定 <span class="num">11 月 20 日</span></span>
+            </span>
+          </a>
+        </div>
+      </div>
+
+      <!-- 借入 -->
+      <div class="fx-list-in">
+        <div class="fx-ghead">
+          <span class="fx-gtitle">借入 · 待还</span>
+          <span class="fx-gcount">2 笔 · 待还 ¥8,000.00</span>
+        </div>
+        <div class="fx-list">
+          <a class="fx-loan" href="finance-loan-detail.html">
+            <span class="fx-loan-top">
+              <span class="fx-loan-name">李岩</span>
+              <span class="tag">非成员</span>
+              <span class="fx-loan-amt-wrap">
+                <span class="fx-loan-amt-k">待还</span>
+                <span class="amount fx-loan-amt is-pay">¥6,000.00</span>
+              </span>
+            </span>
+            <span class="fx-bar"><span class="fx-bar-fill is-pay" style="width:40%"></span></span>
+            <span class="fx-loan-meta">
+              <span>本金 <b class="amount">¥10,000.00</b></span>
+              <span class="fx-sep">·</span>
+              <span>已还 4 / 10 期</span>
+              <span class="fx-next is-late">已逾期 2 天</span>
+            </span>
+          </a>
+          <a class="fx-loan" href="finance-loan-detail.html">
+            <span class="fx-loan-top">
+              <span class="fx-loan-name">爸爸</span>
+              <span class="fx-loan-amt-wrap">
+                <span class="fx-loan-amt-k">待还</span>
+                <span class="amount fx-loan-amt is-pay">¥2,000.00</span>
+              </span>
+            </span>
+            <span class="fx-bar"><span class="fx-bar-fill is-pay" style="width:67%"></span></span>
+            <span class="fx-loan-meta">
+              <span>本金 <b class="amount">¥6,000.00</b></span>
+              <span class="fx-sep">·</span>
+              <span>已还 4 / 6 期</span>
+              <span class="fx-next">下次 <span class="num">12 月 15 日</span></span>
+            </span>
+          </a>
+        </div>
+      </div>
+
+      <div class="fx-note">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="14" height="13" rx="2.5"/><path d="M3 8.5h14"/><path d="M7 3v3M13 3v3"/></svg>
+        <span><b>还款计划到期已注册到家庭日历。</b>每期前 3 天提醒一次；触发与推送由日历面与家庭消息负责，财务面不自建定时器。借贷是家庭外往来，对手方可以不是家庭成员。</span>
+      </div>
+    </div>
+
+    <div class="fx-sk" aria-hidden="true">
+      <div class="skeleton" style="height:118px;border-radius:var(--radius-xl);margin-bottom:14px"></div>
+      <div class="skeleton" style="height:40px;border-radius:var(--radius-pill);margin-bottom:16px"></div>
+      <div class="skeleton sk-line" style="width:30%"></div>
+      <div class="fx-sk-row"><div class="fx-sk-lines"><div class="skeleton sk-line" style="width:56%"></div><div class="skeleton sk-line" style="width:78%;margin-bottom:0"></div></div></div>
+      <div class="fx-sk-row"><div class="fx-sk-lines"><div class="skeleton sk-line" style="width:44%"></div><div class="skeleton sk-line" style="width:72%;margin-bottom:0"></div></div></div>
+      <div class="fx-sk-row"><div class="fx-sk-lines"><div class="skeleton sk-line" style="width:50%"></div><div class="skeleton sk-line" style="width:66%;margin-bottom:0"></div></div></div>
+    </div>
+
+    <div class="state fx-empty">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10h20v14H6z"/><path d="M6 10l10 7 10-7"/><path d="M16 17v7"/><path d="M12.5 20.5 16 24l3.5-3.5"/></svg>
+      </div>
+      <div class="state-title">还没有借贷记录</div>
+      <div class="state-desc">借出与借入分开记：对手方可以是家人，也可以是家庭外的朋友。分期时按首期日每月排一期，每期到期前 3 天由家庭日历提醒。</div>
+      <button class="btn btn-secondary" type="button" data-go="finance-loan-create.html"
+        data-hot="⑦" data-hot-name="空态行动" data-hot-pos="top-right"
+        data-hot-label="零条时给可执行动作「登记借出 / 借入」，直接进登记页并在页内选类型；不只放一句空话，也不展示 0 元进度列表">
+        登记借出 / 借入</button>
+    </div>
+  </div>
+
+  <div class="fx-foot">
+    <button class="btn btn-primary btn-block" type="button" data-go="finance-loan-create.html"
+      data-hot="⑥" data-hot-name="登记借出 / 借入" data-hot-pos="outer-bottom-right"
+      data-hot-label="进登记页（finance/loan/create），类型（借出 / 借入）在登记页用 segmented 选，不在这里先分叉；保存后回到本页对应分组，并生成还款计划">
+      登记借出 / 借入
+    </button>
+    <div class="fx-foot-note tiny">借出看「待收」，借入看「待还」，两组不相互抵消</div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var fxState = new URLSearchParams(location.search).get('state') || 'default';
+  var tabs = document.querySelectorAll('#fx-tabs [data-mode]');
+
+  function setMode(mode) {
+    tabs.forEach(function (b) {
+      b.setAttribute('aria-selected', String(b.getAttribute('data-mode') === mode));
+    });
+    if (document.body.getAttribute('data-state') === 'empty' ||
+        document.body.getAttribute('data-state') === 'loading') return;
+    document.body.setAttribute('data-state', mode === 'in' ? 'borrow' : 'default');
+  }
+
+  tabs.forEach(function (b) {
+    b.addEventListener('click', function () {
+      setMode(b.getAttribute('data-mode'));
+      if (b.getAttribute('data-mode') === 'in') {
+        window.HC.toast('切到借入：金额口径改为「待还」，仍按剩余未还本金汇总');
+      }
+    });
+  });
+
+  setMode(fxState === 'borrow' ? 'in' : 'out');
+</script>
+</body>
+</html>

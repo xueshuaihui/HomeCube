@@ -1,0 +1,216 @@
+/*
+ * 家立方 HomeCube · 设计令牌（唯一来源）
+ *
+ * 规则：
+ * 1. 页面里只允许引用 var(--*)；写死色值 = 违规（PRD 17.9 / 18.2#10）。
+ * 2. 亮/暗是同一套令牌、两套值；组件与文案完全一致。
+ * 3. 品牌只出现在固定位置：启动、登录、顶栏家庭标识、关于。
+ */
+
+:root {
+  /* ---- 品牌色阶：暖橙（亮） ---- */
+  --brand-50:  #FEF4EE;
+  --brand-100: #FCE7DD;
+  --brand-200: #F8C9B3;
+  --brand-300: #F2A886;
+  --brand-400: #ED946B;
+  --brand-500: #E8734A;
+  --brand-600: #D6603A;
+  --brand-700: #A34E28;
+  --brand-800: #7F3A1C;
+  --brand-900: #5E2A13;
+
+  /* ---- 辅色阶：橄榄绿（成员标识、次级强调） ---- */
+  --accent-50:  #F3F4E6;
+  --accent-100: #E6E9CC;
+  --accent-200: #CBD2A2;
+  --accent-300: #ABB87A;
+  --accent-400: #8B9D5B;
+  --accent-500: #6F8244;
+  --accent-600: #586B35;
+  --accent-700: #47562B;
+  --accent-800: #374522;
+  --accent-900: #273117;
+
+  /* ---- 身份色：家庭头像与成员标识，不随主题变化 ---- */
+  --av-1: #B2501C;
+  --av-2: #586B35;
+  --av-3: #7A5160;
+  --av-4: #A2631A;
+  --av-5: #7A6C5A;
+
+  /* ---- 暖中性色阶 ---- */
+  --neutral-0:   #FFFFFF;
+  --neutral-50:  #FBF6EC;
+  --neutral-100: #F5EEE0;
+  --neutral-200: #EADFCB;
+  --neutral-300: #D9C9AC;
+  --neutral-400: #B6A283;
+  --neutral-500: #7E6C51;
+  --neutral-600: #6B5B45;
+  --neutral-700: #4B4030;
+  --neutral-800: #33291D;
+  --neutral-900: #2A2118;
+  --neutral-950: #15100A;
+
+  /* ---- 间距（4 基数） ---- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-7: 32px;
+  --sp-8: 40px;
+
+  /* ---- 圆角 ---- */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+
+  /* ---- 字号与行高 ---- */
+  --fs-11: 11px;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-15: 15px;
+  --fs-17: 17px;
+  --fs-20: 20px;
+  --fs-24: 24px;
+  --fs-30: 30px;
+  --lh-tight: 1.25;
+  --lh-normal: 1.5;
+  --lh-loose: 1.7;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-num: ui-monospace, "SF Mono", "Menlo", "Roboto Mono", monospace;
+
+  /* ---- 阴影（暖色偏移，不用纯黑） ---- */
+  --shadow-1: 0 1px 2px rgba(74, 50, 32, .06), 0 1px 3px rgba(74, 50, 32, .05);
+  --shadow-2: 0 2px 8px rgba(74, 50, 32, .08), 0 1px 3px rgba(74, 50, 32, .06);
+  --shadow-3: 0 12px 32px rgba(74, 50, 32, .16), 0 2px 8px rgba(74, 50, 32, .08);
+
+  /* ---- 动效 ---- */
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --ease: cubic-bezier(.2, .7, .3, 1);
+
+  /* ---- 布局 ---- */
+  --screen-w: 390px;
+  --screen-h: 844px;
+  --navbar-h: 52px;
+  --tabbar-h: 56px;
+  --content-pad: 16px;
+}
+
+/* ============ 亮色（默认） ============ */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  --bg: #FBF4E6;
+  --surface: #FFFFFF;
+  --surface-2: #F5EBDA;
+  --surface-inverse: var(--neutral-900);
+
+  --border: var(--neutral-200);
+  --border-strong: var(--neutral-300);
+
+  --text: var(--neutral-900);
+  --text-2: var(--neutral-600);
+  --text-3: var(--neutral-500);
+  --text-inverse: var(--neutral-0);
+
+  --brand: var(--brand-500);
+  --brand-hover: var(--brand-600);
+  --brand-text: var(--brand-700);
+  --brand-soft: var(--brand-50);
+  --brand-soft-border: var(--brand-200);
+  --on-brand: #2A1408;
+  --on-danger: #FFFFFF;
+  --knob: #FFFFFF;
+  --stage: #EADCC3;
+  --stage-line: rgba(90, 70, 50, .10);
+  --harness-bg: rgba(255, 252, 246, .94);
+  --harness-text: #2A2118;
+  --harness-border: rgba(90, 70, 50, .16);
+
+  --accent: var(--accent-600);
+  --accent-soft: var(--accent-50);
+
+  /* ---- 面识别色：日历面（亮） ---- */
+  --face-calendar: #0E6B60;
+  --face-calendar-soft: #DCEDEA;
+  --face-calendar-border: #9FCBC3;
+
+  --success: #2F7A45;
+  --success-soft: #E9F3E3;
+  --warning: #9C5A08;
+  --warning-soft: #FAEED4;
+  --danger: #B03A2A;
+  --danger-soft: #FBEBE7;
+  --info: #35598F;
+  --info-soft: #EDF1F8;
+
+  --overlay: rgba(42, 33, 24, .42);
+  --skeleton: linear-gradient(90deg, var(--neutral-100) 25%, var(--neutral-200) 37%, var(--neutral-100) 63%);
+}
+
+/* ============ 暗色 ============ */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #16110A;
+  --surface: #201A12;
+  --surface-2: #2A2318;
+  --surface-inverse: #F5EEE0;
+
+  --border: #3A3024;
+  --border-strong: #4F4232;
+
+  --text: #F5EEE0;
+  --text-2: #C4B49B;
+  --text-3: #A39174;
+  --text-inverse: #1A1109;
+
+  --brand: #F09159;
+  --brand-hover: #F5A876;
+  --brand-text: #F09159;
+  --brand-soft: #35200E;
+  --brand-soft-border: #6A3D22;
+  --on-brand: #241305;
+  --on-danger: #2B140F;
+  --knob: #F5EEE0;
+  --stage: #0C0906;
+  --stage-line: rgba(255, 240, 220, .06);
+  --harness-bg: rgba(32, 26, 18, .94);
+  --harness-text: #F5EEE0;
+  --harness-border: rgba(255, 240, 220, .14);
+
+  --accent: #A9BE79;
+  --accent-soft: #1E2514;
+
+  /* ---- 面识别色：日历面（暗） ---- */
+  --face-calendar: #7FD6C9;
+  --face-calendar-soft: #123330;
+  --face-calendar-border: #2E5F58;
+
+  --success: #79C69A;
+  --success-soft: #14251A;
+  --warning: #E4B45E;
+  --warning-soft: #2A1F0D;
+  --danger: #F08E80;
+  --danger-soft: #2C1714;
+  --info: #8AAEE4;
+  --info-soft: #131B27;
+
+  --overlay: rgba(0, 0, 0, .55);
+  --skeleton: linear-gradient(90deg, #241D13 25%, #2E2517 37%, #241D13 63%);
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .4);
+  --shadow-2: 0 2px 8px rgba(0, 0, 0, .45);
+  --shadow-3: 0 12px 32px rgba(0, 0, 0, .55);
+}

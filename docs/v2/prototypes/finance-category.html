@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>分类管理 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-content { padding-bottom: 20px; }
+
+  .fx-note {
+    display: flex; gap: 8px; align-items: flex-start;
+    margin-top: 12px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--info-soft); color: var(--info);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-note svg { flex: none; margin-top: 1px; }
+  .fx-off-note {
+    display: none; gap: 8px; align-items: flex-start;
+    margin-top: 8px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2); color: var(--text-2);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  body[data-state="preset-disabled"] .fx-off-note { display: flex; }
+
+  .fx-hint { margin: 12px 2px 0; font-size: var(--fs-12); color: var(--text-3); }
+
+  .fx-sec {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin: 16px 2px 8px;
+    font-size: var(--fs-13); font-weight: 700; color: var(--text-2);
+  }
+  .fx-sec-n { font-size: var(--fs-11); font-weight: 500; color: var(--text-3); }
+
+  .fx-tree {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .fx-group + .fx-group { border-top: 1px solid var(--border); }
+
+  .fx-cat { display: flex; align-items: center; gap: 8px; padding: 8px 6px 8px 12px; }
+  .fx-cat-main {
+    flex: 1; min-width: 0;
+    display: flex; align-items: center; gap: 10px;
+    padding: 2px 0;
+    text-decoration: none; color: var(--text);
+  }
+  .fx-ico {
+    width: 32px; height: 32px; flex: none;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--brand-soft); color: var(--brand-text);
+  }
+  .fx-cat-txt { flex: 1; min-width: 0; }
+  .fx-cat-name {
+    display: flex; align-items: center; gap: 6px;
+    font-size: var(--fs-15); font-weight: 600;
+  }
+  .fx-cat-meta { margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
+
+  .fx-toggle {
+    width: 34px; height: 34px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 0; border-radius: var(--radius-pill);
+    background: transparent; color: var(--text-3);
+    cursor: pointer;
+  }
+  .fx-toggle:hover { background: var(--surface-2); }
+  .fx-toggle svg { transition: transform var(--dur-2) var(--ease); }
+  .fx-group.is-open .fx-toggle svg { transform: rotate(90deg); }
+
+  .fx-kids { display: none; padding: 0 12px 6px 54px; }
+  .fx-group.is-open .fx-kids { display: block; }
+  .fx-kid {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 0;
+    border-top: 1px dashed var(--border);
+    text-decoration: none; color: var(--text);
+  }
+  .fx-kid-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--border-strong); flex: none; }
+  .fx-kid-name { flex: 1; min-width: 0; font-size: var(--fs-14); }
+  .fx-kid-amt { font-size: var(--fs-13); color: var(--text-2); }
+  .fx-kid .chevron { color: var(--text-3); flex: none; }
+
+  .fx-off-tag { display: none; }
+  body[data-state="preset-disabled"] .is-off .fx-cat-name,
+  body[data-state="preset-disabled"] .is-off .fx-kid-name { color: var(--text-3); }
+  body[data-state="preset-disabled"] .is-off .fx-ico { background: var(--surface-2); color: var(--text-3); }
+  body[data-state="preset-disabled"] .is-off .fx-cat-meta,
+  body[data-state="preset-disabled"] .is-off .fx-kid-amt { color: var(--text-3); opacity: .7; }
+  body[data-state="preset-disabled"] .fx-off-tag { display: inline-flex; }
+
+  .fx-sk { display: none; padding-top: 16px; }
+  .fx-sk .sk-line:first-child { width: 46%; }
+  body[data-state="loading"] .fx-sk { display: block; }
+  body[data-state="loading"] .fx-real { display: none; }
+
+  .fx-footer {
+    flex: none;
+    padding: 10px 16px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+  .fx-footer .btn { gap: 8px; }
+</style>
+</head>
+<body data-screen="F13 分类管理" data-states="default,expanded,preset-disabled,loading">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <header class="navbar">
+    <div class="nav-left">
+      <a class="icon-btn" href="finance-settings.html" aria-label="返回账户与设置"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回财务面「账户与设置」finance/settings/index；分类、账户、提醒阈值同在该页的分组入口下，返回不重置已展开的分组">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </a>
+    </div>
+    <div class="nav-title">分类管理</div>
+    <div class="nav-right">
+      <a class="btn btn-sm btn-secondary" href="finance-category-sort.html"
+        data-hot="②" data-hot-name="排序" data-hot-pos="outer-top-right"
+        data-hot-label="进分类排序页 finance/category/sort；排序写入带 version，同一顺序供记账选择器、报表图例、筛选 chips 三处共用">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M7 5h9M7 10h9M7 15h9"/><path d="M4 4v12"/><path d="M2.5 6.5 4 4l1.5 2.5"/></svg>
+        排序</a>
+    </div>
+  </header>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 分类顺序待同步
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-note">
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7.5"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
+      <span>预置分类可停用、可改名，<b>不可删除</b>。停用后不再出现在记账选择器里，历史流水照常显示与统计。</span>
+    </div>
+    <div class="fx-off-note">
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3.5 17 16H3z"/><path d="M10 8v3.4M10 13.6v.1"/></svg>
+      <span>已停用 2 个分类 · 记账选择器里不再出现，本月统计照常计入它们的 -¥1,434.00。</span>
+    </div>
+
+    <div class="fx-hint">点名称进入编辑；点右侧箭头就地展开二级。</div>
+
+    <div class="fx-real">
+      <div class="fx-sec">
+        <span>支出 · 6 个一级</span>
+        <span class="fx-sec-n num">本月 -¥8,632.40</span>
+      </div>
+
+      <div class="fx-tree">
+        <div class="fx-group is-open">
+          <div class="fx-cat" data-hot="③" data-hot-name="一级分类行" data-hot-pos="outer-top-right"
+            data-hot-label="图标 + 名称 + 二级个数 + 右侧箭头；停用项置灰并带「已停用」标签。点名称进编辑页，点箭头就地展开二级（不跳页、不发请求）">
+            <a class="fx-cat-main" href="finance-category-edit.html">
+              <span class="fx-ico">
+                <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5h13"/><path d="M4.5 10.5a5.5 5.5 0 0 1 11 0"/><path d="M8 7.5 6.5 4.5M12 7.5l1.5-3"/></svg>
+              </span>
+              <span class="fx-cat-txt">
+                <span class="fx-cat-name">餐饮 <span class="tag">预置</span><span class="tag fx-off-tag">已停用</span></span>
+                <span class="fx-cat-meta">3 个二级 · 本月 <span class="num">-¥2,486.40</span></span>
+              </span>
+            </a>
+            <button class="fx-toggle" type="button" aria-label="展开餐饮的二级分类" aria-expanded="true">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>
+            </button>
+          </div>
+          <div class="fx-kids" data-hot="④" data-hot-name="二级分类行" data-hot-pos="outer-top-right"
+            data-hot-label="展开后显示二级；整行进编辑页。二级不再有更深层级（两级封顶），停用项的二级同样置灰">
+            <a class="fx-kid" href="finance-category-edit.html">
+              <span class="fx-kid-dot"></span>
+              <span class="fx-kid-name">早餐</span>
+              <span class="fx-kid-amt num">-¥386.00</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>
+            </a>
+            <a class="fx-kid" href="finance-category-edit.html">
+              <span class="fx-kid-dot"></span>
+              <span class="fx-kid-name">外卖</span>
+              <span class="fx-kid-amt num">-¥1,264.40</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>
+            </a>
+            <a class="fx-kid" href="finance-category-edit.html">
+              <span class="fx-kid-dot"></span>
+              <span class="fx-kid-name">下馆子</span>
+              <span class="fx-kid-amt num">-¥836.00</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>
+            </a>
+          </div>
+        </div>
+
+        <div class="fx-group">
+          <div class="fx-cat">
+            <a class="fx-cat-main" href="finance-category-edit.html">
+              <span class="fx-ico" style="background:var(--accent-soft);color:var(--accent)">
+                <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12.5h13l-1.2 3.2a1.5 1.5 0 0 1-1.4 1H6.1a1.5 1.5 0 0 1-1.4-1z"/><path d="M5.5 12.5l1.6-5.2A2 2 0 0 1 9 6h2a2 2 0 0 1 1.9 1.3l1.6 5.2"/><path d="M7.5 9h5"/></svg>
+              </span>
+              <span class="fx-cat-txt">
+                <span class="fx-cat-name">交通 <span class="tag">预置</span><span class="tag fx-off-tag">已停用</span></span>
+                <span class="fx-cat-meta">2 个二级 · 本月 <span class="num">-¥1,262.00</span></span>
+              </span>
+            </a>
+            <button class="fx-toggle" type="button" aria-label="展开交通的二级分类" aria-expanded="false">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>
+            </button>
+          </div>
+          <div class="fx-kids">
+            <a class="fx-kid" href="finance-category-edit.html">
+              <span class="fx-kid-dot"></span><span class="fx-kid-name">打车</span>
+              <span class="fx-kid-amt num">-¥742.00</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>
+            </a>
+            <a class="fx-kid" href="finance-category-edit.html">
+              <span class="fx-kid-dot"></span><span class="fx-kid-name">加油</span>
+              <span class="fx-kid-amt num">-¥520.00</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>
+            </a>
+          </div>
+        </div>
+
+        <div class="fx-group">
+          <div class="fx-cat">
+            <a class="fx-cat-main" href="finance-category-edit.html">
+              <span class="fx-ico" style="background:var(--info-soft);color:var(--info)">
+                <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5 10 4l6.5 5.5V16a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z"/><path d="M8 17v-4.5h4V17"/></svg>
+              </span>
+              <span class="fx-cat-txt">
+                <span class="fx-cat-name">居家 <span class="tag">预置</span><span class="tag fx-off-tag">已停用</span></span>
+                <span class="fx-cat-meta">2 个二级 · 本月 <span class="num">-¥1,576.00</span></span>
+              </span>
+            </a>
+            <button class="fx-toggle" type="button" aria-label="展开居家的二级分类" aria-expanded="false">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>
+            </button>
+          </div>
+          <div class="fx-kids">
+            <a class="fx-kid" href="finance-category-edit.html">
+              <span class="fx-kid-dot"></span><span class="fx-kid-name">物业</span>
+              <span class="fx-kid-amt num">-¥380.00</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>
+            </a>
+            <a class="fx-kid" href="finance-category-edit.html">
+              <span class="fx-kid-dot"></span><span class="fx-kid-name">水电燃气</span>
+              <span class="fx-kid-amt num">-¥1,196.00</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>
+            </a>
+          </div>
+        </div>
+
+        <div class="fx-group is-off">
+          <div class="fx-cat">
+            <a class="fx-cat-main" href="finance-category-edit.html">
+              <span class="fx-ico" style="background:var(--warning-soft);color:var(--warning)">
+                <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h5.5A2.5 2.5 0 0 1 12 7v9a2 2 0 0 0-2-2H4z"/><path d="M16 4.5h-5.5A2.5 2.5 0 0 0 8 7v9a2 2 0 0 1 2-2h6z"/></svg>
+              </span>
+              <span class="fx-cat-txt">
+                <span class="fx-cat-name">教育 <span class="tag">自定义</span><span class="tag fx-off-tag">已停用</span></span>
+                <span class="fx-cat-meta">1 个二级 · 本月 <span class="num">-¥810.00</span></span>
+              </span>
+            </a>
+            <button class="fx-toggle" type="button" aria-label="展开教育的二级分类" aria-expanded="false">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>
+            </button>
+          </div>
+          <div class="fx-kids">
+            <a class="fx-kid" href="finance-category-edit.html">
+              <span class="fx-kid-dot"></span><span class="fx-kid-name">课外班</span>
+              <span class="fx-kid-amt num">-¥810.00</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>
+            </a>
+          </div>
+        </div>
+
+        <div class="fx-group is-off">
+          <div class="fx-cat">
+            <a class="fx-cat-main" href="finance-category-edit.html">
+              <span class="fx-ico" style="background:var(--danger-soft);color:var(--danger)">
+                <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="13" height="8.5" rx="1.5"/><path d="M3.5 10.5h13"/><path d="M10 3.5v3.5"/><path d="M7 3.5h6"/></svg>
+              </span>
+              <span class="fx-cat-txt">
+                <span class="fx-cat-name">娱乐 <span class="tag">自定义</span><span class="tag fx-off-tag">已停用</span></span>
+                <span class="fx-cat-meta">1 个二级 · 本月 <span class="num">-¥624.00</span></span>
+              </span>
+            </a>
+            <button class="fx-toggle" type="button" aria-label="展开娱乐的二级分类" aria-expanded="false">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>
+            </button>
+          </div>
+          <div class="fx-kids">
+            <a class="fx-kid" href="finance-category-edit.html">
+              <span class="fx-kid-dot"></span><span class="fx-kid-name">电影票</span>
+              <span class="fx-kid-amt num">-¥624.00</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>
+            </a>
+          </div>
+        </div>
+
+        <div class="fx-group">
+          <div class="fx-cat">
+            <a class="fx-cat-main" href="finance-category-edit.html">
+              <span class="fx-ico" style="background:var(--surface-2);color:var(--text-2)">
+                <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.5v7M10 14.5l2.5-1.2M7.5 9.8 10 8.6"/></svg>
+              </span>
+              <span class="fx-cat-txt">
+                <span class="fx-cat-name">其他 <span class="tag">自定义</span></span>
+                <span class="fx-cat-meta">2 个二级 · 本月 <span class="num">-¥1,874.00</span></span>
+              </span>
+            </a>
+            <button class="fx-toggle" type="button" aria-label="展开其他的二级分类" aria-expanded="false">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>
+            </button>
+          </div>
+          <div class="fx-kids">
+            <a class="fx-kid" href="finance-category-edit.html">
+              <span class="fx-kid-dot"></span><span class="fx-kid-name">医疗</span>
+              <span class="fx-kid-amt num">-¥1,120.00</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>
+            </a>
+            <a class="fx-kid" href="finance-category-edit.html">
+              <span class="fx-kid-dot"></span><span class="fx-kid-name">人情往来</span>
+              <span class="fx-kid-amt num">-¥754.00</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="fx-sec">
+        <span>收入 · 2 个一级</span>
+        <span class="fx-sec-n num">本月 +¥12,480.00</span>
+      </div>
+
+      <div class="fx-tree">
+        <div class="fx-group">
+          <div class="fx-cat">
+            <a class="fx-cat-main" href="finance-category-edit.html">
+              <span class="fx-ico" style="background:var(--success-soft);color:var(--success)">
+                <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="14" height="10" rx="2"/><path d="M3 9h14"/><path d="M6.5 13h3"/></svg>
+              </span>
+              <span class="fx-cat-txt">
+                <span class="fx-cat-name">工资 <span class="tag">预置</span></span>
+                <span class="fx-cat-meta">1 个二级 · 本月 <span class="num">+¥12,000.00</span></span>
+              </span>
+            </a>
+            <button class="fx-toggle" type="button" aria-label="展开工资的二级分类" aria-expanded="false">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>
+            </button>
+          </div>
+          <div class="fx-kids">
+            <a class="fx-kid" href="finance-category-edit.html">
+              <span class="fx-kid-dot"></span><span class="fx-kid-name">月薪</span>
+              <span class="fx-kid-amt num">+¥12,000.00</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>
+            </a>
+          </div>
+        </div>
+        <div class="fx-group">
+          <div class="fx-cat">
+            <a class="fx-cat-main" href="finance-category-edit.html">
+              <span class="fx-ico" style="background:var(--accent-soft);color:var(--accent)">
+                <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 15.5h13"/><path d="M5 15.5V10M9 15.5V6.5M13 15.5V9M17 15.5V4.5"/></svg>
+              </span>
+              <span class="fx-cat-txt">
+                <span class="fx-cat-name">理财 <span class="tag">自定义</span></span>
+                <span class="fx-cat-meta">1 个二级 · 本月 <span class="num">+¥480.00</span></span>
+              </span>
+            </a>
+            <button class="fx-toggle" type="button" aria-label="展开理财的二级分类" aria-expanded="false">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>
+            </button>
+          </div>
+          <div class="fx-kids">
+            <a class="fx-kid" href="finance-category-edit.html">
+              <span class="fx-kid-dot"></span><span class="fx-kid-name">利息</span>
+              <span class="fx-kid-amt num">+¥480.00</span>
+              <svg class="chevron" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fx-sk" aria-hidden="true">
+      <div class="skeleton sk-line"></div>
+      <div class="skeleton sk-block" style="height:78px"></div>
+      <div class="skeleton sk-line" style="width:32%"></div>
+      <div class="skeleton sk-block" style="height:64px"></div>
+      <div class="skeleton sk-block" style="height:64px"></div>
+      <div class="skeleton sk-block" style="height:64px"></div>
+    </div>
+  </div>
+
+  <div class="fx-footer">
+    <a class="btn btn-primary btn-block" href="finance-category-create.html"
+      data-hot="⑤" data-hot-name="新建分类" data-hot-pos="outer-top-right"
+      data-hot-label="进新建页 finance/category/create；父级可选「无」或任一未停用的一级分类，最多两级">
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 4.5v11M4.5 10h11"/></svg>
+      新建分类</a>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  (function () {
+    var st = new URLSearchParams(location.search).get('state') || 'default';
+
+    document.querySelectorAll('.fx-toggle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var group = btn.closest('.fx-group');
+        var open = group.classList.toggle('is-open');
+        btn.setAttribute('aria-expanded', String(open));
+      });
+    });
+
+    if (st === 'expanded') {
+      document.querySelectorAll('.fx-group').forEach(function (g) {
+        g.classList.add('is-open');
+        g.querySelector('.fx-toggle').setAttribute('aria-expanded', 'true');
+      });
+    }
+  })();
+</script>
+</body>
+</html>

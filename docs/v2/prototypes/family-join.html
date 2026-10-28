@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>加入家庭 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .wrap { padding: 0 20px 24px; }
+  .lead { padding: 4px 0 20px; }
+  .lead h2 { font-size: var(--fs-24); font-weight: 700; }
+  .lead p { margin-top: 6px; font-size: var(--fs-13); color: var(--text-2); line-height: var(--lh-normal); }
+  .code-input {
+    height: 60px; text-align: center;
+    font-family: var(--font-num); font-size: var(--fs-24); font-weight: 700;
+    letter-spacing: .32em; text-indent: .32em;
+  }
+  .invite-card { padding: 20px; border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-1); }
+  .invite-head { display: flex; align-items: center; gap: 14px; }
+  .invite-head .avatar.lg { background: var(--brand-soft); color: var(--brand-text); }
+  .invite-meta { margin-top: 16px; display: grid; gap: 10px; }
+  .meta-row { display: flex; justify-content: space-between; font-size: var(--fs-13); }
+  .meta-row .k { color: var(--text-3); }
+  .meta-row .v { font-weight: 600; }
+  .qr-box {
+    margin-top: 16px; padding: 24px; border-radius: var(--radius-lg);
+    border: 1px dashed var(--border-strong); background: var(--surface-2);
+    display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center;
+  }
+  .qr-box .tiny { max-width: 240px; line-height: var(--lh-normal); }
+  .seg-row { display: flex; justify-content: center; margin-bottom: 20px; }
+</style>
+</head>
+<body data-screen="03 加入家庭" data-tab="" data-states="default,preview,invalid">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <button class="icon-btn" type="button" data-go="login.html" aria-label="返回">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </button>
+    </div>
+    <div class="nav-title">加入家庭</div>
+    <div class="nav-right"></div>
+  </div>
+
+  <div class="content">
+    <!-- 输入态 -->
+    <div class="wrap" data-state-block="default">
+      <div class="lead">
+        <h2>输入邀请码</h2>
+        <p>收到家人分享的邀请码或链接后，在这里加入。邀请码有效期 7 天，过期需重新生成。</p>
+      </div>
+
+      <div class="seg-row" data-hot="①" data-hot-name="三态切换" data-hot-pos="top-right" data-hot-label="邀请码 / 链接 / 二维码三态在同一页切换，不新增路由；链接与二维码都落到同一个邀请码">
+        <div class="segmented" role="tablist">
+          <button type="button" role="tab" aria-selected="true">邀请码</button>
+          <button type="button" role="tab" aria-selected="false" data-toast="切换到链接：粘贴家人发来的链接即可，自动解析出邀请码">链接</button>
+          <button type="button" role="tab" aria-selected="false" data-toast="切换到二维码：P1 以粘贴链接兜底，扫码相机在后续期次">扫码</button>
+        </div>
+      </div>
+
+      <div class="field" data-hot="②" data-hot-name="邀请码输入" data-hot-pos="top-right" data-hot-label="6 位字母数字，自动转大写，输入满 6 位自动触发识别">
+        <input class="input code-input" id="invite-code" type="text" maxlength="6" placeholder="A1B2C3" value="K7M2Q9">
+      </div>
+
+      <button class="btn btn-primary btn-block" type="button" data-hot="③" data-hot-name="识别邀请" data-hot-pos="top-right" data-hot-label="校验通过后展示邀请信息卡（家庭名 / 邀请人 / 剩余有效期），不直接入家">识别邀请</button>
+
+      <div class="card" style="margin-top:20px;background:var(--surface-2);border-color:transparent">
+        <div class="tiny" style="line-height:1.7">加入后你将以「成人成员」身份进入，管理员可在成员管理里调整角色。家庭内数据按角色与可见性规则展示。</div>
+      </div>
+    </div>
+
+    <!-- 识别成功态 -->
+    <div class="wrap" data-state-block="preview">
+      <div class="lead">
+        <h2>确认加入</h2>
+        <p>确认家庭信息无误后再加入。加入后可在顶栏切换家庭。</p>
+      </div>
+
+      <div class="invite-card" data-hot="④" data-hot-name="邀请信息卡" data-hot-pos="top-right" data-hot-label="展示家庭名、邀请人、你的初始角色与剩余有效期；信息来自服务端，不由客户端拼装">
+        <div class="invite-head">
+          <span class="avatar lg">三</span>
+          <div>
+            <div style="font-size:var(--fs-17);font-weight:700">三口之家</div>
+            <div class="tiny" style="margin-top:2px">邀请人：李妈妈（管理员）</div>
+          </div>
+        </div>
+        <div class="invite-meta">
+          <div class="meta-row"><span class="k">你的角色</span><span class="v">成人成员</span></div>
+          <div class="meta-row"><span class="k">邀请有效期</span><span class="v">剩余 6 天 12 小时</span></div>
+          <div class="meta-row"><span class="k">家庭时区</span><span class="v">Asia/Shanghai</span></div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;margin-top:20px">
+        <button class="btn btn-secondary" type="button" style="flex:1" data-hot="⑤" data-hot-name="暂不加入" data-hot-pos="top-right" data-hot-label="返回输入态，邀请码不作废，可再次使用">暂不加入</button>
+        <button class="btn btn-primary" type="button" style="flex:2" data-hot="⑥" data-hot-name="接受邀请" data-hot-pos="top-right" data-hot-label="调用接受邀请接口，成功进入首页；成员已满 / 邀请失效 / 已在家庭内分别给出可读提示" data-go="home.html">接受邀请</button>
+      </div>
+    </div>
+
+    <!-- 失效态 -->
+    <div class="wrap" data-state-block="invalid">
+      <div class="state" style="padding-top:56px">
+        <div class="state-icon">
+          <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="16" cy="16" r="12"/><path d="M16 9v8M16 21.5v.1"/></svg>
+        </div>
+        <div class="state-title">邀请码已失效</div>
+        <div class="state-desc">该邀请码已被撤销或超过 7 天有效期，请联系家人重新生成。</div>
+        <div class="state-code">HC-4102</div>
+        <button class="btn btn-secondary" type="button" style="margin-top:8px" data-go="family-join.html">重新输入</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  document.querySelector('[data-state-block="default"] .btn-primary').addEventListener('click', function () {
+    var code = document.getElementById('invite-code').value.trim();
+    if (code.length < 6) { window.HC.toast('请输入 6 位邀请码'); return; }
+    location.href = 'family-join.html?state=preview';
+  });
+  document.querySelector('[data-state-block="preview"] .btn-secondary').addEventListener('click', function () {
+    location.href = 'family-join.html';
+  });
+</script>
+</body>
+</html>

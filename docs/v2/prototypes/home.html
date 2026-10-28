@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>首页 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 12px; height: var(--navbar-h); flex: none;
+  }
+  .zone { margin-top: var(--sp-4); }
+  .avatar-row { display: flex; align-items: center; gap: -8px; }
+  .avatar-row .avatar { margin-left: -10px; border: 2px solid var(--surface); }
+  .avatar-row .avatar:first-child { margin-left: 0; }
+  .avatar-more {
+    width: 36px; height: 36px; border-radius: 50%; margin-left: -10px;
+    border: 1.5px dashed var(--border-strong);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: var(--fs-12); font-weight: 600; color: var(--text-2);
+    background: var(--bg); z-index: 1;
+  }
+  .timeline { display: flex; gap: 10px; margin-top: 10px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .tl-scroll { position: relative; }
+  .tl-scroll::after { content: ""; position: absolute; top: 0; right: 0; bottom: 2px; width: 32px; background: linear-gradient(to right, transparent, var(--bg)); pointer-events: none; }
+  .timeline::-webkit-scrollbar { display: none; }
+  .timeline a.tl-card { text-decoration: none; color: var(--text); }
+  .tl-card {
+    flex: none; width: 132px; padding: 12px; border-radius: var(--radius-md);
+    background: var(--surface); border: 1px solid var(--border);
+  }
+  .tl-card.is-first { border-color: var(--brand-soft-border); background: var(--brand-soft); }
+  .tl-time { font-size: var(--fs-11); font-weight: 700; color: var(--text-3); letter-spacing: .04em; }
+  .tl-title { margin-top: 6px; font-size: var(--fs-13); font-weight: 600; line-height: 1.35; }
+  .tl-meta { margin-top: 6px; font-size: var(--fs-11); color: var(--text-3); }
+  .face-grid.one { grid-template-columns: repeat(4, 1fr); }
+  .face-grid.one .face { max-width: 100%; }
+  .face-grid.two { grid-template-columns: repeat(2, 1fr); }
+  .dyn-head { display: flex; align-items: center; gap: 8px; }
+  .dyn-icon { width: 26px; height: 26px; border-radius: 8px; background: var(--brand-soft); color: var(--brand-text); display: flex; align-items: center; justify-content: center; flex: none; }
+  .dyn-icon.is-cal { background: var(--face-calendar-soft); color: var(--face-calendar); }
+  .sk-wrap { display: none; padding-top: 8px; }
+  body[data-state="loading"] .sk-wrap { display: block; }
+  body[data-state="loading"] .home-real { display: none; }
+  body[data-state="offline"] .offline-bar { display: flex; }
+  body[data-state="empty"] .dyn-list { display: none; }
+  body[data-state="empty"] .dyn-empty { display: flex; }
+  .dyn-empty { display: none; }
+  .empty-row { display: flex; align-items: center; gap: 12px; padding: 14px; border: 1px dashed var(--border-strong); border-radius: var(--radius-lg); background: var(--surface); }
+  .empty-icon { width: 36px; height: 36px; border-radius: 10px; background: var(--surface-2); color: var(--text-3); display: flex; align-items: center; justify-content: center; flex: none; }
+  .empty-copy { flex: 1; min-width: 0; }
+  .empty-copy .empty-title { font-size: var(--fs-14); font-weight: 700; margin-bottom: 2px; }
+  body[data-state="unavailable"] .face.is-cal.is-avail { display: none; }
+  body[data-state="unavailable"] .face.is-unavail { display: flex; }
+  .face.is-unavail { display: none; opacity: 1; }
+  .face.is-unavail .face-icon { background: var(--surface-2); color: var(--text-3); }
+  .face-retry { font-size: var(--fs-11); font-weight: 600; color: var(--brand-text); }
+  .face-grid.one .face, .face-grid.two .face { min-height: 126px; justify-content: center; }
+  .cal-degraded { display: none; align-items: center; gap: 8px; margin-top: 8px; padding: 9px 12px; border-radius: var(--radius-md); background: var(--surface-2); color: var(--text-2); font-size: var(--fs-12); }
+  body[data-state="unavailable"] .cal-degraded { display: flex; }
+  .cal-degraded b { color: var(--text); }
+  .cal-degraded .cd-retry { margin-left: auto; flex: none; border: 0; background: none; padding: 2px; font-family: inherit; font-size: var(--fs-12); font-weight: 700; color: var(--brand-text); cursor: pointer; }
+  .tl-cal-degraded { display: none; }
+  body[data-state="unavailable"] .tl-cal { display: none; }
+  body[data-state="unavailable"] .tl-cal-degraded { display: block; }
+  .tl-cal-degraded { width: 132px; flex: none; padding: 12px; border-radius: var(--radius-md); background: var(--surface-2); border: 1px dashed var(--border-strong); }
+  .tl-cal-degraded .tl-title { color: var(--text-2); }
+  .tl-cal-degraded .tl-meta { color: var(--text-2); }
+  .tl-card.is-cal { border-color: var(--face-calendar-border); }
+  .tl-card.is-cal .tl-meta { color: var(--face-calendar); }
+  body[data-state="nofaces"] .zone-matrix { display: none; }
+</style>
+</head>
+<body data-screen="05 首页" data-tab="home" data-states="default,loading,empty,offline,unavailable,nofaces">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <!-- 顶栏：家庭切换器 + 搜索 + 消息（面切换器不在此处） -->
+  <div class="topbar">
+    <button class="family-switch" type="button" data-sheet-open="sheet-family"
+      data-hot="①" data-hot-name="家庭切换器" data-hot-pos="outer-top-right"
+      data-hot-label="点击上拉家庭面板（最多 5 个，当前家庭打勾）；切换后重建上下文，页面整页重载">
+      <span class="avatar" style="width:26px;height:26px;font-size:11px;background:var(--brand);color:var(--on-brand);border:0">三</span>
+      <span class="fs-name">三口之家</span>
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5 6 7.5l3-3"/></svg>
+    </button>
+    <div style="display:flex;align-items:center;gap:2px">
+      <a class="icon-btn" href="search.html"
+        data-hot="②" data-hot-name="搜索" data-hot-pos="outer-top-right"
+        data-hot-label="只调一个搜索接口，结果按面分组；未出生面不出组、不返回空组" aria-label="搜索">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="9" r="5.5"/><path d="M13.4 13.4 17 17"/></svg>
+      </a>
+      <a class="icon-btn" href="message.html"
+        data-hot="③" data-hot-name="消息入口" data-hot-pos="outer-top-right"
+        data-hot-label="只显红点不显数字；与底栏消息位同源，进入消息页即读、两处同时熄灭" aria-label="消息">
+        <span class="dot"></span>
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 9.2c0 3.3-3.1 5.9-7 5.9-.8 0-1.6-.1-2.3-.3L4 16l.9-2.6C3.7 12.4 3 10.9 3 9.2 3 5.9 6.1 3.3 10 3.3s7 2.6 7 5.9z"/></svg>
+      </a>
+    </div>
+  </div>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 3 项待同步
+  </div>
+
+  <div class="content">
+    <!-- 骨架屏 -->
+    <div class="sk-wrap">
+      <div class="skeleton sk-block" style="height:120px"></div>
+      <div class="skeleton sk-line" style="width:40%"></div>
+      <div class="skeleton sk-block" style="height:88px"></div>
+      <div class="skeleton sk-line" style="width:30%;margin-top:20px"></div>
+      <div class="skeleton sk-block" style="height:72px"></div>
+      <div class="skeleton sk-line" style="width:80%"></div>
+      <div class="skeleton sk-line" style="width:64%"></div>
+    </div>
+
+    <div class="home-real">
+      <!-- 时间窗条 -->
+      <div class="period-bar" data-hot="④" data-hot-name="时间窗条" data-hot-pos="bottom-right"
+        data-hot-label="月 / 季 / 年三档，驱动 C 区财务格状态句；首页也渲染，不只在业务面">
+        <span class="period-label">
+          2026 年 10 月
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5 6 7.5l3-3"/></svg>
+        </span>
+        <div class="segmented">
+          <button type="button" aria-selected="true">月</button>
+          <button type="button" aria-selected="false" data-toast="切换到季度：只设了月度预算时显示「未设该周期预算」，不折算">季</button>
+          <button type="button" aria-selected="false" data-toast="切换到年度：只设了月度预算时显示「未设该周期预算」，不折算">年</button>
+        </div>
+      </div>
+
+      <!-- A 家庭区 -->
+      <section class="hero">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+          <div>
+            <div class="hello">早上好，爸爸</div>
+            <div class="family-line">三口之家</div>
+          </div>
+          <a class="avatar-row" href="family.html"
+            data-hot="⑤" data-hot-name="成员头像排" data-hot-pos="bottom-left"
+            data-hot-label="前 3 个成员 + 虚线圈「+N」；整排点击进成员管理，「+N」不是邀请入口">
+            <span class="avatar">妈</span>
+            <span class="avatar" style="background:var(--accent-soft);color:var(--accent)">我</span>
+            <span class="avatar">女</span>
+            <span class="avatar-more">+2</span>
+          </a>
+        </div>
+        <div class="stats">
+          <div class="stat"><span class="v num">5</span><span class="k">今日到期</span></div>
+          <div class="stat"><span class="v num">2</span><span class="k">待办</span></div>
+          <div class="stat"><span class="v num">4</span><span class="k">未读</span></div>
+        </div>
+      </section>
+
+      <!-- B 今日区 -->
+      <section class="zone zone-today">
+        <div class="section-title">
+          <span>今日 5 项 · 到期与待办</span>
+          <a class="more" href="calendar.html">日历 ›</a>
+        </div>
+        <div class="tl-scroll">
+        <div class="timeline"
+          data-hot="⑥" data-hot-name="今日区" data-hot-pos="bottom-right"
+          data-hot-label="横向时间轴最多 3 张；标题「今日 N 项」是当日全量，与 3 张不等不是缺陷；数据源是 svc-calendar 的当日投影（17.3 方式一），点「日历 ›」进日历面到期中心，点小卡进日历面详情">
+          <a class="tl-card is-first" href="finance-tx-detail.html">
+            <div class="tl-time">09:00</div>
+            <div class="tl-title">房贷还款</div>
+            <div class="tl-meta num">¥4,200.00 · 财务</div>
+          </a>
+          <a class="tl-card tl-cal is-cal" href="calendar-detail.html">
+            <div class="tl-time">16:30</div>
+            <div class="tl-title">接女儿放学</div>
+            <div class="tl-meta">待办 · 日历</div>
+          </a>
+          <div class="tl-card tl-cal-degraded">
+            <div class="tl-time">16:30</div>
+            <div class="tl-title">接女儿放学</div>
+            <div class="tl-meta">暂不可用 · 截至 08:10</div>
+          </div>
+          <a class="tl-card" href="finance-tx-detail.html">
+            <div class="tl-time">20:00</div>
+            <div class="tl-title">交物业费</div>
+            <div class="tl-meta num">¥380.00 · 财务</div>
+          </a>
+        </div>
+        </div>
+        <div class="cal-degraded">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.5V10M10 13v.1"/></svg>
+          <span><b>日历服务暂不可用</b> · 以下为最后一次投影值 · 截至 08:10</span>
+          <button class="cd-retry" type="button" data-toast="重试只重发一次 home/summary，不单打日历接口（首屏单请求）">重试</button>
+        </div>
+      </section>
+
+      <!-- C 家庭服务矩阵 -->
+      <section class="zone zone-matrix">
+        <div class="section-title">
+          <span>已启用 2 面（财务 + 日历）</span>
+          <span class="tiny">由家庭管理员配置 · 日历为必选面</span>
+        </div>
+        <div class="face-grid two">
+          <a class="face is-avail" href="finance-flow.html"
+            data-hot="⑦" data-hot-name="面格" data-hot-pos="bottom-right"
+            data-hot-label="已启用 ∩ 已出生 ∩ 该角色可见的面才出现；P1 = 财务 + 日历两格；右侧留白不补占位">
+            <span class="face-badge num">2</span>
+            <span class="face-icon">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="2.5"/><path d="M2.5 8h15"/><path d="M6 12h3"/></svg>
+            </span>
+            <span>财务</span>
+            <span class="face-headline">预算剩余 ¥860</span>
+          </a>
+
+          <a class="face is-avail is-cal is-calendar" href="calendar.html">
+            <span class="face-badge num">3</span>
+            <span class="face-icon">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="14" height="12" rx="2.5"/><path d="M3 8.5h14M7 2.5v4M13 2.5v4"/><path d="M7 12.5h2.5"/></svg>
+            </span>
+            <span>日历</span>
+            <span class="face-headline">今日 3 项到期</span>
+          </a>
+
+          <a class="face is-unavail is-cal" href="calendar.html?state=unavailable"
+            data-hot="⑧" data-hot-name="不可用格" data-hot-pos="bottom-right"
+            data-hot-label="svc-calendar 不可达：同尺寸同结构、去色 + 最后一次值 + 时效 + 重试；重试只重发 home/summary；同一注入下财务格不受影响">
+            <span class="face-icon">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="14" height="12" rx="2.5"/><path d="M3 8.5h14M7 2.5v4M13 2.5v4"/></svg>
+            </span>
+            <span>日历</span>
+            <span class="face-headline">上次 今日 3 项</span>
+            <span class="face-retry">08:10 · 重试</span>
+          </a>
+        </div>
+      </section>
+
+      <!-- D 动态区 -->
+      <section class="zone" style="padding-bottom:8px" data-hot="⑨" data-hot-name="动态区" data-hot-pos="outer-bottom-right"
+        data-hot-label="前 20 条、跨面混排；条目用与面格同一套图标；「查看全部」进动态流">
+        <div class="section-title">
+          <span>家庭动态</span>
+          <a class="more" href="dynamic.html">查看全部 ›</a>
+        </div>
+        <div class="dyn-list">
+          <div class="dynamic-item">
+            <span class="av dyn-icon">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/></svg>
+            </span>
+            <div class="dy-body">
+              <div class="dy-text"><b>妈妈</b> 记了一笔 · 餐饮 ¥128</div>
+              <div class="dy-meta"><span>财务</span><span>12 分钟前</span></div>
+            </div>
+          </div>
+          <div class="dynamic-item">
+            <span class="av dyn-icon is-cal">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4.5 10.5 8 14l7.5-8"/></svg>
+            </span>
+            <div class="dy-body">
+              <div class="dy-text"><b>我</b> 完成了待办 · 交物业费</div>
+              <div class="dy-meta"><span>日历</span><span>1 小时前</span></div>
+            </div>
+          </div>
+          <div class="dynamic-item">
+            <span class="av dyn-icon">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/></svg>
+            </span>
+            <div class="dy-body">
+              <div class="dy-text"><b>爸爸</b> 调整了预算 · 10 月餐饮 ¥2,000</div>
+              <div class="dy-meta"><span>财务</span><span>昨天 21:40</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dyn-empty">
+          <div class="empty-row">
+            <div class="empty-icon">
+              <svg width="20" height="20" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 12h16M8 17h11M8 22h13"/></svg>
+            </div>
+            <div class="empty-copy">
+              <div class="empty-title">还没有家庭动态</div>
+              <div class="tiny">记一笔账、完成一个待办，都会出现在这里。</div>
+            </div>
+            <a class="btn btn-secondary btn-sm" href="finance-tx-create.html">去记一笔</a>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- 底部五项 -->
+  <nav class="tabbar" data-tabbar data-hot="⑩" data-hot-name="底部五项" data-hot-pos="top-right"
+    data-hot-label="首页 / 动态 / ＋ / 消息 / 我的，结构恒定不随角色减项；消息位红点与顶栏同源">
+    <a class="tab" href="home.html" data-tab="home">
+      <svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5 11 3.5l7.5 6v8a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5z"/><path d="M8.5 19v-6h5v6"/></svg>
+      首页
+    </a>
+    <a class="tab" href="dynamic.html" data-tab="dynamic">
+      <svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 5.5h12M5 11h8M5 16.5h10"/></svg>
+      动态
+    </a>
+    <a class="tab" href="quick-add.html" data-tab="plus" aria-label="快速添加">
+      <span class="tab-plus">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 4.5v11M4.5 10h11"/></svg>
+      </span>
+    </a>
+    <a class="tab" href="message.html" data-tab="message" style="position:relative">
+      <span class="dot" style="top:-2px;right:14px"></span>
+      <svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18.5 10.2c0 3.6-3.4 6.5-7.5 6.5-.9 0-1.7-.1-2.5-.4L5 18l1-2.9c-1.2-1.1-2-2.7-2-4.6 0-3.6 3.4-6.5 7.5-6.5s7 2.9 7 6.2z"/></svg>
+      消息
+    </a>
+    <a class="tab" href="me.html" data-tab="me">
+      <svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="8" r="3.5"/><path d="M4.5 18.5c.9-3.2 3.4-5 6.5-5s5.6 1.8 6.5 5"/></svg>
+      我的
+    </a>
+  </nav>
+
+  <!-- 家庭切换面板 -->
+  <div class="sheet-mask" id="sheet-family" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>切换家庭</h3>
+      <p class="sheet-sub">当前家庭以勾选标记。切换后权限、币种与时间窗都会按新家庭重建。</p>
+      <div class="list" style="margin-top:16px">
+        <button class="list-item" type="button">
+          <span class="avatar" style="background:var(--brand);color:var(--on-brand);border:0">三</span>
+          <span class="li-text">三口之家<span class="li-sub">当前家庭 · 管理员</span></span>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
+        </button>
+        <button class="list-item" type="button" data-toast="已切换到「爸妈家」，页面将按新家庭重建">
+          <span class="avatar" style="background:var(--accent-soft);color:var(--accent)">爸</span>
+          <span class="li-text">爸妈家<span class="li-sub">成人成员</span></span>
+        </button>
+        <a class="list-item" href="family-create.html">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 4.5v11M4.5 10h11"/></svg>
+          </span>
+          <span class="li-text">加入或创建家庭</span>
+          <span class="chevron">›</span>
+        </a>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+</body>
+</html>

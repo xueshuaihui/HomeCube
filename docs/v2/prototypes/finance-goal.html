@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>储蓄目标 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-content { padding-bottom: 24px; }
+
+  .fx-hero {
+    margin-top: 4px; padding: 16px 18px 14px;
+    border-radius: var(--radius-xl);
+    background: linear-gradient(135deg, var(--brand-soft) 0%, var(--surface) 70%);
+    border: 1px solid var(--brand-soft-border);
+  }
+  .fx-hero-k { font-size: var(--fs-13); color: var(--text-2); }
+  .fx-hero-v {
+    margin-top: 3px;
+    font-size: var(--fs-30); font-weight: 700; line-height: var(--lh-tight);
+    letter-spacing: .01em;
+  }
+  .fx-hero-sub { margin-top: 2px; font-size: var(--fs-12); color: var(--text-2); }
+  .fx-hero-sub b { font-weight: 600; color: var(--text); }
+  .fx-bar {
+    display: block; height: 6px; margin-top: 12px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-2);
+    overflow: hidden;
+  }
+  .fx-bar-fill { display: block; height: 100%; width: 47%; border-radius: var(--radius-pill); background: var(--brand); }
+  .fx-hero-note { margin-top: 8px; font-size: var(--fs-11); color: var(--text-3); line-height: var(--lh-normal); }
+
+  .fx-legal {
+    display: flex; align-items: flex-start; gap: 8px;
+    margin-top: 10px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2); color: var(--text-2);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-legal svg { flex: none; margin-top: 1px; color: var(--text-3); }
+  .fx-legal b { color: var(--text); font-weight: 600; }
+
+  .fx-ach-banner {
+    display: none; align-items: flex-start; gap: 8px;
+    margin-top: 10px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--success-soft); color: var(--success);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-ach-banner svg { flex: none; margin-top: 1px; }
+  .fx-ach-banner b { display: block; font-size: var(--fs-13); margin-bottom: 2px; }
+  body[data-state="achieved"] .fx-ach-banner { display: flex; }
+
+  .fx-ghead {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    margin: 18px 2px 8px;
+  }
+  .fx-gtitle { font-size: var(--fs-13); font-weight: 700; color: var(--text-2); }
+  .fx-gcount { font-size: var(--fs-11); color: var(--text-3); white-space: nowrap; }
+
+  .fx-goal {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 14px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    text-decoration: none; color: var(--text);
+  }
+  .fx-goal + .fx-goal { margin-top: 8px; }
+  .fx-goal:hover { border-color: var(--border-strong); }
+
+  .fx-ring { position: relative; width: 54px; height: 54px; flex: none; }
+  .fx-ring svg { display: block; }
+  .fx-ring-track { fill: none; stroke: var(--surface-2); stroke-width: 5; }
+  .fx-ring-fill {
+    fill: none; stroke: var(--brand); stroke-width: 5; stroke-linecap: round;
+    transform: rotate(-90deg); transform-origin: 30px 30px;
+  }
+  .fx-ring-c {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-num); font-size: var(--fs-11); font-weight: 700;
+  }
+
+  .fx-goal-body { flex: 1; min-width: 0; }
+  .fx-goal-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .fx-goal-ic {
+    width: 24px; height: 24px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 8px;
+    background: var(--surface-2); color: var(--text-2);
+  }
+  .fx-goal-name {
+    flex: 1; min-width: 0;
+    font-size: var(--fs-15); font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .fx-goal-top .tag { flex: none; }
+  .fx-goal-amt { display: block; margin-top: 5px; font-size: var(--fs-12); color: var(--text-3); }
+  .fx-goal-amt b { font-size: var(--fs-14); color: var(--text); }
+  .fx-goal-meta { display: block; margin-top: 2px; font-size: var(--fs-11); color: var(--text-3); }
+  .fx-goal-meta .is-good { color: var(--success); font-weight: 600; }
+  .fx-goal-meta .is-late { color: var(--warning); font-weight: 600; }
+  .fx-goal .chevron { flex: none; color: var(--text-3); }
+
+  .fx-goal.is-achieved { background: var(--success-soft); border-color: var(--success); }
+  .fx-goal.is-achieved:hover { border-color: var(--success); }
+  .fx-goal.is-achieved .fx-ring-fill { stroke: var(--success); }
+  .fx-goal.is-achieved .fx-ring-c { color: var(--success); }
+  .fx-goal.is-achieved .fx-goal-ic { background: var(--surface); color: var(--success); }
+  .fx-goal.is-achieved .fx-goal-name { color: var(--success); }
+
+  .fx-ach-card { display: none; }
+  body[data-state="achieved"] .fx-ach-card { display: block; }
+  body[data-state="achieved"] .fx-ach-card + .fx-goal { margin-top: 8px; }
+
+  .fx-foot {
+    flex: none;
+    padding: 10px 16px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+  .fx-foot-note { margin-top: 8px; text-align: center; line-height: var(--lh-normal); }
+
+  .fx-sk { display: none; padding-top: 6px; }
+  body[data-state="loading"] .fx-sk { display: block; }
+  body[data-state="loading"] .fx-real { display: none; }
+  .fx-sk-card { display: flex; align-items: center; gap: 12px; padding: 14px 0; }
+
+  .fx-empty { display: none; }
+  body[data-state="empty"] .fx-empty { display: flex; }
+  body[data-state="empty"] .fx-real,
+  body[data-state="empty"] .fx-foot { display: none; }
+</style>
+</head>
+<body data-screen="F33 储蓄目标" data-states="default,empty,achieved,loading">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <header class="navbar">
+    <div class="nav-left">
+      <a class="icon-btn" href="finance-settings.html" aria-label="返回账户与设置"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回「账户与设置」（finance/settings/index）；储蓄目标是面内二级页，不由五个 L2 Tab 直接承载，入口在账户与设置的对象维护区">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </a>
+    </div>
+    <div class="nav-title">储蓄目标</div>
+    <div class="nav-right"></div>
+  </header>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 已存金额显示本机缓存
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-real">
+      <section class="fx-hero"
+        data-hot="②" data-hot-name="已存 / 目标汇总" data-hot-pos="bottom-right"
+        data-hot-label="只汇总进行中的目标：已存合计 ÷ 目标合计 = 总进度；已达成与已归档都不计入汇总，单卡进度按各自目标算，汇总不做二次累加">
+        <div class="fx-hero-k">已存合计 · 3 个进行中的目标</div>
+        <div class="amount fx-hero-v">¥36,800.00</div>
+        <div class="fx-hero-sub">目标合计 <b class="amount">¥78,000.00</b> · 还差 <b class="amount">¥41,200.00</b></div>
+        <span class="fx-bar"><span class="fx-bar-fill"></span></span>
+        <div class="fx-hero-note">总进度 47% · 只算 3 个进行中的目标；已达成与已归档不计入分母。</div>
+      </section>
+
+      <div class="fx-legal">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
+        <span><b>自动存入只在记账层面记录，不会真实划转资金。</b>到日只生成一条记账记录，不接银行或支付通道，也不会自动扣款。</span>
+      </div>
+
+      <div class="fx-ach-banner">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M6.4 10.3l2.4 2.4 4.8-4.9"/></svg>
+        <span><b>1 个目标已达成</b>女儿钢琴课已存满 ¥12,000.00（10 月 18 日）。达成后自动存入自动停用，不再生成新的记账记录。</span>
+      </div>
+
+      <div class="fx-ghead">
+        <span class="fx-gtitle">进行中</span>
+        <span class="fx-gcount">3 个 · 按目标日期由近到远</span>
+      </div>
+
+      <a class="fx-goal" href="finance-goal-detail.html"
+        data-hot="③" data-hot-name="目标卡片" data-hot-pos="bottom-right"
+        data-hot-label="整卡进目标详情；卡内五件套：名称与图标、已存 / 目标、进度环、目标日期、预计达成日；开启自动存入的带「自动存入」标签，按当前节奏会晚于目标日的用 warning 标出">
+        <span class="fx-ring" role="img" aria-label="换新冰箱已存 78%">
+          <svg width="54" height="54" viewBox="0 0 60 60" aria-hidden="true">
+            <circle class="fx-ring-track" cx="30" cy="30" r="25"/>
+            <circle class="fx-ring-fill" cx="30" cy="30" r="25" stroke-dasharray="122 157"/>
+          </svg>
+          <span class="fx-ring-c">78%</span>
+        </span>
+        <span class="fx-goal-body">
+          <span class="fx-goal-top">
+            <span class="fx-goal-ic">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2.5" width="10" height="15" rx="2"/><path d="M5 8.5h10"/><path d="M7.5 5h1M7.5 11.4h1"/></svg>
+            </span>
+            <span class="fx-goal-name">换新冰箱</span>
+            <span class="tag">自动存入</span>
+          </span>
+          <span class="fx-goal-amt"><b class="amount">¥6,200.00</b> / ¥8,000.00</span>
+          <span class="fx-goal-meta">目标 <span class="num">2026 年 12 月 20 日</span> · 预计 <span class="num">12 月</span> 达成</span>
+        </span>
+        <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+      </a>
+
+      <a class="fx-goal" href="finance-goal-detail.html">
+        <span class="fx-ring" role="img" aria-label="三亚亲子旅行已存 63%">
+          <svg width="54" height="54" viewBox="0 0 60 60" aria-hidden="true">
+            <circle class="fx-ring-track" cx="30" cy="30" r="25"/>
+            <circle class="fx-ring-fill" cx="30" cy="30" r="25" stroke-dasharray="99 157"/>
+          </svg>
+          <span class="fx-ring-c">63%</span>
+        </span>
+        <span class="fx-goal-body">
+          <span class="fx-goal-top">
+            <span class="fx-goal-ic">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12.5 17 5.2l-3.6 9.4-4-1.4-2 2.2-.5-3.6z"/><path d="M8.5 13.2 6.9 15.4"/></svg>
+            </span>
+            <span class="fx-goal-name">三亚亲子旅行</span>
+            <span class="tag">自动存入</span>
+          </span>
+          <span class="fx-goal-amt"><b class="amount">¥12,600.00</b> / ¥20,000.00</span>
+          <span class="fx-goal-meta">目标 <span class="num">2027 年 3 月 31 日</span> · 预计 <span class="num">3 月</span> 达成</span>
+        </span>
+        <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+      </a>
+
+      <a class="fx-goal" href="finance-goal-detail.html">
+        <span class="fx-ring" role="img" aria-label="家庭应急金已存 36%">
+          <svg width="54" height="54" viewBox="0 0 60 60" aria-hidden="true">
+            <circle class="fx-ring-track" cx="30" cy="30" r="25"/>
+            <circle class="fx-ring-fill" cx="30" cy="30" r="25" stroke-dasharray="57 157"/>
+          </svg>
+          <span class="fx-ring-c">36%</span>
+        </span>
+        <span class="fx-goal-body">
+          <span class="fx-goal-top">
+            <span class="fx-goal-ic">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.8 16 5v5c0 3.3-2.4 5.8-6 7.2C6.4 15.8 4 13.3 4 10V5z"/><path d="M7.4 10.2 9.4 12l3.4-3.4"/></svg>
+            </span>
+            <span class="fx-goal-name">家庭应急金</span>
+          </span>
+          <span class="fx-goal-amt"><b class="amount">¥18,000.00</b> / ¥50,000.00</span>
+          <span class="fx-goal-meta">目标 <span class="num">2027 年 9 月 30 日</span> · 预计 <span class="num">2027 年 8 月</span> 达成</span>
+        </span>
+        <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+      </a>
+
+      <div class="fx-ach-card">
+        <div class="fx-ghead">
+          <span class="fx-gtitle">已达成</span>
+          <span class="fx-gcount">1 个 · 保留记录</span>
+        </div>
+        <a class="fx-goal is-achieved" href="finance-goal-detail.html?state=achieved"
+          data-hot="④" data-hot-name="已达成目标" data-hot-pos="bottom-right"
+          data-hot-label="已达成目标仍留在列表并单列一组：进度 100%、带「已达成」，自动存入自动停用；点进详情可看全部存入记录，也可归档，归档后不再出现在本页">
+          <span class="fx-ring" role="img" aria-label="女儿钢琴课已达成 100%">
+            <svg width="54" height="54" viewBox="0 0 60 60" aria-hidden="true">
+              <circle class="fx-ring-track" cx="30" cy="30" r="25"/>
+              <circle class="fx-ring-fill" cx="30" cy="30" r="25" stroke-dasharray="157 157"/>
+            </svg>
+            <span class="fx-ring-c">100%</span>
+          </span>
+          <span class="fx-goal-body">
+            <span class="fx-goal-top">
+              <span class="fx-goal-ic">
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4" width="13" height="10" rx="1.6"/><path d="M3.5 11h13"/><path d="M6.5 14v2M13.5 14v2"/></svg>
+              </span>
+              <span class="fx-goal-name">女儿钢琴课</span>
+              <span class="tag">已达成</span>
+            </span>
+            <span class="fx-goal-amt"><b class="amount">¥12,000.00</b> / ¥12,000.00</span>
+            <span class="fx-goal-meta">达成于 <span class="num">10 月 18 日</span> · 自动存入已停用</span>
+          </span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </a>
+      </div>
+
+      <p class="tiny" style="margin-top:14px;line-height:var(--lh-normal)">预计达成日按「当前已存 + 自动存入的每月金额」估算，仅供参照；实际以每次存入为准。目标到期前 30 天由家庭日历提醒。</p>
+    </div>
+
+    <div class="fx-sk" aria-hidden="true">
+      <div class="skeleton" style="height:136px;border-radius:var(--radius-xl);margin-bottom:16px"></div>
+      <div class="skeleton sk-line" style="width:30%"></div>
+      <div class="fx-sk-card"><div class="skeleton" style="width:54px;height:54px;border-radius:50%;flex:none"></div><div style="flex:1"><div class="skeleton sk-line" style="width:52%"></div><div class="skeleton sk-line" style="width:70%;margin-bottom:0"></div></div></div>
+      <div class="fx-sk-card"><div class="skeleton" style="width:54px;height:54px;border-radius:50%;flex:none"></div><div style="flex:1"><div class="skeleton sk-line" style="width:44%"></div><div class="skeleton sk-line" style="width:64%;margin-bottom:0"></div></div></div>
+      <div class="fx-sk-card"><div class="skeleton" style="width:54px;height:54px;border-radius:50%;flex:none"></div><div style="flex:1"><div class="skeleton sk-line" style="width:48%"></div><div class="skeleton sk-line" style="width:60%;margin-bottom:0"></div></div></div>
+    </div>
+
+    <div class="state fx-empty">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="16" r="11"/><circle cx="16" cy="16" r="6"/><circle cx="16" cy="16" r="1.6"/><path d="M16 5v3M16 24v3M5 16h3M24 16h3"/></svg>
+      </div>
+      <div class="state-title">还没有储蓄目标</div>
+      <div class="state-desc">把想买的东西或想攒的应急金写成一个目标：填金额和期限，需要时再打开自动存入。自动存入只在记账层面记录，不会真实划转资金。</div>
+      <button class="btn btn-secondary" type="button" data-go="finance-goal-create.html"
+        data-hot="⑥" data-hot-name="空态行动" data-hot-pos="top-right"
+        data-hot-label="零个目标时给可执行动作「新建目标」，直接进新建页；不只放一句空话，也不展示 0% 的空卡片或假的预计达成日">
+        新建目标</button>
+    </div>
+  </div>
+
+  <div class="fx-foot">
+    <button class="btn btn-primary btn-block" type="button" data-go="finance-goal-create.html"
+      data-hot="⑤" data-hot-name="新建目标" data-hot-pos="outer-bottom-right"
+      data-hot-label="进新建目标页（finance/goal/create）：名称、目标金额、期限、账户、自动存入规则；本页是目标域唯一列表与写入口，已归档目标不在这里">
+      新建目标
+    </button>
+    <div class="fx-foot-note tiny">自动存入只生成记账记录，不会真实划转资金</div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+</body>
+</html>

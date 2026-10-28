@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>新建目标 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-content { padding-bottom: 24px; }
+
+  .fx-cancel {
+    height: 36px; padding: 0 2px;
+    display: inline-flex; align-items: center;
+    border: 0; background: none;
+    font-family: inherit; font-size: var(--fs-15); font-weight: 500;
+    color: var(--text-2); cursor: pointer;
+  }
+
+  .fx-banner {
+    display: none; align-items: flex-start; gap: 8px;
+    margin: 4px 0 14px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--danger-soft); color: var(--danger);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-banner svg { flex: none; margin-top: 1px; }
+  .fx-banner b { display: block; font-size: var(--fs-13); margin-bottom: 2px; }
+  body[data-state="error"] .fx-banner { display: flex; }
+
+  .fx-form { padding-top: 2px; }
+  .fx-required { margin-left: 4px; font-size: var(--fs-11); font-weight: 600; color: var(--text-3); }
+
+  .fx-err-name, .fx-err-amt { display: none; }
+  body[data-state="error"] .fx-err-name,
+  body[data-state="error"] .fx-err-amt { display: flex; }
+
+  .fx-amt { position: relative; }
+  .fx-amt-cur {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    z-index: 1; pointer-events: none;
+    font-family: var(--font-num); font-size: var(--fs-20); font-weight: 700; color: var(--text-2);
+  }
+  .fx-amt-input {
+    height: 56px; padding-left: 34px;
+    font-family: var(--font-num); font-size: var(--fs-20); font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .fx-acc {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; padding: 11px 13px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-family: inherit; text-align: left; color: var(--text);
+    cursor: pointer;
+  }
+  .fx-acc:hover { border-color: var(--border-strong); }
+  .fx-acc-ic {
+    width: 32px; height: 32px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    background: var(--surface-2); color: var(--text-2);
+  }
+  .fx-acc-body { flex: 1; min-width: 0; }
+  .fx-acc-k { display: block; font-size: var(--fs-14); font-weight: 600; }
+  .fx-acc-sub { display: block; margin-top: 2px; font-size: var(--fs-11); color: var(--text-3); }
+  .fx-acc .chevron { flex: none; color: var(--text-3); }
+
+  .fx-switch-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .fx-switch-text { flex: 1; min-width: 0; }
+  .fx-switch-k { display: block; font-size: var(--fs-14); font-weight: 600; }
+  .fx-switch-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
+
+  .fx-panel { display: none; margin-top: 8px; }
+  .fx-panel.is-open { display: block; }
+  body[data-state="auto-deposit"] .fx-panel { display: block; }
+
+  .fx-box {
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    font-size: var(--fs-12); color: var(--text-2); line-height: var(--lh-normal);
+  }
+  .fx-box-row { display: flex; align-items: center; gap: 10px; }
+  .fx-box-row + .fx-box-row { margin-top: 10px; }
+  .fx-box-k { width: 78px; flex: none; font-size: var(--fs-12); color: var(--text-3); }
+  .fx-box-input {
+    flex: 1; min-width: 0; height: 40px;
+    padding: 0 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface); color: var(--text);
+    font-family: var(--font-num); font-size: var(--fs-14);
+    outline: none;
+  }
+  .fx-box-input:focus { border-color: var(--brand-text); box-shadow: 0 0 0 3px var(--brand-soft); }
+  .fx-box-suf { flex: none; font-size: var(--fs-12); color: var(--text-2); }
+
+  .fx-est {
+    margin-top: 10px; padding-top: 9px;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  }
+  .fx-est-k { font-size: var(--fs-11); color: var(--text-3); }
+  .fx-est-v { font-size: var(--fs-13); font-weight: 700; color: var(--text); }
+
+  .fx-legal {
+    display: flex; align-items: flex-start; gap: 8px;
+    margin: 14px 0 0; padding: 11px 13px;
+    border-radius: var(--radius-md);
+    background: var(--brand-soft);
+    border: 1px solid var(--brand-soft-border);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+    color: var(--text-2);
+  }
+  .fx-legal svg { flex: none; margin-top: 1px; color: var(--brand-text); }
+  .fx-legal b { display: block; margin-bottom: 2px; font-size: var(--fs-13); color: var(--text); }
+
+  .fx-foot {
+    flex: none;
+    padding: 10px 16px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+  .fx-foot-note { margin-top: 8px; text-align: center; line-height: var(--lh-normal); }
+</style>
+</head>
+<body data-screen="F34 新建目标" data-states="default,auto-deposit,error">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <button class="fx-cancel" type="button" data-go="finance-goal.html"
+        data-hot="①" data-hot-name="取消" data-hot-pos="outer-top-left"
+        data-hot-label="回储蓄目标列表；未保存内容直接丢弃，不落草稿，也不生成目标与自动存入规则">
+        取消</button>
+    </div>
+    <div class="nav-title">新建目标</div>
+    <div class="nav-right"></div>
+  </div>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 保存后先排队，自动存入首条记录联网后补
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-banner">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
+      <div>
+        <b>还有 2 项需要补全</b>
+        名称与目标金额必填，金额必须大于 0；缺项只标红对应字段，不弹全局错误层。
+      </div>
+    </div>
+
+    <div class="fx-form">
+      <div class="field">
+        <label class="field-label" for="fx-name">名称<span class="fx-required">必填</span></label>
+        <input class="input" id="fx-name" type="text" maxlength="20" value="爸爸的相机" autocomplete="off" placeholder="如：换新冰箱、三亚亲子旅行"
+          data-hot="②" data-hot-name="名称" data-hot-pos="outer-top-right"
+          data-hot-label="最多 20 字，全家可见；同名目标允许存在，靠图标与目标日期区分，不强制唯一。名称只用于展示，不参与报表归集">
+        <div class="field-error fx-err-name" role="alert">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
+          请填写目标名称
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="fx-target">目标金额<span class="fx-required">必填</span></label>
+        <div class="fx-amt">
+          <span class="fx-amt-cur">¥</span>
+          <input class="input fx-amt-input" id="fx-target" type="text" inputmode="decimal" value="12000.00" autocomplete="off"
+            data-hot="③" data-hot-name="目标金额" data-hot-pos="outer-top-right"
+            data-hot-label="以「分」存储、按家庭币种展示；必须大于 0，之后可以改大改小，但不会小于已存金额——要下调到已存以下请先归档再新建">
+        </div>
+        <div class="field-error fx-err-amt" role="alert">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
+          请填写大于 0 的目标金额
+        </div>
+        <div class="help">目标金额只用于计算进度与预计达成日，不锁定账户余额，也不占用预算。</div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="fx-deadline">期限（目标日期）</label>
+        <input class="input num" id="fx-deadline" type="date" value="2027-06-30"
+          data-hot="④" data-hot-name="期限" data-hot-pos="outer-top-right"
+          data-hot-label="目标日期用于估算每月要存多少与到期提醒；不能早于今天。到期前 30 天由家庭日历提醒一次，财务面不自建定时器；到期不自动关闭目标">
+        <div class="help">可不填；填了之后按「剩余金额 ÷ 剩余月份」给出建议月存额。到期前 30 天由家庭日历提醒。</div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">账户</span>
+        <button class="fx-acc" type="button" data-toast="选择账户：存入与自动存入都记到这个账户；只列未归档账户，归档账户的历史记录仍保留"
+          data-hot="⑤" data-hot-name="账户" data-hot-pos="bottom-right"
+          data-hot-label="存入一笔与自动存入都默认记到这个账户；账户只决定记账落在哪，不代表真实资金通道，也不会自动扣款或划转">
+          <span class="fx-acc-ic">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="15" height="10" rx="2.5"/><path d="M2.5 9h15"/><path d="M6 13h3"/></svg>
+          </span>
+          <span class="fx-acc-body">
+            <span class="fx-acc-k">招商银行储蓄卡</span>
+            <span class="fx-acc-sub num">储蓄卡 · 尾号 6882 · 当前余额 ¥126,400.00</span>
+          </span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+        <div class="help">账户只决定这条记录记在哪，接入的是账本而不是银行。</div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">自动存入</span>
+        <div class="fx-switch-row"
+          data-hot="⑥" data-hot-name="自动存入" data-hot-pos="outer-bottom-right"
+          data-hot-label="打开后按每月固定日生成一条记账记录，打开时展开固定日与金额；关掉则完全手动「存入一笔」。自动存入只是周期记账规则，不接资金通道、不做真实划转">
+          <span class="fx-switch-text">
+            <span class="fx-switch-k">每月自动存入</span>
+            <span class="fx-switch-sub">到日生成一条记账记录，不用每次手动存</span>
+          </span>
+          <label class="switch" aria-label="是否开启自动存入">
+            <input type="checkbox" id="fx-auto">
+            <span class="track"></span><span class="thumb"></span>
+          </label>
+        </div>
+        <div class="fx-panel" id="fx-panel"
+          data-hot="⑦" data-hot-name="自动存入规则" data-hot-pos="bottom-right"
+          data-hot-label="固定日只允许 1–28 日（避开月末缺日），金额必须大于 0；规则按每月生成一条记录，改规则不补发过去月份，也不重写已生成的记录">
+          <div class="fx-box">
+            <div class="fx-box-row">
+              <span class="fx-box-k">每月存入日</span>
+              <input class="fx-box-input" id="fx-day" type="number" min="1" max="28" step="1" value="1" inputmode="numeric">
+              <span class="fx-box-suf">日</span>
+            </div>
+            <div class="fx-box-row">
+              <span class="fx-box-k">每次存入</span>
+              <input class="fx-box-input" id="fx-auto-amt" type="text" inputmode="decimal" value="1500.00">
+              <span class="fx-box-suf">元</span>
+            </div>
+            <div class="fx-est">
+              <span class="fx-est-k">按此节奏预计达成</span>
+              <span class="fx-est-v">2027 年 6 月</span>
+            </div>
+            <p class="tiny" style="margin-top:6px">每月 1 日生成一条记录；存入日只允许 1–28 日，避免 2 月没有 30、31 日。改规则不补发过去月份。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="fx-legal">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
+        <span>
+          <b>自动存入仅在记账层面记录，不会真实划转资金。</b>
+          它是一条周期记账规则：到日在账本里生成一条记录，不对接银行、支付宝或微信，也不会自动扣款。
+        </span>
+      </div>
+    </div>
+
+    <p class="tiny" style="margin-top:12px;line-height:var(--lh-normal)">保存后目标立即出现在列表；目标到期前 30 天由家庭日历提醒，到期不自动关闭，也不自动归档。</p>
+  </div>
+
+  <div class="fx-foot">
+    <button class="btn btn-primary btn-block" type="button" id="fx-save"
+      data-hot="⑧" data-hot-name="保存" data-hot-pos="outer-bottom-right"
+      data-hot-label="校验名称非空、目标金额大于 0；自动存入打开时再校固定日 1–28 与每次金额大于 0；成功回目标列表，新目标排在同日期组里，开启规则时首条记录从下个固定日生成">
+      保存目标
+    </button>
+    <div class="fx-foot-note tiny">自动存入只生成记账记录，不会真实划转资金</div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var fxState = new URLSearchParams(location.search).get('state') || 'default';
+  var auto = document.getElementById('fx-auto');
+  var panel = document.getElementById('fx-panel');
+  var nameEl = document.getElementById('fx-name');
+  var targetEl = document.getElementById('fx-target');
+  var save = document.getElementById('fx-save');
+
+  function setAuto(on) {
+    auto.checked = on;
+    panel.classList.toggle('is-open', on);
+    if (!on && document.body.getAttribute('data-state') === 'auto-deposit') {
+      document.body.setAttribute('data-state', 'default');
+    }
+  }
+
+  auto.addEventListener('change', function () {
+    setAuto(auto.checked);
+    window.HC.toast(auto.checked
+      ? '已开启自动存入：只在记账层面生成记录，不会真实划转资金'
+      : '已关闭自动存入，之后只能手动「存入一笔」');
+  });
+
+  [nameEl, targetEl].forEach(function (el) {
+    el.addEventListener('input', function () {
+      if (el.value.trim()) el.classList.remove('is-error');
+    });
+  });
+
+  if (fxState === 'auto-deposit') {
+    setAuto(true);
+  } else {
+    setAuto(false);
+  }
+
+  if (fxState === 'error') {
+    setAuto(false);
+    nameEl.value = '';
+    nameEl.classList.add('is-error');
+    targetEl.value = '';
+    targetEl.classList.add('is-error');
+  }
+
+  save.addEventListener('click', function () {
+    var ok = true;
+    if (!name.value.trim()) {
+      name.classList.add('is-error');
+      ok = false;
+    }
+    if (!target.value.trim() || !(Number(target.value.replace(/,/g, '')) > 0)) {
+      target.classList.add('is-error');
+      ok = false;
+    }
+    if (!ok) {
+      document.body.setAttribute('data-state', 'error');
+      (name.value.trim() ? target : name).focus();
+      return;
+    }
+    window.HC.toast(auto.checked ? '目标已创建，自动存入已开启（仅记账）' : '目标已创建');
+    setTimeout(function () { location.href = 'finance-goal.html'; }, 1000);
+  });
+</script>
+</body>
+</html>

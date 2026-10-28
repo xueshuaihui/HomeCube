@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>隐私 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .priv-body { padding-bottom: 32px; }
+  .priv-intro {
+    margin: 4px 0; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    font-size: var(--fs-12); line-height: var(--lh-loose); color: var(--text-2);
+  }
+  .priv-scale { padding: 4px 16px; }
+  .priv-scale-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; font-size: var(--fs-13); }
+  .priv-scale-row + .priv-scale-row { border-top: 1px solid var(--border); }
+  .priv-code {
+    flex: none; min-width: 28px; text-align: center;
+    padding: 1px 6px; border-radius: var(--radius-sm);
+    font-family: var(--font-num); font-size: var(--fs-11); font-weight: 700;
+    background: var(--surface-2); color: var(--text-2);
+  }
+  .priv-code.is-l2 { background: var(--accent-soft); color: var(--accent); }
+  .priv-code.is-l3 { background: var(--danger-soft); color: var(--danger); }
+  .priv-scale-row .priv-scale-text { flex: 1; min-width: 0; line-height: var(--lh-normal); }
+  .priv-scale-row .tiny { display: block; margin-top: 2px; }
+  .priv-flag {
+    flex: none; padding: 1px 6px; border-radius: var(--radius-pill);
+    background: var(--surface-2); color: var(--text-3);
+    font-size: var(--fs-11); font-weight: 600; white-space: nowrap;
+  }
+  body[data-state="readonly"] .priv-admin-item { pointer-events: none; }
+  body[data-state="readonly"] .priv-admin-item .li-text { opacity: .72; }
+  body[data-state="readonly"] .priv-flag { background: var(--warning-soft); color: var(--warning); }
+  body[data-state="readonly"] .priv-admin-item .switch input { pointer-events: none; }
+  .priv-ro-note {
+    display: none; align-items: flex-start; gap: 8px;
+    margin-top: 12px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--warning-soft); color: var(--warning);
+    font-size: var(--fs-12); line-height: var(--lh-loose);
+  }
+  body[data-state="readonly"] .priv-ro-note { display: flex; }
+  .priv-ro-note svg { flex: none; margin-top: 2px; }
+  .priv-explain {
+    display: flex; gap: 10px; align-items: flex-start;
+    margin-top: 10px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--brand-soft); color: var(--brand-text);
+    font-size: var(--fs-12); line-height: var(--lh-loose);
+  }
+  .priv-explain svg { flex: none; margin-top: 1px; }
+  .priv-del .li-icon { background: var(--danger-soft); color: var(--danger); }
+  .priv-del .li-text { color: var(--danger); }
+  .priv-p4 { opacity: .75; }
+  .priv-p4 .li-text { color: var(--text-2); }
+  .priv-p4-flag {
+    flex: none; padding: 1px 6px; border-radius: var(--radius-pill);
+    background: var(--surface-2); color: var(--text-3);
+    font-size: var(--fs-11); font-weight: 600;
+  }
+  .priv-sk { display: none; padding-top: 8px; }
+  .priv-sk .sk-block { height: 84px; }
+  body[data-state="loading"] .priv-body { display: none; }
+  body[data-state="loading"] .priv-sk { display: block; }
+  body[data-state="delete"] #sheet-delete { display: flex; }
+  .priv-sheet-warn {
+    display: flex; gap: 8px; align-items: flex-start;
+    margin-top: 14px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--danger-soft); color: var(--danger);
+    font-size: var(--fs-12); line-height: var(--lh-loose);
+  }
+  .priv-sheet-warn svg { flex: none; margin-top: 2px; }
+</style>
+</head>
+<body data-screen="29 隐私" data-tab="" data-states="default,readonly,delete,loading">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <button class="icon-btn" type="button" data-go="me.html" aria-label="返回">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </button>
+    </div>
+    <div class="nav-title">隐私</div>
+    <div class="nav-right"></div>
+  </div>
+
+  <div class="content">
+    <div class="priv-body">
+      <div class="priv-intro">隐私分两层：家庭级可见性只有管理员能改；私密流水与 L3 解锁是本人的选择。改动只影响本家庭，不影响其他家庭。</div>
+
+      <div class="section-title">可见性分级</div>
+      <div class="card priv-scale">
+        <div class="priv-scale-row">
+          <span class="priv-code">L1</span>
+          <span class="priv-scale-text">普通数据<span class="tiny">任务、日历、清单，全家庭可见</span></span>
+        </div>
+        <div class="priv-scale-row">
+          <span class="priv-code is-l2">L2</span>
+          <span class="priv-scale-text">敏感数据<span class="tiny">金额、备注、账户名，受家庭开关控制</span></span>
+        </div>
+        <div class="priv-scale-row">
+          <span class="priv-code is-l3">L3</span>
+          <span class="priv-scale-text">高敏数据<span class="tiny">健康与紧急信息，读取需设备锁解锁</span></span>
+        </div>
+      </div>
+
+      <div class="section-title">家庭级可见性</div>
+      <div class="list">
+        <div class="list-item priv-family-item priv-admin-item" data-hot="①" data-hot-name="L2 可见性开关" data-hot-pos="top-right" data-hot-label="家庭级开关，仅管理员可写；关闭后成员只能看到自己创建的 L2 字段">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6v8M7.4 8.4h5.2M7.4 11.4h5.2"/></svg>
+          </span>
+          <span class="li-text">L2 敏感字段可见<span class="li-sub">金额、备注、账户名对家庭成员可见</span></span>
+          <span class="priv-flag">需管理员</span>
+          <label class="switch"><input type="checkbox" checked><span class="track"></span><span class="thumb"></span></label>
+        </div>
+        <div class="list-item priv-family-item priv-admin-item" data-hot="②" data-hot-name="L3 可见性开关" data-hot-pos="top-right" data-hot-label="家庭级开关，仅管理员可写；关闭后 L3 仅本人可见，且读取仍需设备锁解锁">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l6 2.5v4.2c0 3.3-2.4 6.1-6 7.3-3.6-1.2-6-4-6-7.3V5.5z"/></svg>
+          </span>
+          <span class="li-text">L3 高敏字段可见<span class="li-sub">健康与紧急信息对家庭成员可见</span></span>
+          <span class="priv-flag">需管理员</span>
+          <label class="switch"><input type="checkbox" checked><span class="track"></span><span class="thumb"></span></label>
+        </div>
+      </div>
+      <div class="priv-ro-note" role="status">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3.6M8 10.8v.1"/></svg>
+        <span>家庭级可见性开关仅管理员可修改，当前为只读视图。需要调整请联系家庭管理员。</span>
+      </div>
+
+      <div class="section-title">私密流水</div>
+      <div class="list">
+        <div class="list-item priv-family-item" data-hot="③" data-hot-name="私密流水行级开关" data-hot-pos="top-right" data-hot-label="本人可写；开启后私密流水只有自己可见，家庭成员看不到金额与明细">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10c1.8-3.2 4.2-4.8 7-4.8s5.2 1.6 7 4.8c-1.8 3.2-4.2 4.8-7 4.8S4.8 13.2 3 10z"/><circle cx="10" cy="10" r="2"/><path d="M4 16 16 4"/></svg>
+          </span>
+          <span class="li-text">私密流水仅自己可见<span class="li-sub">对标记为私密的流水生效</span></span>
+          <label class="switch"><input type="checkbox" checked id="private-switch"><span class="track"></span><span class="thumb"></span></label>
+        </div>
+      </div>
+      <div class="priv-explain">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="7" width="10" height="7" rx="2"/><path d="M5.2 7V5.2a2.8 2.8 0 0 1 5.6 0V7"/></svg>
+        <span>私密流水只有你自己可见，家庭成员看不到金额与明细；这类流水不参与 AA 分摊与跨面归集，导出时默认排除，需单独勾选。</span>
+      </div>
+
+      <div class="section-title">读取保护</div>
+      <div class="list">
+        <button class="list-item" type="button" data-go="settings-security.html"
+          data-hot="④" data-hot-name="L3 设备锁" data-hot-pos="top-right" data-hot-label="L3 读取需本机设备锁解锁加会话内二次确认；未设 PIN 时首次进入引导设置，可跳过">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="4.5" y="9" width="11" height="8" rx="2"/><path d="M7 9V6.8a3 3 0 0 1 6 0V9"/></svg>
+          </span>
+          <span class="li-text">L3 读取需设备锁<span class="li-sub">已开启 · 进入高敏内容需 PIN</span></span>
+          <span class="chevron">›</span>
+        </button>
+      </div>
+
+      <div class="section-title">数据与删除</div>
+      <div class="list">
+        <button class="list-item priv-del" type="button" data-sheet-open="sheet-delete"
+          data-hot="⑤" data-hot-name="删除请求" data-hot-pos="top-right" data-hot-label="危险操作；弹层说明处理时限与保留范围，提交后 30 天内完成，期间可撤回">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4.5 6h11M8 6V4.5h4V6M6 6l.7 10h6.6L14 6"/></svg>
+          </span>
+          <span class="li-text">申请删除我的数据<span class="li-sub">30 天内处理 · 期间可撤回</span></span>
+          <span class="chevron">›</span>
+        </button>
+      </div>
+
+      <div class="section-title">紧急卡</div>
+      <div class="list">
+        <div class="list-item priv-p4" role="button" tabindex="0" data-toast="紧急卡开关随家人面 P4 上线；开启后锁定屏只显示姓名、血型、过敏与紧急电话"
+          data-hot="⑥" data-hot-name="紧急卡开关占位" data-hot-pos="top-right" data-hot-label="P4 才出 UI 的禁用态占位；输入类控件不可点，点击只解释上线期次">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17s-6-3.6-6-8.2A3.8 3.8 0 0 1 10 6a3.8 3.8 0 0 1 6 2.8C16 13.4 10 17 10 17z"/><path d="M10 8.6v3.4M8.3 10.3h3.4"/></svg>
+          </span>
+          <span class="li-text">锁定屏显示紧急卡<span class="li-sub">开启后仅显示白名单字段</span></span>
+          <span class="priv-p4-flag">P4 上线</span>
+          <label class="switch"><input type="checkbox" disabled><span class="track"></span><span class="thumb"></span></label>
+        </div>
+      </div>
+      <div class="tiny" style="margin:8px 2px 0;line-height:var(--lh-loose)">紧急卡是锁定屏唯一允许展示的数据，需家庭开关默认关闭并二次确认；P4 家人面出生后才出现真实开关。</div>
+    </div>
+
+    <div class="priv-sk" aria-hidden="true">
+      <div class="skeleton sk-block"></div>
+      <div class="skeleton sk-line" style="width:42%"></div>
+      <div class="skeleton sk-block" style="height:110px"></div>
+      <div class="skeleton sk-line" style="width:64%"></div>
+      <div class="skeleton sk-block"></div>
+    </div>
+  </div>
+
+  <div class="sheet-mask" id="sheet-delete" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>申请删除我的数据？</h3>
+      <p class="sheet-sub">提交后 30 天内完成处理，期间可在本页撤回。家庭共有数据与个人数据按下面的范围分别处置。</p>
+      <div class="priv-sheet-warn">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 2.6 14 13H2z"/><path d="M8 6.6v3M8 11.4v.1"/></svg>
+        <span>删除不可撤销：你的个人偏好、私密流水与 L3 内容会被删除；家庭共有的流水与清单保留并标记「已退出成员」。建议先导出需要的数据。</span>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-danger btn-block" type="button" id="confirm-delete">提交删除请求</button>
+        <button class="btn btn-secondary btn-block" type="button" data-go="data.html">先去导出数据</button>
+        <button class="btn btn-ghost btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var st = new URLSearchParams(location.search).get('state') || 'default';
+
+  if (st === 'readonly') {
+    document.querySelectorAll('.priv-admin-item .switch input').forEach(function (sw) { sw.disabled = true; });
+  }
+
+  document.getElementById('confirm-delete').addEventListener('click', function () {
+    window.HC.closeSheet(document.getElementById('sheet-delete'));
+    window.HC.toast('删除请求已提交，30 天内完成处理');
+  });
+
+  document.querySelectorAll('.priv-admin-item .switch input').forEach(function (sw) {
+    sw.addEventListener('change', function () {
+      window.HC.toast(sw.checked ? '已对家庭成员开放' : '已关闭，仅本人可见');
+    });
+  });
+
+  document.getElementById('private-switch').addEventListener('change', function () {
+    window.HC.toast(this.checked ? '私密流水已开启，仅自己可见' : '已关闭，私密流水恢复家庭可见');
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>动态 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .dyn-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px; height: var(--navbar-h); flex: none;
+  }
+  .dyn-topbar h1 { font-size: var(--fs-20); font-weight: 700; }
+  .dyn-heading-sub { margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
+  .dyn-date { font-size: var(--fs-12); color: var(--text-3); }
+
+  .dyn-content { padding: 0 0 24px; }
+
+  .dyn-chips {
+    display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none;
+    padding: 4px 16px 10px;
+  }
+  .dyn-chips::-webkit-scrollbar { display: none; }
+  .dyn-chip {
+    display: inline-flex; align-items: center; gap: 5px; flex: none;
+    height: 32px; padding: 0 12px; border-radius: var(--radius-pill);
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--text-2); font-size: var(--fs-13); font-weight: 600;
+    text-decoration: none; cursor: pointer;
+  }
+  .dyn-chip svg { opacity: .75; }
+  .dyn-chip-all {
+    background: var(--brand-soft); border-color: var(--brand-soft-border);
+    color: var(--brand-text);
+  }
+  body[data-state="filtered"] .dyn-chip-all {
+    background: var(--surface); border-color: var(--border); color: var(--text-2);
+  }
+  body[data-state="filtered"] .dyn-chip-fin {
+    background: var(--brand-soft); border-color: var(--brand-soft-border);
+    color: var(--brand-text);
+  }
+
+  .dyn-filtered-note {
+    display: none; align-items: center; gap: 6px;
+    padding: 0 16px 8px; font-size: var(--fs-12); color: var(--text-3);
+  }
+  .dyn-filtered-note a { color: var(--brand-text); text-decoration: none; font-weight: 600; margin-left: auto; }
+  body[data-state="filtered"] .dyn-filtered-note { display: flex; }
+
+  .dyn-cache {
+    display: none; align-items: center; gap: 6px;
+    margin: 0 16px 6px; padding: 7px 10px;
+    border-radius: var(--radius-sm); background: var(--warning-soft);
+    color: var(--warning); font-size: var(--fs-12);
+  }
+  body[data-state="offline"] .dyn-cache { display: flex; }
+  body[data-state="offline"] .dyn-offline { display: flex; }
+
+  .dyn-group {
+    position: sticky; top: 0; z-index: 2;
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 10px 16px 6px; background: var(--bg);
+  }
+  .dyn-group-title { font-size: var(--fs-15); font-weight: 700; }
+  .dyn-group-date { font-size: var(--fs-12); color: var(--text-3); }
+  .dyn-group-count { margin-left: auto; font-size: var(--fs-11); color: var(--text-3); }
+  .dyn-count-fin { display: none; }
+  body[data-state="filtered"] .dyn-count-all { display: none; }
+  body[data-state="filtered"] .dyn-count-fin { display: inline; }
+
+  .dyn-list {
+    margin: 0 16px; padding: 0 14px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); overflow: hidden;
+  }
+  .dyn-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+    text-decoration: none; color: var(--text);
+  }
+  .dyn-item:last-child { border-bottom: 0; }
+  body[data-state="filtered"] .dyn-item-os { display: none; }
+
+  .dyn-face {
+    position: relative; width: 34px; height: 34px; flex: none;
+    border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  }
+  .dyn-face-fin { background: var(--brand-soft); color: var(--brand-text); }
+  .dyn-face-os { background: var(--accent-soft); color: var(--accent); }
+  .dyn-av-os { color: var(--accent); }
+  .dyn-av {
+    position: absolute; right: -6px; bottom: -6px;
+    width: 18px; height: 18px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface-2); color: var(--text-2);
+    border: 2px solid var(--surface);
+    font-size: 9px; font-weight: 700; line-height: 1;
+  }
+  .dyn-body { flex: 1; min-width: 0; }
+  .dyn-line { display: block; font-size: var(--fs-14); line-height: var(--lh-normal); }
+  .dyn-line b { font-weight: 600; }
+  .dyn-meta {
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 3px; font-size: var(--fs-12); color: var(--text-3);
+  }
+  .dyn-face-name { font-weight: 500; }
+  .dyn-amount { flex: none; align-self: center; font-size: var(--fs-13); color: var(--text); }
+
+  .dyn-more { margin: 18px 16px 0; width: calc(100% - 32px); }
+  .dyn-more-fin { display: none; }
+  body[data-state="filtered"] .dyn-more-all { display: none; }
+  body[data-state="filtered"] .dyn-more-fin { display: inline; }
+  .dyn-data { padding-bottom: 4px; }
+
+  .dyn-sk { display: none; padding-top: 6px; }
+  .dyn-sk-block { margin: 0 16px 10px; }
+  body[data-state="loading"] .dyn-sk { display: block; }
+  body[data-state="loading"] .dyn-data,
+  body[data-state="loading"] .dyn-chips { display: none; }
+
+  .dyn-empty, .dyn-error { display: none; }
+  body[data-state="empty"] .dyn-empty { display: block; }
+  body[data-state="empty"] .dyn-data { display: none; }
+  body[data-state="error"] .dyn-error { display: block; }
+  body[data-state="error"] .dyn-data,
+  body[data-state="error"] .dyn-chips { display: none; }
+</style>
+</head>
+<body data-screen="07 动态流" data-tab="dynamic" data-states="default,loading,empty,filtered,offline,error">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="topbar dyn-topbar">
+    <div>
+      <h1>动态</h1>
+      <div class="dyn-heading-sub">三口之家 · 跨面动态</div>
+    </div>
+    <span class="dyn-date num">10 月 29 日</span>
+  </div>
+
+  <div class="offline-bar dyn-offline">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 2 项待同步
+  </div>
+
+  <div class="content dyn-content">
+    <div class="dyn-chips"
+      data-hot="①" data-hot-name="面筛选" data-hot-pos="bottom-right"
+      data-hot-label="只列本家庭已启用且服务已出生的面（P1 = 全部面 + 财务）；选中财务后列表只留财务条目，分组计数同步按筛选后口径">
+      <a class="dyn-chip dyn-chip-all" href="dynamic.html">全部面</a>
+      <a class="dyn-chip dyn-chip-fin" href="dynamic.html?state=filtered">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/></svg>
+        财务
+      </a>
+    </div>
+
+    <div class="dyn-filtered-note">
+      <span>已筛选：财务 · 4 条</span>
+      <a href="dynamic.html">清除</a>
+    </div>
+
+    <div class="dyn-cache">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+      显示本机缓存 · 最后更新 08:10
+    </div>
+
+    <div class="dyn-data">
+      <div class="dyn-group"
+        data-hot="②" data-hot-name="日期分组头" data-hot-pos="top-right"
+        data-hot-label="按天分组：今天 / 昨天 / 更早；分组头吸顶显示当前日期与条数，点击不跳转，仅用于定位">
+        <span class="dyn-group-title">今天</span>
+        <span class="dyn-group-date num">10 月 29 日</span>
+        <span class="dyn-group-count dyn-count-all">4 条</span>
+        <span class="dyn-group-count dyn-count-fin">2 条</span>
+      </div>
+      <div class="dyn-list">
+        <a class="dyn-item dyn-item-fin" href="finance-tx-detail.html"
+          data-hot="③" data-hot-name="动态条目" data-hot-pos="top-right"
+          data-hot-label="点击任意条目进源对象，不在动态页展开详情；财务流水与预算调整走财务面深链，HomeOS 条目进待办详情或留言板">
+          <span class="dyn-face dyn-face-fin">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/></svg>
+            <span class="dyn-av">妈</span>
+          </span>
+          <span class="dyn-body">
+            <span class="dyn-line"><b>妈妈</b> 记了一笔 · 餐饮</span>
+            <span class="dyn-meta"><span class="dyn-face-name">财务</span><span>·</span><span>12 分钟前</span></span>
+          </span>
+          <span class="amount dyn-amount">-¥128.00</span>
+        </a>
+
+        <a class="dyn-item dyn-item-os" href="todo-detail.html">
+          <span class="dyn-face dyn-face-os">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14l8-8"/><path d="M3 17h14"/></svg>
+            <span class="dyn-av dyn-av-os">我</span>
+          </span>
+          <span class="dyn-body">
+            <span class="dyn-line"><b>我</b> 完成了待办 · 交物业费</span>
+            <span class="dyn-meta"><span class="dyn-face-name">HomeOS</span><span>·</span><span>1 小时前</span></span>
+          </span>
+        </a>
+
+        <a class="dyn-item dyn-item-fin" href="finance-tx-detail.html">
+          <span class="dyn-face dyn-face-fin">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/></svg>
+            <span class="dyn-av">爸</span>
+          </span>
+          <span class="dyn-body">
+            <span class="dyn-line"><b>爸爸</b> 记了一笔 · 房贷还款</span>
+            <span class="dyn-meta"><span class="dyn-face-name">财务</span><span>·</span><span>2 小时前</span></span>
+          </span>
+          <span class="amount dyn-amount">-¥4,200.00</span>
+        </a>
+
+        <a class="dyn-item dyn-item-os" href="board.html">
+          <span class="dyn-face dyn-face-os">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 5h12M4 10h9M4 15h11"/></svg>
+            <span class="dyn-av dyn-av-os">妈</span>
+          </span>
+          <span class="dyn-body">
+            <span class="dyn-line"><b>妈妈</b> 在留言板发了一条留言</span>
+            <span class="dyn-meta"><span class="dyn-face-name">HomeOS</span><span>·</span><span>3 小时前</span></span>
+          </span>
+        </a>
+      </div>
+
+      <div class="dyn-group">
+        <span class="dyn-group-title">昨天</span>
+        <span class="dyn-group-date num">10 月 28 日</span>
+        <span class="dyn-group-count dyn-count-all">2 条</span>
+        <span class="dyn-group-count dyn-count-fin">1 条</span>
+      </div>
+      <div class="dyn-list">
+        <a class="dyn-item dyn-item-fin" href="finance-tx-detail.html">
+          <span class="dyn-face dyn-face-fin">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/></svg>
+            <span class="dyn-av">我</span>
+          </span>
+          <span class="dyn-body">
+            <span class="dyn-line"><b>我</b> 记了一笔 · 超市采购</span>
+            <span class="dyn-meta"><span class="dyn-face-name">财务</span><span>·</span><span>昨天 19:20</span></span>
+          </span>
+          <span class="amount dyn-amount">-¥236.50</span>
+        </a>
+
+        <a class="dyn-item dyn-item-os" href="todo-detail.html">
+          <span class="dyn-face dyn-face-os">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 5h12M4 10h8M4 15h10"/></svg>
+            <span class="dyn-av dyn-av-os">爸</span>
+          </span>
+          <span class="dyn-body">
+            <span class="dyn-line"><b>爸爸</b> 新建了待办 · 接女儿放学</span>
+            <span class="dyn-meta"><span class="dyn-face-name">HomeOS</span><span>·</span><span>昨天 08:15</span></span>
+          </span>
+        </a>
+      </div>
+
+      <div class="dyn-group">
+        <span class="dyn-group-title">更早</span>
+        <span class="dyn-group-date num">10 月 27 日及以前</span>
+        <span class="dyn-group-count dyn-count-all">2 条</span>
+        <span class="dyn-group-count dyn-count-fin">1 条</span>
+      </div>
+      <div class="dyn-list">
+        <a class="dyn-item dyn-item-fin" href="finance-tx-detail.html">
+          <span class="dyn-face dyn-face-fin">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/></svg>
+            <span class="dyn-av">妈</span>
+          </span>
+          <span class="dyn-body">
+            <span class="dyn-line"><b>妈妈</b> 调整了预算 · 10 月餐饮</span>
+            <span class="dyn-meta"><span class="dyn-face-name">财务</span><span>·</span><span>10 月 27 日 21:40</span></span>
+          </span>
+          <span class="amount dyn-amount">¥2,000.00</span>
+        </a>
+
+        <a class="dyn-item dyn-item-os" href="todo-detail.html">
+          <span class="dyn-face dyn-face-os">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14l8-8"/><path d="M3 17h14"/></svg>
+            <span class="dyn-av dyn-av-os">我</span>
+          </span>
+          <span class="dyn-body">
+            <span class="dyn-line"><b>我</b> 完成了待办 · 缴水电费</span>
+            <span class="dyn-meta"><span class="dyn-face-name">HomeOS</span><span>·</span><span>10 月 26 日 10:05</span></span>
+          </span>
+        </a>
+      </div>
+
+      <button class="btn btn-secondary btn-block dyn-more" type="button" data-toast="已加载更早的动态（演示）"
+        data-hot="④" data-hot-name="加载更多" data-hot-pos="top-right"
+        data-hot-label="游标分页，点击续读并追加到底部，不重排已读条目；末页后按钮消失并显示「没有更多了」；续读失败只在底部重试，不清空列表">
+        加载更多 · 还有 <span class="dyn-more-all">6</span><span class="dyn-more-fin">2</span> 条
+      </button>
+    </div>
+
+    <div class="dyn-sk" aria-hidden="true">
+      <div class="skeleton sk-line" style="width:22%;margin:16px 16px 10px"></div>
+      <div class="skeleton sk-block dyn-sk-block" style="height:58px"></div>
+      <div class="skeleton sk-block dyn-sk-block" style="height:58px"></div>
+      <div class="skeleton sk-block dyn-sk-block" style="height:58px"></div>
+      <div class="skeleton sk-line" style="width:18%;margin:18px 16px 10px"></div>
+      <div class="skeleton sk-block dyn-sk-block" style="height:58px"></div>
+      <div class="skeleton sk-block dyn-sk-block" style="height:58px"></div>
+    </div>
+
+    <div class="dyn-empty">
+      <div class="state">
+        <div class="state-icon">
+          <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 12h16M8 17h11M8 22h13"/></svg>
+        </div>
+        <div class="state-title">还没有家庭动态</div>
+        <div class="state-desc">记一笔账、完成一个待办，都会出现在这里。筛选条保留，可切回「全部面」。</div>
+        <button class="btn btn-secondary" type="button" data-go="quick-add.html"
+          data-hot="⑤" data-hot-name="空态行动" data-hot-pos="top-right"
+          data-hot-label="零条时给可执行动作「去记一笔」，进入全局＋；不是只放一句空话">去记一笔</button>
+      </div>
+    </div>
+
+    <div class="dyn-error">
+      <div class="state">
+        <div class="state-icon">
+          <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="16" cy="16" r="12"/><path d="M16 9v8M16 21.5v.1"/></svg>
+        </div>
+        <div class="state-title">动态加载失败</div>
+        <div class="state-desc">网络看起来不太稳定。已加载的内容不会丢，重试只重发动态首屏请求。</div>
+        <div class="state-code">HC-5201</div>
+        <button class="btn btn-secondary" type="button" data-toast="正在重新加载动态（演示）">重新加载</button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="tabbar" data-tabbar
+    data-hot="⑥" data-hot-name="底部五项" data-hot-pos="top-right"
+    data-hot-label="首页 / 动态 / ＋ / 消息 / 我的，结构恒定；动态为当前项；消息位红点与顶栏同源，进入消息页同时熄灭">
+    <a class="tab" href="home.html" data-tab="home">
+      <svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5 11 3.5l7.5 6v8a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5z"/><path d="M8.5 19v-6h5v6"/></svg>
+      首页
+    </a>
+    <a class="tab" href="dynamic.html" data-tab="dynamic">
+      <svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 5.5h12M5 11h8M5 16.5h10"/></svg>
+      动态
+    </a>
+    <a class="tab" href="quick-add.html" data-tab="plus" aria-label="快速添加">
+      <span class="tab-plus">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 4.5v11M4.5 10h11"/></svg>
+      </span>
+    </a>
+    <a class="tab" href="message.html" data-tab="message" style="position:relative">
+      <span class="dot" style="top:-2px;right:14px"></span>
+      <svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18.5 10.2c0 3.6-3.4 6.5-7.5 6.5-.9 0-1.7-.1-2.5-.4L5 18l1-2.9c-1.2-1.1-2-2.7-2-4.6 0-3.6 3.4-6.5 7.5-6.5s7 2.9 7 6.2z"/></svg>
+      消息
+    </a>
+    <a class="tab" href="me.html" data-tab="me">
+      <svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="8" r="3.5"/><path d="M4.5 18.5c.9-3.2 3.4-5 6.5-5s5.6 1.8 6.5 5"/></svg>
+      我的
+    </a>
+  </nav>
+
+  <div class="toast"></div>
+</div>
+</body>
+</html>

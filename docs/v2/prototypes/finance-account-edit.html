@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>编辑账户 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-content { padding-bottom: 24px; }
+
+  .fx-meta { display: flex; align-items: center; gap: 8px; margin: 2px 2px 10px; }
+  .fx-meta .tiny { margin-left: auto; }
+
+  .fx-bal {
+    padding: 16px 16px 14px;
+    border-radius: var(--radius-xl);
+    background: linear-gradient(135deg, var(--brand-soft) 0%, var(--surface) 72%);
+    border: 1px solid var(--brand-soft-border);
+  }
+  .fx-bal-k { display: flex; align-items: center; gap: 6px; font-size: var(--fs-13); color: var(--text-2); }
+  .fx-bal-k .tag { margin-left: auto; }
+  .fx-bal-v { display: block; margin-top: 4px; font-size: var(--fs-24); font-weight: 700; }
+  .fx-bal-sub { display: block; margin-top: 6px; font-size: var(--fs-12); color: var(--text-2); line-height: var(--lh-normal); }
+  .fx-bal .btn { margin-top: 12px; }
+
+  .fx-type-row .chip { flex: 1; justify-content: center; }
+
+  .fx-switch-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .fx-switch-text { flex: 1; min-width: 0; }
+  .fx-switch-k { display: block; font-size: var(--fs-15); font-weight: 600; }
+  .fx-switch-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
+
+  .fx-sub { opacity: .62; }
+  .fx-sub-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px;
+    font-size: var(--fs-14);
+  }
+  .fx-sub-row + .fx-sub-row { border-top: 1px solid var(--border); }
+  .fx-sub-row .fx-sub-k { flex: 1; min-width: 0; }
+  .fx-sub-row .num { color: var(--text-2); }
+  .fx-sub-note { margin-top: 6px; line-height: var(--lh-normal); }
+
+  .fx-blocked {
+    display: none; align-items: flex-start; gap: 8px;
+    margin-top: 14px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--danger-soft); color: var(--danger);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-blocked svg { flex: none; margin-top: 1px; }
+  .fx-blocked b { display: block; font-size: var(--fs-13); margin-bottom: 3px; }
+  .fx-blocked .btn { display: flex; width: fit-content; margin-top: 10px; color: var(--danger); border-color: var(--danger); background: var(--surface); }
+  body[data-state="archive-blocked"] .fx-blocked { display: flex; }
+
+  .fx-danger-row .li-text { color: var(--danger); }
+  .fx-danger-row .li-sub { color: var(--danger); opacity: .8; }
+
+  .fx-foot {
+    flex: none;
+    padding: 10px 16px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+
+  .fx-conflict-kv { margin-top: 14px; border-radius: var(--radius-md); background: var(--surface-2); padding: 4px 12px; }
+  .fx-conflict-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 0; font-size: var(--fs-13); }
+  .fx-conflict-row + .fx-conflict-row { border-top: 1px solid var(--border); }
+  .fx-conflict-row .num { color: var(--text-2); }
+  .fx-conflict-row.is-new .num { color: var(--brand-text); font-weight: 700; }
+</style>
+</head>
+<body data-screen="F11 编辑账户" data-states="default,conflict,archive-blocked">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <a class="icon-btn" href="finance-account.html" aria-label="返回账户列表"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回账户列表；未保存的改动直接丢弃。余额在返回时按最新流水重算，不由本页改数">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </a>
+    </div>
+    <div class="nav-title">编辑账户</div>
+    <div class="nav-right"></div>
+  </div>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 保存后排队，余额以联网后为准
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-meta">
+      <span class="tag">版本 7</span>
+      <span class="tiny">上次由妈妈修改 · 10 月 12 日</span>
+    </div>
+
+    <section class="fx-bal"
+      data-hot="②" data-hot-name="余额说明" data-hot-pos="bottom-right"
+      data-hot-label="余额在本页只读：由流水累计得出，不提供直接改数；要调整只能记一笔调整流水或做一笔转账，避免账户合计与净资产长期不一致">
+      <div class="fx-bal-k">
+        当前余额
+        <span class="tag is-brand">默认账户</span>
+      </div>
+      <span class="amount fx-bal-v">¥126,400.00</span>
+      <span class="fx-bal-sub">余额由流水决定，不能直接改；需要调整请记一笔调整流水。</span>
+      <button class="btn btn-secondary btn-sm" type="button" data-toast="调整流水在记一笔里选类型「调整」；转账会同时生成转出与转入两条配对流水">
+        记一笔调整流水
+      </button>
+    </section>
+
+    <div class="field" style="margin-top:16px">
+      <label class="field-label" for="fx-name">名称</label>
+      <input class="input" id="fx-name" type="text" maxlength="24" value="招商银行储蓄卡" autocomplete="off">
+      <div class="help">改名不影响流水与报表，历史流水按账户 id 归属，不按名称。</div>
+    </div>
+
+    <div class="field">
+      <span class="field-label">类型</span>
+      <div class="chip-row" id="fx-type-row">
+        <button class="chip" type="button" aria-pressed="false" data-type="cash">现金</button>
+        <button class="chip" type="button" aria-pressed="true" data-type="debit">储蓄卡</button>
+        <button class="chip" type="button" aria-pressed="false" data-type="credit">信用卡</button>
+        <button class="chip" type="button" aria-pressed="false" data-type="other">其他</button>
+      </div>
+      <div class="help">改类型只影响之后的记账归类与统计分组，不回改历史流水。</div>
+    </div>
+
+    <div class="field">
+      <span class="field-label">默认账户</span>
+      <div class="fx-switch-row"
+        data-hot="③" data-hot-name="默认账户" data-hot-pos="outer-bottom-right"
+        data-hot-label="每家庭至多一个默认账户；在这里打开会把原默认账户自动取消。关掉后记账默认账户留空，记一笔时需手选，不影响已有流水">
+        <span class="fx-switch-text">
+          <span class="fx-switch-k">设为记账默认账户</span>
+          <span class="fx-switch-sub">同一家庭只能有一个，开启后原默认账户自动取消</span>
+        </span>
+        <label class="switch" aria-label="设为默认账户">
+          <input type="checkbox" id="fx-default" checked>
+          <span class="track"></span><span class="thumb"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="fx-note">备注</label>
+      <textarea class="textarea" id="fx-note" maxlength="120" rows="2">工资代发行，尾号 4021。</textarea>
+    </div>
+
+    <div class="section-title">
+      <span>信用卡</span>
+      <span class="tiny">②（M2）</span>
+    </div>
+    <div class="list fx-sub">
+      <div class="fx-sub-row">
+        <span class="fx-sub-k">账单日</span>
+        <span class="num">每月 5 日</span>
+        <span class="tag is-warn">②（M2）</span>
+      </div>
+      <div class="fx-sub-row">
+        <span class="fx-sub-k">还款日</span>
+        <span class="num">每月 23 日</span>
+        <span class="tag is-warn">②（M2）</span>
+      </div>
+    </div>
+    <p class="tiny fx-sub-note">账单日与还款日 ②（M2）开放编辑；P1 只读展示，用于列表里的到期提示。</p>
+
+    <div class="section-title"><span>归档</span></div>
+    <div class="list">
+      <button class="list-item fx-danger-row" type="button" id="fx-archive"
+        data-hot="⑤" data-hot-name="归档账户" data-hot-pos="bottom-right"
+        data-hot-label="余额非 0 时服务端拒绝归档，页面给「先转账或记为 0」的说明，不伪造可归档；余额为 0 才走归档页的确认流程">
+        <span class="li-text">归档账户<span class="li-sub">余额需为 0；归档后不在默认账户位与汇总，历史流水仍计入报表</span></span>
+        <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+      </button>
+    </div>
+
+    <div class="fx-blocked" role="alert">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
+      <span>
+        <b>无法归档：账户余额 ¥126,400.00 不为 0</b>
+        请先把余额转到其他账户，或记一笔调整流水把余额调为 0。归档后账户不再出现在记账选择器与账户汇总，但历史流水仍计入报表与净资产。
+        <button class="btn btn-secondary btn-sm" type="button" data-toast="转账在记一笔里选「转账」，会生成转出与转入两条配对流水；调整流水选类型「调整」">去转账</button>
+      </span>
+    </div>
+
+    <p class="tiny" style="margin-top:14px;line-height:var(--lh-normal)">归档可逆：恢复后账户重新出现在记账选择器里，历史流水与余额立即生效，不会重复累计。</p>
+  </div>
+
+  <div class="fx-foot">
+    <button class="btn btn-primary btn-block" type="button" id="fx-save"
+      data-hot="④" data-hot-name="保存修改" data-hot-pos="outer-bottom-right"
+      data-hot-label="保存带 version=7 提交；服务端返回 409 时弹冲突层，给「查看最新 / 覆盖保存」两条出路，不静默覆盖家人的修改">
+      保存修改
+    </button>
+  </div>
+
+  <!-- 409 冲突层 -->
+  <div class="sheet-mask" id="sheet-conflict" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>这条记录已被修改</h3>
+      <p class="sheet-sub">家人刚刚改过这个账户，你的修改还没提交。可以查看最新内容，或用你的版本覆盖。</p>
+      <div class="fx-conflict-kv">
+        <div class="fx-conflict-row">
+          <span>你编辑的版本</span>
+          <span class="num">版本 7 · 名称「招商银行储蓄卡」</span>
+        </div>
+        <div class="fx-conflict-row is-new">
+          <span>服务端最新</span>
+          <span class="num">版本 8 · 名称「招行工资卡」</span>
+        </div>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" data-go="finance-account-edit.html"
+          data-hot="⑥" data-hot-name="冲突处理" data-hot-pos="outer-bottom-right"
+          data-hot-label="两条出路：查看最新会载入版本 8 并丢弃你的草稿；覆盖保存会以你的内容写成版本 9。余额不在冲突比较范围内，它只由流水决定">
+          查看最新
+        </button>
+        <button class="btn btn-secondary btn-block" type="button" id="fx-overwrite">覆盖保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var fxState = new URLSearchParams(location.search).get('state') || 'default';
+  var typeBtns = Array.prototype.slice.call(document.querySelectorAll('[data-type]'));
+
+  typeBtns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      typeBtns.forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+      window.HC.toast(b.getAttribute('data-type') === 'credit'
+        ? '改为信用卡后余额按待还展示，账单日 ②（M2）开放'
+        : '类型已改为「' + b.textContent + '」，历史流水归属不变');
+    });
+  });
+
+  document.getElementById('fx-default').addEventListener('change', function () {
+    window.HC.toast(this.checked
+      ? '已设为记账默认账户，原默认账户自动取消'
+      : '已取消默认；下次记一笔时需要手选账户');
+  });
+
+  document.getElementById('fx-archive').addEventListener('click', function () {
+    document.body.setAttribute('data-state', 'archive-blocked');
+    window.HC.toast('余额不为 0，无法归档；请先转账或记为 0');
+  });
+
+  document.getElementById('fx-overwrite').addEventListener('click', function () {
+    window.HC.closeSheet(document.getElementById('sheet-conflict'));
+    window.HC.toast('已用你的版本覆盖，生成版本 9');
+    setTimeout(function () { location.href = 'finance-account.html'; }, 1000);
+  });
+
+  document.addEventListener('DOMContentLoaded', function () {
+    if (fxState === 'conflict') window.HC.openSheet('sheet-conflict');
+    if (fxState === 'archive-blocked') {
+      setTimeout(function () {
+        var blocked = document.querySelector('.fx-blocked');
+        var scroller = document.querySelector('.content');
+        if (blocked && scroller) scroller.scrollTop = blocked.offsetTop - 120;
+      }, 60);
+    }
+  });
+
+  document.getElementById('fx-save').addEventListener('click', function () {
+    if (fxState === 'conflict') {
+      window.HC.openSheet('sheet-conflict');
+      return;
+    }
+    window.HC.toast('账户信息已保存');
+    setTimeout(function () { location.href = 'finance-account.html'; }, 1000);
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>目标详情 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-content { padding-bottom: 16px; }
+
+  .fx-edit {
+    height: 36px; padding: 0 2px;
+    border: 0; background: none;
+    font-family: inherit; font-size: var(--fs-15); font-weight: 600;
+    color: var(--brand-text); cursor: pointer;
+  }
+  .fx-edit:hover { color: var(--brand-hover); }
+  body[data-state="archived"] .fx-edit { display: none; }
+
+  .fx-legal {
+    display: flex; align-items: flex-start; gap: 8px;
+    margin: 4px 0 10px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2); color: var(--text-2);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-legal svg { flex: none; margin-top: 1px; color: var(--text-3); }
+  .fx-legal b { color: var(--text); font-weight: 600; }
+
+  .fx-banner {
+    display: none; align-items: flex-start; gap: 8px;
+    margin-bottom: 10px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-banner svg { flex: none; margin-top: 1px; }
+  .fx-banner b { display: block; font-size: var(--fs-13); margin-bottom: 2px; }
+  .fx-banner-ach { background: var(--success-soft); color: var(--success); }
+  .fx-banner-arch { background: var(--warning-soft); color: var(--warning); }
+  body[data-state="achieved"] .fx-banner-ach { display: flex; }
+  body[data-state="archived"] .fx-banner-arch { display: flex; }
+
+  .fx-hero {
+    margin-top: 2px; padding: 20px 18px 16px;
+    border-radius: var(--radius-xl);
+    background: linear-gradient(135deg, var(--brand-soft) 0%, var(--surface) 70%);
+    border: 1px solid var(--brand-soft-border);
+  }
+  .fx-ring { position: relative; width: 132px; height: 132px; margin: 0 auto; }
+  .fx-ring svg { display: block; }
+  .fx-ring-track { fill: none; stroke: var(--surface-2); stroke-width: 9; }
+  .fx-ring-fill {
+    fill: none; stroke: var(--brand); stroke-width: 9; stroke-linecap: round;
+    stroke-dasharray: 226 358;
+    transform: rotate(-90deg); transform-origin: 66px 66px;
+  }
+  body[data-state="achieved"] .fx-ring-fill { stroke: var(--success); stroke-dasharray: 358 358; }
+  body[data-state="archived"] .fx-ring-fill { stroke: var(--text-3); }
+  .fx-ring-c {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  }
+  .fx-pct { font-family: var(--font-num); font-size: var(--fs-24); font-weight: 700; line-height: 1; }
+  .fx-pct-k { font-size: var(--fs-11); color: var(--text-3); }
+
+  .fx-pct-def { display: block; }
+  .fx-pct-ach { display: none; color: var(--success); }
+  body[data-state="achieved"] .fx-pct-def { display: none; }
+  body[data-state="achieved"] .fx-pct-ach { display: block; }
+
+  .fx-name-line { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+  .fx-name { font-size: var(--fs-20); font-weight: 700; letter-spacing: .01em; }
+  .fx-tag-def, .fx-tag-ach, .fx-tag-arch { display: none; }
+  .fx-tag-def { display: inline-flex; }
+  body[data-state="achieved"] .fx-tag-def,
+  body[data-state="archived"] .fx-tag-def { display: none; }
+  body[data-state="achieved"] .fx-tag-ach { display: inline-flex; }
+  body[data-state="archived"] .fx-tag-arch { display: inline-flex; }
+
+  .fx-target-line { margin-top: 4px; text-align: center; font-size: var(--fs-12); color: var(--text-3); }
+  .fx-target-line b { color: var(--text); font-weight: 600; }
+
+  .fx-split {
+    display: flex; align-items: stretch; gap: 10px;
+    margin-top: 14px; padding-top: 12px;
+    border-top: 1px solid var(--brand-soft-border);
+  }
+  .fx-sp { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .fx-sp-k { font-size: var(--fs-11); color: var(--text-3); }
+  .fx-sp-v { font-size: var(--fs-14); font-weight: 700; }
+  .fx-sp-v.is-ok { color: var(--success); }
+  .fx-sp-v.is-left { color: var(--brand-text); }
+
+  .fx-v-ach { display: none; }
+  body[data-state="achieved"] .fx-v-ach { display: inline; }
+  body[data-state="achieved"] .fx-v-def { display: none; }
+  .fx-v-def { display: inline; }
+
+  .fx-hero-note { margin-top: 10px; font-size: var(--fs-11); color: var(--text-3); text-align: center; line-height: var(--lh-normal); }
+
+  .fx-sec {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    margin: 20px 2px 8px;
+    font-size: var(--fs-13); font-weight: 700; color: var(--text-2);
+  }
+  .fx-sec .tiny { font-weight: 500; }
+
+  .fx-rule {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 12px 14px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .fx-rule-ic {
+    width: 32px; height: 32px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    background: var(--brand-soft); color: var(--brand-text);
+  }
+  .fx-rule-body { flex: 1; min-width: 0; }
+  .fx-rule-k { display: block; font-size: var(--fs-14); font-weight: 600; }
+  .fx-rule-sub { display: block; margin-top: 2px; font-size: var(--fs-11); color: var(--text-3); line-height: var(--lh-normal); }
+  .fx-rule-state {
+    flex: none; font-size: var(--fs-11); font-weight: 700; color: var(--success);
+  }
+  .fx-rule-state-off { display: none; color: var(--text-3); }
+  body[data-state="achieved"] .fx-rule-state-on,
+  body[data-state="archived"] .fx-rule-state-on { display: none; }
+  body[data-state="achieved"] .fx-rule-state-off,
+  body[data-state="archived"] .fx-rule-state-off { display: inline; }
+
+  .fx-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .fx-rec {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 14px;
+    font-size: var(--fs-13);
+  }
+  .fx-rec + .fx-rec { border-top: 1px solid var(--border); }
+  .fx-rec-ic {
+    width: 28px; height: 28px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 9px;
+    background: var(--surface-2); color: var(--text-2);
+  }
+  .fx-rec-body { flex: 1; min-width: 0; }
+  .fx-rec-k { display: block; font-size: var(--fs-13); font-weight: 600; }
+  .fx-rec-sub { display: block; margin-top: 1px; font-size: var(--fs-11); color: var(--text-3); }
+  .fx-rec-amt { flex: none; font-size: var(--fs-13); color: var(--success); }
+
+  .fx-rec-ach { display: none; background: var(--success-soft); }
+  body[data-state="achieved"] .fx-rec-ach { display: flex; }
+
+  .fx-rec-note { margin: 8px 2px 0; line-height: var(--lh-normal); }
+
+  .fx-foot {
+    flex: none;
+    display: flex; gap: 10px;
+    padding: 10px 16px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+  .fx-foot-dep { flex: 1.8; }
+  .fx-foot-arch { flex: 1; }
+  body[data-state="archived"] .fx-foot-dep,
+  body[data-state="archived"] .fx-foot-arch { display: none; }
+  .fx-foot-restore { display: none; width: 100%; }
+  body[data-state="archived"] .fx-foot-restore { display: inline-flex; }
+
+  .fx-sh-field { margin-top: 10px; }
+  .fx-sh-field .input { height: 44px; }
+  .fx-sh-acc {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 10px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-family: inherit; text-align: left; color: var(--text);
+    font-size: var(--fs-13); cursor: pointer;
+    width: 100%;
+  }
+  .fx-sh-acc:hover { border-color: var(--border-strong); }
+  .fx-sh-acc-body { flex: 1; min-width: 0; }
+  .fx-sh-acc-k { display: block; font-size: var(--fs-11); color: var(--text-3); }
+  .fx-sh-acc-v { display: block; margin-top: 1px; font-weight: 600; }
+  .fx-sh-acc .chevron { flex: none; color: var(--text-3); }
+  .fx-sh-sum {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    margin-top: 12px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    font-size: var(--fs-12); color: var(--text-2);
+  }
+  .fx-sh-sum b { color: var(--text); font-weight: 600; }
+  .fx-sh-legal { margin-top: 10px; font-size: var(--fs-11); color: var(--text-3); line-height: var(--lh-normal); }
+  .fx-ed-rule {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: var(--fs-12); color: var(--text-2);
+  }
+  .fx-ed-rule .switch { margin-right: 2px; }
+  .fx-ed-num {
+    width: 56px; height: 32px;
+    padding: 0 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface); color: var(--text);
+    font-family: var(--font-num); font-size: var(--fs-12);
+    outline: none;
+  }
+  .fx-ed-num.is-wide { width: 76px; }
+</style>
+</head>
+<body data-screen="F35 目标详情" data-states="default,deposit-sheet,achieved,archived">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <header class="navbar">
+    <div class="nav-left">
+      <a class="icon-btn" href="finance-goal.html" aria-label="返回储蓄目标"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回储蓄目标列表并回到进入前的位置；从日历的目标到期提醒深链进入时返回进入前的页面，不强制落回列表">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </a>
+    </div>
+    <div class="nav-title">目标详情</div>
+    <div class="nav-right">
+      <button class="fx-edit" type="button" data-sheet-open="sheet-edit"
+        data-hot="⑥" data-hot-name="编辑" data-hot-pos="outer-top-right"
+        data-hot-label="打开编辑弹层改名称、目标金额、期限与自动存入规则；改动不重写已生成的存入记录与流水，目标金额不能改到低于已存金额">
+        编辑</button>
+    </div>
+  </header>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 已存金额显示本机缓存
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-legal">
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
+      <span><b>自动存入仅在记账层面记录，不会真实划转资金。</b>到日只生成一条记账记录，不接银行或支付通道，也不会自动扣款。</span>
+    </div>
+
+    <div class="fx-banner fx-banner-ach">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M6.4 10.3l2.4 2.4 4.8-4.9"/></svg>
+      <span><b>已达成 · 10 月 21 日</b>目标金额已存满，自动存入已自动停用；记录保留，不再生成新的记账记录。</span>
+    </div>
+
+    <div class="fx-banner fx-banner-arch">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="4" rx="1.6"/><path d="M4.4 8v7.4a1.6 1.6 0 0 0 1.6 1.6h8a1.6 1.6 0 0 0 1.6-1.6V8"/><path d="M8 11.4h4"/></svg>
+      <span><b>已归档 · 10 月 20 日</b>不再出现在目标列表与首页财务格；存入记录与关联流水全部保留，自动存入已暂停，可随时恢复。</span>
+    </div>
+
+    <section class="fx-hero"
+      data-hot="②" data-hot-name="进度大环与三个数" data-hot-pos="bottom-right"
+      data-hot-label="大环按「已存 ÷ 目标」算；已存、剩余、预计达成三个数同源取服务端，预计达成日按当前节奏与自动存入金额估算，仅供参照；已达成时环满格、剩余为 0，归档只改可见性不改数字">
+      <div class="fx-ring" role="img" aria-label="三亚亲子旅行已存 63%，已达成时 100%">
+        <svg width="132" height="132" viewBox="0 0 132 132" aria-hidden="true">
+          <circle class="fx-ring-track" cx="66" cy="66" r="57"/>
+          <circle class="fx-ring-fill" cx="66" cy="66" r="57"/>
+        </svg>
+        <span class="fx-ring-c">
+          <b class="fx-pct"><span class="fx-pct-def">63%</span><span class="fx-pct-ach">100%</span></b>
+          <span class="fx-pct-k">已存</span>
+        </span>
+      </div>
+
+      <div class="fx-name-line">
+        <span class="fx-name">三亚亲子旅行</span>
+        <span class="tag fx-tag-def">自动存入</span>
+        <span class="tag fx-tag-ach">已达成</span>
+        <span class="tag fx-tag-arch">已归档</span>
+      </div>
+      <div class="fx-target-line">目标 <b class="amount">¥20,000.00</b> · 目标日期 <b class="num">2027 年 3 月 31 日</b></div>
+
+      <div class="fx-split">
+        <div class="fx-sp">
+          <span class="fx-sp-k">已存</span>
+          <span class="amount fx-sp-v is-ok">
+            <span class="fx-v-def">¥12,600.00</span>
+            <span class="fx-v-ach">¥20,000.00</span>
+          </span>
+        </div>
+        <div class="fx-sp">
+          <span class="fx-sp-k">剩余</span>
+          <span class="amount fx-sp-v is-left">
+            <span class="fx-v-def">¥7,400.00</span>
+            <span class="fx-v-ach">¥0.00</span>
+          </span>
+        </div>
+        <div class="fx-sp">
+          <span class="fx-sp-k">预计达成</span>
+          <span class="fx-sp-v">
+            <span class="fx-v-def">2027 年 3 月</span>
+            <span class="fx-v-ach">10 月 21 日</span>
+          </span>
+        </div>
+      </div>
+      <p class="fx-hero-note">预计达成按「已存 + 每月自动存入 ¥1,500.00」估算，仅供参照；实际以每次存入为准。</p>
+    </section>
+
+    <div class="fx-sec"><span>自动存入规则</span><span class="tiny">仅记账层面</span></div>
+    <div class="fx-rule">
+      <span class="fx-rule-ic">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M16 10a6 6 0 1 1-1.8-4.3"/><path d="M16 4v3.6h-3.6"/></svg>
+      </span>
+      <span class="fx-rule-body">
+        <span class="fx-rule-k">每月 1 日存入 ¥1,500.00</span>
+        <span class="fx-rule-sub">记到招商银行储蓄卡 · 下次 11 月 1 日 · 只生成记账记录，不真实划转；改规则在「编辑」里</span>
+      </span>
+      <span class="fx-rule-state">
+        <span class="fx-rule-state-on">进行中</span>
+        <span class="fx-rule-state-off">已停用</span>
+      </span>
+    </div>
+
+    <div class="fx-sec">
+      <span>存入记录</span>
+      <span class="tiny"><span class="fx-v-def">共 12 笔 · 最近 10 月 20 日</span><span class="fx-v-ach">共 13 笔 · 最近 10 月 21 日</span></span>
+    </div>
+    <div class="fx-list"
+      data-hot="③" data-hot-name="存入记录" data-hot-pos="bottom-right"
+      data-hot-label="按时间倒序：日期、来源（自动 / 手动）、金额、账户；记录只读，不能在这里改金额或删除，要改对应流水请去流水页；自动存入的来源标「自动」">
+      <div class="fx-rec fx-rec-ach">
+        <span class="fx-rec-ic">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
+        </span>
+        <span class="fx-rec-body">
+          <span class="fx-rec-k">补齐目标 · 手动存入</span>
+          <span class="fx-rec-sub num">10 月 21 日 · 招商银行储蓄卡</span>
+        </span>
+        <span class="amount fx-rec-amt">+¥7,400.00</span>
+      </div>
+      <div class="fx-rec">
+        <span class="fx-rec-ic">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16.5h12"/><path d="M4 12.5 12.6 3.9a1.6 1.6 0 0 1 2.3 2.3L6.3 14.8 3.5 16z"/></svg>
+        </span>
+        <span class="fx-rec-body">
+          <span class="fx-rec-k">手动存入</span>
+          <span class="fx-rec-sub num">10 月 20 日 · 招商银行储蓄卡</span>
+        </span>
+        <span class="amount fx-rec-amt">+¥2,000.00</span>
+      </div>
+      <div class="fx-rec">
+        <span class="fx-rec-ic">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M16 10a6 6 0 1 1-1.8-4.3"/><path d="M16 4v3.6h-3.6"/></svg>
+        </span>
+        <span class="fx-rec-body">
+          <span class="fx-rec-k">自动存入</span>
+          <span class="fx-rec-sub num">10 月 1 日 · 招商银行储蓄卡</span>
+        </span>
+        <span class="amount fx-rec-amt">+¥1,500.00</span>
+      </div>
+      <div class="fx-rec">
+        <span class="fx-rec-ic">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M16 10a6 6 0 1 1-1.8-4.3"/><path d="M16 4v3.6h-3.6"/></svg>
+        </span>
+        <span class="fx-rec-body">
+          <span class="fx-rec-k">自动存入</span>
+          <span class="fx-rec-sub num">9 月 1 日 · 招商银行储蓄卡</span>
+        </span>
+        <span class="amount fx-rec-amt">+¥1,500.00</span>
+      </div>
+      <div class="fx-rec">
+        <span class="fx-rec-ic">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M16 10a6 6 0 1 1-1.8-4.3"/><path d="M16 4v3.6h-3.6"/></svg>
+        </span>
+        <span class="fx-rec-body">
+          <span class="fx-rec-k">自动存入</span>
+          <span class="fx-rec-sub num">8 月 1 日 · 招商银行储蓄卡</span>
+        </span>
+        <span class="amount fx-rec-amt">+¥1,500.00</span>
+      </div>
+    </div>
+    <p class="fx-rec-note tiny">存入记录各对应一条流水，金额与账户以流水为准；删改流水不会回退目标进度，请在本页用「存入一笔」纠正。</p>
+  </div>
+
+  <div class="fx-foot"
+    data-hot="⑦" data-hot-name="归档 / 恢复" data-hot-pos="outer-bottom-right"
+    data-hot-label="归档先弹确认层：归档后从目标列表移除，存入记录与流水全部保留，自动存入暂停，可恢复；已归档时原位置改为「恢复目标」，恢复后重新出现在列表，不补发归档期间的自动存入">
+    <button class="btn btn-secondary fx-foot-arch" type="button" data-sheet-open="sheet-archive" id="fx-archive-btn">归档</button>
+    <button class="btn btn-primary fx-foot-dep" type="button" data-sheet-open="sheet-deposit" id="fx-deposit-btn"
+      data-hot="④" data-hot-name="存入一笔" data-hot-pos="outer-bottom-right"
+      data-hot-label="打开存入弹层（金额、日期、账户）；不在这里直接改已存金额。已达成或已归档时按钮置灰，不再接受存入">
+      存入一笔
+    </button>
+    <button class="btn btn-primary fx-foot-restore" type="button" id="fx-restore-btn">恢复目标</button>
+  </div>
+
+  <!-- 存入一笔 -->
+  <div class="sheet-mask" id="sheet-deposit" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>存入一笔</h3>
+      <p class="sheet-sub">存入会在账本里生成一条记录并增加目标的已存金额；金额可小于剩余，差额留在目标上。不对接真实资金通道。</p>
+      <div class="fx-sh-sum">
+        <span>当前已存 / 目标</span>
+        <b class="num">¥12,600.00 / ¥20,000.00</b>
+      </div>
+      <div class="fx-sh-field">
+        <label class="field-label" for="fx-dep-amt">金额</label>
+        <input class="input num" id="fx-dep-amt" type="text" inputmode="decimal" value="1500.00">
+      </div>
+      <div class="fx-sh-field">
+        <label class="field-label" for="fx-dep-date">日期</label>
+        <input class="input num" id="fx-dep-date" type="date" value="2026-10-29">
+      </div>
+      <button class="fx-sh-acc" type="button" data-toast="选择账户：只列未归档账户；这条记录会记到所选账户">
+        <span class="fx-sh-acc-body">
+          <span class="fx-sh-acc-k">账户</span>
+          <span class="fx-sh-acc-v num">招商银行储蓄卡 · 尾号 6882</span>
+        </span>
+        <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+      </button>
+      <p class="fx-sh-legal">存入只做记账：不会从银行扣款，也不改变目标之外任何账户的真实资金。</p>
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" id="fx-confirm-deposit"
+          data-hot="⑤" data-hot-name="确认存入" data-hot-pos="outer-bottom-right"
+          data-hot-label="校验金额大于 0 且不超过剩余（超出时提示改为「达成」）；确认后已存增加、记录置顶，并生成一条流水；重复提交按幂等键只记一次">
+          确认存入
+        </button>
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 编辑目标 -->
+  <div class="sheet-mask" id="sheet-edit" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>编辑目标</h3>
+      <p class="sheet-sub">只改目标本身，不重写已生成的存入记录与流水；目标金额不能改到低于已存金额。</p>
+      <div class="fx-sh-field">
+        <label class="field-label" for="fx-ed-name">名称</label>
+        <input class="input" id="fx-ed-name" type="text" maxlength="20" value="三亚亲子旅行">
+      </div>
+      <div class="fx-sh-field">
+        <label class="field-label" for="fx-ed-target">目标金额</label>
+        <input class="input num" id="fx-ed-target" type="text" inputmode="decimal" value="20000.00">
+      </div>
+      <div class="fx-sh-field">
+        <label class="field-label" for="fx-ed-deadline">期限</label>
+        <input class="input num" id="fx-ed-deadline" type="date" value="2027-03-31">
+      </div>
+      <div class="fx-sh-field">
+        <span class="field-label">自动存入</span>
+        <div class="fx-ed-rule">
+          <label class="switch" aria-label="是否开启自动存入">
+            <input type="checkbox" checked>
+            <span class="track"></span><span class="thumb"></span>
+          </label>
+          <span>每月</span>
+          <input class="fx-ed-num" type="number" min="1" max="28" value="1" inputmode="numeric" aria-label="每月存入日">
+          <span>日存入</span>
+          <input class="fx-ed-num is-wide" type="text" inputmode="decimal" value="1500.00" aria-label="每次存入金额">
+          <span>元</span>
+        </div>
+      </div>
+      <p class="fx-sh-legal">改规则只影响之后月份，不补发过去月份；自动存入仅在记账层面记录，不会真实划转资金。</p>
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" data-sheet-close data-toast="目标已更新，已存金额与记录不变">保存修改</button>
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 归档确认 -->
+  <div class="sheet-mask" id="sheet-archive" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>归档这个目标？</h3>
+      <p class="sheet-sub">归档后不再出现在目标列表与首页财务格，自动存入暂停；已存金额、存入记录与关联流水全部保留，可随时恢复。归档不退款、不改余额。</p>
+      <div class="fx-sh-sum">
+        <span>三亚亲子旅行</span>
+        <b class="num">已存 ¥12,600.00 / ¥20,000.00</b>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-danger btn-block" type="button" id="fx-confirm-archive">归档目标</button>
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var fxState = new URLSearchParams(location.search).get('state') || 'default';
+  var depositBtn = document.getElementById('fx-deposit-btn');
+  var archiveBtn = document.getElementById('fx-archive-btn');
+  var restoreBtn = document.getElementById('fx-restore-btn');
+
+  if (fxState === 'achieved' || fxState === 'archived') {
+    depositBtn.disabled = true;
+    depositBtn.textContent = fxState === 'archived' ? '已归档' : '已达成';
+    depositBtn.removeAttribute('data-hot');
+  }
+
+  if (fxState === 'archived') {
+    archiveBtn.removeAttribute('data-sheet-open');
+  }
+
+  document.getElementById('fx-confirm-deposit').addEventListener('click', function () {
+    var amt = document.getElementById('fx-dep-amt');
+    if (!amt.value.trim() || !(Number(amt.value.replace(/,/g, '')) > 0)) {
+      amt.classList.add('is-error');
+      amt.focus();
+      return;
+    }
+    window.HC.closeSheet(document.getElementById('sheet-deposit'));
+    window.HC.toast('已存入，记录已置顶并生成一条流水');
+  });
+
+  document.getElementById('fx-confirm-archive').addEventListener('click', function () {
+    location.href = 'finance-goal-detail.html?state=archived';
+  });
+
+  restoreBtn.addEventListener('click', function () {
+    location.href = 'finance-goal-detail.html';
+  });
+
+  document.addEventListener('DOMContentLoaded', function () {
+    if (fxState === 'deposit-sheet') window.HC.openSheet('sheet-deposit');
+  });
+</script>
+</body>
+</html>

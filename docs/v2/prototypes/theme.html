@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>主题与组件规范 · 家立方</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  body { display: block; padding: 0 32px 96px; }
+  .doc { max-width: 1080px; margin: 0 auto; }
+  .doc-head {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px;
+    margin: 0 -32px; padding: 14px 32px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .doc-head .brand-line { display: flex; align-items: center; gap: 12px; }
+  .doc-head .mark {
+    width: 34px; height: 34px; border-radius: 10px;
+    background: var(--brand); color: var(--on-brand);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .doc-head h1 { font-size: var(--fs-15); font-weight: 700; }
+  .doc-head .sub { font-size: var(--fs-12); color: var(--text-3); }
+  .theme-switch { display: flex; gap: 6px; }
+  .theme-switch button {
+    font-family: inherit; font-size: var(--fs-12);
+    padding: 7px 12px; border-radius: var(--radius-pill);
+    border: 1px solid var(--border); background: var(--surface); color: var(--text-2);
+    cursor: pointer;
+  }
+  .theme-switch button[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  .sec { margin-top: 56px; }
+  .sec > h2 {
+    font-size: var(--fs-24); font-weight: 700; letter-spacing: .01em;
+    padding-bottom: 12px; border-bottom: 1px solid var(--border); margin-bottom: 8px;
+  }
+  .sec > .intro { font-size: var(--fs-13); color: var(--text-2); line-height: var(--lh-loose); margin: 12px 0 24px; max-width: 760px; }
+  .sec h3 { font-size: var(--fs-15); font-weight: 700; margin: 28px 0 12px; }
+  .sec h3 .hint { font-weight: 400; font-size: var(--fs-12); color: var(--text-3); margin-left: 8px; }
+
+  .hero-brand {
+    margin-top: 24px; padding: 32px;
+    border-radius: var(--radius-xl);
+    background: linear-gradient(135deg, var(--brand-soft) 0%, var(--surface) 58%);
+    border: 1px solid var(--brand-soft-border);
+    display: flex; align-items: center; gap: 24px;
+  }
+  .hero-brand .logo-xl {
+    width: 88px; height: 88px; border-radius: 26px; flex: none;
+    background: var(--brand); color: var(--on-brand);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--shadow-3);
+  }
+  .hero-brand .name { font-size: var(--fs-30); font-weight: 700; letter-spacing: .02em; }
+  .hero-brand .tag { margin-top: 6px; font-size: var(--fs-13); color: var(--text-2); }
+  .hero-brand .rules { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    font-size: var(--fs-12); padding: 5px 10px; border-radius: var(--radius-pill);
+    background: var(--surface); border: 1px solid var(--border); color: var(--text-2);
+  }
+
+  .swatches { display: grid; gap: 10px; }
+  .swatch-row { display: grid; grid-template-columns: repeat(10, 1fr); gap: 8px; }
+  .swatch { border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border); background: var(--surface); }
+  .swatch .chipc { height: 54px; }
+  .swatch .meta { padding: 7px 8px; font-size: 10px; line-height: 1.5; color: var(--text-3); font-family: var(--font-num); }
+  .swatch .meta b { display: block; color: var(--text-2); font-family: var(--font-sans); font-size: 11px; }
+  .swatch-row.semantic { grid-template-columns: repeat(4, 1fr); }
+
+  .type-row { display: flex; align-items: baseline; gap: 20px; padding: 10px 0; border-bottom: 1px dashed var(--border); }
+  .type-row .tag { width: 130px; flex: none; font-size: var(--fs-12); color: var(--text-3); font-family: var(--font-num); }
+
+  .scale-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .scale-card { padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--surface); font-size: var(--fs-12); color: var(--text-2); }
+  .scale-card.is-plain { background: var(--bg); }
+  .scale-card .demo-block { height: 26px; margin-bottom: 10px; background: var(--brand-soft); border: 1px solid var(--brand-soft-border); }
+  .space-bar { background: var(--brand-soft); border: 1px solid var(--brand-soft-border); border-radius: 3px; margin-bottom: 10px; }
+  .radius-box { width: 60px; height: 60px; background: var(--brand-soft); border: 1px solid var(--brand-soft-border); margin-bottom: 10px; }
+  .shadow-box { height: 60px; border-radius: var(--radius-md); background: var(--surface); margin: 6px 6px 14px; }
+  .shadow-card { height: 64px; border-radius: var(--radius-md); background: var(--surface); margin-bottom: 10px; }
+
+  .component-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; align-items: start; }
+  .demo-card { padding: 20px; border-radius: var(--radius-lg); border: 1px solid var(--border); background: var(--surface); }
+  .demo-card .cap { font-size: var(--fs-12); color: var(--text-3); margin-bottom: 14px; letter-spacing: .04em; }
+  .demo-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+  .state-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+  .state-card { border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); overflow: hidden; display: flex; flex-direction: column; }
+  .state-card .state { flex: 1; padding: 22px 18px; }
+  .state-card .cap { padding: 10px 14px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-3); line-height: 1.6; }
+  .state-card .cap b { color: var(--text-2); }
+  .state .state-icon.sm { width: 44px; height: 44px; border-radius: 14px; }
+
+  .brand-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+  .slot {
+    border-radius: var(--radius-lg); border: 1px solid var(--border); overflow: hidden; background: var(--surface);
+  }
+  .slot .preview { height: 150px; display: flex; align-items: center; justify-content: center; }
+  .slot .cap { padding: 10px 14px; font-size: 11px; color: var(--text-3); border-top: 1px solid var(--border); }
+  .splash { background: var(--brand); color: var(--on-brand); flex-direction: column; gap: 10px; }
+  .splash .word { font-size: 20px; font-weight: 700; letter-spacing: .08em; }
+  .topbar-preview { background: var(--bg); align-items: flex-start; padding: 12px; }
+  .mini-switch { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px 6px 6px; border-radius: var(--radius-pill); background: var(--surface); border: 1px solid var(--border); font-size: 11px; font-weight: 600; }
+
+  .note {
+    margin-top: 18px; padding: 14px 16px; border-radius: var(--radius-md);
+    background: var(--info-soft); color: var(--info); font-size: var(--fs-12); line-height: var(--lh-loose);
+    border: 1px solid color-mix(in srgb, var(--info) 22%, transparent);
+  }
+  .do-dont { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+  .do-dont .box { padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--surface); font-size: var(--fs-12); line-height: 1.8; }
+  .do-dont .box b { display: block; margin-bottom: 6px; font-size: var(--fs-13); }
+  .do-dont .do b { color: var(--success); }
+  .do-dont .dont b { color: var(--danger); }
+  @media (max-width: 720px) {
+    body { padding: 0 16px 64px; }
+    .doc-head { margin: 0 -16px; padding: 12px 16px; }
+    .swatch-row { grid-template-columns: repeat(5, 1fr); }
+    .do-dont { grid-template-columns: 1fr; }
+    .hero-brand { flex-direction: column; align-items: flex-start; gap: 18px; padding: 24px; }
+    .sec { margin-top: 42px; }
+    .component-grid, .state-grid { grid-template-columns: 1fr; }
+    .scale-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="doc">
+  <header class="doc-head">
+    <div class="brand-line">
+      <span class="mark">
+        <svg width="20" height="20" viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M17 4 29 11v13l-12 7-12-7V11z"/><path d="M17 4v13l12 7" opacity=".55"/><path d="M17 17 5 11" opacity=".55"/></svg>
+      </span>
+      <div>
+        <h1>主题与组件规范 v0.1</h1>
+        <div class="sub">家立方 HomeCube · P1 原型基线</div>
+      </div>
+    </div>
+    <div class="theme-switch" data-theme-switch>
+      <button type="button" data-theme-value="system">跟随系统</button>
+      <button type="button" data-theme-value="light">亮</button>
+      <button type="button" data-theme-value="dark">暗</button>
+    </div>
+  </header>
+
+  <!-- 品牌 -->
+  <section class="sec">
+    <h2>01 品牌</h2>
+    <p class="intro">品牌只出现在四个固定位置：启动页、登录页、顶栏家庭标识、关于页。业务页面保持克制，把注意力留给家庭数据本身。主色是亮暖橙，像傍晚照进厨房的一束光，传达「家里灯亮着」的温度；辅色用偏黄的橄榄绿压一压，避免整屏发暖到失去层次。</p>
+
+    <div class="hero-brand">
+      <div class="logo-xl">
+        <svg width="46" height="46" viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M17 4 29 11v13l-12 7-12-7V11z"/><path d="M17 4v13l12 7" opacity=".55"/><path d="M17 17 5 11" opacity=".55"/></svg>
+      </div>
+      <div>
+        <div class="name">家立方</div>
+        <div class="tag">一家人的账、事与时间，都在这里</div>
+        <div class="rules">
+          <span class="chip">几何立方 = 家庭的三维结构</span>
+          <span class="chip">线条 2px，与图标集同笔画</span>
+          <span class="chip">不做渐变、不做拟物</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="brand-slots" style="margin-top:20px">
+      <div class="slot">
+        <div class="preview splash">
+          <svg width="40" height="40" viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M17 4 29 11v13l-12 7-12-7V11z"/><path d="M17 4v13l12 7" opacity=".55"/><path d="M17 17 5 11" opacity=".55"/></svg>
+          <span class="word">家立方</span>
+        </div>
+        <div class="cap">启动页：主色满铺 + 深墨图形，不出现任何数据</div>
+      </div>
+      <div class="slot">
+        <div class="preview topbar-preview">
+          <span class="mini-switch">
+            <span class="avatar" style="width:22px;height:22px;font-size:10px;background:var(--brand);color:var(--on-brand);border:0">三</span>
+            三口之家
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 4.5 6 7.5l3-3"/></svg>
+          </span>
+        </div>
+        <div class="cap">顶栏家庭标识：头像块 + 家庭名 + 切换箭头，是唯一带品牌色的导航元素</div>
+      </div>
+      <div class="slot">
+        <div class="preview" style="background:var(--bg);flex-direction:column;gap:8px">
+          <span style="font-size:13px;font-weight:700">家立方</span>
+          <span style="font-size:11px;color:var(--text-3)">版本 1.0.0</span>
+          <span class="chip">检查更新</span>
+        </div>
+        <div class="cap">关于页：品牌字标 + 版本号；更新检查结果就在这里展示</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 色板 -->
+  <section class="sec">
+    <h2>02 色板</h2>
+    <p class="intro">所有颜色以令牌形式存在，页面里只允许 <code>var(--*)</code>。亮色与暗色共用同一套令牌名、两套值：暗色不是反色，而是同一色相的深阶，保证暖调一致与对比度达标。</p>
+
+    <h3>品牌色阶 <span class="hint">亮色取 500 做主色，暗色取提亮后的品牌色；600 只做悬停</span></h3>
+    <div class="swatches">
+      <div class="swatch-row">
+        <div class="swatch"><div class="chipc" style="background:var(--brand-50)"></div><div class="meta"><b>50</b><span data-hex="--brand-50"></span></div></div>
+        <div class="swatch"><div class="chipc" style="background:var(--brand-100)"></div><div class="meta"><b>100</b><span data-hex="--brand-100"></span></div></div>
+        <div class="swatch"><div class="chipc" style="background:var(--brand-200)"></div><div class="meta"><b>200</b><span data-hex="--brand-200"></span></div></div>
+        <div class="swatch"><div class="chipc" style="background:var(--brand-300)"></div><div class="meta"><b>300</b><span data-hex="--brand-300"></span></div></div>
+        <div class="swatch"><div class="chipc" style="background:var(--brand-400)"></div><div class="meta"><b>400</b><span data-hex="--brand-400"></span></div></div>
+        <div class="swatch"><div class="chipc" style="background:var(--brand-500)"></div><div class="meta"><b>500</b><span data-hex="--brand-500"></span></div></div>
+        <div class="swatch"><div class="chipc" style="background:var(--brand-600)"></div><div class="meta"><b>600</b><span data-hex="--brand-600"></span></div></div>
+        <div class="swatch"><div class="chipc" style="background:var(--brand-700)"></div><div class="meta"><b>700</b><span data-hex="--brand-700"></span></div></div>
+        <div class="swatch"><div class="chipc" style="background:var(--brand-800)"></div><div class="meta"><b>800</b><span data-hex="--brand-800"></span></div></div>
+        <div class="swatch"><div class="chipc" style="background:var(--brand-900)"></div><div class="meta"><b>900</b><span data-hex="--brand-900"></span></div></div>
+      </div>
+    </div>
+
+    <h3>辅色（橄榄绿）<span class="hint">成员标识与次级强调；正向金额、成功提示交给语义色</span></h3>
+    <div class="swatches">
+      <div class="swatch-row" style="grid-template-columns:repeat(5,1fr)">
+        <div class="swatch"><div class="chipc" style="background:var(--accent-100)"></div><div class="meta"><b>100</b><span data-hex="--accent-100"></span></div></div>
+        <div class="swatch"><div class="chipc" style="background:var(--accent-300)"></div><div class="meta"><b>300</b><span data-hex="--accent-300"></span></div></div>
+        <div class="swatch"><div class="chipc" style="background:var(--accent-500)"></div><div class="meta"><b>500</b><span data-hex="--accent-500"></span></div></div>
+        <div class="swatch"><div class="chipc" style="background:var(--accent-600)"></div><div class="meta"><b>600</b><span data-hex="--accent-600"></span></div></div>
+        <div class="swatch"><div class="chipc" style="background:var(--accent-800)"></div><div class="meta"><b>800</b><span data-hex="--accent-800"></span></div></div>
+      </div>
+    </div>
+
+    <h3>语义色 <span class="hint">只表达状态，不承担品牌表达</span></h3>
+    <div class="swatches">
+      <div class="swatch-row semantic">
+        <div class="swatch"><div class="chipc" style="background:var(--success)"></div><div class="meta"><b>成功</b><span data-hex="--success" data-hex-both></span></div></div>
+        <div class="swatch"><div class="chipc" style="background:var(--warning)"></div><div class="meta"><b>警告</b><span data-hex="--warning" data-hex-both></span></div></div>
+        <div class="swatch"><div class="chipc" style="background:var(--danger)"></div><div class="meta"><b>危险</b><span data-hex="--danger" data-hex-both></span></div></div>
+        <div class="swatch"><div class="chipc" style="background:var(--info)"></div><div class="meta"><b>信息</b><span data-hex="--info" data-hex-both></span></div></div>
+      </div>
+    </div>
+
+    <div class="note">对比度口径：正文与背景 ≥ 4.5:1，大字与图标 ≥ 3:1。主色保持亮暖，承载文字的按钮压深墨色字（<code>--on-brand</code>）而不是白字；浅底上的品牌色文字统一走 <code>--brand-text</code>（700），避免亮橙直接当正文色。</div>
+    <div class="note">面识别色 · 日历（定版 ㉚，唯一来源 <code>--face-calendar</code>，tokens.css）按 19.2#10 口径以 WCAG 相对亮度实算：亮态 #0E6B60 对卡面 ≥6.38:1、对页背景 ≥5.83:1、承载其上的文字与图标在同面浅底 #DCEDEA 上 5.27:1；暗态 #7FD6C9（已降饱和）对卡面 ≥10.15:1、对页背景 ≥11.05:1、在 #123330 上 8.02:1——六处正文/图标用法全部 ≥4.5:1 达标，大字与图形 ≥3:1 随之成立（同面色描边为装饰性，识别恒由面色的文字 + 图标共同承担，与 <code>--brand-soft-border</code> 同处理）；与财务面色（品牌焦糖橙）肉眼可分：亮态色相差 154.4°（H 172.9° vs 18.5°）、明度差 16.1%，暗态色相差 148.7°（H 171.0° vs 22.3°）、明度差 2.4%——两态均接近互补色相，靠色相即可分辨。</div>
+  </section>
+
+  <!-- 字体与尺度 -->
+  <section class="sec">
+    <h2>03 字体与尺度</h2>
+    <div class="type-row"><span class="tag">fs-30 / 700</span><span style="font-size:var(--fs-30);font-weight:700">家立方</span></div>
+    <div class="type-row"><span class="tag">fs-24 / 700</span><span style="font-size:var(--fs-24);font-weight:700">给家起个名字</span></div>
+    <div class="type-row"><span class="tag">fs-20 / 700</span><span style="font-size:var(--fs-20);font-weight:700">我的</span></div>
+    <div class="type-row"><span class="tag">fs-17 / 600</span><span style="font-size:var(--fs-17);font-weight:600">今日 5 项 · 到期与待办</span></div>
+    <div class="type-row"><span class="tag">fs-15 / 400</span><span style="font-size:var(--fs-15)">输入 11 位手机号，连续输错会触发限流</span></div>
+    <div class="type-row"><span class="tag">fs-13 / 400</span><span style="font-size:var(--fs-13);color:var(--text-2)">家庭是数据边界：账目、成员与权限都只在本家庭内可见</span></div>
+    <div class="type-row"><span class="tag">fs-12 / 400</span><span style="font-size:var(--fs-12);color:var(--text-3)">未注册的手机号将自动创建账号</span></div>
+    <div class="type-row"><span class="tag">金额 / tabular</span><span class="amount" style="font-size:var(--fs-20)">-¥1,406.32</span></div>
+    <p class="intro" style="margin-top:16px">字体使用系统字体（苹方 / 思源黑体），不打包字体文件；金额与计数使用等宽数字，符号恒在货币符号之前，与服务端格式化逐字节一致。</p>
+
+    <h3>间距<span class="hint">4 的倍数，页面只用其中 5 档</span></h3>
+    <div class="scale-grid">
+      <div class="scale-card"><div class="space-bar" style="height:4px"></div>sp-1 · 4</div>
+      <div class="scale-card"><div class="space-bar" style="height:8px"></div>sp-2 · 8</div>
+      <div class="scale-card"><div class="space-bar" style="height:12px"></div>sp-3 · 12</div>
+      <div class="scale-card"><div class="space-bar" style="height:16px"></div>sp-4 · 16</div>
+      <div class="scale-card"><div class="space-bar" style="height:24px"></div>sp-6 · 24</div>
+      <div class="scale-card"><div class="space-bar" style="height:32px"></div>sp-7 · 32</div>
+    </div>
+
+    <h3>圆角</h3>
+    <div class="scale-grid">
+      <div class="scale-card"><div class="radius-box" style="border-radius:8px"></div>sm · 8</div>
+      <div class="scale-card"><div class="radius-box" style="border-radius:12px"></div>md · 12</div>
+      <div class="scale-card"><div class="radius-box" style="border-radius:16px"></div>lg · 16</div>
+      <div class="scale-card"><div class="radius-box" style="border-radius:24px"></div>xl · 24</div>
+      <div class="scale-card"><div class="radius-box" style="border-radius:999px"></div>pill</div>
+    </div>
+
+    <h3>阴影<span class="hint">卡片浮起与弹层两级，暗色下同样只用这两级</span></h3>
+    <div class="scale-grid">
+      <div class="scale-card is-plain"><div class="shadow-box" style="box-shadow:var(--shadow-1)"></div>1 · 卡片</div>
+      <div class="scale-card is-plain"><div class="shadow-box" style="box-shadow:var(--shadow-2)"></div>2 · 悬浮</div>
+      <div class="scale-card is-plain"><div class="shadow-box" style="box-shadow:var(--shadow-3)"></div>3 · 弹层</div>
+    </div>
+  </section>
+
+  <!-- 组件 -->
+  <section class="sec">
+    <h2>04 组件基线</h2>
+    <p class="intro">组件只引用令牌；暗色下不换组件、不换文案，只换令牌值。下面所有组件在切换主题时应逐像素对应、只变色。</p>
+
+    <div class="component-grid">
+      <div class="demo-card">
+        <div class="cap">按钮</div>
+        <div class="demo-row">
+          <button class="btn btn-primary" type="button">主要操作</button>
+          <button class="btn btn-secondary" type="button">次要</button>
+          <button class="btn btn-ghost" type="button">文字按钮</button>
+          <button class="btn btn-danger" type="button">危险</button>
+          <button class="btn btn-primary" type="button" disabled>禁用</button>
+          <button class="btn btn-primary is-loading" type="button">加载中</button>
+        </div>
+      </div>
+
+      <div class="demo-card">
+        <div class="cap">输入</div>
+        <input class="input" placeholder="默认态" style="margin-bottom:10px">
+        <input class="input" value="聚焦态" style="border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft);margin-bottom:10px">
+        <input class="input is-error" value="错误态" style="margin-bottom:6px">
+        <div class="field-error">验证码已过期，请重新获取</div>
+      </div>
+
+      <div class="demo-card">
+        <div class="cap">列表与分段</div>
+        <div class="list" style="margin-bottom:12px">
+          <div class="list-item">
+            <span class="li-icon">
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/></svg>
+            </span>
+            <span class="li-text">家庭与成员<span class="li-sub">3 位成员</span></span>
+            <span class="chevron">›</span>
+          </div>
+          <div class="list-item">
+            <span class="li-icon">
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/></svg>
+            </span>
+            <span class="li-text">帮助与关于</span>
+            <span class="chevron">›</span>
+          </div>
+        </div>
+        <div class="demo-row">
+          <div class="segmented"><button aria-selected="true">月</button><button aria-selected="false">季</button><button aria-selected="false">年</button></div>
+          <label class="switch"><input type="checkbox" checked><span class="track"></span><span class="thumb"></span></label>
+        </div>
+      </div>
+
+      <div class="demo-card">
+        <div class="cap">卡片与状态位</div>
+        <div class="card flat" style="margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span class="avatar">妈</span>
+            <div style="flex:1">
+              <div style="font-size:var(--fs-14);font-weight:600">妈妈 · 本月已用</div>
+              <div class="tiny">预算 ¥3,000 · 剩余 ¥860</div>
+            </div>
+            <span class="amount">-¥2,140</span>
+          </div>
+        </div>
+        <div class="demo-row">
+          <span class="chip">角标 2</span>
+          <span class="chip">未读红点 <span class="dot" style="position:static;display:inline-block;border:0;width:7px;height:7px"></span></span>
+          <span class="chip">99+ 上限</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 十个全局态 -->
+  <section class="sec">
+    <h2>05 十个全局态</h2>
+    <p class="intro">十个态在全部面共用同一组件与同一文案库，业务面不得自造第四套降级文案。四个降级词各管一层：「未启用」= 本家庭没挂载；「即将上线」= 面还没出生；「暂不可用」= 面已启用但服务不可达；「依赖未就绪」= 本面可用、但该功能依赖的另一面没出生。</p>
+
+    <div class="state-grid">
+      <div class="state-card">
+        <div class="state">
+          <div class="state-icon sm"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M9 12h6"/></svg></div>
+          <div class="state-title">即将上线 / 未启用</div>
+          <div class="state-desc">只出现在开通页与深链落地，不出现在导航与首页。</div>
+        </div>
+        <div class="cap"><b>hc-state-disabled</b><br>管理员多一个「去开通」引导</div>
+      </div>
+
+      <div class="state-card">
+        <div class="state">
+          <div class="state-icon sm"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 12a9 9 0 0 1 18 0"/><path d="M3 4l18 16"/></svg></div>
+          <div class="state-title">暂不可用</div>
+          <div class="state-desc">面已启用但服务不可达；显示最后一次值与「截至 HH:MM」。</div>
+          <button class="btn btn-secondary btn-sm" type="button">重试</button>
+        </div>
+        <div class="cap"><b>hc-state-offline-service</b><br>重试只重发 home/summary，不清缓存</div>
+      </div>
+
+      <div class="state-card">
+        <div class="state">
+          <div class="state-icon sm"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 3v6M12 15v6M3 12h6M15 12h6"/><circle cx="12" cy="12" r="2.5"/></svg></div>
+          <div class="state-title">依赖未就绪</div>
+          <div class="state-desc">只作用在受影响的那个控件上，不禁用整面、不报错。</div>
+        </div>
+        <div class="cap"><b>hc-state-dep-missing</b><br>说明要等到哪一期</div>
+      </div>
+
+      <div class="state-card">
+        <div class="state">
+          <div class="state-icon sm"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="5" y="10" width="14" height="10" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+          <div class="state-title">无权限</div>
+          <div class="state-desc">不显示任何数据片段，只给「无权访问」与返回。</div>
+        </div>
+        <div class="cap"><b>hc-state-denied</b><br>不出现「申请权限」之类假入口</div>
+      </div>
+
+      <div class="state-card">
+        <div class="state">
+          <div class="state-icon sm"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M6 8h12M6 13h8M6 18h10"/></svg></div>
+          <div class="state-title">空</div>
+          <div class="state-desc">给一个可点的引导动作，不写「暂无数据」了事。</div>
+          <button class="btn btn-secondary btn-sm" type="button">去记一笔</button>
+        </div>
+        <div class="cap"><b>hc-state-empty</b><br>引导动作必须可执行</div>
+      </div>
+
+      <div class="state-card">
+        <div class="state">
+          <div class="skeleton" style="width:100%;height:12px;margin-bottom:10px"></div>
+          <div class="skeleton" style="width:70%;height:12px;margin-bottom:10px"></div>
+          <div class="skeleton" style="width:86%;height:12px"></div>
+          <div class="state-title" style="margin-top:12px">加载中</div>
+          <div class="state-desc">首屏骨架屏，不用 spinner 遮住内容。</div>
+        </div>
+        <div class="cap"><b>hc-skeleton</b><br>骨架形状贴近真实布局</div>
+      </div>
+
+      <div class="state-card">
+        <div class="state">
+          <div class="state-icon sm"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5.5M12 16.5v.1"/></svg></div>
+          <div class="state-title">失败</div>
+          <div class="state-desc">可重试 + 错误码可见，文案不带堆栈。</div>
+          <div class="state-code">HC-5001</div>
+          <button class="btn btn-secondary btn-sm" type="button">重试</button>
+        </div>
+        <div class="cap"><b>hc-state-error</b><br>错误码用于对账与客服</div>
+      </div>
+
+      <div class="state-card">
+        <div class="state" style="padding-top:0">
+          <div class="offline-bar is-on" style="width:100%;border-radius:var(--radius-sm);margin-bottom:16px">当前离线 · 3 项待同步</div>
+          <div class="state-icon sm"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M2 8a10 10 0 0 1 20 0"/><path d="M5 12a7 7 0 0 1 14 0"/><path d="M2 2l20 20"/></svg></div>
+          <div class="state-title">离线</div>
+          <div class="state-desc">顶栏常驻细条，内容照常显示最后值。</div>
+        </div>
+        <div class="cap"><b>shell 层</b><br>离线不进任何页面的路由</div>
+      </div>
+
+      <div class="state-card">
+        <div class="state">
+          <div class="state-icon sm"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M8 3v4M16 3v4M4 9h16"/><rect x="4" y="5" width="16" height="16" rx="3"/></svg></div>
+          <div class="state-title">冲突（409）</div>
+          <div class="state-desc">对方先改了同一条数据；展示差异并让用户选择保留哪份。</div>
+        </div>
+        <div class="cap"><b>hc-conflict-sheet</b><br>乐观锁冲突不走错误页</div>
+      </div>
+
+      <div class="state-card">
+        <div class="state">
+          <div class="state-icon sm"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="5" y="10" width="14" height="10" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+          <div class="state-title">待解锁</div>
+          <div class="state-desc">L3 对象需 PIN；连续 5 次失败锁定本机并指数退避。</div>
+          <button class="btn btn-secondary btn-sm" type="button">忘记口令</button>
+        </div>
+        <div class="cap"><b>hc-state-locked</b><br>30 秒 / 1 分钟 / 5 分钟</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 规则 -->
+  <section class="sec">
+    <h2>06 使用规则</h2>
+    <div class="do-dont">
+      <div class="box do">
+        <b>应该</b>
+        只引用 var(--*)；金额符号在货币符号之前；数字用等宽；空态给可执行动作；同一个态在全部面用同一组件；亮暗只换令牌值。
+      </div>
+      <div class="box dont">
+        <b>不应该</b>
+        页面里写死色值；为某个面自造一套降级文案；用 emoji 当图标；把「未启用 / 即将上线 / 暂不可用 / 依赖未就绪」混成一个态；页面级覆盖主题。
+      </div>
+    </div>
+    <div class="note">这份页面是原型的设计源：新增页面时先在这里确认有没有可复用组件；确实需要新组件时，先补进本页再落屏。</div>
+  </section>
+</div>
+</body>
+</html>

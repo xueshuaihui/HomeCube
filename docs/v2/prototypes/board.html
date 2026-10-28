@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>家庭留言板 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .board-content { display: flex; flex-direction: column; padding-bottom: 16px; }
+
+  .board-notice {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 2px 2px; font-size: var(--fs-11); color: var(--text-3);
+  }
+  .board-notice svg { flex: none; }
+
+  .board-date { display: flex; align-items: center; gap: 10px; margin: 12px 0 4px; }
+  .board-date::before, .board-date::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+  .board-date span { font-size: var(--fs-11); color: var(--text-3); }
+
+  .board-list { display: flex; flex-direction: column; gap: 14px; padding: 8px 0 4px; }
+  .board-msg { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+  .board-av { width: 32px; height: 32px; font-size: var(--fs-12); }
+  .board-av-mom { background: var(--accent-soft); color: var(--accent); }
+  .board-av-dad { background: var(--brand-soft); color: var(--brand-text); }
+  .board-av-me { background: var(--brand); color: var(--on-brand); border-color: transparent; }
+  .board-main { flex: 1; min-width: 0; }
+  .board-meta { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+  .board-name { font-size: var(--fs-12); font-weight: 600; color: var(--text-2); }
+  .board-time { font-size: var(--fs-11); color: var(--text-3); }
+  .board-bubble {
+    display: inline-block; max-width: 100%;
+    padding: 10px 12px;
+    border-radius: var(--radius-md) var(--radius-lg) var(--radius-lg) var(--radius-lg);
+    background: var(--surface); border: 1px solid var(--border);
+    font-size: var(--fs-14); line-height: var(--lh-normal); color: var(--text);
+    word-break: break-word;
+  }
+  .board-msg.is-me .board-bubble { background: var(--brand-soft); border-color: var(--brand-soft-border); }
+  .board-at-mark {
+    padding: 0 3px; border-radius: var(--radius-sm);
+    background: var(--brand-soft); color: var(--brand-text); font-weight: 600;
+  }
+
+  .board-pending { display: none; }
+  body[data-state="sending"] .board-pending { display: flex; }
+  .board-msg.board-pending .board-bubble {
+    background: var(--surface-2); border-style: dashed; color: var(--text-2);
+  }
+  .board-pending .board-time { display: inline-flex; align-items: center; gap: 4px; }
+
+  .board-empty { display: none; margin: auto 0; }
+  body[data-state="empty"] .board-empty { display: block; }
+  body[data-state="empty"] .board-list,
+  body[data-state="empty"] .board-date { display: none; }
+
+  body[data-state="offline"] .offline-bar { display: flex; }
+
+  .board-composer {
+    flex: none;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  }
+  .board-queue { display: none; padding: 2px 2px 6px; font-size: var(--fs-11); color: var(--warning); }
+  body[data-state="offline"] .board-queue { display: block; }
+  .board-inputrow { display: flex; align-items: center; gap: 8px; }
+  .board-at {
+    width: 36px; height: 36px; flex: none;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border); background: var(--surface-2);
+    color: var(--text-2); font-family: inherit; font-size: var(--fs-15); font-weight: 700;
+    cursor: pointer;
+  }
+  .board-at:hover { color: var(--brand-text); border-color: var(--brand-soft-border); }
+  .board-field { flex: 1; min-width: 0; position: relative; }
+  .board-input { height: 40px; padding: 0 14px; border-radius: var(--radius-pill); font-size: var(--fs-14); }
+  .board-send {
+    flex: none; height: 40px; padding: 0 18px;
+    border-radius: var(--radius-pill); font-size: var(--fs-14);
+  }
+</style>
+</head>
+<body data-screen="09 家庭留言板" data-tab="message" data-states="default,empty,sending,offline">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <button class="icon-btn" type="button" data-go="message.html" aria-label="返回消息"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="二级页返回消息列表；返回不清空已读状态，也不重发通知列表首屏">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </button>
+    </div>
+    <div class="nav-title">家庭留言板</div>
+    <div class="nav-right"></div>
+  </div>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 1 条留言待同步
+  </div>
+
+  <div class="content board-content">
+    <div class="board-notice">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5 13 4.6v3.7c0 2.7-2 4.9-5 6-3-1.1-5-3.3-5-6V4.6z"/></svg>
+      留言仅本家庭成员可见 · 新留言会同时出现在家庭动态
+    </div>
+
+    <div class="board-date"><span>今天 · 10 月 29 日</span></div>
+
+    <div class="board-list">
+      <div class="board-msg" data-reply="妈妈" data-name="妈妈"
+        data-hot="②" data-hot-name="留言条目" data-hot-pos="top-right"
+        data-hot-label="头像 + 姓名 + 时间 + 正文；点击某条留言即在输入条带入「@对方」，P1 不做楼中楼与单条回复串">
+        <span class="avatar board-av board-av-mom">妈</span>
+        <div class="board-main">
+          <div class="board-meta"><span class="board-name">妈妈</span><span class="board-time num">08:40</span></div>
+          <div class="board-bubble">周末想带女儿去看外公，<span class="board-at-mark">@爸爸</span> 你周六有空吗？</div>
+        </div>
+      </div>
+
+      <div class="board-msg" data-reply="爸爸" data-name="爸爸">
+        <span class="avatar board-av board-av-dad">爸</span>
+        <div class="board-main">
+          <div class="board-meta"><span class="board-name">爸爸</span><span class="board-time num">09:02</span></div>
+          <div class="board-bubble">周六上午有个会，下午可以。<span class="board-at-mark">@妈妈</span> 你定时间就行。</div>
+        </div>
+      </div>
+
+      <div class="board-msg is-me" data-reply="我" data-name="我">
+        <span class="avatar board-av board-av-me">我</span>
+        <div class="board-main">
+          <div class="board-meta"><span class="board-name">我</span><span class="board-time num">09:10</span></div>
+          <div class="board-bubble">我把「周六看外公」记到日历了，下午三点出发。</div>
+        </div>
+      </div>
+
+      <div class="board-msg" data-reply="妈妈" data-name="妈妈">
+        <span class="avatar board-av board-av-mom">妈</span>
+        <div class="board-main">
+          <div class="board-meta"><span class="board-name">妈妈</span><span class="board-time num">09:18</span></div>
+          <div class="board-bubble">好，那我提前买点水果带过去。<span class="board-at-mark">@爸爸</span> 车你来开？</div>
+        </div>
+      </div>
+
+      <div class="board-msg is-me board-pending">
+        <span class="avatar board-av board-av-me">我</span>
+        <div class="board-main">
+          <div class="board-meta"><span class="board-name">我</span><span class="board-time">发送中…</span></div>
+          <div class="board-bubble">好的，我下午两点把车开过来。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="board-empty">
+      <div class="state">
+        <div class="state-icon">
+          <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 21V8.5h20V21h-7l-6 5v-5z"/><path d="M11 13h10M11 17h6"/></svg>
+        </div>
+        <div class="state-title">留言板还空着</div>
+        <div class="state-desc">说说今天的安排，或者 @ 一位家人；留言全家可见，也会出现在家庭动态里。</div>
+        <button class="btn btn-secondary" type="button" data-board-focus
+          data-hot="⑥" data-hot-name="空态行动" data-hot-pos="top-right"
+          data-hot-label="零条时给可执行动作「说点什么」，直接聚焦底部输入条，不是只放一句空话">说点什么</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="board-composer">
+    <div class="board-queue">发送的留言会先进入待同步队列，联网后自动发出</div>
+    <div class="board-inputrow">
+      <button class="board-at" type="button" data-sheet-open="sheet-mention" aria-label="@ 成员"
+        data-hot="③" data-hot-name="@成员" data-hot-pos="bottom-right"
+        data-hot-label="上拉成员列表，选中后把「@对方」插入输入框；发送后被 @ 的成员收到一条 system 类站内通知">
+        @
+      </button>
+      <div class="board-field"
+        data-hot="④" data-hot-name="输入框" data-hot-pos="top-right"
+        data-hot-label="单行输入、上限 200 字；@ 成员在正文中高亮。留言落 HomeOS，动态由事件产生，业务面不直写">
+        <input class="input board-input" id="board-input" type="text" maxlength="200" placeholder="说点什么…">
+      </div>
+      <button class="btn btn-primary board-send" type="button"
+        data-hot="⑤" data-hot-name="发送" data-hot-pos="outer-top-right"
+        data-hot-label="非空才发送；发送中按钮转圈、本条以虚线气泡置底，成功后由服务端回填时间；失败保留草稿可重试">发送</button>
+    </div>
+  </div>
+
+  <!-- @ 成员面板 -->
+  <div class="sheet-mask" id="sheet-mention" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>@ 一位家人</h3>
+      <p class="sheet-sub">被 @ 的成员会在「消息」里收到一条系统通知，未读红点与计数同步。</p>
+      <div class="list" style="margin-top:16px">
+        <button class="list-item" type="button" data-mention="妈妈" data-sheet-close>
+          <span class="avatar board-av board-av-mom">妈</span>
+          <span class="li-text">妈妈<span class="li-sub">成人成员</span></span>
+        </button>
+        <button class="list-item" type="button" data-mention="爸爸" data-sheet-close>
+          <span class="avatar board-av board-av-dad">爸</span>
+          <span class="li-text">爸爸<span class="li-sub">管理员</span></span>
+        </button>
+        <button class="list-item" type="button" data-mention="女儿" data-sheet-close>
+          <span class="avatar board-av">女</span>
+          <span class="li-text">女儿<span class="li-sub">儿童成员 · 由监护人代管</span></span>
+        </button>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var state = new URLSearchParams(location.search).get('state') || 'default';
+  var input = document.getElementById('board-input');
+  var send = document.querySelector('.board-send');
+
+  if (state === 'sending') {
+    send.classList.add('is-loading');
+    input.value = '好的，我下午两点把车开过来。';
+  }
+
+  function insertMention(name) {
+    var v = input.value;
+    if (v && !/\s$/.test(v)) v += ' ';
+    input.value = v + '@' + name + ' ';
+    input.focus();
+  }
+
+  document.querySelectorAll('[data-mention]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      insertMention(b.getAttribute('data-mention'));
+      window.HC.toast('已插入 @' + b.getAttribute('data-mention'));
+    });
+  });
+
+  document.querySelectorAll('.board-msg[data-reply]').forEach(function (row) {
+    row.addEventListener('click', function () {
+      var name = row.getAttribute('data-reply');
+      insertMention(name);
+      window.HC.toast('已带入 @' + name + '，写下你的回应');
+    });
+  });
+
+  send.addEventListener('click', function () {
+    if (state === 'sending') return;
+    if (!input.value.trim()) {
+      window.HC.toast('先写一句再发送');
+      input.focus();
+      return;
+    }
+    location.href = 'board.html?state=sending';
+  });
+
+  document.querySelector('[data-board-focus]').addEventListener('click', function () {
+    input.focus();
+    window.HC.toast('说点什么，全家都能看到');
+  });
+</script>
+</body>
+</html>

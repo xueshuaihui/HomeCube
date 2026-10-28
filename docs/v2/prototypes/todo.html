@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>待办 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .todo-content { padding-bottom: 24px; }
+
+  .todo-new {
+    height: 36px; padding: 0 4px;
+    border: 0; background: none;
+    font-family: inherit; font-size: var(--fs-15); font-weight: 600;
+    color: var(--brand-text); cursor: pointer;
+  }
+  .todo-new:hover { color: var(--brand-hover); }
+
+  .todo-sum { padding: 2px 2px 8px; font-size: var(--fs-12); color: var(--text-3); }
+
+  .todo-segbar { display: flex; align-items: center; padding-bottom: 6px; }
+  .todo-segbar .segmented { width: 100%; }
+  .todo-segbar .segmented button { flex: 1; padding: 7px 6px; }
+  .todo-seg-n { margin-left: 3px; font-family: var(--font-num); opacity: .55; }
+
+  .todo-data { display: block; }
+  .todo-seg { display: none; }
+  .todo-seg.is-on { display: block; }
+
+  .todo-group { margin-top: 12px; }
+  .todo-group-head { display: flex; align-items: baseline; justify-content: space-between; padding: 0 2px 8px; }
+  .todo-group-title { font-size: var(--fs-13); font-weight: 700; color: var(--text-2); }
+  .todo-group-count { font-size: var(--fs-11); color: var(--text-3); }
+
+  .todo-list { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  .todo-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--surface); }
+  .todo-item + .todo-item { border-top: 1px solid var(--border); }
+  .todo-item:hover { background: var(--surface-2); }
+  .todo-body { flex: 1; min-width: 0; display: block; text-decoration: none; color: var(--text); }
+  .todo-row1 { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .todo-title { font-size: var(--fs-15); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .todo-meta { margin-top: 4px; display: flex; align-items: center; gap: 8px; font-size: var(--fs-11); color: var(--text-3); }
+  .todo-meta .todo-src { flex: none; }
+
+  .todo-due { flex: none; font-size: var(--fs-12); color: var(--text-3); }
+  .todo-due.is-today { color: var(--warning); font-weight: 600; }
+  .todo-due.is-late { color: var(--danger); font-weight: 600; }
+  .todo-due.is-done { color: var(--success); font-weight: 600; }
+
+  .todo-src {
+    display: inline-flex; align-items: center;
+    padding: 1px 6px; border-radius: var(--radius-pill);
+    font-size: var(--fs-11); font-weight: 600; white-space: nowrap;
+  }
+  .todo-src-cal { background: var(--face-calendar-soft); color: var(--face-calendar); }
+
+  .todo-av { width: 28px; height: 28px; font-size: var(--fs-11); }
+  .todo-av-me { background: var(--brand); color: var(--on-brand); border-color: transparent; }
+
+  .todo-check {
+    width: 24px; height: 24px; flex: none; margin-top: 0; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--border-strong);
+    background: var(--surface); color: var(--on-brand);
+    cursor: pointer;
+  }
+  .todo-check:hover { border-color: var(--brand-text); }
+  .todo-check svg { opacity: 0; }
+  .todo-item.is-done .todo-check { background: var(--brand); border-color: var(--brand); }
+  .todo-item.is-done .todo-check svg { opacity: 1; }
+  .todo-item.is-done .todo-title { color: var(--text-3); text-decoration: line-through; }
+  .todo-item.is-done .todo-meta { opacity: .7; }
+  .todo-item.is-done:hover { background: var(--surface); }
+
+  .todo-mark {
+    width: 24px; height: 24px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: var(--radius-sm);
+    background: var(--success-soft); color: var(--success);
+  }
+
+  .todo-foot-note { margin-top: 14px; line-height: var(--lh-normal); }
+
+  .todo-sk { display: none; padding-top: 8px; }
+  .todo-sk .sk-line:first-child { width: 38%; }
+  body[data-state="loading"] .todo-sk { display: block; }
+  body[data-state="loading"] .todo-data,
+  body[data-state="loading"] .todo-sum,
+  body[data-state="loading"] .todo-foot-note { display: none; }
+
+  .todo-empty { display: none; }
+  body[data-state="empty"] .todo-empty { display: flex; }
+  body[data-state="empty"] .todo-data,
+  body[data-state="empty"] .todo-segbar,
+  body[data-state="empty"] .todo-sum,
+  body[data-state="empty"] .todo-foot-note { display: none; }
+
+  .todo-cache {
+    display: none; align-items: center; gap: 6px;
+    margin: 6px 0 0; padding: 7px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--warning-soft); color: var(--warning);
+    font-size: var(--fs-12);
+  }
+  body[data-state="offline"] .todo-cache { display: flex; }
+  body[data-state="offline"] .offline-bar { display: flex; }
+
+  .todo-sheet-line {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 14px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+  }
+  .todo-sheet-line .todo-sheet-title { flex: 1; min-width: 0; font-size: var(--fs-14); font-weight: 600; }
+  .todo-sheet-line .todo-sheet-due { flex: none; font-size: var(--fs-12); color: var(--text-3); }
+  .todo-sheet-line .todo-check { pointer-events: none; }
+  .todo-content .face-tabs { margin-top: 2px; }
+</style>
+</head>
+<body data-screen="12 待办 · 日历面" data-tab="home" data-states="default,empty,loading,offline">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <button class="icon-btn" type="button" data-go="calendar.html"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回到期中心 calendar/calendar/index（本面一级页）；不重置待办列表已选的分段，下次进入沿用分配给我 / 我创建的 / 已归档" aria-label="返回">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </button>
+    </div>
+    <div class="nav-title">待办</div>
+    <div class="nav-right">
+      <button class="todo-new" type="button" data-go="todo-create.html"
+        data-hot="②" data-hot-name="新建" data-hot-pos="outer-top-right"
+        data-hot-label="进新建待办页 calendar/todo/create；标题、负责人、截止、来源面四项，保存后由本面（svc-calendar）异步登记到到期对象注册表">新建</button>
+    </div>
+  </div>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 1 项完成待同步
+  </div>
+
+  <div class="content todo-content">
+    <nav class="face-tabs is-calendar" aria-label="日历面二级 Tab"
+      data-hot="⑦" data-hot-name="面内二级 Tab" data-hot-pos="outer-top-right"
+      data-hot-label="日程 / 待办 / 提醒在本分包内互切（calendar/calendar/index · calendar/todo/index · calendar/reminder/index），本页高亮「待办」；不叠加底部栏、没有面切换器；末位「设置」P1 无路由位，点按只给未交付提示">
+      <a class="face-tab" href="calendar.html">日程</a>
+      <a class="face-tab" href="todo.html" aria-current="page">待办</a>
+      <a class="face-tab" href="reminder.html">提醒</a>
+      <button class="face-tab" type="button" data-unbuilt="日历面后续（面内设置页，不在 P1 的 9 页路由位）">设置</button>
+    </nav>
+    <div class="todo-cache">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="5.5"/><path d="M8 4.8V8l2.2 1.3"/></svg>
+      显示本机缓存 · 截至 10 月 29 日 08:10
+    </div>
+
+    <div class="todo-sum" id="todo-sum">分配给我 · 共 4 项 · 1 项已逾期</div>
+
+    <div class="todo-segbar"
+      data-hot="③" data-hot-name="分段" data-hot-pos="outer-top-right"
+      data-hot-label="分配给我 / 我创建的 / 已归档三段同页切换，不新增路由；已归档段只读、不显示勾选框">
+      <div class="segmented" role="tablist">
+        <button type="button" role="tab" aria-selected="true" data-seg-btn="assigned"
+          data-sum="分配给我 · 共 4 项 · 1 项已逾期">分配给我<span class="todo-seg-n">4</span></button>
+        <button type="button" role="tab" aria-selected="false" data-seg-btn="created"
+          data-sum="我创建的 · 共 3 项 · 今天 1 项">我创建的<span class="todo-seg-n">3</span></button>
+        <button type="button" role="tab" aria-selected="false" data-seg-btn="archived"
+          data-sum="已归档 · 共 3 项 · 仅本人可见">已归档<span class="todo-seg-n">3</span></button>
+      </div>
+    </div>
+
+    <div class="todo-data">
+      <!-- 分配给我 -->
+      <div class="todo-seg is-on" data-seg="assigned">
+        <div class="todo-group">
+          <div class="todo-group-head">
+            <span class="todo-group-title">已逾期</span>
+            <span class="todo-group-count">1 项</span>
+          </div>
+          <div class="todo-list">
+            <div class="todo-item">
+              <button class="todo-check" type="button" data-title="换净水器滤芯" data-due="昨天 18:00"
+                data-hot="④" data-hot-name="勾选框" data-hot-pos="center"
+                data-hot-label="点击不直接改状态，先弹「完成待办」确认层；确认后由本面发 calendar.todo.completed，列表、到期中心与首页今日区同步移除" aria-label="完成 换净水器滤芯">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
+              </button>
+              <a class="todo-body" href="todo-detail.html">
+                <span class="todo-row1">
+                  <span class="todo-title">换净水器滤芯</span>
+                  <span class="todo-due is-late num">昨天 18:00</span>
+                </span>
+                <span class="todo-meta">
+                  <span class="todo-src todo-src-cal">日历</span>
+                  <span>子任务 0/2</span>
+                </span>
+              </a>
+              <span class="avatar todo-av todo-av-me">我</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="todo-group">
+          <div class="todo-group-head">
+            <span class="todo-group-title">今天</span>
+            <span class="todo-group-count">2 项</span>
+          </div>
+          <div class="todo-list">
+            <div class="todo-item"
+              data-hot="⑤" data-hot-name="条目" data-hot-pos="bottom-right"
+              data-hot-label="整行点进待办详情；标题、截止、来源面标记与负责人头像四件套，完成不在列表静默发生；P1 待办的来源标记只有「日历」（17.4 里财务注册的是提醒与日程，不是待办；采购 / 饮食 / 家人 / 成长的待办随各自出生期出现）">
+              <button class="todo-check" type="button" data-title="接女儿放学" data-due="今天 16:30" aria-label="完成 接女儿放学">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
+              </button>
+              <a class="todo-body" href="todo-detail.html">
+                <span class="todo-row1">
+                  <span class="todo-title">接女儿放学</span>
+                  <span class="todo-due is-today num">今天 16:30</span>
+                </span>
+                <span class="todo-meta">
+                  <span class="todo-src todo-src-cal">日历</span>
+                  <span>子任务 1/2</span>
+                </span>
+              </a>
+              <span class="avatar todo-av todo-av-me">我</span>
+            </div>
+            <div class="todo-item">
+              <button class="todo-check" type="button" data-title="准备女儿家长会" data-due="今天 20:00" aria-label="完成 准备女儿家长会">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
+              </button>
+              <a class="todo-body" href="todo-detail.html">
+                <span class="todo-row1">
+                  <span class="todo-title">准备女儿家长会</span>
+                  <span class="todo-due is-today num">今天 20:00</span>
+                </span>
+                <span class="todo-meta">
+                  <span class="todo-src todo-src-cal">日历</span>
+                  <span>子任务 1/3 · 附件 1</span>
+                </span>
+              </a>
+              <span class="avatar todo-av todo-av-me">我</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="todo-group">
+          <div class="todo-group-head">
+            <span class="todo-group-title">本周</span>
+            <span class="todo-group-count">1 项</span>
+          </div>
+          <div class="todo-list">
+            <div class="todo-item">
+              <button class="todo-check" type="button" data-title="给车做保养" data-due="10 月 31 日 10:00" aria-label="完成 给车做保养">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
+              </button>
+              <a class="todo-body" href="todo-detail.html">
+                <span class="todo-row1">
+                  <span class="todo-title">给车做保养</span>
+                  <span class="todo-due num">10 月 31 日 10:00</span>
+                </span>
+                <span class="todo-meta">
+                  <span class="todo-src todo-src-cal">日历</span>
+                  <span>无子任务</span>
+                </span>
+              </a>
+              <span class="avatar todo-av" style="background:var(--accent-soft);color:var(--accent)">妈</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 我创建的 -->
+      <div class="todo-seg" data-seg="created">
+        <div class="todo-group">
+          <div class="todo-group-head">
+            <span class="todo-group-title">今天</span>
+            <span class="todo-group-count">1 项</span>
+          </div>
+          <div class="todo-list">
+            <div class="todo-item">
+              <button class="todo-check" type="button" data-title="陪女儿做手工" data-due="今天 19:30" aria-label="完成 陪女儿做手工">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
+              </button>
+              <a class="todo-body" href="todo-detail.html">
+                <span class="todo-row1">
+                  <span class="todo-title">陪女儿做手工</span>
+                  <span class="todo-due is-today num">今天 19:30</span>
+                </span>
+                <span class="todo-meta">
+                  <span class="todo-src todo-src-cal">日历</span>
+                  <span>负责人 爸爸</span>
+                </span>
+              </a>
+              <span class="avatar todo-av" style="background:var(--brand-soft);color:var(--brand-text)">爸</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="todo-group">
+          <div class="todo-group-head">
+            <span class="todo-group-title">本周</span>
+            <span class="todo-group-count">2 项</span>
+          </div>
+          <div class="todo-list">
+            <div class="todo-item">
+              <button class="todo-check" type="button" data-title="预约体检" data-due="11 月 2 日 09:00" aria-label="完成 预约体检">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
+              </button>
+              <a class="todo-body" href="todo-detail.html">
+                <span class="todo-row1">
+                  <span class="todo-title">预约体检</span>
+                  <span class="todo-due num">11 月 2 日 09:00</span>
+                </span>
+                <span class="todo-meta">
+                  <span class="todo-src todo-src-cal">日历</span>
+                  <span>负责人 妈妈</span>
+                </span>
+              </a>
+              <span class="avatar todo-av" style="background:var(--accent-soft);color:var(--accent)">妈</span>
+            </div>
+            <div class="todo-item">
+              <button class="todo-check" type="button" data-title="整理家庭相册" data-due="11 月 8 日" aria-label="完成 整理家庭相册">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
+              </button>
+              <a class="todo-body" href="todo-detail.html">
+                <span class="todo-row1">
+                  <span class="todo-title">整理家庭相册</span>
+                  <span class="todo-due num">11 月 8 日</span>
+                </span>
+                <span class="todo-meta">
+                  <span class="todo-src todo-src-cal">日历</span>
+                  <span>无子任务</span>
+                </span>
+              </a>
+              <span class="avatar todo-av todo-av-me">我</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 已归档 -->
+      <div class="todo-seg" data-seg="archived">
+        <div class="todo-group">
+          <div class="todo-group-head">
+            <span class="todo-group-title">近期归档</span>
+            <span class="todo-group-count">3 项</span>
+          </div>
+          <div class="todo-list">
+            <div class="todo-item">
+              <span class="todo-mark" aria-hidden="true">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
+              </span>
+              <a class="todo-body" href="todo-detail.html">
+                <span class="todo-row1">
+                  <span class="todo-title">取快递</span>
+                  <span class="todo-due is-done">10 月 27 日完成</span>
+                </span>
+                <span class="todo-meta">
+                  <span class="todo-src todo-src-cal">日历</span>
+                  <span>归档 · 已完成</span>
+                </span>
+              </a>
+              <span class="avatar todo-av todo-av-me">我</span>
+            </div>
+            <div class="todo-item">
+              <span class="todo-mark" aria-hidden="true">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
+              </span>
+              <a class="todo-body" href="todo-detail.html">
+                <span class="todo-row1">
+                  <span class="todo-title">换季整理被子</span>
+                  <span class="todo-due is-done">10 月 25 日完成</span>
+                </span>
+                <span class="todo-meta">
+                  <span class="todo-src todo-src-cal">日历</span>
+                  <span>归档 · 已完成</span>
+                </span>
+              </a>
+              <span class="avatar todo-av" style="background:var(--accent-soft);color:var(--accent)">妈</span>
+            </div>
+            <div class="todo-item">
+              <span class="todo-mark" aria-hidden="true">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
+              </span>
+              <a class="todo-body" href="todo-detail.html">
+                <span class="todo-row1">
+                  <span class="todo-title">给妈妈订生日蛋糕</span>
+                  <span class="todo-due is-done">10 月 22 日完成</span>
+                </span>
+                <span class="todo-meta">
+                  <span class="todo-src todo-src-cal">日历</span>
+                  <span>归档 · 已完成</span>
+                </span>
+              </a>
+              <span class="avatar todo-av todo-av-me">我</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="todo-sk" aria-hidden="true">
+      <div class="skeleton sk-line"></div>
+      <div class="skeleton sk-line" style="width:64%;margin-top:0"></div>
+      <div class="skeleton sk-block" style="height:62px"></div>
+      <div class="skeleton sk-block" style="height:62px"></div>
+      <div class="skeleton sk-block" style="height:62px"></div>
+      <div class="skeleton sk-block" style="height:62px"></div>
+    </div>
+
+    <div class="state todo-empty">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="7" width="22" height="20" rx="4"/><path d="M11 14h6M11 19h10"/><path d="M20.5 12.5l2 2 3.5-3.5"/></svg>
+      </div>
+      <div class="state-title">没有分配给你的待办</div>
+      <div class="state-desc">新建时可以指派给家人，也可以留给自己；被家人指派后，待办会出现在这里。</div>
+      <button class="btn btn-secondary" type="button" data-go="todo-create.html"
+        data-hot="⑥" data-hot-name="空态行动" data-hot-pos="top-right"
+        data-hot-label="零条时给可执行动作「新建待办」，直接进新建页；不只放一句空话，也不提示「去别的面看看」">新建待办</button>
+    </div>
+
+    <div class="todo-foot-note tiny">完成与归档会同步到到期中心与首页今日区；待办的唯一归属是日历面（<code>calendar_todo</code>），业务面不另建待办清单，只按 17.4 把自己的到期项注册进来。</div>
+  </div>
+
+  <!-- 完成待办确认层 -->
+  <div class="sheet-mask" id="sheet-done" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>完成这条待办？</h3>
+      <p class="sheet-sub">确认后才发出完成回写：到期中心与首页今日区会同步移除，完成状态只进不退，不能再改回待处理。</p>
+      <div class="todo-sheet-line">
+        <span class="todo-check" aria-hidden="true" style="background:var(--brand);border-color:var(--brand)">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:1"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
+        </span>
+        <span class="todo-sheet-title" id="done-name">准备女儿家长会</span>
+        <span class="todo-sheet-due num" id="done-due">今天 20:00</span>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" id="done-confirm">标记完成</button>
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var todoState = new URLSearchParams(location.search).get('state') || 'default';
+
+  document.querySelectorAll('[data-seg-btn]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('[data-seg-btn]').forEach(function (x) {
+        x.setAttribute('aria-selected', String(x === b));
+      });
+      document.querySelectorAll('[data-seg]').forEach(function (l) {
+        l.classList.toggle('is-on', l.getAttribute('data-seg') === b.getAttribute('data-seg-btn'));
+      });
+      var sum = document.getElementById('todo-sum');
+      if (sum) sum.textContent = b.getAttribute('data-sum');
+    });
+  });
+
+  var currentRow = null;
+
+  document.querySelectorAll('.todo-check[data-title]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var row = btn.closest('.todo-item');
+      if (row.classList.contains('is-done')) return;
+      currentRow = row;
+      document.getElementById('done-name').textContent = btn.getAttribute('data-title');
+      document.getElementById('done-due').textContent = btn.getAttribute('data-due');
+      window.HC.openSheet('sheet-done');
+    });
+  });
+
+  document.getElementById('done-confirm').addEventListener('click', function () {
+    window.HC.closeSheet(document.getElementById('sheet-done'));
+    if (!currentRow) return;
+    currentRow.classList.add('is-done');
+    var due = currentRow.querySelector('.todo-due');
+    due.textContent = '已完成';
+    due.className = 'todo-due is-done num';
+    window.HC.toast(todoState === 'offline'
+      ? '已记为完成，联网后自动回写'
+      : '已完成，到期项已从日历移除');
+    currentRow = null;
+  });
+</script>
+</body>
+</html>

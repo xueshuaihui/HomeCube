@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>设备锁 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .content { display: flex; flex-direction: column; }
+  .pin-head { text-align: center; padding: 20px 32px 0; }
+  .pin-head h2 { font-size: var(--fs-20); font-weight: 700; }
+  .pin-head p { margin-top: 8px; font-size: var(--fs-13); color: var(--text-2); line-height: var(--lh-normal); }
+  .pin-illust { margin: auto 0 0; display: flex; justify-content: center; color: var(--brand); opacity: .9; }
+  .pin-illust span { display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%; background: var(--brand-soft); }
+  .pin-dots { margin: 28px 0 0; }
+  .pin-err { display: none; justify-content: center; color: var(--danger); font-size: var(--fs-13); margin-top: 16px; }
+  body[data-state="mismatch"] .pin-err { display: flex; }
+  .keypad { margin-top: 28px; }
+  .pin-foot { text-align: center; padding: 12px 24px 24px; }
+  .pin-foot button { border: 0; background: transparent; color: var(--text-2); font-family: inherit; font-size: var(--fs-13); cursor: pointer; padding: 8px; }
+  .lock-note { display: none; }
+  body[data-state="locked"] .lock-note { display: block; }
+  body[data-state="locked"] .keypad { opacity: .35; pointer-events: none; }
+  body[data-state="locked"] .pin-dots { opacity: .35; }
+  body[data-state="set"] .only-confirm, body[data-state="confirm"] .only-set,
+  body[data-state="mismatch"] .only-confirm,
+  body[data-state="locked"] .only-set,
+  body[data-state="locked"] .only-confirm { display: none; }
+  .only-locked { display: none; }
+  body[data-state="locked"] .only-locked { display: block; }
+  body[data-state="locked"] .pin-illust { display: none; }
+</style>
+</head>
+<body data-screen="04 设备锁 PIN" data-tab="" data-states="set,confirm,mismatch,locked">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <button class="icon-btn" type="button" data-go="me.html" aria-label="返回">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </button>
+    </div>
+    <div class="nav-title">设备锁</div>
+    <div class="nav-right"></div>
+  </div>
+
+  <div class="content">
+    <div class="pin-head">
+      <h2 class="only-set">设置 6 位设备锁</h2>
+      <h2 class="only-confirm">再次输入确认</h2>
+      <h2 class="only-locked">设备锁已锁定</h2>
+      <p class="only-set">设备锁只保存在本机，用于保护「私密」级别的内容，不会上传服务器。</p>
+      <p class="only-confirm">两次输入需一致；忘记后只能通过手机号重新验证。</p>
+    </div>
+
+    <div class="pin-illust" aria-hidden="true">
+      <span>
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="14" width="16" height="12" rx="3"/><path d="M11.5 14v-3a4.5 4.5 0 0 1 9 0v3"/><circle cx="16" cy="20" r="1.6" fill="currentColor" stroke="none"/></svg>
+      </span>
+    </div>
+
+    <div class="pin-dots" data-hot="①" data-hot-name="PIN 点阵" data-hot-pos="top-right" data-hot-label="满 6 位自动提交，不设确认按钮；输入过程不回显数字">
+      <span class="pin-dot"></span><span class="pin-dot"></span><span class="pin-dot"></span>
+      <span class="pin-dot"></span><span class="pin-dot"></span><span class="pin-dot"></span>
+    </div>
+
+    <div class="pin-err">两次输入不一致，请重新设置</div>
+
+    <div class="lock-note">
+      <div class="state is-inline">
+        <div class="state-icon">
+          <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="8" y="14" width="16" height="12" rx="3"/><path d="M11.5 14v-3a4.5 4.5 0 0 1 9 0v3"/></svg>
+        </div>
+        <div class="state-title">30 秒后可重试</div>
+        <div class="state-desc">连续 5 次输入错误，本机 L3 访问被临时锁定；之后依次为 1 分钟、5 分钟。</div>
+      </div>
+    </div>
+
+    <div class="keypad" data-hot="②" data-hot-name="数字键盘" data-hot-pos="top-right" data-hot-label="使用自定义键盘，不调系统键盘；长按删除键可清空已输入">
+      <button class="key" type="button" data-key="1">1</button>
+      <button class="key" type="button" data-key="2">2</button>
+      <button class="key" type="button" data-key="3">3</button>
+      <button class="key" type="button" data-key="4">4</button>
+      <button class="key" type="button" data-key="5">5</button>
+      <button class="key" type="button" data-key="6">6</button>
+      <button class="key" type="button" data-key="7">7</button>
+      <button class="key" type="button" data-key="8">8</button>
+      <button class="key" type="button" data-key="9">9</button>
+      <button class="key is-ghost" type="button" data-hot="③" data-hot-name="删除" data-hot-pos="top-right" data-hot-label="单次删除一位；无输入时不响应">删除</button>
+      <button class="key" type="button" data-key="0">0</button>
+      <button class="key is-ghost" type="button" data-go="me.html">取消</button>
+    </div>
+
+    <div class="pin-foot">
+      <button type="button" data-hot="④" data-hot-name="忘记口令" data-hot-pos="top-right" data-hot-label="走手机号重新验证后重置 PIN；校验通过前不解除本机锁定" data-toast="忘记口令：需手机号验证码重新验证后重置">忘记口令？</button>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var state = new URLSearchParams(location.search).get('state') || 'set';
+  var first = '';
+  var buf = '';
+
+  function paint() {
+    document.querySelectorAll('.pin-dot').forEach(function (d, i) {
+      d.classList.toggle('is-filled', i < buf.length);
+    });
+  }
+
+  document.querySelectorAll('[data-key]').forEach(function (k) {
+    k.addEventListener('click', function () {
+      if (state === 'locked') return;
+      if (buf.length >= 6) return;
+      buf += k.getAttribute('data-key');
+      paint();
+      if (buf.length === 6) setTimeout(commit, 120);
+    });
+  });
+
+  document.querySelector('.key.is-ghost[data-hot="③"]').addEventListener('click', function () {
+    buf = buf.slice(0, -1);
+    paint();
+  });
+
+  function commit() {
+    if (state === 'set' || state === 'mismatch') {
+      first = buf;
+      buf = '';
+      paint();
+      location.href = 'pin-set.html?state=confirm';
+      return;
+    }
+    if (state === 'confirm') {
+      if (buf === first || first === '') {
+        window.HC.toast('设备锁已开启');
+        setTimeout(function () { location.href = 'me.html'; }, 600);
+      } else {
+        location.href = 'pin-set.html?state=mismatch';
+      }
+      return;
+    }
+    buf = '';
+    paint();
+  }
+</script>
+</body>
+</html>

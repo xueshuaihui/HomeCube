@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>编辑流水 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-content { padding-bottom: 20px; }
+
+  .fx-del {
+    height: 36px; padding: 0 2px;
+    border: 0; background: none;
+    font-family: inherit; font-size: var(--fs-15); font-weight: 600;
+    color: var(--danger); cursor: pointer;
+  }
+  .fx-del:hover { opacity: .8; }
+
+  .fx-ver {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    margin: 2px 0 10px; padding: 8px 11px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    font-size: var(--fs-12); color: var(--text-2);
+  }
+  .fx-ver b { font-weight: 700; color: var(--text); }
+
+  .fx-banner {
+    display: none; align-items: flex-start; gap: 8px;
+    margin: 2px 0 12px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-banner svg { flex: none; margin-top: 1px; }
+  .fx-banner b { display: block; font-size: var(--fs-13); margin-bottom: 2px; }
+  .fx-banner-saved { background: var(--success-soft); color: var(--success); }
+  .fx-banner-409 { background: var(--warning-soft); color: var(--warning); }
+  body[data-state="saved-toast"] .fx-banner-saved { display: flex; }
+  body[data-state="conflict"] .fx-banner-409 { display: flex; }
+  body[data-state="conflict"] .fx-form { opacity: .7; }
+
+  .fx-type { display: flex; width: 100%; margin: 2px 0 6px; }
+  .fx-type button { flex: 1; padding: 8px 6px; }
+  .fx-type button[disabled] { cursor: not-allowed; }
+  .fx-type button[aria-selected="false"][disabled] { opacity: .45; }
+  .fx-type-hint { margin: 0 2px 12px; font-size: var(--fs-11); line-height: var(--lh-normal); color: var(--text-3); }
+
+  .fx-amount-box {
+    padding: 16px 18px 14px;
+    border-radius: var(--radius-xl);
+    background: linear-gradient(135deg, var(--brand-soft) 0%, var(--surface) 72%);
+    border: 1px solid var(--brand-soft-border);
+  }
+  .fx-amount-k { display: flex; align-items: center; justify-content: space-between; font-size: var(--fs-12); color: var(--text-3); }
+  .fx-amount-line { margin-top: 6px; display: flex; align-items: baseline; gap: 6px; min-height: 38px; }
+  .fx-amount-val {
+    font-family: var(--font-num); font-size: var(--fs-30); font-weight: 700;
+    letter-spacing: -.01em;
+  }
+  .fx-amount-help { margin-top: 2px; font-size: var(--fs-11); color: var(--text-3); }
+
+  .fx-sec {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin: 18px 2px 8px;
+    font-size: var(--fs-13); font-weight: 700; color: var(--text-2);
+  }
+  .fx-sec .tiny { font-weight: 500; }
+
+  .fx-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .fx-cat {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 12px 6px 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-family: inherit; font-size: var(--fs-12); font-weight: 600;
+    color: var(--text-2); cursor: pointer;
+  }
+  .fx-cat:hover { border-color: var(--border-strong); }
+  .fx-cat svg { color: var(--text-2); }
+  .fx-cat.is-on {
+    background: var(--brand-soft);
+    border-color: var(--brand-soft-border);
+    color: var(--brand-text);
+  }
+  .fx-cat.is-on svg { color: var(--brand-text); }
+
+  .fx-fields { margin-top: 4px; }
+  .fx-field {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; padding: 12px 14px;
+    border: 0; background: var(--surface);
+    font-family: inherit; text-align: left; color: var(--text);
+    cursor: pointer;
+  }
+  .fx-field + .fx-field { border-top: 1px solid var(--border); }
+  .fx-field:hover { background: var(--surface-2); }
+  .fx-field-k { width: 44px; flex: none; font-size: var(--fs-13); color: var(--text-3); }
+  .fx-field-v { flex: 1; min-width: 0; font-size: var(--fs-14); font-weight: 600; }
+  .fx-field-v .tiny { margin-left: 4px; font-weight: 500; }
+  .fx-field .chevron { flex: none; color: var(--text-3); }
+  .fx-field-pick { display: inline-flex; align-items: center; gap: 6px; }
+  .fx-av-dad { background: var(--info-soft); color: var(--info); }
+  .fx-avatar { width: 22px; height: 22px; font-size: var(--fs-11); }
+  .fx-tags { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+
+  .fx-note-area { margin-top: 4px; }
+
+  .fx-attach {
+    padding: 12px 14px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .fx-thumbs { display: flex; gap: 8px; }
+  .fx-thumb {
+    width: 62px; height: 62px; flex: none;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface-2); color: var(--text-3);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    font-size: 10px; cursor: pointer;
+    font-family: inherit;
+  }
+  .fx-thumb:hover { border-color: var(--border-strong); }
+  .fx-add-thumb {
+    width: 62px; height: 62px; flex: none;
+    border-radius: var(--radius-md);
+    border: 1px dashed var(--border-strong);
+    background: var(--surface); color: var(--text-3);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .fx-add-thumb:hover { background: var(--surface-2); }
+  .fx-attach-hint { margin-top: 8px; font-size: var(--fs-11); color: var(--text-3); }
+
+  .fx-src-note {
+    margin-top: 16px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    font-size: var(--fs-12); color: var(--text-2); line-height: var(--lh-normal);
+  }
+  .fx-src-note b { color: var(--text); }
+
+  .fx-edit-foot {
+    flex: none;
+    padding: 10px 16px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+  .fx-foot-note { margin-bottom: 8px; text-align: center; line-height: var(--lh-normal); }
+
+  .fx-ver-pair { display: flex; gap: 8px; margin-top: 14px; }
+  .fx-ver-card {
+    flex: 1; min-width: 0;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .fx-ver-card.is-mine { border-color: var(--brand-soft-border); background: var(--brand-soft); }
+  .fx-ver-card-k { font-size: var(--fs-11); font-weight: 700; color: var(--text-3); }
+  .fx-ver-card.is-mine .fx-ver-card-k { color: var(--brand-text); }
+  .fx-ver-card-v { margin-top: 4px; font-size: var(--fs-14); font-weight: 700; }
+  .fx-ver-card-line { margin-top: 4px; font-size: var(--fs-11); color: var(--text-2); line-height: var(--lh-normal); }
+  .fx-conflict-note { margin-top: 10px; font-size: var(--fs-11); color: var(--text-3); line-height: var(--lh-normal); }
+
+  .fx-sheet-line {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 14px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+  }
+  .fx-sheet-title { flex: 1; min-width: 0; font-size: var(--fs-14); font-weight: 600; }
+  .fx-sheet-amt { flex: none; font-size: var(--fs-14); }
+</style>
+</head>
+<body data-screen="F03 编辑流水" data-states="default,conflict,delete-confirm,saved-toast">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <header class="navbar">
+    <div class="nav-left">
+      <a class="icon-btn" href="finance-tx-detail.html" aria-label="返回详情"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回这笔流水的详情；未保存的改动直接丢弃，不落草稿。保存成功也回详情页并显示新值，不返回列表">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </a>
+    </div>
+    <div class="nav-title">编辑流水</div>
+    <div class="nav-right">
+      <button class="fx-del" type="button" data-sheet-open="sheet-delete"
+        data-hot="②" data-hot-name="删除" data-hot-pos="outer-top-right"
+        data-hot-label="先弹确认层。删除是软删：这笔进回收站、30 天内可由作者或管理员恢复；由周期规则生成的这笔只删这一笔，规则下月照常自动入账">
+        删除
+      </button>
+    </div>
+  </header>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 保存后先入待同步队列
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-ver">
+      <span class="tag is-brand">编辑中</span>
+      <span>版本 <b class="num">3</b> · 爸爸 10 月 28 日 19:26 最后修改</span>
+    </div>
+
+    <div class="fx-banner fx-banner-saved">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M6.4 10.3l2.4 2.4 4.8-4.9"/></svg>
+      <div>
+        <b>已保存 · 版本 4</b>
+        家人端 5 秒内看到新金额；周期规则本身不变，下月仍按规则自动入账。
+      </div>
+    </div>
+
+    <div class="fx-banner fx-banner-409">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6v4.4M10 13.4v.1"/></svg>
+      <div>
+        <b>这条记录已被修改</b>
+        你在编辑时，爸爸在另一台设备把它改成了版本 4。金额型数据不静默合并，先在冲突层里选一条出路。
+      </div>
+    </div>
+
+    <div class="fx-form">
+      <div class="segmented fx-type" role="group" aria-label="流水类型（不可修改）">
+        <button type="button" aria-selected="true" disabled>支出</button>
+        <button type="button" aria-selected="false" disabled>收入</button>
+        <button type="button" aria-selected="false" disabled>转账</button>
+      </div>
+      <div class="fx-type-hint">类型不在这里改：支出 / 收入 / 转账的成对与预算口径不同，要换类型请删除这笔后重记。</div>
+
+      <div class="fx-amount-box"
+        data-hot="③" data-hot-name="金额" data-hot-pos="top-right"
+        data-hot-label="预填原值 -¥128.00，负数在货币符号之前；以「分」整数存储、按家庭币种显示。改金额同时改这笔的收支与预算占用，保存时带 version=3 提交">
+        <div class="fx-amount-k">
+          <span>金额（元）</span>
+          <span class="num">人民币</span>
+        </div>
+        <div class="fx-amount-line">
+          <span class="fx-amount-val num">-¥128.00</span>
+        </div>
+        <div class="fx-amount-help">以「分」存储 · 显示按家庭币种 · 最多两位小数</div>
+      </div>
+
+      <div class="fx-sec">
+        <span>分类</span>
+        <span class="tiny">顺序与报表图例一致</span>
+      </div>
+      <div class="fx-grid"
+        data-hot="④" data-hot-name="分类九宫格" data-hot-pos="top-right"
+        data-hot-label="预选当前分类「餐饮」；改分类只改这一笔的报表归集与预算归属，不连带改历史流水。停用分类不再出现在这里，历史流水照常显示">
+        <button class="fx-cat is-on" type="button" data-cat="餐饮">
+          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11h14"/><path d="M4 11a6 6 0 0 1 12 0"/><path d="M7.5 7.6 6 4.4M12.5 7.6 14 4.4"/></svg>
+          餐饮
+        </button>
+        <button class="fx-cat" type="button" data-cat="交通">
+          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13.5h12l-1.2 2.6a1.5 1.5 0 0 1-1.3.9H6.5a1.5 1.5 0 0 1-1.3-.9z"/><path d="M5.6 13.5 7 8.6A2.4 2.4 0 0 1 9.3 7h1.4A2.4 2.4 0 0 1 13 8.6l1.4 4.9"/><circle cx="7" cy="16" r="1"/><circle cx="13" cy="16" r="1"/></svg>
+          交通
+        </button>
+        <button class="fx-cat" type="button" data-cat="购物">
+          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6.5h14l-1.1 9.2a1.6 1.6 0 0 1-1.6 1.4H5.7a1.6 1.6 0 0 1-1.6-1.4z"/><path d="M7.2 8V5.6a2.8 2.8 0 0 1 5.6 0V8"/></svg>
+          购物
+        </button>
+        <button class="fx-cat" type="button" data-cat="日用">
+          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5h6v4H7z"/><path d="M8 7.5v9h4v-9"/><path d="M6.5 16.5h7"/></svg>
+          日用
+        </button>
+        <button class="fx-cat" type="button" data-cat="居住">
+          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5 10 4l6.5 5.5"/><path d="M5.5 9v7h9V9"/><path d="M8.5 16v-3.5h3V16"/></svg>
+          居住
+        </button>
+        <button class="fx-cat" type="button" data-cat="娱乐">
+          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5.5" width="14" height="9" rx="4"/><path d="M7 10h2.5M8.2 8.7v2.6"/><circle cx="12.6" cy="9.3" r=".8"/><circle cx="14.2" cy="11" r=".8"/></svg>
+          娱乐
+        </button>
+        <button class="fx-cat" type="button" data-cat="医疗">
+          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="12" height="12" rx="3"/><path d="M10 7v6M7 10h6"/></svg>
+          医疗
+        </button>
+        <button class="fx-cat" type="button" data-cat="学习">
+          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5h6.5a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 0-1.5-1.5H3z"/><path d="M17 5.5h-6.5A1.5 1.5 0 0 0 9 7v9a1.5 1.5 0 0 1 1.5-1.5H17z"/></svg>
+          学习
+        </button>
+        <button class="fx-cat" type="button" data-toast="更多分类：二级分类与停用项在完整选择器里；停用分类不再出现，历史流水照常显示">
+          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="5" cy="10" r="1.2"/><circle cx="10" cy="10" r="1.2"/><circle cx="15" cy="10" r="1.2"/></svg>
+          更多
+        </button>
+      </div>
+
+      <div class="fx-sec"><span>账户</span><span class="tiny">只列未归档账户</span></div>
+      <div class="list"
+        data-hot="⑤" data-hot-name="账户" data-hot-pos="top-right"
+        data-hot-label="预填原账户「招行信用卡」；只能换成未归档账户。换账户会同时改两侧余额，历史统计按新账户重算，保存带 version">
+        <button class="fx-field" type="button" data-toast="换账户：只列未归档账户，换后这笔在新旧账户的余额与净资产里同时重算">
+          <span class="fx-field-k">账户</span>
+          <span class="fx-field-v">招行信用卡 <span class="tiny num">尾号 3941 · 待还 ¥2,860.00</span></span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+      </div>
+
+      <div class="fx-sec"><span>这笔的归属</span><span class="tiny">改后重算报表</span></div>
+      <div class="list fx-fields">
+        <button class="fx-field" type="button" data-toast="改日期只改这笔的归属日与所属期间；时间窗 period 不变，列表仍按日分组"
+          data-hot="⑥" data-hot-name="日期" data-hot-pos="outer-top-right"
+          data-hot-label="预填原时间 10 月 28 日 19:20；改时间按家庭时区归日，补记与改期都只影响这一笔的归属期间，不改时间窗档位">
+          <span class="fx-field-k">日期</span>
+          <span class="fx-field-v num">10 月 28 日 19:20 <span class="tiny">周三 · 家庭时区</span></span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+        <button class="fx-field" type="button" data-toast="改成员只改「谁记的这笔」与报表的成员维度，不改变谁能看这笔流水"
+          data-hot="⑦" data-hot-name="成员" data-hot-pos="outer-top-right"
+          data-hot-label="预填原作者「爸爸」；成员决定记账归属与报表维度，不决定可见性。改成员不转移编辑权，作者仍是原录入人">
+          <span class="fx-field-k">成员</span>
+          <span class="fx-field-v">
+            <span class="fx-field-pick"><span class="avatar fx-avatar fx-av-dad">爸</span>爸爸</span>
+          </span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+        <button class="fx-field" type="button" data-toast="账本是报表与归集的分组，不是隔离域：换账本不会改变谁能看到这笔流水"
+          data-hot="⑧" data-hot-name="账本与标签" data-hot-pos="outer-top-right"
+          data-hot-label="预填账本「日常」与标签「家庭 / 聚餐」；账本只改报表归集、不是权限边界；标签可多选，用于筛选与报表归集，两者都不影响可见性">
+          <span class="fx-field-k">账本</span>
+          <span class="fx-field-v">日常</span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+        <div class="fx-field">
+          <span class="fx-field-k">标签</span>
+          <span class="fx-field-v fx-tags">
+            <span class="tag is-brand">家庭</span>
+            <span class="tag">聚餐</span>
+            <button class="tag" type="button" data-toast="添加标签：项目 / 地点 / 商家，多个标签取交集用于筛选" style="border:0;cursor:pointer;font-family:inherit">+ 添加</button>
+          </span>
+        </div>
+      </div>
+
+      <div class="field fx-note-area" style="margin-top:16px">
+        <label class="field-label" for="fx-note">备注</label>
+        <textarea class="textarea" id="fx-note" maxlength="200" rows="2" placeholder="可选：写清商家、同行人或者用途">家庭聚餐，三家一起。</textarea>
+        <div class="help">备注全家可见；这笔若被标记为私密，只有作者与管理员能读到。</div>
+      </div>
+
+      <div class="fx-sec"><span>附件</span><span class="tiny">最多 3 张</span></div>
+      <div class="fx-attach"
+        data-hot="⑨" data-hot-name="附件" data-hot-pos="top-right"
+        data-hot-label="已有 2 张小票，可再加 1 张；单张 ≤5MB、只收 jpg / png / webp，超出在添加处直接说明原因。删附件只删引用，原图保留在家庭文件里">
+        <div class="fx-thumbs">
+          <button class="fx-thumb" type="button" data-toast="预览这张小票；详情页可以放大与下载">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="2"/><circle cx="7.5" cy="8" r="1.2"/><path d="M4 14l4-4 3 3 2-2 3 3"/></svg>
+            小票 1
+          </button>
+          <button class="fx-thumb" type="button" data-toast="第二张小票：详情页两张都能放大与下载">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="2"/><circle cx="7.5" cy="8" r="1.2"/><path d="M4 14l4-4 3 3 2-2 3 3"/></svg>
+            小票 2
+          </button>
+          <button class="fx-add-thumb" type="button" data-toast="拍照或从相册选：最多 3 张、单张 ≤5MB、只收 jpg / png / webp">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 4.5v11M4.5 10h11"/></svg>
+          </button>
+        </div>
+        <div class="fx-attach-hint">已加 2 / 3 张 · 单张 ≤5MB · jpg / png / webp</div>
+      </div>
+
+      <div class="fx-src-note">
+        <b>这笔由周期规则「家庭聚餐」自动入账</b>（每月 28 日）。编辑只改这一笔，不回改规则；删除也只删这一笔，下月仍按规则入账。
+      </div>
+    </div>
+  </div>
+
+  <div class="fx-edit-foot">
+    <div class="fx-foot-note tiny">保存会带上版本 3；家人同时在改会弹冲突层，两条出路都由你选，不会静默覆盖。</div>
+    <button class="btn btn-primary btn-block" type="button" id="fx-save"
+      data-hot="⑩" data-hot-name="保存修改" data-hot-pos="outer-bottom-right"
+      data-hot-label="带 version=3 提交；成功回详情并显示新值。返回 409 时弹「这条记录已被修改」，给「查看最新 / 仍按我的修改保存」两条出路，同一冲突最多连弹 2 次">
+      保存修改
+    </button>
+  </div>
+
+  <!-- 删除确认层 -->
+  <div class="sheet-mask" id="sheet-delete" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>删除这笔流水？</h3>
+      <p class="sheet-sub">删除是软删：这笔会进回收站，30 天内可由作者或管理员恢复。由周期规则自动入账的这笔只删这一笔，规则不受影响，下月照常入账。</p>
+      <div class="fx-sheet-line">
+        <span class="fx-sheet-title">餐饮 · 晚餐<br><span class="tiny">10 月 28 日 19:20 · 爸爸</span></span>
+        <span class="fx-sheet-amt num">-¥128.00</span>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-danger btn-block" type="button" data-go="finance-tx-trash.html">删除，进回收站</button>
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 409 冲突层 -->
+  <div class="sheet-mask" id="sheet-conflict" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>这条记录已被修改</h3>
+      <p class="sheet-sub">你在编辑时，爸爸把它改成了版本 4。金额型数据不静默合并，下面两条出路选一条。</p>
+      <div class="fx-ver-pair">
+        <div class="fx-ver-card is-mine">
+          <div class="fx-ver-card-k">我的修改</div>
+          <div class="fx-ver-card-v num">-¥138.00</div>
+          <div class="fx-ver-card-line">备注：家庭聚餐，三家一起。</div>
+          <div class="fx-ver-card-line tiny">基于版本 3</div>
+        </div>
+        <div class="fx-ver-card">
+          <div class="fx-ver-card-k">服务端最新</div>
+          <div class="fx-ver-card-v num">-¥128.00</div>
+          <div class="fx-ver-card-line">备注：家庭聚餐，加了两个菜。</div>
+          <div class="fx-ver-card-line tiny">版本 4 · 爸爸 19:26</div>
+        </div>
+      </div>
+      <div class="fx-conflict-note">「查看最新」丢弃我的改动并重拉版本 4；「仍按我的修改保存」以版本 4 为底写成版本 5，我的金额优先。同一冲突最多连弹 2 次，仍冲突则提示稍后再试。</div>
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" data-go="finance-tx-edit.html">查看最新</button>
+        <button class="btn btn-secondary btn-block" type="button" data-go="finance-tx-edit.html?state=saved-toast">仍按我的修改保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var editState = new URLSearchParams(location.search).get('state') || 'default';
+  var saveBtn = document.getElementById('fx-save');
+
+  document.querySelectorAll('[data-cat]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('[data-cat]').forEach(function (x) {
+        x.classList.toggle('is-on', x === b);
+      });
+      window.HC.toast('分类已改为「' + b.getAttribute('data-cat') + '」：这笔的报表归集与预算归属一起重算');
+    });
+  });
+
+  saveBtn.addEventListener('click', function () {
+    if (editState === 'conflict') {
+      window.HC.toast('请先在冲突层里选一条出路：查看最新，或仍按我的修改保存');
+      return;
+    }
+    if (editState === 'saved-toast') {
+      location.href = 'finance-tx-detail.html';
+      return;
+    }
+    location.href = 'finance-tx-edit.html?state=saved-toast';
+  });
+
+  setTimeout(function () {
+    if (editState === 'conflict') {
+      window.HC.openSheet('sheet-conflict');
+      window.HC.toast('保存被拒（409）：这条记录已被修改');
+    }
+    if (editState === 'delete-confirm') window.HC.openSheet('sheet-delete');
+    if (editState === 'saved-toast') window.HC.toast('已保存 · 版本 4，家人端 5 秒内看到新金额');
+  }, 0);
+</script>
+</body>
+</html>

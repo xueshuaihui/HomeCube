@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>消息 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .msg-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px; height: var(--navbar-h); flex: none;
+  }
+  .msg-topbar h1 { font-size: var(--fs-20); font-weight: 700; }
+  .msg-readall {
+    height: 32px; padding: 0 4px;
+    border: 0; background: transparent;
+    font-family: inherit; font-size: var(--fs-13); font-weight: 600;
+    color: var(--brand-text); cursor: pointer;
+  }
+  body[data-state="allread"] .msg-readall { color: var(--text-3); pointer-events: none; }
+  body[data-state="loading"] .msg-readall { opacity: .4; pointer-events: none; }
+  body[data-state="empty"] .msg-readall { display: none; }
+
+  .msg-sum { padding: 2px 2px 0; font-size: var(--fs-12); color: var(--text-3); }
+  .msg-sum-done { display: none; }
+  body[data-state="allread"] .msg-sum-unread { display: none; }
+  body[data-state="allread"] .msg-sum-done { display: inline; }
+  body[data-state="empty"] .msg-sum,
+  body[data-state="loading"] .msg-sum { display: none; }
+
+  .msg-cache {
+    display: none; align-items: center; gap: 6px;
+    margin: 6px 0 0; padding: 7px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--warning-soft); color: var(--warning);
+    font-size: var(--fs-12);
+  }
+
+  .msg-group-head {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%; padding: 18px 2px 8px;
+    border: 0; background: transparent; text-align: left;
+    font-family: inherit; cursor: pointer;
+  }
+  .msg-group-title { font-size: var(--fs-15); font-weight: 700; letter-spacing: .01em; color: var(--text); }
+  .msg-gcount {
+    margin-left: auto; padding: 1px 8px;
+    border-radius: var(--radius-pill);
+    background: var(--danger-soft); color: var(--danger);
+    font-size: var(--fs-11); font-weight: 600;
+  }
+  body[data-state="allread"] .msg-gcount { display: none; }
+
+  .msg-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .msg-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 14px; border-bottom: 1px solid var(--border);
+    text-decoration: none; color: var(--text);
+  }
+  .msg-item:last-child { border-bottom: 0; }
+  .msg-item:hover { background: var(--surface-2); }
+  .msg-icon {
+    width: 32px; height: 32px; flex: none;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .msg-ic-budget { background: var(--brand-soft); color: var(--brand-text); }
+  .msg-ic-system { background: var(--info-soft); color: var(--info); }
+  .msg-ic-reminder { background: var(--accent-soft); color: var(--accent); }
+  .msg-body { flex: 1; min-width: 0; }
+  .msg-titlerow { display: flex; align-items: center; gap: 6px; }
+  .msg-dot {
+    width: 6px; height: 6px; flex: none;
+    border-radius: var(--radius-pill);
+    background: var(--danger);
+  }
+  .msg-title {
+    flex: 1; min-width: 0;
+    font-size: var(--fs-14); font-weight: 500; line-height: var(--lh-normal);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .msg-item.is-unread .msg-title { font-weight: 700; }
+  body[data-state="allread"] .msg-dot { display: none; }
+  body[data-state="allread"] .msg-item.is-unread .msg-title { font-weight: 500; }
+  .msg-time { flex: none; font-size: var(--fs-11); color: var(--text-3); }
+  .msg-excerpt {
+    margin-top: 4px; font-size: var(--fs-12); color: var(--text-2);
+    line-height: var(--lh-normal);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .msg-foot {
+    margin: 20px 0 8px; padding: 12px 14px;
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    cursor: pointer;
+  }
+  .msg-foot-row { display: flex; align-items: center; gap: 6px; font-size: var(--fs-12); color: var(--text-2); }
+  .msg-foot-rule { margin-top: 6px; font-size: var(--fs-12); color: var(--text-3); }
+
+  .msg-sk { display: none; padding-top: 6px; }
+  body[data-state="loading"] .msg-sk { display: block; }
+  body[data-state="loading"] .msg-data,
+  body[data-state="loading"] .msg-foot { display: none; }
+
+  .msg-empty { display: none; }
+  body[data-state="empty"] .msg-empty { display: block; }
+  body[data-state="empty"] .msg-data,
+  body[data-state="empty"] .msg-foot { display: none; }
+
+  body[data-state="offline"] .offline-bar { display: flex; }
+  body[data-state="offline"] .msg-cache { display: flex; }
+
+  .msg-tab { position: relative; }
+  .msg-tab .dot { top: 2px; right: 24px; }
+  .msg-tab .dot[data-count] { background: transparent; border-color: transparent; }
+  .msg-tab .dot[data-count]::after { left: -5px; top: -3px; }
+  body[data-state="allread"] .msg-tab .dot,
+  body[data-state="empty"] .msg-tab .dot { display: none; }
+</style>
+</head>
+<body data-screen="08 消息" data-tab="message" data-states="default,empty,loading,offline,allread">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <!-- 一级页顶栏：标题 + 全部已读；不做返回 -->
+  <div class="msg-topbar">
+    <h1>消息</h1>
+    <button class="msg-readall" type="button" data-sheet-open="sheet-readall"
+      data-hot="①" data-hot-name="全部已读" data-hot-pos="outer-top-right"
+      data-hot-label="走统一确认弹层；确认后 3 个分组共 4 条未读同清，顶栏红点与底栏「消息」计数同时熄灭；已全部已读时置灰不可点">全部已读</button>
+  </div>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 2 项待同步
+  </div>
+
+  <div class="content bottom-space">
+    <div class="msg-sum">
+      <span class="msg-sum-unread">4 条未读 · 共 6 条</span>
+      <span class="msg-sum-done">全部已读 · 共 6 条</span>
+    </div>
+
+    <div class="msg-cache">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+      显示本机缓存 · 最后更新 08:10
+    </div>
+
+    <div class="msg-data">
+      <!-- 分组一：预算预警 -->
+      <div class="msg-group">
+        <button class="msg-group-head" type="button" data-toast="分组标题只用于定位，不折叠、不筛选；删空一组后该组标题一并消失"
+          data-hot="②" data-hot-name="分组标题" data-hot-pos="bottom-left"
+          data-hot-label="按 budget_alert / system / reminder 三分型分组，顺序恒定；标题右侧是该组未读计数，全部已读后计数消失">
+          <span class="msg-group-title">预算预警</span>
+          <span class="msg-gcount">未读 1</span>
+        </button>
+        <div class="msg-list">
+          <a class="msg-item is-unread" href="finance-flow.html">
+            <span class="msg-icon msg-ic-budget">
+              <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/><path d="M6 12h3"/></svg>
+            </span>
+            <span class="msg-body">
+              <span class="msg-titlerow">
+                <span class="msg-dot"></span>
+                <span class="msg-title">10 月餐饮预算已用 92%</span>
+                <span class="msg-time">8 分钟前</span>
+              </span>
+              <span class="msg-excerpt">已用 <span class="amount">¥1,840.00</span> / 预算 <span class="amount">¥2,000.00</span>，剩余 ¥160.00 建议放慢节奏。</span>
+            </span>
+          </a>
+          <a class="msg-item" href="finance-flow.html">
+            <span class="msg-icon msg-ic-budget">
+              <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/><path d="M6 12h3"/></svg>
+            </span>
+            <span class="msg-body">
+              <span class="msg-titlerow">
+                <span class="msg-title">交通预算已超支</span>
+                <span class="msg-time">昨天 21:10</span>
+              </span>
+              <span class="msg-excerpt">本月交通已用 <span class="amount">¥320.00</span>，超出预算 ¥20.00，来自财务面预算规则。</span>
+            </span>
+          </a>
+        </div>
+      </div>
+
+      <!-- 分组二：系统与家庭 -->
+      <div class="msg-group">
+        <button class="msg-group-head" type="button" data-toast="系统与家庭事件含成员、权限、留言板 @；@ 类通知点击直达留言板">
+          <span class="msg-group-title">系统与家庭</span>
+          <span class="msg-gcount">未读 2</span>
+        </button>
+        <div class="msg-list">
+          <a class="msg-item is-unread" href="board.html"
+            data-hot="③" data-hot-name="未读条目" data-hot-pos="bottom-right"
+            data-hot-label="未读条目前有未读点、标题加粗；整行可点，按通知来源走深链（@ 类进留言板，财务预警进财务面），不在此展开详情">
+            <span class="msg-icon msg-ic-system">
+              <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 9.2c0 3.3-3.1 5.9-7 5.9-.8 0-1.6-.1-2.3-.3L4 16l.9-2.6C3.7 12.4 3 10.9 3 9.2 3 5.9 6.1 3.3 10 3.3s7 2.6 7 5.9z"/></svg>
+            </span>
+            <span class="msg-body">
+              <span class="msg-titlerow">
+                <span class="msg-dot"></span>
+                <span class="msg-title">妈妈在留言板 @ 了你</span>
+                <span class="msg-time">32 分钟前</span>
+              </span>
+              <span class="msg-excerpt">「明早谁接女儿？@爸爸 你方便吗？」</span>
+            </span>
+          </a>
+          <a class="msg-item is-unread" href="family-permission.html">
+            <span class="msg-icon msg-ic-system">
+              <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l6 2.5v4.2c0 3.3-2.4 6.1-6 7.3-3.6-1.2-6-4-6-7.3V5.5z"/></svg>
+            </span>
+            <span class="msg-body">
+              <span class="msg-titlerow">
+                <span class="msg-dot"></span>
+                <span class="msg-title">家庭权限已更新</span>
+                <span class="msg-time">1 小时前</span>
+              </span>
+              <span class="msg-excerpt">管理员调整了「访客」的可见范围，改动即时生效，无需重新登录。</span>
+            </span>
+          </a>
+        </div>
+      </div>
+
+      <!-- 分组三：到期与待办 -->
+      <div class="msg-group">
+        <button class="msg-group-head" type="button" data-toast="到期与待办类通知来自到期注册契约，点击进入到期中心或源对象">
+          <span class="msg-group-title">到期与待办</span>
+          <span class="msg-gcount">未读 1</span>
+        </button>
+        <div class="msg-list">
+          <a class="msg-item is-unread" href="calendar.html">
+            <span class="msg-icon msg-ic-reminder">
+              <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="6.5"/><path d="M10 6.5v4l2.5 1.5"/></svg>
+            </span>
+            <span class="msg-body">
+              <span class="msg-titlerow">
+                <span class="msg-dot"></span>
+                <span class="msg-title">房贷还款今天 09:00 到期</span>
+                <span class="msg-time">今天 08:00</span>
+              </span>
+              <span class="msg-excerpt">应还 <span class="amount">¥4,200.00</span>，由财务面按到期注册契约登记。</span>
+            </span>
+          </a>
+          <a class="msg-item" href="todo-detail.html"
+            data-hot="④" data-hot-name="已读条目" data-hot-pos="bottom-right"
+            data-hot-label="已读条目无未读点、标题不加粗，整行仍可点击进源对象；已读与未读只差这两处视觉，不折叠、不置灰">
+            <span class="msg-icon msg-ic-reminder">
+              <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14l8-8"/><path d="M3 17h14"/></svg>
+            </span>
+            <span class="msg-body">
+              <span class="msg-titlerow">
+                <span class="msg-title">待办「交物业费」已完成</span>
+                <span class="msg-time">昨天 20:12</span>
+              </span>
+              <span class="msg-excerpt">由妈妈完成，完成记录同时出现在家庭动态。</span>
+            </span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="msg-foot" data-toast="免打扰时段只有静音、不影响未读计数；可在「设置 → 时区与免打扰」里修改"
+      data-hot="⑤" data-hot-name="免打扰与已读说明" data-hot-pos="top-right"
+      data-hot-label="免打扰时段红点照常显示、只是不发声；进入本页即视为已读，顶栏红点与底栏计数同时熄灭，不需要逐条点开">
+      <div class="msg-foot-row">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 2.5a3.5 3.5 0 0 1 3.5 3.5v3l1 2H3.5l1-2V6A3.5 3.5 0 0 1 8 2.5z"/><path d="M6.5 13a1.6 1.6 0 0 0 3 0"/></svg>
+        免打扰 22:00–07:00 · 红点照常显示，只是不发声
+      </div>
+      <div class="msg-foot-rule">进入本页即视为已读，顶栏与底栏红点同时熄灭</div>
+    </div>
+
+    <div class="msg-sk" aria-hidden="true">
+      <div class="skeleton sk-line" style="width:26%;margin:16px 2px 10px"></div>
+      <div class="skeleton sk-block" style="height:66px"></div>
+      <div class="skeleton sk-block" style="height:66px"></div>
+      <div class="skeleton sk-line" style="width:32%;margin:18px 2px 10px"></div>
+      <div class="skeleton sk-block" style="height:66px"></div>
+      <div class="skeleton sk-block" style="height:66px"></div>
+    </div>
+
+    <div class="msg-empty">
+      <div class="state">
+        <div class="state-icon">
+          <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M27 14.7c0 5.3-4.9 9.4-11 9.4-1.2 0-2.4-.2-3.5-.5L6 26l1.4-4C5.5 20.2 5 17.6 5 14.7 5 9.4 9.9 5.3 16 5.3s11 4.1 11 9.4z"/><path d="M12 14h8M12 18h5"/></svg>
+        </div>
+        <div class="state-title">还没有通知</div>
+        <div class="state-desc">预算预警、家庭事件与到期提醒都会汇总到这里，不会分散到各个面。</div>
+        <button class="btn btn-secondary" type="button" data-go="home.html">去首页看看</button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="tabbar" data-tabbar>
+    <a class="tab" href="home.html" data-tab="home">
+      <svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5 11 3.5l7.5 6v8a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5z"/><path d="M8.5 19v-6h5v6"/></svg>
+      首页
+    </a>
+    <a class="tab" href="dynamic.html" data-tab="dynamic">
+      <svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 5.5h12M5 11h8M5 16.5h10"/></svg>
+      动态
+    </a>
+    <a class="tab" href="quick-add.html" data-tab="plus" aria-label="快速添加">
+      <span class="tab-plus">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 4.5v11M4.5 10h11"/></svg>
+      </span>
+    </a>
+    <a class="tab msg-tab" href="message.html" data-tab="message"
+      data-hot="⑥" data-hot-name="底栏消息位" data-hot-pos="outer-top-right"
+      data-hot-label="当前项；红点带未读计数（上限 99+），与顶栏红点同源，进入本页即读、全部已读后同时消失">
+      <span class="dot" data-count="4"></span>
+      <svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18.5 10.2c0 3.6-3.4 6.5-7.5 6.5-.9 0-1.7-.1-2.5-.4L5 18l1-2.9c-1.2-1.1-2-2.7-2-4.6 0-3.6 3.4-6.5 7.5-6.5s7 2.9 7 6.2z"/></svg>
+      消息
+    </a>
+    <a class="tab" href="me.html" data-tab="me">
+      <svg width="21" height="21" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="8" r="3.5"/><path d="M4.5 18.5c.9-3.2 3.4-5 6.5-5s5.6 1.8 6.5 5"/></svg>
+      我的
+    </a>
+  </nav>
+
+  <!-- 全部已读确认弹层 -->
+  <div class="sheet-mask" id="sheet-readall" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>全部标为已读？</h3>
+      <p class="sheet-sub">3 个分组共 4 条未读将同时标记为已读；顶栏红点与底栏「消息」计数同时熄灭，其他设备同步清除。通知本身不会被删除。</p>
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" data-go="message.html?state=allread">全部标为已读</button>
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+</body>
+</html>

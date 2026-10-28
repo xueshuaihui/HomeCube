@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>账户 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-content { padding-bottom: 20px; }
+
+  .fx-arch-link {
+    height: 36px; padding: 0 2px;
+    border: 0; background: none;
+    font-family: inherit; font-size: var(--fs-13); font-weight: 600;
+    color: var(--brand-text); cursor: pointer;
+    white-space: nowrap;
+  }
+  .fx-arch-link:hover { color: var(--brand-hover); }
+
+  .fx-hero {
+    margin-top: 4px; padding: 18px 18px 16px;
+    border-radius: var(--radius-xl);
+    background: linear-gradient(135deg, var(--brand-soft) 0%, var(--surface) 70%);
+    border: 1px solid var(--brand-soft-border);
+  }
+  .fx-hero-k { font-size: var(--fs-13); color: var(--text-2); }
+  .fx-hero-v {
+    margin-top: 4px;
+    font-size: var(--fs-30); font-weight: 700; line-height: var(--lh-tight);
+    letter-spacing: .01em;
+  }
+  .fx-hero-split {
+    display: flex; align-items: stretch; gap: 16px;
+    margin-top: 14px; padding-top: 12px;
+    border-top: 1px solid var(--brand-soft-border);
+  }
+  .fx-hs { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .fx-hk { font-size: var(--fs-12); color: var(--text-3); }
+  .fx-hv { font-size: var(--fs-15); font-weight: 700; }
+  .fx-hdiv { width: 1px; flex: none; background: var(--border); }
+
+  .fx-hero-note { margin-top: 10px; font-size: var(--fs-11); color: var(--text-3); }
+
+  .fx-rule-note {
+    margin: 10px 2px 0;
+    line-height: var(--lh-normal);
+  }
+
+  .fx-ghead {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin: 18px 2px 8px;
+  }
+  .fx-gtitle { font-size: var(--fs-13); font-weight: 700; color: var(--text-2); }
+  .fx-gcount { font-size: var(--fs-11); color: var(--text-3); }
+
+  .fx-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .fx-acc { display: flex; align-items: center; gap: 10px; padding: 11px 14px; }
+  .fx-acc + .fx-acc { border-top: 1px solid var(--border); }
+  .fx-acc:hover { background: var(--surface-2); }
+
+  .fx-acc-ic, .fx-acc-ic-lg {
+    width: 32px; height: 32px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    background: var(--surface-2); color: var(--text-2);
+  }
+  .fx-acc-ic.is-credit { background: var(--warning-soft); color: var(--warning); }
+
+  .fx-acc-body { flex: 1; min-width: 0; display: block; text-decoration: none; color: var(--text); }
+  .fx-acc-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .fx-acc-name {
+    font-size: var(--fs-15); font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .fx-acc-top .tag { flex: none; }
+  .fx-acc-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .fx-acc-bal { flex: none; font-size: var(--fs-14); }
+  .fx-acc-bal.is-neg { color: var(--danger); }
+  .fx-acc .chevron { flex: none; color: var(--text-3); margin-left: 2px; }
+
+  .fx-arch-head {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    margin-top: 18px; padding: 12px 14px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-family: inherit; text-align: left; color: var(--text);
+    cursor: pointer;
+  }
+  .fx-arch-head:hover { background: var(--surface-2); }
+  .fx-arch-ic {
+    width: 30px; height: 30px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 9px; background: var(--surface-2); color: var(--text-3);
+  }
+  .fx-arch-name { flex: 1; min-width: 0; font-size: var(--fs-14); font-weight: 600; color: var(--text-2); }
+  .fx-arch-count { flex: none; font-size: var(--fs-11); color: var(--text-3); }
+  .fx-arch-chev { flex: none; color: var(--text-3); transition: transform var(--dur-2) var(--ease); }
+  .fx-arch-head[aria-expanded="true"] .fx-arch-chev { transform: rotate(90deg); }
+
+  .fx-arch-body { display: none; margin-top: 8px; }
+  .fx-arch-body.is-open { display: block; }
+  .fx-arch-note { margin: 8px 2px 0; line-height: var(--lh-normal); }
+
+  .fx-acc.is-archived { background: var(--surface-2); }
+  .fx-acc.is-archived .fx-acc-name,
+  .fx-acc.is-archived .fx-acc-bal { color: var(--text-3); }
+  .fx-acc.is-archived .fx-acc-ic { background: var(--surface); }
+
+  .fx-foot {
+    flex: none;
+    padding: 10px 16px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+
+  .fx-sk { display: none; padding-top: 6px; }
+  body[data-state="loading"] .fx-sk { display: block; }
+  body[data-state="loading"] .fx-real { display: none; }
+  .fx-sk-row { display: flex; align-items: center; gap: 10px; padding: 12px 0; }
+  .fx-sk-ic { width: 32px; height: 32px; border-radius: 10px; flex: none; }
+  .fx-sk-lines { flex: 1; }
+
+  .fx-empty { display: none; }
+  body[data-state="empty"] .fx-empty { display: flex; }
+  body[data-state="empty"] .fx-real,
+  body[data-state="empty"] .fx-foot { display: none; }
+</style>
+</head>
+<body data-screen="F09 账户" data-states="default,archived-folded,empty,loading">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <a class="icon-btn" href="finance-settings.html" aria-label="返回账户与设置"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回「账户与设置」（finance/settings/index）；账户列表是账户域的唯一入口，余额口径与报表、首页财务格同源">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </a>
+    </div>
+    <div class="nav-title">账户</div>
+    <div class="nav-right">
+      <button class="fx-arch-link" type="button" data-go="finance-account-archive.html"
+        data-hot="②" data-hot-name="归档与恢复" data-hot-pos="outer-top-right"
+        data-hot-label="进归档与恢复视图（finance/account/archive）：已归档账户的恢复、余额为 0 的账户归档都在那一页；本页不放滑动归档">
+        归档与恢复</button>
+    </div>
+  </div>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 余额显示本机缓存
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-real">
+      <section class="fx-hero"
+        data-hot="③" data-hot-name="资产负债汇总" data-hot-pos="bottom-right"
+        data-hot-label="三块同源展示：总资产、总负债、净资产（资产 − 负债）；金额只由服务端按账户余额汇总，前端不做二次累加；归档账户不计入这三块汇总">
+        <div class="fx-hero-k">净资产</div>
+        <div class="amount fx-hero-v">¥120,070.00</div>
+        <div class="fx-hero-split">
+          <div class="fx-hs">
+            <span class="fx-hk">总资产</span>
+            <span class="amount fx-hv">¥138,720.00</span>
+          </div>
+          <span class="fx-hdiv" aria-hidden="true"></span>
+          <div class="fx-hs">
+            <span class="fx-hk">总负债</span>
+            <span class="amount fx-hv">¥18,650.00</span>
+          </div>
+        </div>
+        <div class="fx-hero-note">截至 10 月 29 日 09:20 · 家庭币种 CNY · 含 7 个账户</div>
+      </section>
+
+      <p class="fx-rule-note tiny">余额由流水累计得出，账户页不提供直接改余额。归档账户不出现在默认账户位与账户汇总，但历史流水仍计入报表与净资产。</p>
+
+      <div class="fx-ghead"><span class="fx-gtitle">现金</span><span class="fx-gcount">1 个</span></div>
+      <div class="fx-list">
+        <div class="fx-acc">
+          <span class="fx-acc-ic">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5.5" width="15" height="9" rx="2"/><circle cx="10" cy="10" r="2.2"/><path d="M5 8.5v3M15 8.5v3"/></svg>
+          </span>
+          <a class="fx-acc-body" href="finance-account-edit.html"
+            data-hot="④" data-hot-name="账户行" data-hot-pos="bottom-right"
+            data-hot-label="整行进编辑页并带 version；行内三件套：账户名（默认账户带「默认」标记）、类型与币种、余额；归档账户不出现在默认位，只在底部「已归档」分组里">
+            <span class="fx-acc-top"><span class="fx-acc-name">现金钱包</span></span>
+            <span class="fx-acc-sub">现金 · CNY</span>
+          </a>
+          <span class="amount fx-acc-bal">¥1,280.00</span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+
+      <div class="fx-ghead"><span class="fx-gtitle">银行卡</span><span class="fx-gcount">1 个</span></div>
+      <div class="fx-list">
+        <div class="fx-acc">
+          <span class="fx-acc-ic">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="15" height="10" rx="2.5"/><path d="M2.5 9h15"/><path d="M6 13h3"/></svg>
+          </span>
+          <a class="fx-acc-body" href="finance-account-edit.html">
+            <span class="fx-acc-top"><span class="fx-acc-name">招商银行储蓄卡</span><span class="tag is-brand">默认</span></span>
+            <span class="fx-acc-sub">储蓄卡 · CNY · 记账默认</span>
+          </a>
+          <span class="amount fx-acc-bal">¥126,400.00</span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+
+      <div class="fx-ghead"><span class="fx-gtitle">信用卡</span><span class="fx-gcount">2 个 · 负债</span></div>
+      <div class="fx-list">
+        <div class="fx-acc">
+          <span class="fx-acc-ic is-credit">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="15" height="10" rx="2.5"/><path d="M2.5 9h15"/></svg>
+          </span>
+          <a class="fx-acc-body" href="finance-account-edit.html">
+            <span class="fx-acc-top"><span class="fx-acc-name">招商银行信用卡</span></span>
+            <span class="fx-acc-sub">信用卡 · 额度 ¥50,000</span>
+          </a>
+          <span class="amount fx-acc-bal is-neg">-¥3,250.00</span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+        <div class="fx-acc">
+          <span class="fx-acc-ic is-credit">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="15" height="10" rx="2.5"/><path d="M2.5 9h15"/></svg>
+          </span>
+          <a class="fx-acc-body" href="finance-account-edit.html">
+            <span class="fx-acc-top"><span class="fx-acc-name">交通银行信用卡</span></span>
+            <span class="fx-acc-sub">信用卡 · 额度 ¥30,000</span>
+          </a>
+          <span class="amount fx-acc-bal is-neg">-¥15,400.00</span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+
+      <div class="fx-ghead"><span class="fx-gtitle">其他</span><span class="fx-gcount">3 个</span></div>
+      <div class="fx-list">
+        <div class="fx-acc">
+          <span class="fx-acc-ic">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="14" rx="4"/><path d="M7 8.2h6M7 11.8h4"/></svg>
+          </span>
+          <a class="fx-acc-body" href="finance-account-edit.html">
+            <span class="fx-acc-top"><span class="fx-acc-name">支付宝</span></span>
+            <span class="fx-acc-sub">其他 · CNY</span>
+          </a>
+          <span class="amount fx-acc-bal">¥8,900.00</span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+        <div class="fx-acc">
+          <span class="fx-acc-ic">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="14" rx="4"/><path d="M7 8.2h6M7 11.8h4"/></svg>
+          </span>
+          <a class="fx-acc-body" href="finance-account-edit.html">
+            <span class="fx-acc-top"><span class="fx-acc-name">微信零钱</span></span>
+            <span class="fx-acc-sub">其他 · CNY</span>
+          </a>
+          <span class="amount fx-acc-bal">¥2,140.00</span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+        <div class="fx-acc">
+          <span class="fx-acc-ic">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M6.5 5V3.6h7V5"/></svg>
+          </span>
+          <a class="fx-acc-body" href="finance-account-edit.html">
+            <span class="fx-acc-top"><span class="fx-acc-name">饭卡</span></span>
+            <span class="fx-acc-sub">其他 · CNY · 余额为 0</span>
+          </a>
+          <span class="amount fx-acc-bal">¥0.00</span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+
+      <button class="fx-arch-head" type="button" id="fx-arch-toggle" aria-expanded="false"
+        data-hot="⑤" data-hot-name="已归档分组" data-hot-pos="outer-bottom-right"
+        data-hot-label="默认折叠；展开只在本页内展开，不进归档页。归档账户余额为 0、可恢复，且不再出现在默认账户位与账户汇总；历史流水仍计入报表与净资产">
+        <span class="fx-arch-ic">
+          <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="4" rx="1.6"/><path d="M4.4 8v7.4a1.6 1.6 0 0 0 1.6 1.6h8a1.6 1.6 0 0 0 1.6-1.6V8"/><path d="M8 11.4h4"/></svg>
+        </span>
+        <span class="fx-arch-name">已归档</span>
+        <span class="fx-arch-count">2 个 · 余额合计 ¥0.00</span>
+        <svg class="fx-arch-chev" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+      </button>
+
+      <div class="fx-arch-body" id="fx-arch-body">
+        <div class="fx-list">
+          <div class="fx-acc is-archived">
+            <span class="fx-acc-ic">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="15" height="10" rx="2.5"/><path d="M2.5 9h15"/></svg>
+            </span>
+            <span class="fx-acc-body">
+              <span class="fx-acc-top"><span class="fx-acc-name">建设银行储蓄卡</span><span class="tag">已归档</span></span>
+              <span class="fx-acc-sub">储蓄卡 · 10 月 8 日归档</span>
+            </span>
+            <span class="amount fx-acc-bal">¥0.00</span>
+          </div>
+          <div class="fx-acc is-archived">
+            <span class="fx-acc-ic">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="14" rx="4"/><path d="M7 8.2h6M7 11.8h4"/></svg>
+            </span>
+            <span class="fx-acc-body">
+              <span class="fx-acc-top"><span class="fx-acc-name">京东小金库</span><span class="tag">已归档</span></span>
+              <span class="fx-acc-sub">其他 · 9 月 21 日归档</span>
+            </span>
+            <span class="amount fx-acc-bal">¥0.00</span>
+          </div>
+        </div>
+        <p class="fx-arch-note tiny">归档不影响历史流水：这两个账户过去的流水仍计入报表、预算与净资产；恢复在「归档与恢复」里。</p>
+      </div>
+    </div>
+
+    <div class="fx-sk" aria-hidden="true">
+      <div class="skeleton" style="height:132px;border-radius:var(--radius-xl);margin-bottom:18px"></div>
+      <div class="skeleton sk-line" style="width:34%"></div>
+      <div class="fx-sk-row"><div class="skeleton fx-sk-ic"></div><div class="fx-sk-lines"><div class="skeleton sk-line" style="width:52%"></div><div class="skeleton sk-line" style="width:32%;margin-bottom:0"></div></div></div>
+      <div class="fx-sk-row"><div class="skeleton fx-sk-ic"></div><div class="fx-sk-lines"><div class="skeleton sk-line" style="width:46%"></div><div class="skeleton sk-line" style="width:28%;margin-bottom:0"></div></div></div>
+      <div class="skeleton sk-line" style="width:30%;margin-top:14px"></div>
+      <div class="fx-sk-row"><div class="skeleton fx-sk-ic"></div><div class="fx-sk-lines"><div class="skeleton sk-line" style="width:48%"></div><div class="skeleton sk-line" style="width:34%;margin-bottom:0"></div></div></div>
+      <div class="fx-sk-row"><div class="skeleton fx-sk-ic"></div><div class="fx-sk-lines"><div class="skeleton sk-line" style="width:44%"></div><div class="skeleton sk-line" style="width:30%;margin-bottom:0"></div></div></div>
+    </div>
+
+    <div class="state fx-empty">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="24" height="16" rx="4"/><path d="M4 15h24M9 20h6"/></svg>
+      </div>
+      <div class="state-title">还没有账户</div>
+      <div class="state-desc">先建一个现金账户或银行卡账户，记一笔时才有地方落；余额由流水累计，建好后不用手动维护。</div>
+      <button class="btn btn-secondary" type="button" data-go="finance-account-create.html">新建账户</button>
+    </div>
+  </div>
+
+  <div class="fx-foot">
+    <button class="btn btn-primary btn-block" type="button" data-go="finance-account-create.html"
+      data-hot="⑥" data-hot-name="新建账户" data-hot-pos="outer-bottom-right"
+      data-hot-label="进新建账户页（finance/account/create）：类型、币种、负债开关与初始余额；初始余额只作起点，不产生流水">
+      新建账户
+    </button>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var fxState = new URLSearchParams(location.search).get('state') || 'default';
+  var head = document.getElementById('fx-arch-toggle');
+  var body = document.getElementById('fx-arch-body');
+
+  function setOpen(on) {
+    body.classList.toggle('is-open', on);
+    head.setAttribute('aria-expanded', String(on));
+  }
+
+  head.addEventListener('click', function () {
+    setOpen(!body.classList.contains('is-open'));
+  });
+
+  setOpen(fxState === 'archived-folded');
+  if (fxState === 'archived-folded') {
+    head.scrollIntoView({ block: 'center' });
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>登录 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .login-wrap { padding: 0 24px 32px; }
+  .brand { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; padding: 28px 0 32px; }
+  .brand-mark {
+    width: 64px; height: 64px; border-radius: 20px;
+    background: var(--brand); color: var(--on-brand);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--shadow-2);
+  }
+  .brand h1 { font-size: var(--fs-30); font-weight: 700; letter-spacing: .02em; }
+  .brand .tagline { font-size: var(--fs-13); color: var(--text-2); }
+  .code-err { display: none; }
+  body[data-state="error"] .code-err { display: flex; }
+  body[data-state="error"] .js-code { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
+  body[data-state="loading"] .js-login { color: transparent; pointer-events: none; position: relative; }
+  body[data-state="loading"] .js-login::after {
+    content: ""; position: absolute; width: 18px; height: 18px; border-radius: 50%;
+    border: 2px solid var(--on-brand); border-top-color: transparent;
+    animation: spin .8s linear infinite;
+  }
+  .agree { margin-top: 14px; line-height: 1.6; }
+  .agree a { color: var(--brand-text); text-decoration: none; font-weight: 600; }
+  .alt-login { margin-top: 18px; display: flex; justify-content: center; }
+  .link-btn { border: 0; background: transparent; color: var(--text-2); font-family: inherit; font-size: var(--fs-12); cursor: pointer; }
+  .foot { margin-top: auto; padding-top: 28px; text-align: center; font-size: var(--fs-11); color: var(--text-3); line-height: 1.7; }
+  .help-voice { border: 0; background: none; padding: 0; font: inherit; color: var(--brand-text); font-weight: 600; cursor: pointer; }
+</style>
+</head>
+<body data-screen="01 登录" data-tab="" data-states="default,loading,error">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="content bottom-space">
+    <div class="login-wrap">
+      <div class="brand">
+        <div class="brand-mark">
+          <svg width="34" height="34" viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+            <path d="M17 4 29 11v13l-12 7-12-7V11z"/>
+            <path d="M17 4v13l12 7" opacity=".55"/>
+            <path d="M17 17 5 11" opacity=".55"/>
+          </svg>
+        </div>
+        <div>
+          <h1>家立方</h1>
+          <div class="tagline">一家人的账、事与时间，都在这里</div>
+        </div>
+      </div>
+
+      <form onsubmit="return false">
+        <div class="field" data-hot="①" data-hot-name="手机号" data-hot-pos="top-right" data-hot-label="输入 11 位手机号；连续输错或频繁获取验证码时，服务端按限流返回 429，页内提示稍后再试">
+          <label class="field-label" for="phone">手机号</label>
+          <input class="input num" id="phone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="请输入手机号" value="138 0013 8000">
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="code">验证码</label>
+          <div class="input-group" data-hot="②" data-hot-name="获取验证码" data-hot-pos="top-right" data-hot-label="点击后按钮进入 60s 倒计时并禁用；发送失败恢复可点并提示，不静默失败">
+            <input class="input num js-code" id="code" type="text" inputmode="numeric" maxlength="6" placeholder="6 位数字">
+            <button class="btn btn-secondary code-btn" type="button" data-countdown="60">获取验证码</button>
+          </div>
+          <div class="field-error code-err" data-state-block="error">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.8v3.8M8 11.2v.1" stroke-linecap="round"/></svg>
+            验证码已过期，请重新获取
+          </div>
+          <div class="help">未注册的手机号将自动创建账号；60 秒内未收到短信可 <button class="help-voice" type="button" data-hot="⑤" data-hot-name="语音验证码" data-hot-pos="top-right" data-hot-label="60 秒内未收到短信时可切换为语音播报；防刷口径与短信一致，失败页内提示">改用语音验证码</button></div>
+        </div>
+
+        <button class="btn btn-primary btn-block js-login" type="button" data-hot="③" data-hot-name="登录" data-hot-pos="top-right" data-hot-label="点击进入加载态，成功后跳首页；失败停留在本页并给出可读原因，不跳转">登录</button>
+
+        <div class="agree">
+          <label class="checkbox" data-hot="④" data-hot-name="协议勾选" data-hot-pos="top-right" data-hot-label="未勾选时点击登录被拦截并提示；勾选状态在本次启动内保留">
+            <input type="checkbox" checked>
+            <span>我已阅读并同意<a href="#" data-toast="用户协议在 P1 末附加门禁上线，M1 期间显示待定版">《用户协议》</a>与<a href="#" data-toast="隐私政策在 P1 末附加门禁上线，M1 期间显示待定版">《隐私政策》</a></span>
+          </label>
+        </div>
+      </form>
+
+      <div class="alt-login">
+        <button class="link-btn" type="button" data-toast="语音验证码：60 秒内未收到短信时可切换，防刷口径同短信">收不到验证码？试试语音验证</button>
+      </div>
+
+      <div class="foot">
+        当前为 P1 原型 · 数据为演示样例<br>登录即代表同意家庭数据使用规则
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  document.querySelector('.js-login').addEventListener('click', function () {
+    if (!document.querySelector('.checkbox input').checked) {
+      window.HC.toast('请先阅读并同意用户协议与隐私政策');
+      return;
+    }
+    location.href = 'home.html';
+  });
+</script>
+</body>
+</html>

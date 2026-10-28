@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>发票详情 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-content { padding-bottom: 16px; }
+
+  .fx-banner {
+    display: none; align-items: flex-start; gap: 8px;
+    margin: 10px 0 0; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-banner svg { flex: none; margin-top: 1px; }
+  .fx-banner b { display: block; font-size: var(--fs-13); margin-bottom: 2px; }
+  .fx-banner-ocr { background: var(--warning-soft); color: var(--warning); }
+  .fx-banner-ok { background: var(--success-soft); color: var(--success); }
+  body[data-state="ocr-review"] .fx-banner-ocr { display: flex; }
+  body[data-state="reimbursed"] .fx-banner-ok { display: flex; }
+  .fx-banner-acts { display: flex; gap: 8px; margin-top: 8px; }
+  .fx-banner-acts .btn { height: 30px; padding: 0 10px; font-size: var(--fs-12); }
+
+  .fx-hero {
+    margin-top: 8px; padding: 15px 16px;
+    border-radius: var(--radius-xl);
+    background: linear-gradient(135deg, var(--brand-soft) 0%, var(--surface) 70%);
+    border: 1px solid var(--brand-soft-border);
+  }
+  .fx-hero-top { display: flex; gap: 13px; }
+  .fx-thumb-lg {
+    width: 76px; height: 96px; flex: none;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-3);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    font-size: 10px;
+  }
+  .fx-hero-body { flex: 1; min-width: 0; }
+  .fx-hero-line { display: flex; align-items: center; gap: 6px; }
+  .fx-hero-amt { margin-top: 5px; font-size: var(--fs-24); letter-spacing: -.01em; }
+  .fx-hero-title { margin-top: 3px; font-size: var(--fs-13); font-weight: 600; }
+  .fx-hero-sub { margin-top: 3px; font-size: var(--fs-11); color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .fx-sec {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin: 18px 2px 8px;
+    font-size: var(--fs-13); font-weight: 700; color: var(--text-2);
+  }
+  .fx-sec .tiny { font-weight: 500; }
+
+  .fx-ocr-row {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 11px 14px;
+    background: var(--surface);
+  }
+  .fx-ocr-row + .fx-ocr-row { border-top: 1px solid var(--border); }
+  .fx-ocr-k { width: 44px; flex: none; padding-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
+  .fx-ocr-v { flex: 1; min-width: 0; }
+  .fx-ocr-input {
+    width: 100%; padding: 0 0 3px; border: 0;
+    border-bottom: 1px dashed var(--border-strong);
+    background: transparent; color: var(--text);
+    font-family: inherit; font-size: var(--fs-14); font-weight: 600;
+    outline: none;
+  }
+  .fx-ocr-input:focus { border-bottom-color: var(--brand-text); }
+  .fx-ocr-sub { display: block; margin-top: 4px; font-size: var(--fs-11); color: var(--text-3); }
+  .fx-ocr-tag { flex: none; margin-top: 1px; }
+  .fx-ocr-row.is-pending { background: var(--warning-soft); }
+  .fx-ocr-row.is-pending .fx-ocr-input { border-bottom-color: var(--warning); }
+  .fx-ocr-row.is-pending .fx-ocr-sub { color: var(--warning); }
+  .fx-tag-ok { background: var(--success-soft); color: var(--success); }
+  .fx-tag-warn { background: var(--warning-soft); color: var(--warning); }
+
+  .fx-link-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px;
+    text-decoration: none; color: var(--text);
+    background: var(--surface);
+  }
+  .fx-link-row:hover { background: var(--surface-2); }
+  .fx-link-ic {
+    width: 32px; height: 32px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    background: var(--brand-soft); color: var(--brand-text);
+  }
+  .fx-link-body { flex: 1; min-width: 0; }
+  .fx-link-title { display: block; font-size: var(--fs-14); font-weight: 600; }
+  .fx-link-sub { display: block; margin-top: 2px; font-size: var(--fs-11); color: var(--text-3); }
+  .fx-link-amt { flex: none; font-size: var(--fs-14); }
+  .fx-link-row .chevron { flex: none; color: var(--text-3); }
+
+  .fx-unlinked {
+    display: none; align-items: flex-start; gap: 10px;
+    padding: 14px;
+    border-radius: var(--radius-lg);
+    border: 1px dashed var(--warning);
+    background: var(--warning-soft);
+  }
+  .fx-unlinked svg { flex: none; margin-top: 1px; color: var(--warning); }
+  .fx-unlinked-body { flex: 1; min-width: 0; }
+  .fx-unlinked-title { display: block; font-size: var(--fs-13); font-weight: 700; color: var(--text); }
+  .fx-unlinked-sub { display: block; margin-top: 3px; font-size: var(--fs-11); color: var(--text-2); line-height: var(--lh-normal); }
+  .fx-unlinked .btn { flex: none; }
+  body[data-state="unlinked"] .fx-linked { display: none; }
+  body[data-state="unlinked"] .fx-unlinked { display: flex; }
+
+  .fx-status-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px;
+    font-size: var(--fs-13);
+  }
+  .fx-status-row + .fx-status-row { border-top: 1px solid var(--border); }
+  .fx-status-k { width: 62px; flex: none; color: var(--text-3); }
+  .fx-status-v { flex: 1; min-width: 0; font-weight: 600; }
+  .fx-status-v .tiny { display: block; margin-top: 2px; font-weight: 400; }
+
+  .fx-note-area { margin-top: 4px; }
+  .fx-note-area .textarea { min-height: 72px; }
+
+  .fx-foot {
+    flex: none;
+    padding: 10px 16px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+  .fx-foot [hidden] { display: none; }
+</style>
+</head>
+<body data-screen="F42 发票详情" data-states="default,ocr-review,reimbursed,unlinked">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <header class="navbar">
+    <div class="nav-left">
+      <a class="icon-btn" href="finance-invoice.html" aria-label="返回发票列表"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回发票列表并停在进入前的分组；从「待报销」「已报销」「全部」进来都回原分组，不强制跳回待报销">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </a>
+    </div>
+    <div class="nav-title">发票详情</div>
+    <div class="nav-right">
+      <button class="icon-btn" type="button" data-toast="更多：重新识别、下载原件、删除发票（删除只解除引用，原件仍归家庭文件）"
+        data-hot="②" data-hot-name="更多" data-hot-pos="outer-top-right"
+        data-hot-label="更多菜单：重新识别、下载原件、删除发票；删除只解除发票与流水的引用，家庭文件里的原件仍保留">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="4.5" r="1.2"/><circle cx="10" cy="10" r="1.2"/><circle cx="10" cy="15.5" r="1.2"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · OCR 结果与状态显示本机缓存
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-banner fx-banner-ocr" role="status">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.5V4.5h3"/><path d="M13.5 4.5h3v2"/><path d="M16.5 13.5v2h-3"/><path d="M6.5 15.5h-3v-2"/><path d="M7 10h6"/></svg>
+      <div>
+        <b>OCR 识别到 4 项，2 项待复核</b>
+        销售方与税号的置信度偏低，已高亮；逐项核对或直接改，全部核对后才能提交报销。
+        <div class="fx-banner-acts">
+          <button class="btn btn-secondary" type="button" data-toast="正在重新识别：会覆盖尚未核对的字段，已手动改过的字段保留">重新识别</button>
+          <button class="btn btn-secondary" type="button" id="fx-confirm-all">全部确认</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="fx-banner fx-banner-ok" role="status">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 10.5 8 14l7.5-8"/></svg>
+      <div>
+        <b>已于 10 月 27 日报销 ¥1,198.00</b>
+        报销人「我」· 生成一笔报销流水；撤销会同时冲销那笔流水，发票回到待报销。
+      </div>
+    </div>
+
+    <section class="fx-hero"
+      data-hot="③" data-hot-name="发票与金额" data-hot-pos="top-right"
+      data-hot-label="发票缩略图、金额、销售方与日期是这屏的主信息；金额以「分」存储，与 OCR 字段和关联流水都按同一币种显示，不在这里直接改金额（改字段在下方复核区）">
+      <div class="fx-hero-top">
+        <span class="fx-thumb-lg" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 11.5h6M9 15h4"/></svg>
+          电子发票
+        </span>
+        <div class="fx-hero-body">
+          <div class="fx-hero-line">
+            <span class="tag fx-tag-warn" id="fx-hero-tag">待报销</span>
+            <span class="tiny num">10 月 25 日</span>
+          </div>
+          <div class="amount fx-hero-amt">¥1,198.00</div>
+          <div class="fx-hero-title">京东商城 · 电子发票</div>
+          <div class="fx-hero-sub num">发票号码 24312000000123456789</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="fx-sec"><span>OCR 字段复核</span><span class="tiny" id="fx-review-count">4 / 4 已核对</span></div>
+    <div class="list"
+      data-hot="④" data-hot-name="OCR 字段" data-hot-pos="bottom-right"
+      data-hot-label="金额、日期、销售方、税号四项逐项可改：点字段直接编辑，待复核项高亮并标明置信度；改过即标记「已核对」，四项全部核对才能提交报销">
+      <label class="fx-ocr-row">
+        <span class="fx-ocr-k">金额</span>
+        <span class="fx-ocr-v">
+          <input class="fx-ocr-input num" type="text" value="¥1,198.00" aria-label="发票金额">
+          <span class="fx-ocr-sub">识别置信度 99% · 可改</span>
+        </span>
+        <span class="tag fx-tag-ok fx-ocr-tag">已核对</span>
+      </label>
+      <label class="fx-ocr-row">
+        <span class="fx-ocr-k">日期</span>
+        <span class="fx-ocr-v">
+          <input class="fx-ocr-input num" type="text" value="2026-10-25" aria-label="开票日期">
+          <span class="fx-ocr-sub">识别置信度 98% · 可改</span>
+        </span>
+        <span class="tag fx-tag-ok fx-ocr-tag">已核对</span>
+      </label>
+      <label class="fx-ocr-row is-pending">
+        <span class="fx-ocr-k">销售方</span>
+        <span class="fx-ocr-v">
+          <input class="fx-ocr-input" type="text" value="北京京东世纪信息技术有限公司" aria-label="销售方">
+          <span class="fx-ocr-sub">识别置信度 72% · 已高亮，请核对</span>
+        </span>
+        <span class="tag fx-tag-warn fx-ocr-tag">待复核</span>
+      </label>
+      <label class="fx-ocr-row is-pending">
+        <span class="fx-ocr-k">税号</span>
+        <span class="fx-ocr-v">
+          <input class="fx-ocr-input num" type="text" value="91110108722618967T" aria-label="纳税人识别号">
+          <span class="fx-ocr-sub">识别置信度 68% · 已高亮，请核对</span>
+        </span>
+        <span class="tag fx-tag-warn fx-ocr-tag">待复核</span>
+      </label>
+    </div>
+    <p class="tiny" style="margin-top:8px;line-height:var(--lh-normal)">字段取自发票原件；OCR 识别失败可全部手输，不阻塞报销。核对的含义是「你确认这四个值与票面一致」。</p>
+
+    <div class="fx-sec"><span>关联流水</span><span class="tiny">一对一</span></div>
+    <div class="list fx-linked"
+      data-hot="⑤" data-hot-name="关联流水" data-hot-pos="bottom-right"
+      data-hot-label="发票与一笔支出流水一对一关联：点行进流水详情。金额不一致时提示核对但不自动改票；私密流水不能被发票关联">
+      <a class="fx-link-row" href="finance-tx-detail.html">
+        <span class="fx-link-ic">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h12M4 10h12M4 13.5h7"/></svg>
+        </span>
+        <span class="fx-link-body">
+          <span class="fx-link-title">家居 · 家电</span>
+          <span class="fx-link-sub">10 月 25 日 20:16 · 我记账 · 金额与发票一致</span>
+        </span>
+        <span class="amount fx-link-amt">-¥1,198.00</span>
+        <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+      </a>
+    </div>
+    <div class="fx-unlinked">
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6v4.4M10 13.4v.1"/></svg>
+      <span class="fx-unlinked-body">
+        <span class="fx-unlinked-title">未关联流水</span>
+        <span class="fx-unlinked-sub">发票需要关联一笔记账流水才能进入报销；没有对应流水可以先去记一笔，再回来关联。</span>
+      </span>
+      <button class="btn btn-secondary btn-sm" type="button" data-toast="打开流水选择器：只列未被其他发票占用的支出流水，可搜索金额与日期"
+        data-hot="⑥" data-hot-name="选择流水" data-hot-pos="bottom-right"
+        data-hot-label="未关联时给可执行动作：打开流水选择器，按金额与日期匹配；选完立刻回填，不离开本页">
+        选择流水</button>
+    </div>
+
+    <div class="fx-sec"><span>报销状态</span><span class="tiny">记账层面，不涉及真实打款</span></div>
+    <div class="list"
+      data-hot="⑦" data-hot-name="报销状态" data-hot-pos="bottom-right"
+      data-hot-label="状态流转：待报销 → 已报销 → 可撤销。提交生成一笔报销流水，撤销同时冲销；状态只影响记账，不涉及真实打款，也不改变发票原件">
+      <div class="fx-status-row">
+        <span class="fx-status-k">当前状态</span>
+        <span class="fx-status-v"><span class="tag fx-tag-warn" id="fx-status-tag">待报销</span><span class="tiny">已关联流水，可提交报销</span></span>
+      </div>
+      <div class="fx-status-row">
+        <span class="fx-status-k">报销人</span>
+        <span class="fx-status-v" id="fx-status-person">我<span class="tiny">提交后由我发起，管理员可代提交</span></span>
+      </div>
+      <div class="fx-status-row">
+        <span class="fx-status-k">提交时间</span>
+        <span class="fx-status-v num" id="fx-status-time">未提交</span>
+      </div>
+    </div>
+
+    <div class="field fx-note-area" style="margin-top:16px">
+      <label class="field-label" for="fx-inv-note">备注</label>
+      <textarea class="textarea" id="fx-inv-note" maxlength="200" rows="2">客厅新电视，发票留档。</textarea>
+      <div class="help">备注全家可见；只用于补充说明，不参与报销金额计算。</div>
+    </div>
+  </div>
+
+  <div class="fx-foot">
+    <button class="btn btn-primary btn-block" type="button" id="fx-submit"
+      data-hot="⑧" data-hot-name="提交报销" data-hot-pos="outer-bottom-right"
+      data-hot-label="四项核对完且已关联流水才可提交；提交生成一笔报销流水并进入已报销。未关联或仍有待复核字段时按钮置灰，并保留原因">
+      提交报销
+    </button>
+    <button class="btn btn-secondary btn-block" type="button" id="fx-undo" hidden
+      data-hot="⑨" data-hot-name="撤销报销" data-hot-pos="outer-bottom-right"
+      data-hot-label="撤销把发票退回待报销，同时冲销提交时生成的那笔报销流水；不删除发票原件，也不改动关联的支出流水">
+      撤销报销
+    </button>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var invDetailState = new URLSearchParams(location.search).get('state') || 'default';
+  var submit = document.getElementById('fx-submit');
+  var undo = document.getElementById('fx-undo');
+  var reviewCount = document.getElementById('fx-review-count');
+  var confirmAll = document.getElementById('fx-confirm-all');
+
+  function pendingRows() {
+    return Array.prototype.slice.call(document.querySelectorAll('.fx-ocr-row.is-pending'));
+  }
+
+  function refreshCount() {
+    var total = document.querySelectorAll('.fx-ocr-row').length;
+    var left = pendingRows().length;
+    reviewCount.textContent = left === 0 ? total + ' / ' + total + ' 已核对' : left + ' 项待复核';
+    if (left === 0 && invDetailState === 'ocr-review') {
+      submit.disabled = false;
+      submit.textContent = '提交报销';
+    }
+  }
+
+  function markReviewed(row) {
+    row.classList.remove('is-pending');
+    var tag = row.querySelector('.fx-ocr-tag');
+    tag.className = 'tag fx-tag-ok fx-ocr-tag';
+    tag.textContent = '已核对';
+    var sub = row.querySelector('.fx-ocr-sub');
+    if (sub) sub.textContent = '已核对 · 改过以你的输入为准';
+    refreshCount();
+  }
+
+  document.querySelectorAll('.fx-ocr-input').forEach(function (inp) {
+    inp.addEventListener('input', function () {
+      var row = inp.closest('.fx-ocr-row');
+      if (row.classList.contains('is-pending')) markReviewed(row);
+    });
+  });
+
+  if (confirmAll) {
+    confirmAll.addEventListener('click', function () {
+      pendingRows().forEach(markReviewed);
+      window.HC.toast('4 项已全部核对，可以提交报销');
+    });
+  }
+
+  if (invDetailState !== 'ocr-review') {
+    pendingRows().forEach(markReviewed);
+  }
+
+  if (invDetailState === 'ocr-review') {
+    submit.disabled = true;
+    submit.textContent = '核对后可提交';
+    reviewCount.textContent = '2 项待复核';
+  }
+
+  if (invDetailState === 'unlinked') {
+    submit.disabled = true;
+    submit.textContent = '先关联流水';
+    refreshCount();
+  }
+
+  if (invDetailState === 'reimbursed') {
+    document.getElementById('fx-hero-tag').className = 'tag fx-tag-ok';
+    document.getElementById('fx-hero-tag').textContent = '已报销';
+    document.getElementById('fx-status-tag').className = 'tag fx-tag-ok';
+    document.getElementById('fx-status-tag').textContent = '已报销';
+    document.getElementById('fx-status-time').textContent = '2026-10-27 18:40';
+    document.getElementById('fx-status-person').innerHTML = '我<span class="tiny">10 月 27 日提交 · 报销流水已生成</span>';
+    submit.hidden = true;
+    undo.hidden = false;
+  }
+
+  submit.addEventListener('click', function () {
+    if (submit.disabled) {
+      if (invDetailState === 'unlinked') window.HC.toast('先关联一笔记账流水，再提交报销');
+      else window.HC.toast('还有 2 项字段待复核，核对后才能提交');
+      return;
+    }
+    window.HC.toast('已提交报销：生成报销流水 ¥1,198.00，状态变为已报销');
+    setTimeout(function () { location.href = 'finance-invoice.html?state=reimbursed'; }, 1100);
+  });
+
+  undo.addEventListener('click', function () {
+    window.HC.toast('已撤销报销：发票回到待报销，报销流水同时冲销');
+    setTimeout(function () { location.href = 'finance-invoice.html'; }, 1100);
+  });
+</script>
+</body>
+</html>

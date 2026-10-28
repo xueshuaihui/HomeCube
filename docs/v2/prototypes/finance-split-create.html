@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>新建分账 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-content { padding-bottom: 24px; }
+
+  .fx-av-me { background: var(--brand); color: var(--on-brand); border-color: transparent; }
+  .fx-av-mom { background: var(--accent-soft); color: var(--accent); }
+  .fx-av-dad { background: var(--info-soft); color: var(--info); }
+  .fx-av-girl { background: var(--face-calendar-soft); color: var(--face-calendar); }
+
+  .fx-sec {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin: 18px 2px 8px;
+    font-size: var(--fs-13); font-weight: 700; color: var(--text-2);
+  }
+  .fx-sec .tiny { font-weight: 500; }
+
+  .fx-banner {
+    display: none; align-items: flex-start; gap: 8px;
+    margin: 4px 0 12px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-banner svg { flex: none; margin-top: 1px; }
+  .fx-banner b { display: block; font-size: var(--fs-13); margin-bottom: 2px; }
+  .fx-banner-error { background: var(--danger-soft); color: var(--danger); }
+  body[data-state="error"] .fx-banner-error { display: flex; }
+
+  .fx-amount {
+    margin-top: 4px; padding: 15px 18px 13px;
+    border-radius: var(--radius-xl);
+    background: linear-gradient(135deg, var(--brand-soft) 0%, var(--surface) 72%);
+    border: 1px solid var(--brand-soft-border);
+  }
+  .fx-amount-k { display: flex; align-items: center; justify-content: space-between; font-size: var(--fs-12); color: var(--text-3); }
+  .fx-amount-line { display: flex; align-items: baseline; gap: 5px; margin-top: 4px; }
+  .fx-currency { font-family: var(--font-num); font-size: var(--fs-20); font-weight: 700; color: var(--text-2); }
+  .fx-amount-input {
+    width: 100%; min-width: 0; padding: 0; border: 0; outline: none;
+    background: transparent; color: var(--text);
+    font-family: var(--font-num); font-size: var(--fs-30); font-weight: 700;
+    letter-spacing: -.01em;
+  }
+  .fx-amount-help { margin-top: 4px; font-size: var(--fs-11); color: var(--text-3); }
+
+  .fx-field {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; padding: 12px 14px;
+    border: 0; background: var(--surface);
+    font-family: inherit; text-align: left; color: var(--text);
+    cursor: pointer;
+  }
+  .fx-field:hover { background: var(--surface-2); }
+  .fx-field-k { width: 52px; flex: none; font-size: var(--fs-13); color: var(--text-3); }
+  .fx-field-v { flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: 7px; font-size: var(--fs-15); font-weight: 600; }
+  .fx-field-v .avatar { width: 24px; height: 24px; font-size: var(--fs-11); }
+  .fx-field .chevron { flex: none; color: var(--text-3); }
+
+  .fx-method { width: 100%; margin-top: 4px; }
+  .fx-method button { flex: 1; padding: 8px 6px; }
+
+  .fx-parts { display: none; }
+  body[data-state="default"] .fx-parts[data-parts="even"],
+  body[data-state="ratio"] .fx-parts[data-parts="ratio"],
+  body[data-state="remainder"] .fx-parts[data-parts="remainder"],
+  body[data-state="error"] .fx-parts[data-parts="error"] { display: block; }
+
+  .fx-part {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 14px;
+    background: var(--surface);
+    cursor: pointer;
+  }
+  .fx-part + .fx-part { border-top: 1px solid var(--border); }
+  .fx-part.is-on { background: var(--surface); }
+  .fx-part input { position: absolute; opacity: 0; pointer-events: none; }
+  .fx-box {
+    width: 18px; height: 18px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 6px;
+    border: 1.5px solid var(--border-strong);
+    background: var(--surface);
+  }
+  .fx-box::after {
+    content: ""; width: 8px; height: 4px;
+    border-left: 1.8px solid var(--on-brand);
+    border-bottom: 1.8px solid var(--on-brand);
+    transform: rotate(-45deg) translateY(-1px);
+    opacity: 0;
+  }
+  .fx-part input:checked + .fx-box { background: var(--brand); border-color: var(--brand); }
+  .fx-part input:checked + .fx-box::after { opacity: 1; }
+  .fx-part input:focus-visible + .fx-box { box-shadow: 0 0 0 3px var(--brand-soft); }
+  .fx-part .avatar { width: 28px; height: 28px; font-size: var(--fs-11); }
+  .fx-part-body { flex: 1; min-width: 0; }
+  .fx-part-name { display: flex; align-items: center; gap: 6px; font-size: var(--fs-14); font-weight: 600; }
+  .fx-part-sub { display: block; margin-top: 2px; font-size: var(--fs-11); color: var(--text-3); }
+  .fx-part-right { flex: none; text-align: right; }
+  .fx-part-amt { font-size: var(--fs-14); }
+  .fx-part-flag { display: block; margin-top: 2px; font-size: var(--fs-11); color: var(--brand-text); font-weight: 600; }
+  .fx-part.is-off .fx-part-name,
+  .fx-part.is-off .fx-part-amt { color: var(--text-3); }
+
+  .fx-ratio-cell {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 4px 7px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    font-size: var(--fs-12); color: var(--text-2);
+  }
+  .fx-ratio-cell input {
+    width: 30px; padding: 0; border: 0; background: transparent;
+    color: var(--text); text-align: right;
+    font-family: var(--font-num); font-size: var(--fs-13); font-weight: 700;
+    outline: none;
+  }
+
+  .fx-amt-cell {
+    width: 78px; height: 32px; padding: 0 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-num); font-size: var(--fs-13); font-weight: 700;
+    text-align: right; outline: none;
+  }
+  .fx-amt-cell:focus { border-color: var(--brand-text); box-shadow: 0 0 0 3px var(--brand-soft); }
+  body[data-state="error"] .fx-amt-cell { border-color: var(--danger); }
+
+  .fx-total {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 14px;
+    border-top: 1px solid var(--border);
+    background: var(--surface-2);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    font-size: var(--fs-12); color: var(--text-2);
+  }
+  .fx-total-k { flex: 1; }
+  .fx-total .amount { font-size: var(--fs-15); color: var(--text); }
+  .fx-total.is-bad .amount { color: var(--danger); }
+
+  .fx-rule {
+    margin-top: 10px; padding: 12px 14px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--brand-soft-border);
+    background: var(--brand-soft);
+    color: var(--text-2);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-rule-head {
+    display: flex; align-items: center; gap: 6px;
+    font-size: var(--fs-13); font-weight: 700; color: var(--brand-text);
+    margin-bottom: 5px;
+  }
+  .fx-rule p + p { margin-top: 4px; }
+  .fx-rule b { font-family: var(--font-num); color: var(--text); }
+  .fx-rule .fx-eq {
+    display: block; margin-top: 6px; padding-top: 6px;
+    border-top: 1px solid var(--brand-soft-border);
+    font-family: var(--font-num); font-size: var(--fs-12); color: var(--text);
+  }
+
+  .fx-hint {
+    margin-top: 8px; padding: 9px 12px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    font-size: var(--fs-11); color: var(--text-3); line-height: var(--lh-normal);
+  }
+
+  .fx-foot {
+    flex: none; display: flex; gap: 10px;
+    padding: 10px 16px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+  body[data-state="error"] .fx-save-btn { pointer-events: none; }
+</style>
+</head>
+<body data-screen="F37 新建分账" data-states="default,ratio,remainder,error">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <header class="navbar">
+    <div class="nav-left">
+      <a class="icon-btn" href="finance-split.html" aria-label="返回分账列表"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回 AA 分账列表；未保存的草稿直接丢弃、不落草稿。保存成功会回到分账列表并把这笔置顶，不留在本页">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </a>
+    </div>
+    <div class="nav-title">新建分账</div>
+    <div class="nav-right"></div>
+  </header>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 保存后先入待同步队列
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-banner fx-banner-error" role="alert">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6v4.4M10 13.4v.1"/></svg>
+      <div>
+        <b>分摊合计不等于总金额</b>
+        逐人金额合计 ¥268.01，比总额多 ¥0.01；调整任一人金额到合计正好 ¥268.00 才能保存。
+      </div>
+    </div>
+
+    <div class="field" style="margin-bottom:0"
+      data-hot="②" data-hot-name="事由与总金额" data-hot-pos="top-right"
+      data-hot-label="事由是这笔分账在列表里的标题，最多 20 字；总金额以「分」为单位存储，按家庭币种显示，最多两位小数，保存后不可改（要改只能作废重建）">
+      <label class="field-label" for="fx-title">事由</label>
+      <input class="input" id="fx-title" type="text" maxlength="20" value="周末露营">
+    </div>
+
+    <div class="fx-amount">
+      <div class="fx-amount-k"><span>总金额（元）</span><span class="num">人民币</span></div>
+      <div class="fx-amount-line">
+        <span class="fx-currency">¥</span>
+        <input class="fx-amount-input num" type="text" inputmode="decimal" value="268.00" aria-label="总金额">
+      </div>
+      <div class="fx-amount-help">以「分」存储 · 分摊余数按参与人顺序分配 · 合计必须等于总金额</div>
+    </div>
+
+    <div class="fx-sec"><span>付款人与参与人</span><span class="tiny">付款人也是参与人</span></div>
+    <div class="list"
+      data-hot="③" data-hot-name="付款人" data-hot-pos="bottom-right"
+      data-hot-label="付款人默认本人，必须是参与人之一；只有付款人产生应收，其余参与人产生应付。付款人变更不影响已保存的分账">
+      <button class="fx-field" type="button" data-toast="选择付款人：只列已选参与人；付款人自己的分摊额照常计算，净额 = 已付 − 分摊">
+        <span class="fx-field-k">付款人</span>
+        <span class="fx-field-v"><span class="avatar fx-av-me">我</span>我 <span class="tag is-brand">默认</span></span>
+        <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+      </button>
+    </div>
+
+    <div class="fx-sec"><span>参与人</span><span class="tiny">至少 2 人</span></div>
+    <div class="segmented fx-method" id="fx-method" role="tablist"
+      data-hot="⑤" data-hot-name="分摊方式" data-hot-pos="bottom-right"
+      data-hot-label="均分 / 按比例 / 指定金额三选一：均分按参与人顺序分余数；按比例要求比例合计 100%，余数同样按顺序分；指定金额要求逐人合计正好等于总金额，差 1 分也不能保存">
+      <button type="button" role="tab" data-method="even" aria-selected="true">均分</button>
+      <button type="button" role="tab" data-method="ratio" aria-selected="false">按比例</button>
+      <button type="button" role="tab" data-method="amount" aria-selected="false">指定金额</button>
+    </div>
+
+    <div class="fx-parts" data-parts="even"
+      data-hot="④" data-hot-name="参与人多选" data-hot-pos="bottom-right"
+      data-hot-label="参与人从家庭成员里多选，至少 2 人；无账号成员由代管人代为参与。私密流水的作者不参与分摊，列表里也不会出现">
+      <div class="list" style="margin-top:10px">
+        <label class="fx-part is-on">
+          <input type="checkbox" checked>
+          <span class="fx-box" aria-hidden="true"></span>
+          <span class="avatar fx-av-me">我</span>
+          <span class="fx-part-body">
+            <span class="fx-part-name">我 <span class="tag is-brand">付款人</span></span>
+            <span class="fx-part-sub">均分 · 4 人每人相同</span>
+          </span>
+          <span class="fx-part-right"><span class="amount fx-part-amt">¥67.00</span></span>
+        </label>
+        <label class="fx-part is-on">
+          <input type="checkbox" checked>
+          <span class="fx-box" aria-hidden="true"></span>
+          <span class="avatar fx-av-mom">妈</span>
+          <span class="fx-part-body">
+            <span class="fx-part-name">妈妈</span>
+            <span class="fx-part-sub">均分 · 4 人每人相同</span>
+          </span>
+          <span class="fx-part-right"><span class="amount fx-part-amt">¥67.00</span></span>
+        </label>
+        <label class="fx-part is-on">
+          <input type="checkbox" checked>
+          <span class="fx-box" aria-hidden="true"></span>
+          <span class="avatar fx-av-dad">爸</span>
+          <span class="fx-part-body">
+            <span class="fx-part-name">爸爸</span>
+            <span class="fx-part-sub">均分 · 4 人每人相同</span>
+          </span>
+          <span class="fx-part-right"><span class="amount fx-part-amt">¥67.00</span></span>
+        </label>
+        <label class="fx-part is-on">
+          <input type="checkbox" checked>
+          <span class="fx-box" aria-hidden="true"></span>
+          <span class="avatar fx-av-girl">女</span>
+          <span class="fx-part-body">
+            <span class="fx-part-name">女儿</span>
+            <span class="fx-part-sub">均分 · 4 人每人相同</span>
+          </span>
+          <span class="fx-part-right"><span class="amount fx-part-amt">¥67.00</span></span>
+        </label>
+        <div class="fx-total">
+          <span class="fx-total-k">分摊合计</span>
+          <span class="amount">¥268.00</span>
+          <span class="tag is-brand">与总额一致</span>
+        </div>
+      </div>
+      <div class="fx-hint">均分正好整除时没有余数；把总额改成除不尽，会自动按参与人顺序分余数，规则见「除不尽」状态。</div>
+    </div>
+
+    <div class="fx-parts" data-parts="ratio">
+      <div class="list" style="margin-top:10px">
+        <label class="fx-part is-on">
+          <input type="checkbox" checked>
+          <span class="fx-box" aria-hidden="true"></span>
+          <span class="avatar fx-av-me">我</span>
+          <span class="fx-part-body">
+            <span class="fx-part-name">我 <span class="tag is-brand">付款人</span></span>
+            <span class="fx-part-sub">比例 50% · ¥268.00 × 50% = ¥134.00</span>
+          </span>
+          <span class="fx-ratio-cell"><input type="text" value="50" aria-label="我的比例">%</span>
+        </label>
+        <label class="fx-part is-on">
+          <input type="checkbox" checked>
+          <span class="fx-box" aria-hidden="true"></span>
+          <span class="avatar fx-av-mom">妈</span>
+          <span class="fx-part-body">
+            <span class="fx-part-name">妈妈</span>
+            <span class="fx-part-sub">比例 30% · ¥268.00 × 30% = ¥80.40</span>
+          </span>
+          <span class="fx-ratio-cell"><input type="text" value="30" aria-label="妈妈的比例">%</span>
+        </label>
+        <label class="fx-part is-on">
+          <input type="checkbox" checked>
+          <span class="fx-box" aria-hidden="true"></span>
+          <span class="avatar fx-av-dad">爸</span>
+          <span class="fx-part-body">
+            <span class="fx-part-name">爸爸</span>
+            <span class="fx-part-sub">比例 20% · ¥268.00 × 20% = ¥53.60</span>
+          </span>
+          <span class="fx-ratio-cell"><input type="text" value="20" aria-label="爸爸的比例">%</span>
+        </label>
+        <div class="fx-total">
+          <span class="fx-total-k">比例合计 100% · 分摊合计</span>
+          <span class="amount">¥268.00</span>
+          <span class="tag is-brand">与总额一致</span>
+        </div>
+      </div>
+      <div class="fx-hint">按比例分摊同样以「分」计算：先按比例算到分，除不尽时余数按参与人顺序依次 +¥0.01，合计始终等于总金额。</div>
+    </div>
+
+    <div class="fx-parts" data-parts="remainder">
+      <div class="fx-rule"
+        data-hot="⑥" data-hot-name="余数分配规则" data-hot-pos="bottom-right"
+        data-hot-label="除不尽时必须可复现：先按分向下取整，余数按参与人顺序（我 → 妈妈 → 爸爸）分给前 N 人，逐人金额与合计一起展示；相同输入永远得到相同分配">
+        <div class="fx-rule-head">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5v13M4.5 9h11"/></svg>
+          余数分配 · 可复现
+        </div>
+        <p>总额 <b>¥268.00</b> 按 3 人均分：<b>¥89.33 × 3 = ¥267.99</b>，余 <b>¥0.01</b>。</p>
+        <p>余数 <b>¥0.01</b> 按参与人顺序分给前 <b>1</b> 人：我 → 妈妈 → 爸爸。</p>
+        <span class="fx-eq">89.33 + 0.01 = 89.34（我） / 89.33（妈妈） / 89.33（爸爸） = ¥268.00</span>
+      </div>
+      <div class="list" style="margin-top:10px">
+        <label class="fx-part is-on">
+          <input type="checkbox" checked>
+          <span class="fx-box" aria-hidden="true"></span>
+          <span class="avatar fx-av-me">我</span>
+          <span class="fx-part-body">
+            <span class="fx-part-name">我 <span class="tag is-brand">付款人</span></span>
+            <span class="fx-part-sub">¥89.33 + 余数 ¥0.01</span>
+          </span>
+          <span class="fx-part-right">
+            <span class="amount fx-part-amt">¥89.34</span>
+            <span class="fx-part-flag">含余数 +¥0.01</span>
+          </span>
+        </label>
+        <label class="fx-part is-on">
+          <input type="checkbox" checked>
+          <span class="fx-box" aria-hidden="true"></span>
+          <span class="avatar fx-av-mom">妈</span>
+          <span class="fx-part-body">
+            <span class="fx-part-name">妈妈</span>
+            <span class="fx-part-sub">基数 ¥89.33 · 未分到余数</span>
+          </span>
+          <span class="fx-part-right"><span class="amount fx-part-amt">¥89.33</span></span>
+        </label>
+        <label class="fx-part is-on">
+          <input type="checkbox" checked>
+          <span class="fx-box" aria-hidden="true"></span>
+          <span class="avatar fx-av-dad">爸</span>
+          <span class="fx-part-body">
+            <span class="fx-part-name">爸爸</span>
+            <span class="fx-part-sub">基数 ¥89.33 · 未分到余数</span>
+          </span>
+          <span class="fx-part-right"><span class="amount fx-part-amt">¥89.33</span></span>
+        </label>
+        <div class="fx-total">
+          <span class="fx-total-k">分摊合计</span>
+          <span class="amount">¥268.00</span>
+          <span class="tag is-brand">与总额一致</span>
+        </div>
+      </div>
+      <div class="fx-hint">把「女儿」移出参与人后总人数变为 3 人，¥268.00 除不尽，余数规则自动生效；顺序取参与人列表顺序，不随金额大小重排。</div>
+    </div>
+
+    <div class="fx-parts" data-parts="error">
+      <div class="list" style="margin-top:10px">
+        <label class="fx-part is-on">
+          <input type="checkbox" checked>
+          <span class="fx-box" aria-hidden="true"></span>
+          <span class="avatar fx-av-me">我</span>
+          <span class="fx-part-body">
+            <span class="fx-part-name">我 <span class="tag is-brand">付款人</span></span>
+            <span class="fx-part-sub">指定金额 · 可改</span>
+          </span>
+          <input class="fx-amt-cell num" type="text" value="89.34" aria-label="我的分摊金额">
+        </label>
+        <label class="fx-part is-on">
+          <input type="checkbox" checked>
+          <span class="fx-box" aria-hidden="true"></span>
+          <span class="avatar fx-av-mom">妈</span>
+          <span class="fx-part-body">
+            <span class="fx-part-name">妈妈</span>
+            <span class="fx-part-sub">指定金额 · 可改</span>
+          </span>
+          <input class="fx-amt-cell num" type="text" value="89.34" aria-label="妈妈的分摊金额">
+        </label>
+        <label class="fx-part is-on">
+          <input type="checkbox" checked>
+          <span class="fx-box" aria-hidden="true"></span>
+          <span class="avatar fx-av-dad">爸</span>
+          <span class="fx-part-body">
+            <span class="fx-part-name">爸爸</span>
+            <span class="fx-part-sub">指定金额 · 可改</span>
+          </span>
+          <input class="fx-amt-cell num" type="text" value="89.33" aria-label="爸爸的分摊金额">
+        </label>
+        <div class="fx-total is-bad">
+          <span class="fx-total-k">分摊合计</span>
+          <span class="amount">¥268.01</span>
+          <span class="tag is-danger">比总额多 ¥0.01</span>
+        </div>
+      </div>
+      <div class="fx-hint">指定金额必须逐人合计正好等于总额；差 1 分也不允许保存，避免「分账看起来平了、实际差一分」。把任意一人改成 ¥89.33 即可通过。</div>
+    </div>
+
+    <p class="tiny" style="margin-top:16px;line-height:var(--lh-normal)">只有标记为「共享」的流水参与 AA 分摊；私密流水不参与分摊，也不出现在参与人与结算清单里。</p>
+  </div>
+
+  <div class="fx-foot">
+    <button class="btn btn-primary btn-block fx-save-btn" type="button" id="fx-save"
+      data-hot="⑦" data-hot-name="保存分账" data-hot-pos="outer-bottom-right"
+      data-hot-label="合计等于总额才可保存；保存后分账出现在列表首位，参与人净额按「已付 − 分摊」生成。错误态按钮置灰并保留错误说明，不做静默截断">
+      保存分账
+    </button>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var createState = new URLSearchParams(location.search).get('state') || 'default';
+  var methodBtns = Array.prototype.slice.call(document.querySelectorAll('[data-method]'));
+
+  var map = { default: 'even', ratio: 'ratio', remainder: 'even', error: 'amount' };
+  var active = map[createState] || 'even';
+
+  methodBtns.forEach(function (b) {
+    b.setAttribute('aria-selected', String(b.getAttribute('data-method') === active));
+    if (createState === 'error') b.setAttribute('aria-selected', String(b.getAttribute('data-method') === 'amount'));
+  });
+
+  methodBtns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      var m = b.getAttribute('data-method');
+      if (m === 'ratio') { location.href = 'finance-split-create.html?state=ratio'; return; }
+      if (m === 'amount') { location.href = 'finance-split-create.html?state=error'; return; }
+      if (createState !== 'default') { location.href = 'finance-split-create.html'; return; }
+      window.HC.toast('当前已是均分');
+    });
+  });
+
+  document.querySelectorAll('.fx-part input[type="checkbox"]').forEach(function (c) {
+    c.addEventListener('change', function () {
+      if (createState === 'default' || createState === 'remainder') {
+        window.HC.toast(c.checked ? '已加入参与人；金额会按当前分摊方式重算' : '已移出参与人；剩余参与人的分摊会重算，余数按顺序重新分配');
+      }
+    });
+  });
+
+  var saveBtn = document.getElementById('fx-save');
+  if (createState === 'error') saveBtn.disabled = true;
+
+  saveBtn.addEventListener('click', function () {
+    if (createState === 'error') return;
+    if (createState === 'remainder') {
+      window.HC.toast('已保存：余数 ¥0.01 已按顺序分给「我」，合计 ¥268.00');
+    } else {
+      window.HC.toast('分账已保存，参与人净额已生成');
+    }
+    setTimeout(function () { location.href = 'finance-split.html'; }, 1100);
+  });
+</script>
+</body>
+</html>

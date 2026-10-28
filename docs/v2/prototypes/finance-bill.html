@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>账单 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-content { padding-bottom: 24px; }
+
+  .fx-new {
+    height: 36px; padding: 0 4px;
+    border: 0; background: none;
+    font-family: inherit; font-size: var(--fs-15); font-weight: 600;
+    color: var(--brand-text); cursor: pointer;
+  }
+  .fx-new:hover { color: var(--brand-hover); }
+
+  .fx-hero {
+    margin-top: 4px; padding: 16px 18px 14px;
+    border-radius: var(--radius-xl);
+    background: linear-gradient(135deg, var(--brand-soft) 0%, var(--surface) 70%);
+    border: 1px solid var(--brand-soft-border);
+  }
+  .fx-hero-k { font-size: var(--fs-13); color: var(--text-2); }
+  .fx-hero-v {
+    margin-top: 2px;
+    font-size: var(--fs-30); font-weight: 700; line-height: var(--lh-tight);
+    letter-spacing: .01em;
+  }
+  .fx-hero-sub { margin-top: 6px; font-size: var(--fs-12); color: var(--text-2); line-height: var(--lh-normal); }
+  .fx-hero-note { margin-top: 8px; font-size: var(--fs-11); color: var(--text-3); line-height: var(--lh-normal); }
+  .fx-hero-sub .is-late { color: var(--danger); font-weight: 700; }
+
+  .fx-sum-b { display: none; }
+  .fx-sub-b { display: none; }
+  .fx-pend-b { display: none; }
+  body[data-state="overdue"] .fx-sum-a,
+  body[data-state="overdue"] .fx-sub-a,
+  body[data-state="overdue"] .fx-pend-a { display: none; }
+  body[data-state="overdue"] .fx-sum-b { display: inline; }
+  body[data-state="overdue"] .fx-sub-b { display: block; }
+  body[data-state="overdue"] .fx-pend-b { display: inline; }
+
+  .fx-ghead {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin: 18px 2px 8px;
+  }
+  .fx-gtitle { font-size: var(--fs-13); font-weight: 700; color: var(--text-2); }
+  .fx-gtitle.is-danger { color: var(--danger); }
+  .fx-gcount { font-size: var(--fs-11); color: var(--text-3); }
+
+  .fx-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .fx-bill { display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
+  .fx-bill + .fx-bill { border-top: 1px solid var(--border); }
+  .fx-bill:hover { background: var(--surface-2); }
+  .fx-bill-body { flex: 1; min-width: 0; display: block; text-decoration: none; color: var(--text); }
+  .fx-bill-top { display: flex; align-items: baseline; gap: 8px; }
+  .fx-bill-name {
+    flex: 1; min-width: 0;
+    font-size: var(--fs-15); font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .fx-bill-amt { flex: none; font-size: var(--fs-15); }
+  .fx-bill-meta {
+    margin-top: 4px;
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    font-size: var(--fs-12); color: var(--text-3);
+  }
+  .fx-bill-meta .is-late { color: var(--danger); font-weight: 700; }
+  .fx-bill-meta .is-soon { color: var(--warning); font-weight: 600; }
+  .fx-bill-meta .fx-sep { color: var(--border-strong); }
+
+  .fx-bill.is-late { background: var(--danger-soft); }
+  .fx-bill.is-late:hover { background: var(--danger-soft); }
+  .fx-bill.is-late .fx-bill-name { color: var(--danger); }
+  .fx-bill.is-done { background: var(--surface); }
+  .fx-bill.is-done .fx-bill-name { color: var(--text-2); font-weight: 500; }
+  .fx-bill.is-done .fx-bill-amt { color: var(--text-3); font-weight: 500; }
+  .fx-bill.is-done:hover { background: var(--surface); }
+
+  .fx-mark {
+    flex: none; height: 30px; padding: 0 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    font-family: inherit; font-size: var(--fs-12); font-weight: 600;
+    color: var(--text-2); cursor: pointer;
+    white-space: nowrap;
+  }
+  .fx-mark:hover { border-color: var(--brand-text); color: var(--brand-text); background: var(--surface); }
+  .fx-mark-done {
+    flex: none;
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+    background: var(--success-soft); color: var(--success);
+    font-size: var(--fs-11); font-weight: 700;
+    white-space: nowrap;
+  }
+  .fx-bill.is-paid { background: var(--surface-2); }
+  .fx-bill.is-paid .fx-bill-name { color: var(--text-2); }
+  .fx-bill.is-paid:hover { background: var(--surface-2); }
+
+  .fx-note {
+    display: flex; align-items: flex-start; gap: 8px;
+    margin: 2px 0 10px; padding: 9px 11px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2); color: var(--text-2);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-note svg { flex: none; margin-top: 1px; color: var(--text-3); }
+  .fx-note b { color: var(--text); font-weight: 600; }
+
+  .fx-foot-note { margin-top: 14px; line-height: var(--lh-normal); }
+
+  .fx-sk { display: none; padding-top: 6px; }
+  body[data-state="loading"] .fx-sk { display: block; }
+  body[data-state="loading"] .fx-real { display: none; }
+
+  .fx-empty { display: none; }
+  body[data-state="empty"] .fx-empty { display: flex; }
+  body[data-state="empty"] .fx-real { display: none; }
+
+  .fx-od-only { display: none; }
+  body[data-state="overdue"] .fx-od-only { display: block; }
+</style>
+</head>
+<body data-screen="F25 账单" data-states="default,overdue,empty,loading">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <header class="navbar">
+    <div class="nav-left">
+      <a class="icon-btn" href="home.html" aria-label="返回"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回首页；账单从首页财务格「待缴账单」与到期通知深链进入，通知进入时返回进入前的页面，不强制落回首页">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </a>
+    </div>
+    <div class="nav-title">账单</div>
+    <div class="nav-right">
+      <button class="fx-new" type="button" data-go="finance-bill-create.html"
+        data-hot="②" data-hot-name="新建" data-hot-pos="outer-top-right"
+        data-hot-label="进新建账单页 finance/bill/create；本页唯一的写入口，空态指向同一路由">新建</button>
+    </div>
+  </header>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 缴纳状态显示本机缓存
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-real">
+      <section class="fx-hero"
+        data-hot="③" data-hot-name="本月待缴汇总" data-hot-pos="bottom-right"
+        data-hot-label="只统计本月到期且未缴的账单，已逾期计入、11 月到期的不计入；数字由服务端按家庭币种汇总，前端不二次累加，逾期笔数单独列出">
+        <div class="fx-hero-k">本月待缴</div>
+        <div class="amount fx-hero-v">
+          <span class="fx-sum-a">¥380.00</span>
+          <span class="fx-sum-b">¥2,780.00</span>
+        </div>
+        <div class="fx-hero-sub fx-sub-a">本月 1 笔 · 另有 3 笔 11 月到期 ¥5,018.00 · 没有逾期</div>
+        <div class="fx-hero-sub fx-sub-b">本月 2 笔 · 其中<span class="is-late">逾期 2 笔 ¥2,780.00</span> · 另有 3 笔 11 月到期 ¥5,018.00</div>
+        <div class="fx-hero-note">口径：本月（2026 年 10 月）到期且未缴；逾期计入本月待缴。</div>
+      </section>
+
+      <div class="fx-note">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="14" height="13" rx="2.5"/><path d="M3 8.5h14"/><path d="M7 3v3M13 3v3"/></svg>
+        <span><b>到期已注册到家庭日历。</b>到期前 3 天与当天各提醒一次；触发与推送由日历面与家庭消息负责，财务面不自建定时器。</span>
+      </div>
+
+      <!-- 逾期（仅含逾期态） -->
+      <div class="fx-od-only">
+        <div class="fx-ghead">
+          <span class="fx-gtitle is-danger">逾期</span>
+          <span class="fx-gcount">2 笔 · ¥2,780.00</span>
+        </div>
+        <div class="fx-list">
+          <div class="fx-bill is-late">
+            <a class="fx-bill-body" href="finance-bill-detail.html">
+              <span class="fx-bill-top">
+                <span class="fx-bill-name">物业费</span>
+                <span class="amount fx-bill-amt">-¥380.00</span>
+              </span>
+              <span class="fx-bill-meta">
+                <span class="is-late">逾期 3 天</span>
+                <span class="fx-sep">·</span>
+                <span class="num">10 月 26 日到期</span>
+                <span class="fx-sep">·</span>
+                <span>招商银行储蓄卡</span>
+              </span>
+            </a>
+            <button class="fx-mark" type="button" data-title="物业费" aria-label="标记 物业费 已缴">标记已缴</button>
+          </div>
+          <div class="fx-bill is-late">
+            <a class="fx-bill-body" href="finance-bill-detail.html">
+              <span class="fx-bill-top">
+                <span class="fx-bill-name">车险续费</span>
+                <span class="amount fx-bill-amt">-¥2,400.00</span>
+              </span>
+              <span class="fx-bill-meta">
+                <span class="is-late">逾期 1 天</span>
+                <span class="fx-sep">·</span>
+                <span class="num">10 月 28 日到期</span>
+                <span class="fx-sep">·</span>
+                <span>招商银行信用卡</span>
+              </span>
+            </a>
+            <button class="fx-mark" type="button" data-title="车险续费" aria-label="标记 车险续费 已缴">标记已缴</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 待缴 -->
+      <div class="fx-ghead">
+        <span class="fx-gtitle">待缴</span>
+        <span class="fx-gcount fx-pend-a">4 笔 · ¥5,398.00</span>
+        <span class="fx-gcount fx-pend-b">3 笔 · ¥5,018.00</span>
+      </div>
+      <div class="fx-list">
+        <div class="fx-bill fx-pend-a">
+          <a class="fx-bill-body" href="finance-bill-detail.html">
+            <span class="fx-bill-top">
+              <span class="fx-bill-name">物业费</span>
+              <span class="amount fx-bill-amt">-¥380.00</span>
+            </span>
+            <span class="fx-bill-meta">
+              <span class="num is-soon">10 月 31 日到期</span>
+              <span class="fx-sep">·</span>
+              <span>招商银行储蓄卡</span>
+            </span>
+          </a>
+          <button class="fx-mark" type="button" data-title="物业费" aria-label="标记 物业费 已缴">标记已缴</button>
+        </div>
+        <div class="fx-bill">
+          <a class="fx-bill-body" href="finance-bill-detail.html"
+            data-hot="⑤" data-hot-name="账单行" data-hot-pos="bottom-left"
+            data-hot-label="整行进账单详情；行内四件套：账单名、金额（负号在 ¥ 前）、到期日、来源账户。逾期行补「逾期 N 天」并走 danger；已缴行不带操作按钮，点行仍可看详情">
+            <span class="fx-bill-top">
+              <span class="fx-bill-name">房贷</span>
+              <span class="amount fx-bill-amt">-¥4,200.00</span>
+            </span>
+            <span class="fx-bill-meta">
+              <span class="num">11 月 1 日到期</span>
+              <span class="fx-sep">·</span>
+              <span>招商银行储蓄卡</span>
+            </span>
+          </a>
+          <button class="fx-mark" type="button" data-title="房贷" aria-label="标记 房贷 已缴"
+            data-hot="④" data-hot-name="行内标记已缴" data-hot-pos="bottom-right"
+            data-hot-label="点某行的「标记已缴」：写入缴纳状态并生成一笔支出流水，同时提交 finance.bill.paid 回写；toast 只承诺「回写已提交」，不承诺日历即时消失，金额汇总在下次进入时按服务端刷新">标记已缴</button>
+        </div>
+        <div class="fx-bill fx-pend-a">
+          <a class="fx-bill-body" href="finance-bill-detail.html">
+            <span class="fx-bill-top">
+              <span class="fx-bill-name">水电燃气</span>
+              <span class="amount fx-bill-amt">-¥218.00</span>
+            </span>
+            <span class="fx-bill-meta">
+              <span class="num">11 月 5 日到期</span>
+              <span class="fx-sep">·</span>
+              <span>支付宝</span>
+            </span>
+          </a>
+          <button class="fx-mark" type="button" data-title="水电燃气" aria-label="标记 水电燃气 已缴">标记已缴</button>
+        </div>
+        <div class="fx-bill fx-pend-a">
+          <a class="fx-bill-body" href="finance-bill-detail.html">
+            <span class="fx-bill-top">
+              <span class="fx-bill-name">女儿钢琴课</span>
+              <span class="amount fx-bill-amt">-¥600.00</span>
+            </span>
+            <span class="fx-bill-meta">
+              <span class="num">11 月 8 日到期</span>
+              <span class="fx-sep">·</span>
+              <span>微信零钱</span>
+            </span>
+          </a>
+          <button class="fx-mark" type="button" data-title="女儿钢琴课" aria-label="标记 女儿钢琴课 已缴">标记已缴</button>
+        </div>
+      </div>
+
+      <!-- 已缴 -->
+      <div class="fx-ghead">
+        <span class="fx-gtitle">已缴</span>
+        <span class="fx-gcount">2 笔 · ¥429.00</span>
+      </div>
+      <div class="fx-list">
+        <div class="fx-bill is-done">
+          <a class="fx-bill-body" href="finance-bill-detail.html?state=paid">
+            <span class="fx-bill-top">
+              <span class="fx-bill-name">宽带续费</span>
+              <span class="amount fx-bill-amt">-¥129.00</span>
+            </span>
+            <span class="fx-bill-meta">
+              <span class="tag">已缴 · 10 月 20 日</span>
+              <span>支付宝</span>
+            </span>
+          </a>
+        </div>
+        <div class="fx-bill is-done">
+          <a class="fx-bill-body" href="finance-bill-detail.html?state=paid">
+            <span class="fx-bill-top">
+              <span class="fx-bill-name">家庭保洁</span>
+              <span class="amount fx-bill-amt">-¥300.00</span>
+            </span>
+            <span class="fx-bill-meta">
+              <span class="tag">已缴 · 10 月 15 日</span>
+              <span>现金钱包</span>
+            </span>
+          </a>
+        </div>
+      </div>
+
+      <p class="fx-foot-note tiny">标记已缴会写入一笔支出流水并向日历面提交完成回写；<b>日历与到期中心可能稍晚同步</b>，超过 5 秒未收敛只显示时效提示，不当作失败。「自动扣款」标记仅人工确认，不接任何银行或支付账单导入。</p>
+    </div>
+
+    <div class="fx-sk" aria-hidden="true">
+      <div class="skeleton" style="height:132px;border-radius:var(--radius-xl);margin-bottom:16px"></div>
+      <div class="skeleton sk-line" style="width:22%"></div>
+      <div class="skeleton sk-block" style="height:64px"></div>
+      <div class="skeleton sk-block" style="height:64px"></div>
+      <div class="skeleton sk-block" style="height:64px"></div>
+      <div class="skeleton sk-block" style="height:64px"></div>
+    </div>
+
+    <div class="state fx-empty">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="6" width="22" height="21" rx="4"/><path d="M10 6V4M22 6V4"/><path d="M10 13h12M10 18h7"/><path d="M5 10h22"/></svg>
+      </div>
+      <div class="state-title">还没有账单</div>
+      <div class="state-desc">固定要交的钱记成账单：填到期日，保存后提交到期注册，到期由家庭日历提醒你。</div>
+      <button class="btn btn-secondary" type="button" data-go="finance-bill-create.html"
+        data-hot="⑥" data-hot-name="空态行动" data-hot-pos="top-right"
+        data-hot-label="零条时给可执行动作「新建账单」，直接进新建页；不只放一句空话，也不提示去别的面">新建账单</button>
+    </div>
+  </div>
+
+  <!-- 行内标记已缴：热区挂在首个按钮上，其余各行同一动作 -->
+  <div class="toast"></div>
+</div>
+
+<script>
+  var billState = new URLSearchParams(location.search).get('state') || 'default';
+
+  document.querySelectorAll('.fx-mark').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var row = btn.closest('.fx-bill');
+      if (!row || row.classList.contains('is-paid')) return;
+      row.classList.add('is-paid');
+      var done = document.createElement('span');
+      done.className = 'fx-mark-done';
+      done.innerHTML = '<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>已标记 · 同步中';
+      btn.replaceWith(done);
+      window.HC.toast(billState === 'offline'
+        ? '已记为已缴，联网后提交回写'
+        : '已标记已缴，回写已提交；日历可能稍后同步');
+    });
+  });
+</script>
+</body>
+</html>

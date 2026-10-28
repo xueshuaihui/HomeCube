@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>新建待办 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .todo-content { padding-bottom: 24px; }
+
+  .todo-cancel {
+    height: 36px; padding: 0 2px;
+    border: 0; background: none;
+    font-family: inherit; font-size: var(--fs-15); font-weight: 500;
+    color: var(--text-2); cursor: pointer;
+  }
+  .todo-save {
+    height: 36px; padding: 0 2px;
+    border: 0; background: none;
+    font-family: inherit; font-size: var(--fs-15); font-weight: 700;
+    color: var(--brand-text); cursor: pointer;
+  }
+  .todo-save:hover { color: var(--brand-hover); }
+  .todo-save-busy { display: none; }
+  body[data-state="submitting"] .todo-save { color: var(--text-3); pointer-events: none; }
+  body[data-state="submitting"] .todo-save-on { display: none; }
+  body[data-state="submitting"] .todo-save-busy { display: inline; }
+
+  .todo-banner {
+    display: none; align-items: flex-start; gap: 8px;
+    margin: 6px 0 12px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .todo-banner svg { flex: none; margin-top: 1px; }
+  .todo-banner b { display: block; font-size: var(--fs-13); margin-bottom: 2px; }
+  .todo-banner-offline { background: var(--warning-soft); color: var(--warning); }
+  .todo-banner-saving { background: var(--info-soft); color: var(--info); }
+  body[data-state="offline"] .todo-banner-offline { display: flex; }
+  body[data-state="submitting"] .todo-banner-saving { display: flex; }
+  body[data-state="offline"] .offline-bar { display: flex; }
+
+  .todo-form { padding-top: 4px; }
+  body[data-state="submitting"] .todo-form,
+  body[data-state="submitting"] .todo-foot-note,
+  body[data-state="submitting"] .todo-cancel { opacity: .55; pointer-events: none; }
+
+  .todo-required { margin-left: 4px; font-size: var(--fs-11); font-weight: 600; color: var(--text-3); }
+  .todo-title-err { display: none; }
+  body[data-state="error"] .todo-title-err { display: flex; }
+  body[data-state="error"] .todo-title-input {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 3px var(--danger-soft);
+  }
+
+  .todo-pick {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    padding: 10px 14px; min-height: 56px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-family: inherit; text-align: left; color: var(--text);
+    cursor: pointer;
+  }
+  .todo-pick:hover { border-color: var(--border-strong); }
+  .todo-pick .chevron { flex: none; color: var(--text-3); }
+  .todo-pick-av { width: 32px; height: 32px; font-size: var(--fs-12); }
+  .todo-pick-icon {
+    width: 32px; height: 32px; flex: none;
+    border-radius: 10px;
+    background: var(--surface-2); color: var(--text-2);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .todo-pick-body { flex: 1; min-width: 0; }
+  .todo-pick-v { display: block; font-size: var(--fs-15); font-weight: 600; }
+  .todo-pick-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
+
+  .todo-av-me { background: var(--brand); color: var(--on-brand); border-color: transparent; }
+  .todo-av-mom { background: var(--accent-soft); color: var(--accent); }
+  .todo-av-dad { background: var(--brand-soft); color: var(--brand-text); }
+  .todo-av-girl { background: var(--surface-2); color: var(--text-2); }
+
+  .todo-source {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; margin-bottom: var(--sp-4);
+    border-radius: var(--radius-md);
+    border: 1px dashed var(--border-strong);
+    background: var(--surface-2);
+  }
+  .todo-source-main { flex: 1; min-width: 0; }
+  .todo-source-k { flex: none; font-size: var(--fs-13); color: var(--text-3); }
+  .todo-source-v { display: block; font-size: var(--fs-14); font-weight: 600; }
+  .todo-source-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
+  .todo-ro {
+    flex: none; padding: 1px 7px;
+    border-radius: var(--radius-pill);
+    background: var(--surface); color: var(--text-3);
+    border: 1px solid var(--border);
+    font-size: var(--fs-11); font-weight: 600;
+  }
+
+  .todo-foot-note {
+    margin-top: 4px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    color: var(--text-2); font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .todo-foot-note b { color: var(--text); }
+
+</style>
+</head>
+<body data-screen="13 新建待办 · 日历面" data-tab="" data-states="default,error,submitting,offline">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <button class="todo-cancel" type="button" data-go="todo.html"
+        data-hot="①" data-hot-name="取消" data-hot-pos="outer-top-left"
+        data-hot-label="返回待办列表；未保存内容直接丢弃，不落草稿、不入离线队列，也不产生动态">取消</button>
+    </div>
+    <div class="nav-title">新建待办</div>
+    <div class="nav-right">
+      <button class="todo-save" type="button" id="todo-save"
+        data-hot="⑤" data-hot-name="保存" data-hot-pos="outer-top-right"
+        data-hot-label="标题为空时只给字段红框与行内错误，不弹全局错误层；保存中按钮变「保存中…」；离线时入待同步队列并提示">
+        <span class="todo-save-on">保存</span>
+        <span class="todo-save-busy">保存中…</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 保存后先排队
+  </div>
+
+  <div class="content todo-content">
+    <div class="todo-banner todo-banner-offline">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 10a7 7 0 0 1 11.5-5.4M17 10a7 7 0 0 1-11.5 5.4"/><path d="M4 3l12 14"/></svg>
+      <div>
+        <b>当前离线</b>
+        保存后先存本机并入待同步队列，联网自动提交；到期注册在提交成功后才发出，重试不会重复登记。
+      </div>
+    </div>
+
+    <div class="todo-banner todo-banner-saving">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.2v4.2l2.6 1.6"/></svg>
+      <div>
+        <b>正在保存</b>
+        对象落库后会异步发出到期注册事件，页面不承诺保存完立刻出现在日历上。
+      </div>
+    </div>
+
+    <div class="todo-form">
+      <div class="field">
+        <label class="field-label" for="todo-title">标题<span class="todo-required">必填</span></label>
+        <input class="input todo-title-input" id="todo-title" type="text" maxlength="60"
+          placeholder="例如：交物业费" value="交物业费" autocomplete="off"
+          data-hot="②" data-hot-name="标题" data-hot-pos="outer-top-right"
+          data-hot-label="必填、上限 60 字；只做首尾空白裁剪，不做敏感词拦截；为空时红框 + 行内错误，不弹全局错误">
+        <div class="field-error todo-title-err" role="alert">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
+          请填写标题
+        </div>
+        <div class="help">标题会显示在到期中心、首页今日区与通知里。</div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">负责人</span>
+        <button class="todo-pick" type="button" data-sheet-open="sheet-owner"
+          data-hot="③" data-hot-name="负责人" data-hot-pos="outer-top-right"
+          data-hot-label="上拉本家庭成员选择；默认本人，可指派给家人，被指派者在「分配给我」里看到；只列本家庭成员，不提供「所有人」">
+          <span class="avatar todo-pick-av todo-av-me" id="owner-av">我</span>
+          <span class="todo-pick-body">
+            <span class="todo-pick-v" id="owner-name">我</span>
+            <span class="todo-pick-sub">可指派给本家庭的任一成员</span>
+          </span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+      </div>
+
+      <div class="field">
+        <span class="field-label">截止时间</span>
+        <button class="todo-pick" type="button" data-sheet-open="sheet-due"
+          data-hot="④" data-hot-name="截止时间" data-hot-pos="outer-top-right"
+          data-hot-label="可选今天 / 明天 / 本周内的快捷时间；只写一次截止，不做重复规则；保存后才发出到期注册，页面不承诺即时上日历">
+          <span class="todo-pick-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.2v4.2l2.6 1.6"/></svg>
+          </span>
+          <span class="todo-pick-body">
+            <span class="todo-pick-v num" id="due-value">今天 20:00</span>
+            <span class="todo-pick-sub" id="due-sub">10 月 29 日 · 周四</span>
+          </span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+        <div class="help">保存后由 HomeOS 异步注册到到期中心，通常几秒内生效。</div>
+      </div>
+
+      <div class="todo-source">
+        <span class="todo-source-k">来源面</span>
+        <span class="todo-source-main">
+          <span class="todo-source-v">HomeOS · 待办</span>
+          <span class="todo-source-sub">由创建入口决定，不可修改</span>
+        </span>
+        <span class="todo-ro">只读</span>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="todo-note">备注</label>
+        <textarea class="textarea" id="todo-note" maxlength="200" rows="3"
+          placeholder="可选：写清账期、地点或注意事项">物业费 10 月账期，缴完把回执拍照存到附件。</textarea>
+        <div class="help">备注仅本家庭成员可见，不进入通知正文。</div>
+      </div>
+    </div>
+
+    <div class="todo-foot-note">
+      <b>保存后</b>：待办立即出现在「我创建的」；到期注册由 HomeOS 异步发出，到期中心与首页今日区稍后同步。
+    </div>
+  </div>
+
+  <!-- 负责人选择层 -->
+  <div class="sheet-mask" id="sheet-owner" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>选择负责人</h3>
+      <p class="sheet-sub">默认是你本人；指派给家人后，这条待办会出现在对方的「分配给我」里。</p>
+      <div class="list" style="margin-top:16px">
+        <button class="list-item" type="button" data-owner="我" data-owner-av="我" data-owner-cls="todo-av-me" data-sheet-close>
+          <span class="avatar todo-av-me">我</span>
+          <span class="li-text">我<span class="li-sub">管理员 · 当前选择</span></span>
+        </button>
+        <button class="list-item" type="button" data-owner="妈妈" data-owner-av="妈" data-owner-cls="todo-av-mom" data-sheet-close>
+          <span class="avatar todo-av-mom">妈</span>
+          <span class="li-text">妈妈<span class="li-sub">成人成员</span></span>
+        </button>
+        <button class="list-item" type="button" data-owner="爸爸" data-owner-av="爸" data-owner-cls="todo-av-dad" data-sheet-close>
+          <span class="avatar todo-av-dad">爸</span>
+          <span class="li-text">爸爸<span class="li-sub">成人成员</span></span>
+        </button>
+        <button class="list-item" type="button" data-owner="女儿" data-owner-av="女" data-owner-cls="todo-av-girl" data-sheet-close>
+          <span class="avatar todo-av-girl">女</span>
+          <span class="li-text">女儿<span class="li-sub">儿童成员 · 由监护人代管</span></span>
+        </button>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 截止时间选择层 -->
+  <div class="sheet-mask" id="sheet-due" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>截止时间</h3>
+      <p class="sheet-sub">只写一个截止时间，不做重复规则；需要周期提醒时请用「提醒」。</p>
+      <div class="list" style="margin-top:16px">
+        <button class="list-item" type="button" data-due="今天 18:00" data-due-sub="10 月 29 日 · 周四" data-sheet-close>
+          <span class="li-text">今天 18:00<span class="li-sub">2 小时后</span></span>
+        </button>
+        <button class="list-item" type="button" data-due="今天 20:00" data-due-sub="10 月 29 日 · 周四" data-sheet-close>
+          <span class="li-text">今天 20:00<span class="li-sub">当前选择</span></span>
+        </button>
+        <button class="list-item" type="button" data-due="明天 09:00" data-due-sub="10 月 30 日 · 周五" data-sheet-close>
+          <span class="li-text">明天 09:00<span class="li-sub">10 月 30 日 · 周五</span></span>
+        </button>
+        <button class="list-item" type="button" data-due="10 月 31 日 10:00" data-due-sub="10 月 31 日 · 周六" data-sheet-close>
+          <span class="li-text">10 月 31 日 10:00<span class="li-sub">本周六上午</span></span>
+        </button>
+        <button class="list-item" type="button" data-toast="自定义日期与时间选择器随系统组件接入；P1 先给常用快捷时间">
+          <span class="li-text">自定义日期与时间<span class="li-sub">精确到分钟</span></span>
+          <span class="chevron">›</span>
+        </button>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var todoState = new URLSearchParams(location.search).get('state') || 'default';
+  var title = document.getElementById('todo-title');
+  var save = document.getElementById('todo-save');
+
+  if (todoState === 'error') title.value = '';
+
+  document.querySelectorAll('[data-owner]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var av = document.getElementById('owner-av');
+      av.textContent = b.getAttribute('data-owner-av');
+      av.className = 'avatar todo-pick-av ' + b.getAttribute('data-owner-cls');
+      document.getElementById('owner-name').textContent = b.getAttribute('data-owner');
+      window.HC.toast('负责人已改为「' + b.getAttribute('data-owner') + '」');
+    });
+  });
+
+  document.querySelectorAll('[data-due]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.getElementById('due-value').textContent = b.getAttribute('data-due');
+      document.getElementById('due-sub').textContent = b.getAttribute('data-due-sub');
+      window.HC.toast('截止时间已设为 ' + b.getAttribute('data-due'));
+    });
+  });
+
+  title.addEventListener('input', function () {
+    if (document.body.getAttribute('data-state') === 'error' && title.value.trim()) {
+      document.body.setAttribute('data-state', 'default');
+    }
+  });
+
+  save.addEventListener('click', function () {
+    if (todoState === 'submitting') return;
+    if (!title.value.trim()) {
+      document.body.setAttribute('data-state', 'error');
+      title.focus();
+      return;
+    }
+    if (todoState === 'offline') {
+      window.HC.toast('已存入待同步队列，联网后自动提交');
+      setTimeout(function () { location.href = 'todo.html'; }, 1100);
+      return;
+    }
+    window.HC.toast('已保存，到期注册稍后生效');
+    setTimeout(function () { location.href = 'todo.html'; }, 1100);
+  });
+</script>
+</body>
+</html>

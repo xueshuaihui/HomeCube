@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>家庭成员 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fam-content { padding-bottom: 28px; }
+
+  .fam-head {
+    display: flex; align-items: center; gap: 14px;
+    margin: 6px 0 4px; padding: 16px;
+    border-radius: var(--radius-xl);
+    background: linear-gradient(135deg, var(--brand-soft) 0%, var(--surface) 72%);
+    border: 1px solid var(--brand-soft-border);
+  }
+  .fam-head .avatar.lg { background: var(--brand); color: var(--on-brand); border-color: transparent; }
+  .fam-head-body { flex: 1; min-width: 0; }
+  .fam-name { font-size: var(--fs-17); font-weight: 700; }
+  .fam-sub { margin-top: 3px; font-size: var(--fs-12); color: var(--text-2); }
+  .fam-role-pill {
+    flex: none; padding: 3px 9px; border-radius: var(--radius-pill);
+    font-size: var(--fs-11); font-weight: 700;
+    background: var(--surface); color: var(--brand-text);
+    border: 1px solid var(--brand-soft-border);
+  }
+  .fam-pill-member { display: none; color: var(--accent); border-color: var(--border); }
+  body[data-state="member"] .fam-pill-admin { display: none; }
+  body[data-state="member"] .fam-pill-member { display: inline-flex; }
+
+  .fam-count-one { display: none; }
+  .fam-pending-none { display: none; }
+  body[data-state="empty"] .fam-count-many { display: none; }
+  body[data-state="empty"] .fam-count-one { display: inline; }
+  body[data-state="empty"] .fam-pending-many { display: none; }
+  body[data-state="empty"] .fam-pending-none { display: inline; }
+
+  .fam-recall {
+    display: none; align-items: flex-start; gap: 8px;
+    margin: 10px 0 0; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2); color: var(--text-2);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fam-recall svg { flex: none; margin-top: 1px; color: var(--text-3); }
+  body[data-state="noaccount"] .fam-recall { display: flex; }
+
+  .fam-list { margin-top: 6px; }
+  .fam-row .fam-name-line {
+    display: flex; align-items: center; gap: 6px;
+    font-size: var(--fs-15); font-weight: 600;
+  }
+  .fam-you {
+    padding: 1px 6px; border-radius: var(--radius-pill);
+    font-size: 10px; font-weight: 700;
+    background: var(--brand-soft); color: var(--brand-text);
+  }
+  .fam-meta {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+    margin-top: 3px; font-size: var(--fs-12); color: var(--text-3);
+  }
+  .fam-noacc {
+    padding: 1px 6px; border-radius: var(--radius-pill);
+    border: 1px solid var(--border);
+    background: var(--surface-2); color: var(--text-3);
+    font-size: var(--fs-11); font-weight: 600;
+  }
+  .fam-av-self { background: var(--brand-soft); color: var(--brand-text); border-color: var(--brand-soft-border); }
+  .fam-av-mom { background: var(--accent-soft); color: var(--accent); }
+  .fam-role {
+    flex: none; padding: 3px 8px; border-radius: var(--radius-pill);
+    font-size: var(--fs-11); font-weight: 700;
+  }
+  .fam-role-owner { background: var(--brand-soft); color: var(--brand-text); }
+  .fam-role-member { background: var(--accent-soft); color: var(--accent); }
+  .fam-role-read { background: var(--surface-2); color: var(--text-3); }
+  .fam-arrow { flex: none; color: var(--text-3); }
+  body[data-state="member"] .fam-arrow { display: none; }
+
+  body[data-state="noaccount"] .fam-row-record { background: var(--brand-soft); }
+  body[data-state="empty"] .fam-row-extra { display: none; }
+
+  .fam-hint-public { display: none; }
+  body[data-state="member"] .fam-hint-gov,
+  body[data-state="empty"] .fam-hint-gov { display: none; }
+  body[data-state="member"] .fam-hint-public,
+  body[data-state="empty"] .fam-hint-public { display: inline; }
+
+  .fam-empty-hint {
+    display: none; align-items: flex-start; gap: 8px;
+    margin-top: 12px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2); color: var(--text-2);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fam-empty-hint svg { flex: none; margin-top: 1px; color: var(--text-3); }
+  body[data-state="empty"] .fam-empty-hint { display: flex; }
+
+  .fam-invite { margin-top: 18px; }
+  .fam-invite-hint { margin-top: 8px; text-align: center; }
+  .fam-invite-note {
+    display: none; align-items: flex-start; gap: 8px;
+    padding: 12px 14px; border-radius: var(--radius-md);
+    background: var(--surface); border: 1px solid var(--border);
+    font-size: var(--fs-12); color: var(--text-2); line-height: var(--lh-normal);
+  }
+  .fam-invite-note svg { flex: none; margin-top: 1px; color: var(--text-3); }
+  body[data-state="member"] .fam-invite-btn { display: none; }
+  body[data-state="member"] .fam-invite-hint { display: none; }
+  body[data-state="member"] .fam-invite-note { display: flex; }
+
+  .fam-skeleton { display: none; padding-top: 6px; }
+  body[data-state="loading"] .fam-skeleton { display: block; }
+  body[data-state="loading"] .fam-real { display: none; }
+  .fam-sk-row { display: flex; align-items: center; gap: 12px; padding: 14px 0; }
+  .fam-sk-av { width: 36px; height: 36px; border-radius: var(--radius-pill); }
+  .fam-sk-lines { flex: 1; }
+</style>
+</head>
+<body data-screen="21 家庭成员" data-tab="" data-states="default,noaccount,member,empty,loading">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <button class="icon-btn" type="button" data-go="me.html"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回「我的」；成员数在下次请求时刷新，本页不缓存名单" aria-label="返回">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </button>
+    </div>
+    <div class="nav-title">家庭成员</div>
+    <div class="nav-right"></div>
+  </div>
+
+  <div class="content fam-content">
+    <!-- 加载态 -->
+    <div class="fam-skeleton">
+      <div class="skeleton" style="height:88px;border-radius:var(--radius-xl);margin-bottom:20px"></div>
+      <div class="skeleton sk-line" style="width:40%;height:14px;margin-bottom:6px"></div>
+      <div class="fam-sk-row"><div class="skeleton fam-sk-av"></div><div class="fam-sk-lines"><div class="skeleton sk-line" style="width:56%"></div><div class="skeleton sk-line" style="width:38%;margin-bottom:0"></div></div></div>
+      <div class="fam-sk-row"><div class="skeleton fam-sk-av"></div><div class="fam-sk-lines"><div class="skeleton sk-line" style="width:48%"></div><div class="skeleton sk-line" style="width:34%;margin-bottom:0"></div></div></div>
+      <div class="fam-sk-row"><div class="skeleton fam-sk-av"></div><div class="fam-sk-lines"><div class="skeleton sk-line" style="width:52%"></div><div class="skeleton sk-line" style="width:30%;margin-bottom:0"></div></div></div>
+      <div class="fam-sk-row"><div class="skeleton fam-sk-av"></div><div class="fam-sk-lines"><div class="skeleton sk-line" style="width:44%"></div><div class="skeleton sk-line" style="width:42%;margin-bottom:0"></div></div></div>
+      <div class="fam-sk-row"><div class="skeleton fam-sk-av"></div><div class="fam-sk-lines"><div class="skeleton sk-line" style="width:50%"></div><div class="skeleton sk-line" style="width:36%;margin-bottom:0"></div></div></div>
+    </div>
+
+    <div class="fam-real">
+      <section class="fam-head"
+        data-hot="②" data-hot-name="家庭概览" data-hot-pos="bottom-right"
+        data-hot-label="家庭名与成员数来自服务端；成员数含无账号被记录成员。不显示人数上限——「一个账号最多 5 个家庭」说的是账号归属，与本家庭有几人无关">
+        <span class="avatar lg">三</span>
+        <div class="fam-head-body">
+          <div class="fam-name">三口之家</div>
+          <div class="fam-sub">
+            <span class="num fam-count-many">5</span><span class="num fam-count-one">1</span> 位成员
+            <span>·</span>
+            <span class="fam-pending-many">邀请待接受 <span class="num">1</span></span>
+            <span class="fam-pending-none">暂无待接受邀请</span>
+          </div>
+        </div>
+        <span class="fam-role-pill fam-pill-admin">你是管理员</span>
+        <span class="fam-role-pill fam-pill-member">你是成人成员</span>
+      </section>
+
+      <div class="fam-recall">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
+        <span>本家庭有 2 位无账号被记录成员（爷爷、奶奶）。他们不可登录、不出现在邀请列表，记录由代管人代写并标注代管关系。</span>
+      </div>
+
+      <div class="section-title">
+        <span>成员</span>
+        <span class="tiny fam-hint-gov">点成员进入治理页</span>
+        <span class="tiny fam-hint-public">点成员查看主页</span>
+      </div>
+
+      <div class="list fam-list">
+        <button class="list-item fam-row" type="button" data-go="member-detail.html" data-fam-row
+          data-hot="③" data-hot-name="自己这一行" data-hot-pos="outer-bottom-right"
+          data-hot-label="自己的行只进公开页，不进治理页：管理员不能移除自己，也不能把自己降为家庭里没有管理员。改自己的角色需先转让管理员">
+          <span class="avatar fam-av-self">建</span>
+          <span class="li-text">
+            <span class="fam-name-line">李建国 <span class="fam-you">你</span></span>
+            <span class="fam-meta"><span>爸爸</span><span>·</span><span>加入于 2025 年 3 月 12 日</span></span>
+          </span>
+          <span class="fam-role fam-role-owner">管理员</span>
+          <svg class="chevron fam-arrow" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+
+        <button class="list-item fam-row fam-row-extra" type="button" data-go="family-detail.html" data-fam-row
+          data-hot="④" data-hot-name="有账号成员" data-hot-pos="bottom-right"
+          data-hot-label="点行进治理页：角色、该成员的面可见性授权、数据范围、代管关系与移除；成员管理与邀请只有管理员可写">
+          <span class="avatar fam-av-mom">妈</span>
+          <span class="li-text">
+            <span class="fam-name-line">李妈妈</span>
+            <span class="fam-meta"><span>妈妈</span><span>·</span><span>加入于 2025 年 3 月 12 日</span></span>
+          </span>
+          <span class="fam-role fam-role-member">成员</span>
+          <svg class="chevron fam-arrow" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+
+        <button class="list-item fam-row fam-row-extra" type="button" data-go="family-detail.html" data-fam-row>
+          <span class="avatar">满</span>
+          <span class="li-text">
+            <span class="fam-name-line">小满</span>
+            <span class="fam-meta"><span>女儿</span><span>·</span><span>儿童账号</span></span>
+          </span>
+          <span class="fam-role fam-role-read"
+            data-hot="⑥" data-hot-name="角色徽章" data-hot-pos="outer-top-right"
+            data-hot-label="徽章只有三档：管理员 / 成员 / 只读。只读含儿童、老人与访客；角色决定能写什么，不等于在线状态">只读</span>
+          <svg class="chevron fam-arrow" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+
+        <button class="list-item fam-row fam-row-extra fam-row-record" type="button" data-go="family-detail.html" data-fam-row
+          data-hot="⑤" data-hot-name="无账号成员" data-hot-pos="bottom-right"
+          data-hot-label="无账号被记录成员：不能登录、不进邀请列表；由 guardian 代管，代写携带 on_behalf_of。灰标只在成员管理页出现，首页头像排不做区分">
+          <span class="avatar">爷</span>
+          <span class="li-text">
+            <span class="fam-name-line">爷爷</span>
+            <span class="fam-meta"><span>爷爷</span><span class="fam-noacc">无账号</span><span>代管：李建国</span></span>
+          </span>
+          <span class="fam-role fam-role-read">只读</span>
+          <svg class="chevron fam-arrow" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+
+        <button class="list-item fam-row fam-row-extra fam-row-record" type="button" data-go="family-detail.html" data-fam-row>
+          <span class="avatar">奶</span>
+          <span class="li-text">
+            <span class="fam-name-line">奶奶</span>
+            <span class="fam-meta"><span>奶奶</span><span class="fam-noacc">无账号</span><span>代管：李妈妈</span></span>
+          </span>
+          <span class="fam-role fam-role-read">只读</span>
+          <svg class="chevron fam-arrow" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+      </div>
+
+      <div class="fam-empty-hint">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
+        <span>家里目前只有你。邀请家人后，成员的记录、待办与账目会一起出现在家庭里；也可为没有账号的家人代建档案。</span>
+      </div>
+
+      <div class="fam-invite"
+        data-hot="⑦" data-hot-name="邀请成员" data-hot-pos="outer-bottom-right"
+        data-hot-label="邀请是写操作，仅管理员渲染；非管理员整块替换为只读说明，不出现按钮，也不存在「点进去才发现不能邀请」">
+        <button class="btn btn-primary btn-block fam-invite-btn" type="button" data-go="family-invite.html">邀请成员</button>
+        <div class="tiny fam-invite-hint">邀请码、链接与二维码三种方式，7 天内有效</div>
+        <div class="fam-invite-note">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
+          <span>仅管理员可以邀请成员或调整角色。你可以点开任一成员，查看只读的公开页。</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var famState = new URLSearchParams(location.search).get('state') || 'default';
+
+  if (famState === 'member') {
+    document.querySelectorAll('[data-fam-row]').forEach(function (row) {
+      row.setAttribute('data-go', 'member-detail.html');
+    });
+  }
+</script>
+</body>
+</html>

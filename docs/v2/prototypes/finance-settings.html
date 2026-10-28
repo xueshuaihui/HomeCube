@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>账户与设置 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-content { padding-bottom: 24px; }
+
+  .fx-h {
+    margin: 6px 2px 0;
+    font-size: var(--fs-22); font-weight: 700; line-height: var(--lh-tight);
+  }
+  .fx-h-sub {
+    margin: 6px 2px 0;
+    font-size: var(--fs-12); color: var(--text-3); line-height: var(--lh-normal);
+  }
+
+  .fx-banner {
+    display: none; align-items: flex-start; gap: 8px;
+    margin: 12px 0 0; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-banner svg { flex: none; margin-top: 1px; }
+  .fx-banner b { display: block; font-size: var(--fs-13); margin-bottom: 2px; }
+  .fx-banner span { display: block; }
+  .fx-banner-dirty { background: var(--warning-soft); color: var(--warning); }
+  .fx-banner-ro { background: var(--info-soft); color: var(--info); }
+  body[data-state="defaults"] .fx-banner-dirty { display: flex; }
+  body[data-state="non-admin"] .fx-banner-ro { display: flex; }
+
+  .fx-ghead {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 8px; margin: 18px 2px 8px;
+  }
+  .fx-gtitle { font-size: var(--fs-13); font-weight: 700; color: var(--text-2); }
+  .fx-gnote { font-size: var(--fs-11); color: var(--text-3); }
+
+  .fx-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .fx-row {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; box-sizing: border-box;
+    padding: 12px 14px;
+    border: 0; background: none;
+    font-family: inherit; text-align: left; color: var(--text);
+    text-decoration: none; cursor: pointer;
+  }
+  .fx-row + .fx-row { border-top: 1px solid var(--border); }
+  .fx-row:hover { background: var(--surface-2); }
+
+  .fx-ic {
+    width: 30px; height: 30px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 9px;
+    background: var(--surface-2); color: var(--text-2);
+  }
+  .fx-ic.is-brand { background: var(--brand-soft); color: var(--brand-text); }
+
+  .fx-rb { flex: 1; min-width: 0; }
+  .fx-rn {
+    display: block; font-size: var(--fs-15); font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .fx-rs {
+    display: block; margin-top: 2px;
+    font-size: var(--fs-12); color: var(--text-3); line-height: var(--lh-normal);
+  }
+  .fx-rv { flex: none; font-size: var(--fs-14); font-weight: 600; color: var(--text-2); }
+  .fx-row .chevron { flex: none; color: var(--text-3); }
+
+  .fx-row[aria-disabled="true"] { cursor: default; }
+  .fx-row[aria-disabled="true"] .fx-rn,
+  .fx-row[aria-disabled="true"] .fx-rv { color: var(--text-3); }
+  .fx-row[aria-disabled="true"] .chevron { display: none; }
+
+  .fx-type-wrap { padding: 12px 14px; }
+  .fx-row + .fx-type-wrap { border-top: 1px solid var(--border); }
+  .fx-type-lab { font-size: var(--fs-15); font-weight: 600; }
+  .fx-type-sub { margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); line-height: var(--lh-normal); }
+  .segmented.fx-type { width: 100%; margin-top: 10px; }
+  .segmented.fx-type button { flex: 1; }
+  .segmented.fx-type button:disabled { cursor: default; opacity: .55; }
+
+  .fx-ro-list .fx-row { cursor: default; }
+  .fx-ro-list .fx-row:hover { background: none; }
+  .fx-row .fx-rv.is-plain { font-weight: 500; color: var(--text); }
+  .fx-ro-note { margin: 8px 2px 0; line-height: var(--lh-normal); }
+
+  .fx-me {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 20px; padding: 12px 14px;
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    color: var(--text); text-decoration: none;
+  }
+  .fx-me:hover { background: var(--surface-2); }
+  .fx-me .chevron { flex: none; color: var(--text-3); }
+
+  .fx-foot-note { margin-top: 14px; line-height: var(--lh-normal); }
+
+  .fx-foot {
+    display: none; flex: none;
+    padding: 10px 16px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+  body[data-state="defaults"] .fx-foot { display: block; }
+  .fx-foot-tip { margin-bottom: 8px; font-size: var(--fs-12); color: var(--text-3); }
+  .fx-foot-btns { display: flex; gap: 8px; }
+  .fx-foot-btns .btn { flex: 1; }
+
+  .fx-sk { display: none; padding-top: 10px; }
+  body[data-state="loading"] .fx-sk { display: block; }
+  body[data-state="loading"] .fx-real,
+  body[data-state="loading"] .fx-foot { display: none; }
+  .fx-sk-h { width: 42%; }
+  .fx-sk-sub { width: 72%; }
+  .fx-sk-t { width: 26%; margin-top: 18px; }
+  .fx-sk-line2 { height: 56px; border-radius: var(--radius-lg); margin-bottom: 10px; }
+
+  .fx-sheet-sub2 { margin-top: 4px; font-size: var(--fs-12); color: var(--text-3); line-height: var(--lh-normal); }
+  .fx-opt {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 12px 12px; margin-top: 8px;
+    border: 1px solid var(--border); border-radius: var(--radius-md);
+    background: var(--surface); color: var(--text);
+    font-family: inherit; text-align: left; cursor: pointer;
+  }
+  .fx-opt:hover { background: var(--surface-2); }
+  .fx-opt.is-on { border-color: var(--brand-soft-border); background: var(--brand-soft); }
+  .fx-opt-body { flex: 1; min-width: 0; }
+  .fx-opt-name { display: block; font-size: var(--fs-14); font-weight: 600; }
+  .fx-opt-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
+  .fx-opt-check { flex: none; width: 18px; height: 18px; color: var(--brand-text); visibility: hidden; }
+  .fx-opt.is-on .fx-opt-check { visibility: visible; }
+  .fx-sheet-actions { display: flex; flex-direction: column; gap: var(--sp-2); margin-top: var(--sp-5); }
+</style>
+</head>
+<body data-screen="F29 账户与设置" data-states="default,defaults,non-admin,loading">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <header class="navbar">
+    <div class="nav-left">
+      <a class="icon-btn" href="home.html" aria-label="返回首页"
+        data-hot="①" data-hot-name="返回首页" data-hot-pos="outer-top-left"
+        data-hot-label="回 HomeOS 首页；财务面没有面切换器，去别的面只能回首页矩阵点格">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </a>
+    </div>
+    <div class="nav-title">财务</div>
+    <div class="nav-right">
+      <button class="icon-btn" type="button"
+        data-toast="设置只维护财务面自己的对象；账号、家庭与导出在首页「我的」"
+        aria-label="更多">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="4.5" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="10" cy="15.5" r="1.6"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <nav class="l2-tabs" aria-label="财务二级导航"
+    data-hot="②" data-hot-name="面内二级 Tab" data-hot-pos="bottom-right"
+    data-hot-label="流水 / 报表 / 预算 / 账本 / 账户与设置五页在本分包内互切，本页高亮「账户与设置」；不叠加底部五项、不放面切换器、不放时间窗条；末位叫「账户与设置」不叫「我的」">
+    <a class="l2-tab" href="finance-flow.html">流水</a>
+    <a class="l2-tab" href="finance-report.html">报表</a>
+    <a class="l2-tab" href="finance-budget.html">预算</a>
+    <a class="l2-tab" href="finance-ledger.html">账本</a>
+    <a class="l2-tab" href="finance-settings.html" aria-current="page">账户与设置</a>
+  </nav>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 设置显示本机缓存，保存需联网
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-real">
+      <h1 class="fx-h">账户与设置</h1>
+      <p class="fx-h-sub">只维护财务面自己的对象：账户、分类、记账默认项、预警阈值。账号、家庭、导出与隐私属于 HomeOS，不在这里。</p>
+
+      <div class="fx-banner fx-banner-dirty" role="status">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.2 18 17H2L10 3.2Z"/><path d="M10 8v3.6M10 14.2v.2"/></svg>
+        <div>
+          <b>记账默认项已改动</b>
+          <span>保存后对之后新记的流水生效；已记流水、本月报表与预算进度都不变。</span>
+        </div>
+      </div>
+
+      <div class="fx-banner fx-banner-ro" role="status">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.4"/><path d="M10 9.2v4.6M10 6.4v.2"/></svg>
+        <div>
+          <b>当前角色为成员</b>
+          <span>记账默认项与预算预警阈值只读；账户与分类可查看，编辑在对应页面按角色判断。</span>
+        </div>
+      </div>
+
+      <div class="fx-ghead"><span class="fx-gtitle">对象维护</span><span class="fx-gnote">余额与分类口径与流水、报表同源</span></div>
+      <div class="fx-list">
+        <a class="fx-row" href="finance-account.html"
+          data-hot="③" data-hot-name="账户入口" data-hot-pos="bottom-right"
+          data-hot-label="进账户列表（finance/account/index），账户是余额与流水的唯一来源；本页只放入口，不在这里改余额、不做归档">
+          <span class="fx-ic is-brand">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5.5" width="15" height="9" rx="2"/><circle cx="10" cy="10" r="2.2"/><path d="M5 8.5v3M15 8.5v3"/></svg>
+          </span>
+          <span class="fx-rb">
+            <span class="fx-rn">账户</span>
+            <span class="fx-rs">7 个 · 净资产 <span class="num">¥120,070.00</span> · 归档账户在列表底部</span>
+          </span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </a>
+        <a class="fx-row" href="finance-category.html"
+          data-hot="④" data-hot-name="分类入口" data-hot-pos="bottom-left"
+          data-hot-label="进分类管理（finance/category/index）；自定义、隐藏、排序都在那一页。隐藏分类只影响新记账的可选范围，不重写历史流水的分类">
+          <span class="fx-ic">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6.5 10 3l7 3.5-7 3.5-7-3.5Z"/><path d="M3 10.5 10 14l7-3.5M3 14 10 17.5 17 14"/></svg>
+          </span>
+          <span class="fx-rb">
+            <span class="fx-rn">分类</span>
+            <span class="fx-rs">18 个一级 · 自定义 2 个 · 隐藏的不影响历史流水</span>
+          </span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </a>
+      </div>
+
+      <div class="fx-ghead"><span class="fx-gtitle">记账默认项</span><span class="fx-gnote">只影响之后新记的流水</span></div>
+      <div class="fx-list">
+        <button class="fx-row" type="button" id="fx-row-acc"
+          data-hot="⑤" data-hot-name="默认账户" data-hot-pos="bottom-right"
+          data-hot-label="点开选择层改默认账户（储蓄卡 / 支付宝 / 现金 / 信用卡）。默认账户只决定「记一笔」预选哪一行，改它不搬家、不改余额，也不重写已记流水">
+          <span class="fx-ic">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="15" height="10" rx="2.5"/><path d="M2.5 9h15"/><path d="M6 13h3"/></svg>
+          </span>
+          <span class="fx-rb">
+            <span class="fx-rn">默认账户</span>
+            <span class="fx-rs" id="fx-acc-sub">储蓄卡 · 尾号 6225 · 记账时预选</span>
+          </span>
+          <span class="fx-rv" id="fx-acc-v">招商银行储蓄卡</span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+        <button class="fx-row" type="button" id="fx-row-ledger"
+          data-hot="⑥" data-hot-name="默认账本" data-hot-pos="bottom-left"
+          data-hot-label="点开选择层改默认账本（日常 / 孩子 / 项目）。账本只是分组不是隔离：换默认账本不改变谁能看到什么，也不搬动已有流水的归属">
+          <span class="fx-ic">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 5.2A1.7 1.7 0 0 1 5.2 3.5H16v11.6H5.2a1.7 1.7 0 0 0-1.7 1.7V5.2Z"/><path d="M3.5 16.8A1.7 1.7 0 0 1 5.2 15H16"/></svg>
+          </span>
+          <span class="fx-rb">
+            <span class="fx-rn">默认账本</span>
+            <span class="fx-rs" id="fx-ledger-sub">共享 · 新流水默认归到「日常」</span>
+          </span>
+          <span class="fx-rv" id="fx-ledger-v">日常</span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+        <div class="fx-type-wrap"
+          data-hot="⑦" data-hot-name="默认类型" data-hot-pos="top-right"
+          data-hot-label="支出 / 收入 / 转账三选一，只决定「记一笔」打开的初始类型；默认类型不改变任何已有流水的类型，转账仍按成对流水生成">
+          <div class="fx-type-lab">默认类型</div>
+          <div class="fx-type-sub">只决定「记一笔」打开的初始 Tab，转账仍按转出 / 转入成对记录。</div>
+          <div class="segmented fx-type" role="tablist" aria-label="默认类型">
+            <button type="button" role="tab" aria-selected="true" data-type="支出">支出</button>
+            <button type="button" role="tab" aria-selected="false" data-type="收入">收入</button>
+            <button type="button" role="tab" aria-selected="false" data-type="转账">转账</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="fx-ghead"><span class="fx-gtitle">提醒</span><span class="fx-gnote">由 HomeOS 家庭消息下发</span></div>
+      <div class="fx-list">
+        <button class="fx-row" type="button" id="fx-row-th"
+          data-hot="⑧" data-hot-name="预算预警阈值" data-hot-pos="bottom-right"
+          data-hot-label="点开阈值选择层：70% / 80%（默认）/ 90%。达到阈值提醒一次、超支再提醒一次；提醒由 HomeOS 家庭消息统一下发，财务面不自建定时器，阈值改动不补发历史提醒">
+          <span class="fx-ic">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3a4.4 4.4 0 0 1 4.4 4.4c0 4 1.6 5.2 1.6 5.2H4s1.6-1.2 1.6-5.2A4.4 4.4 0 0 1 10 3Z"/><path d="M8.4 15.2a1.7 1.7 0 0 0 3.2 0"/></svg>
+          </span>
+          <span class="fx-rb">
+            <span class="fx-rn">预算预警阈值</span>
+            <span class="fx-rs" id="fx-th-sub">本月预算用到 80% 时提醒 · 超支再提醒一次 · 由家庭消息下发</span>
+          </span>
+          <span class="fx-rv num" id="fx-th-v">80%</span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+      </div>
+      <p class="fx-ro-note tiny">预算提醒由 HomeOS 在预算用量变化时下发；财务面只保存阈值，不跑定时器，也不单独推一条。</p>
+
+      <div class="fx-ghead"><span class="fx-gtitle">附件限额</span><span class="tag">只读</span></div>
+      <div class="fx-list fx-ro-list"
+        data-hot="⑨" data-hot-name="附件限额" data-hot-pos="bottom-right"
+        data-hot-label="数量 / 大小 / 格式三条只读，由服务端统一执行，本页不给开关；超限时上传直接失败并提示，不生成半张附件">
+        <div class="fx-row">
+          <span class="fx-rb">
+            <span class="fx-rn">每笔流水附件数量</span>
+            <span class="fx-rs">含账单与报销凭证，按单笔计算</span>
+          </span>
+          <span class="fx-rv num">≤ 3 张</span>
+        </div>
+        <div class="fx-row">
+          <span class="fx-rb">
+            <span class="fx-rn">单张大小</span>
+            <span class="fx-rs">超过上限时上传会直接失败，不会裁剪</span>
+          </span>
+          <span class="fx-rv num">≤ 5MB</span>
+        </div>
+        <div class="fx-row">
+          <span class="fx-rb">
+            <span class="fx-rn">支持格式</span>
+            <span class="fx-rs">其他格式请先转成这三种</span>
+          </span>
+          <span class="fx-rv is-plain">jpg · png · webp</span>
+        </div>
+      </div>
+
+      <a class="fx-me" href="home.html"
+        data-hot="⑩" data-hot-name="HomeOS「我的」出口" data-hot-pos="outer-bottom-right"
+        data-hot-label="账号、家庭与成员、角色与权限、数据导出、隐私都不在财务面：本页只给一句指路，点它回首页再去「我的」，不在这里重复做入口">
+        <span class="fx-ic">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="7" r="3.2"/><path d="M4 17c.8-3.1 3.2-4.8 6-4.8s5.2 1.7 6 4.8"/></svg>
+        </span>
+        <span class="fx-rb">
+          <span class="fx-rn">账号、家庭与导出在首页 → 我的</span>
+          <span class="fx-rs">成员与角色、隐私、数据导出都在 HomeOS，这里不重复放入口</span>
+        </span>
+        <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+      </a>
+
+      <p class="fx-foot-note tiny">财务面的设置不改变流水与报表口径：改默认项不重写已记流水，改阈值不影响已发出的提醒；这两个动作都不动余额。</p>
+    </div>
+
+    <div class="fx-sk" aria-hidden="true">
+      <div class="skeleton sk-line fx-sk-h" style="height:22px"></div>
+      <div class="skeleton sk-line fx-sk-sub"></div>
+      <div class="skeleton sk-line fx-sk-t"></div>
+      <div class="skeleton fx-sk-line2"></div>
+      <div class="skeleton fx-sk-line2"></div>
+      <div class="skeleton sk-line fx-sk-t"></div>
+      <div class="skeleton fx-sk-line2" style="height:120px"></div>
+      <div class="skeleton sk-line fx-sk-t"></div>
+      <div class="skeleton fx-sk-line2"></div>
+    </div>
+  </div>
+
+  <div class="fx-foot" id="fx-foot">
+    <div class="fx-foot-tip">默认项改动保存后，对之后新记的流水生效。</div>
+    <div class="fx-foot-btns">
+      <button class="btn btn-secondary" type="button" id="fx-discard">放弃</button>
+      <button class="btn btn-primary" type="button" id="fx-save">保存默认项</button>
+    </div>
+  </div>
+
+  <!-- 默认账户选择层 -->
+  <div class="sheet-mask" id="sheet-def-acc" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>选择默认账户</h3>
+      <p class="sheet-sub">只决定「记一笔」预选哪一行账户，不搬家、不改余额，也不重写已记流水。</p>
+      <button class="fx-opt is-on" type="button" data-acc="招商银行储蓄卡" data-acc-sub="储蓄卡 · 尾号 6225 · 记账时预选">
+        <span class="fx-opt-body"><span class="fx-opt-name">招商银行储蓄卡</span><span class="fx-opt-sub">储蓄卡 · 当前余额 ¥126,400.00</span></span>
+        <svg class="fx-opt-check" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5 8 15l8.5-9.5"/></svg>
+      </button>
+      <button class="fx-opt" type="button" data-acc="支付宝" data-acc-sub="其他 · 记账时预选">
+        <span class="fx-opt-body"><span class="fx-opt-name">支付宝</span><span class="fx-opt-sub">其他 · 当前余额 ¥8,900.00</span></span>
+        <svg class="fx-opt-check" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5 8 15l8.5-9.5"/></svg>
+      </button>
+      <button class="fx-opt" type="button" data-acc="现金钱包" data-acc-sub="现金 · 记账时预选">
+        <span class="fx-opt-body"><span class="fx-opt-name">现金钱包</span><span class="fx-opt-sub">现金 · 当前余额 ¥1,280.00</span></span>
+        <svg class="fx-opt-check" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5 8 15l8.5-9.5"/></svg>
+      </button>
+      <button class="fx-opt" type="button" data-acc="招商银行信用卡" data-acc-sub="信用卡 · 记为负债增加">
+        <span class="fx-opt-body"><span class="fx-opt-name">招商银行信用卡</span><span class="fx-opt-sub">信用卡 · 当前欠款 -¥3,250.00</span></span>
+        <svg class="fx-opt-check" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5 8 15l8.5-9.5"/></svg>
+      </button>
+      <div class="sheet-actions">
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 默认账本选择层 -->
+  <div class="sheet-mask" id="sheet-def-ledger" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>选择默认账本</h3>
+      <p class="sheet-sub">账本是分组，不是隔离：换默认账本只改新流水归到哪个分组，不改变谁能看到什么。</p>
+      <button class="fx-opt is-on" type="button" data-ledger="日常" data-ledger-sub="共享 · 新流水默认归到「日常」">
+        <span class="fx-opt-body"><span class="fx-opt-name">日常</span><span class="fx-opt-sub">共享 · 3 位成员 · 本月 128 笔</span></span>
+        <svg class="fx-opt-check" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5 8 15l8.5-9.5"/></svg>
+      </button>
+      <button class="fx-opt" type="button" data-ledger="孩子" data-ledger-sub="共享 · 新流水默认归到「孩子」">
+        <span class="fx-opt-body"><span class="fx-opt-name">孩子</span><span class="fx-opt-sub">共享 · 含儿童账号记账 · 本月 34 笔</span></span>
+        <svg class="fx-opt-check" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5 8 15l8.5-9.5"/></svg>
+      </button>
+      <button class="fx-opt" type="button" data-ledger="装修" data-ledger-sub="项目 · 新流水默认归到「装修」">
+        <span class="fx-opt-body"><span class="fx-opt-name">装修</span><span class="fx-opt-sub">项目 · 本月 12 笔 · 已结束的项目账本</span></span>
+        <svg class="fx-opt-check" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5 8 15l8.5-9.5"/></svg>
+      </button>
+      <div class="sheet-actions">
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 预警阈值选择层 -->
+  <div class="sheet-mask" id="sheet-threshold" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>预算预警阈值</h3>
+      <p class="sheet-sub">本月预算用量达到阈值时提醒一次，超支再提醒一次。提醒由 HomeOS 家庭消息统一下发，财务面不建定时器；改阈值不补发历史提醒。</p>
+      <button class="fx-opt" type="button" data-th="70">
+        <span class="fx-opt-body"><span class="fx-opt-name">70%</span><span class="fx-opt-sub">更早提醒，适合想提前收住支出的月份</span></span>
+        <svg class="fx-opt-check" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5 8 15l8.5-9.5"/></svg>
+      </button>
+      <button class="fx-opt is-on" type="button" data-th="80">
+        <span class="fx-opt-body"><span class="fx-opt-name">80%（默认）</span><span class="fx-opt-sub">预算用量 80% 时提醒</span></span>
+        <svg class="fx-opt-check" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5 8 15l8.5-9.5"/></svg>
+      </button>
+      <button class="fx-opt" type="button" data-th="90">
+        <span class="fx-opt-body"><span class="fx-opt-name">90%</span><span class="fx-opt-sub">接近超支才提醒，减少打扰</span></span>
+        <svg class="fx-opt-check" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5 8 15l8.5-9.5"/></svg>
+      </button>
+      <div class="fx-sheet-sub2">超支（100%）提醒不受这个阈值影响，始终发送一次。</div>
+      <div class="sheet-actions">
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  (function () {
+    var body = document.body;
+
+    function isMember() {
+      return body.getAttribute('data-state') === 'non-admin';
+    }
+
+    function applyRole() {
+      var ro = isMember();
+      ['fx-row-acc', 'fx-row-ledger', 'fx-row-th'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.setAttribute('aria-disabled', ro ? 'true' : 'false');
+      });
+      document.querySelectorAll('.fx-type button').forEach(function (b) {
+        b.disabled = ro;
+      });
+    }
+
+    applyRole();
+    if (window.MutationObserver) {
+      new MutationObserver(applyRole).observe(body, { attributes: true, attributeFilter: ['data-state'] });
+    }
+
+    function markDirty() {
+      if (isMember()) return;
+      body.setAttribute('data-state', 'defaults');
+    }
+
+    // 默认账户
+    var accRow = document.getElementById('fx-row-acc');
+    if (accRow) {
+      accRow.addEventListener('click', function () {
+        if (isMember()) { HC.toast('当前角色为成员，默认项仅管理员可改'); return; }
+        HC.openSheet('sheet-def-acc');
+      });
+    }
+    document.querySelectorAll('#sheet-def-acc .fx-opt').forEach(function (opt) {
+      opt.addEventListener('click', function () {
+        document.querySelectorAll('#sheet-def-acc .fx-opt').forEach(function (o) { o.classList.remove('is-on'); });
+        opt.classList.add('is-on');
+        document.getElementById('fx-acc-v').textContent = opt.getAttribute('data-acc');
+        document.getElementById('fx-acc-sub').textContent = opt.getAttribute('data-acc-sub');
+        HC.closeSheet(document.getElementById('sheet-def-acc'));
+        markDirty();
+      });
+    });
+
+    // 默认账本
+    var ledgerRow = document.getElementById('fx-row-ledger');
+    if (ledgerRow) {
+      ledgerRow.addEventListener('click', function () {
+        if (isMember()) { HC.toast('当前角色为成员，默认项仅管理员可改'); return; }
+        HC.openSheet('sheet-def-ledger');
+      });
+    }
+    document.querySelectorAll('#sheet-def-ledger .fx-opt').forEach(function (opt) {
+      opt.addEventListener('click', function () {
+        document.querySelectorAll('#sheet-def-ledger .fx-opt').forEach(function (o) { o.classList.remove('is-on'); });
+        opt.classList.add('is-on');
+        document.getElementById('fx-ledger-v').textContent = opt.getAttribute('data-ledger');
+        document.getElementById('fx-ledger-sub').textContent = opt.getAttribute('data-ledger-sub');
+        HC.closeSheet(document.getElementById('sheet-def-ledger'));
+        markDirty();
+      });
+    });
+
+    // 默认类型
+    var typeSeg = document.querySelector('.fx-type');
+    if (typeSeg) {
+      typeSeg.querySelectorAll('button').forEach(function (b) {
+        b.addEventListener('click', function () {
+          if (isMember()) { HC.toast('当前角色为成员，默认项仅管理员可改'); return; }
+          typeSeg.querySelectorAll('button').forEach(function (o) { o.setAttribute('aria-selected', 'false'); });
+          b.setAttribute('aria-selected', 'true');
+          markDirty();
+        });
+      });
+    }
+
+    // 预警阈值
+    var thRow = document.getElementById('fx-row-th');
+    if (thRow) {
+      thRow.addEventListener('click', function () {
+        if (isMember()) { HC.toast('当前角色为成员，预算预警阈值仅管理员可改'); return; }
+        HC.openSheet('sheet-threshold');
+      });
+    }
+    document.querySelectorAll('#sheet-threshold .fx-opt').forEach(function (opt) {
+      opt.addEventListener('click', function () {
+        var v = opt.getAttribute('data-th');
+        document.querySelectorAll('#sheet-threshold .fx-opt').forEach(function (o) { o.classList.remove('is-on'); });
+        opt.classList.add('is-on');
+        document.getElementById('fx-th-v').textContent = v + '%';
+        document.getElementById('fx-th-sub').textContent = '本月预算用到 ' + v + '% 时提醒 · 超支再提醒一次 · 由家庭消息下发';
+        HC.closeSheet(document.getElementById('sheet-threshold'));
+        HC.toast('预警阈值已改为 ' + v + '%，达到阈值时由家庭消息提醒');
+      });
+    });
+
+    // 保存 / 放弃
+    var save = document.getElementById('fx-save');
+    if (save) {
+      save.addEventListener('click', function () {
+        body.setAttribute('data-state', 'default');
+        HC.toast('默认项已保存，对之后新记的流水生效');
+      });
+    }
+    var discard = document.getElementById('fx-discard');
+    if (discard) {
+      discard.addEventListener('click', function () {
+        body.setAttribute('data-state', 'default');
+        HC.toast('已放弃未保存的改动');
+      });
+    }
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>分账详情 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-content { padding-bottom: 16px; }
+
+  .fx-av-me { background: var(--brand); color: var(--on-brand); border-color: transparent; }
+  .fx-av-mom { background: var(--accent-soft); color: var(--accent); }
+  .fx-av-dad { background: var(--info-soft); color: var(--info); }
+  .fx-av-girl { background: var(--face-calendar-soft); color: var(--face-calendar); }
+
+  .fx-hero {
+    margin-top: 8px; padding: 16px 18px 14px;
+    border-radius: var(--radius-xl);
+    background: linear-gradient(135deg, var(--brand-soft) 0%, var(--surface) 70%);
+    border: 1px solid var(--brand-soft-border);
+  }
+  .fx-hero-top { display: flex; align-items: center; gap: 8px; }
+  .fx-hero-title { flex: 1; min-width: 0; font-size: var(--fs-20); font-weight: 700; letter-spacing: .01em; }
+  .fx-hero-amt {
+    margin-top: 8px;
+    font-family: var(--font-num); font-size: var(--fs-30); font-weight: 700;
+    letter-spacing: -.01em; line-height: var(--lh-tight);
+  }
+  .fx-hero-meta { margin-top: 6px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; font-size: var(--fs-12); color: var(--text-3); }
+  .fx-hero-meta .fx-person { display: inline-flex; align-items: center; gap: 5px; }
+  .fx-hero-meta .avatar { width: 20px; height: 20px; font-size: 10px; }
+
+  .fx-mynet {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 12px; padding-top: 10px;
+    border-top: 1px solid var(--brand-soft-border);
+    font-size: var(--fs-12); color: var(--text-3);
+  }
+  .fx-mynet .amount { font-size: var(--fs-15); color: var(--success); }
+  .fx-mynet .tiny { margin-left: auto; }
+
+  .fx-sec {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin: 18px 2px 8px;
+    font-size: var(--fs-13); font-weight: 700; color: var(--text-2);
+  }
+  .fx-sec .tiny { font-weight: 500; }
+
+  .fx-part {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px;
+    background: var(--surface);
+  }
+  .fx-part + .fx-part { border-top: 1px solid var(--border); }
+  .fx-part .avatar { width: 34px; height: 34px; font-size: var(--fs-12); }
+  .fx-part-body { flex: 1; min-width: 0; }
+  .fx-part-name { display: flex; align-items: center; gap: 6px; font-size: var(--fs-14); font-weight: 600; }
+  .fx-part-sub { display: block; margin-top: 2px; font-size: var(--fs-11); color: var(--text-3); }
+  .fx-part-net { flex: none; text-align: right; }
+  .fx-part-amt { display: block; font-size: var(--fs-14); }
+  .fx-part-amt.is-pos { color: var(--success); }
+  .fx-part-amt.is-neg { color: var(--danger); }
+  .fx-part-dir { display: block; margin-top: 1px; font-size: var(--fs-11); color: var(--text-3); }
+  .fx-part-state { flex: none; margin-left: 8px; }
+  .fx-tag-ok { background: var(--success-soft); color: var(--success); }
+
+  .fx-check {
+    display: flex; align-items: flex-start; gap: 10px;
+    margin-top: 10px; padding: 12px 14px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    background: var(--success-soft);
+    color: var(--text-2);
+  }
+  .fx-check-ic {
+    width: 26px; height: 26px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: var(--radius-pill);
+    background: var(--success); color: var(--on-danger);
+  }
+  .fx-check-body { flex: 1; min-width: 0; }
+  .fx-check-top { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-13); font-weight: 700; color: var(--text); }
+  .fx-check-top .amount { margin-left: auto; font-size: var(--fs-17); color: var(--success); }
+  .fx-check-line { margin-top: 5px; font-size: var(--fs-12); color: var(--text-2); }
+  .fx-check-note { margin-top: 4px; font-size: var(--fs-11); color: var(--text-3); line-height: var(--lh-normal); }
+
+  .fx-alloc { padding: 12px 14px; }
+  .fx-alloc-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 5px 0; font-size: var(--fs-13); }
+  .fx-alloc-k { flex: none; color: var(--text-3); }
+  .fx-alloc-v { min-width: 0; text-align: right; color: var(--text); }
+  .fx-alloc-v .num { font-family: var(--font-num); }
+  .fx-rule {
+    display: none;
+    margin-top: 8px; padding: 9px 10px;
+    border-radius: var(--radius-md);
+    background: var(--brand-soft);
+    color: var(--text-2);
+    font-size: var(--fs-11); line-height: var(--lh-normal);
+  }
+  .fx-rule b { font-family: var(--font-num); color: var(--text); }
+  body[data-state="remainder"] .fx-rule { display: block; }
+  body[data-state="remainder"] .fx-alloc { border-color: var(--brand-soft-border); background: var(--brand-soft); }
+  .fx-alloc.is-highlight { border-color: var(--brand-soft-border); }
+
+  .fx-link-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px;
+    text-decoration: none; color: var(--text);
+    background: var(--surface);
+  }
+  .fx-link-row:hover { background: var(--surface-2); }
+  .fx-link-ic {
+    width: 32px; height: 32px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    background: var(--brand-soft); color: var(--brand-text);
+  }
+  .fx-link-body { flex: 1; min-width: 0; }
+  .fx-link-title { display: block; font-size: var(--fs-14); font-weight: 600; }
+  .fx-link-sub { display: block; margin-top: 2px; font-size: var(--fs-11); color: var(--text-3); }
+  .fx-link-amt { flex: none; font-size: var(--fs-14); }
+  .fx-link-row .chevron { flex: none; color: var(--text-3); }
+
+  .fx-note {
+    margin-top: 12px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    font-size: var(--fs-11); color: var(--text-3); line-height: var(--lh-normal);
+  }
+
+  .fx-banner-settled {
+    display: none; align-items: flex-start; gap: 8px;
+    margin-top: 10px; padding: 11px 12px;
+    border-radius: var(--radius-md);
+    background: var(--success-soft); color: var(--text-2);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-banner-settled svg { flex: none; margin-top: 1px; color: var(--success); }
+  .fx-banner-settled b { display: block; font-size: var(--fs-13); color: var(--text); margin-bottom: 2px; }
+  body[data-state="settled"] .fx-banner-settled { display: flex; }
+  body[data-state="settled"] .fx-mynet .amount { color: var(--text-3); }
+
+  .fx-foot {
+    flex: none;
+    padding: 10px 16px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+
+  .fx-sk { display: none; padding-top: 6px; }
+  body[data-state="loading"] .fx-sk { display: block; }
+  body[data-state="loading"] .fx-real,
+  body[data-state="loading"] .fx-foot { display: none; }
+  .fx-sk-row { display: flex; align-items: center; gap: 10px; padding: 13px 0; }
+  .fx-sk-av { width: 34px; height: 34px; border-radius: var(--radius-pill); flex: none; }
+  .fx-sk-lines { flex: 1; }
+</style>
+</head>
+<body data-screen="F38 分账详情" data-states="default,settled,remainder,loading">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <header class="navbar">
+    <div class="nav-left">
+      <a class="icon-btn" href="finance-split.html" aria-label="返回分账列表"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回 AA 分账列表并停在进入前的分组与滚动位置；从结算中心进来时也回列表，不把结算当作上一层">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </a>
+    </div>
+    <div class="nav-title">分账详情</div>
+    <div class="nav-right"></div>
+  </header>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 显示本机缓存的分摊与结清状态
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-real">
+      <section class="fx-hero"
+        data-hot="②" data-hot-name="事由与总金额" data-hot-pos="top-right"
+        data-hot-label="金额是原始共享流水的全额，不是我的分摊；状态只看各参与人净额是否全为 0。付款人自己的净额 = 已付 − 分摊，显示为应收">
+        <div class="fx-hero-top">
+          <span class="fx-hero-title">周末露营</span>
+          <span class="tag is-brand" id="fx-hero-tag">进行中</span>
+        </div>
+        <div class="fx-hero-amt num">¥268.00</div>
+        <div class="fx-hero-meta">
+          <span>3 人 · 我付款</span>
+          <span class="num">10 月 26 日 09:12</span>
+          <span class="fx-person"><span class="avatar fx-av-me">我</span>发起人</span>
+        </div>
+        <div class="fx-mynet">
+          <span>我的净额</span>
+          <span class="amount" id="fx-my-net">应收 ¥178.66</span>
+          <span class="tiny" id="fx-my-sub">0 / 2 人已结清</span>
+        </div>
+      </section>
+
+      <div class="fx-banner-settled">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 10.5 8 14l7.5-8"/></svg>
+        <div>
+          <b>全员已结清</b>
+          2026 年 10 月 28 日 21:06 · 2 笔结算流水已写入；各参与人净额归零，分账保留可回看。
+        </div>
+      </div>
+
+      <div class="fx-sec"><span>参与人 · 3 人</span><span class="tiny">净额 = 已付 − 分摊</span></div>
+      <div class="list"
+        data-hot="③" data-hot-name="参与人逐行" data-hot-pos="bottom-right"
+        data-hot-label="逐人展示头像、姓名、分摊与净额：付款人显示应收，其余人显示应付；已结清的人打「已结清」标记并带结清时间。净额不是分摊额，不能混用">
+        <div class="fx-part">
+          <span class="avatar fx-av-me">我</span>
+          <span class="fx-part-body">
+            <span class="fx-part-name">我 <span class="tag is-brand">付款人</span></span>
+            <span class="fx-part-sub">已付 ¥268.00 · 分摊 ¥89.34</span>
+          </span>
+          <span class="fx-part-net">
+            <span class="amount fx-part-amt is-pos">+¥178.66</span>
+            <span class="fx-part-dir">应收</span>
+          </span>
+          <span class="fx-part-state"><span class="tag">收款方</span></span>
+        </div>
+        <div class="fx-part">
+          <span class="avatar fx-av-mom">妈</span>
+          <span class="fx-part-body">
+            <span class="fx-part-name">妈妈</span>
+            <span class="fx-part-sub">分摊 ¥89.33 · 已付 ¥0.00</span>
+          </span>
+          <span class="fx-part-net">
+            <span class="amount fx-part-amt is-neg">-¥89.33</span>
+            <span class="fx-part-dir">应付</span>
+          </span>
+          <span class="fx-part-state" id="fx-state-mom"><span class="tag">待结清</span></span>
+        </div>
+        <div class="fx-part">
+          <span class="avatar fx-av-dad">爸</span>
+          <span class="fx-part-body">
+            <span class="fx-part-name">爸爸</span>
+            <span class="fx-part-sub">分摊 ¥89.33 · 已付 ¥0.00</span>
+          </span>
+          <span class="fx-part-net">
+            <span class="amount fx-part-amt is-neg">-¥89.33</span>
+            <span class="fx-part-dir">应付</span>
+          </span>
+          <span class="fx-part-state" id="fx-state-dad"><span class="tag">待结清</span></span>
+        </div>
+      </div>
+
+      <div class="fx-check"
+        data-hot="④" data-hot-name="净额合计校验" data-hot-pos="bottom-right"
+        data-hot-label="这是 Σ净额 = 0 的可见证据：逐人净额相加必须正好 ¥0.00，分摊合计还必须等于原始金额 ¥268.00；两条都成立才允许结算，不靠四舍五入凑数">
+        <span class="fx-check-ic">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 10.5 8 14l7.5-8"/></svg>
+        </span>
+        <span class="fx-check-body">
+          <span class="fx-check-top">净额合计 <span class="amount">¥0.00</span></span>
+          <span class="fx-check-line num">+178.66 − 89.33 − 89.33 = 0.00</span>
+          <span class="fx-check-note">Σ净额 = 0 且 分摊合计 ¥268.00 = 原始金额；以「分」为整数计算，没有浮点误差。</span>
+        </span>
+      </div>
+
+      <div class="fx-sec"><span>分摊明细</span><span class="tiny">以「分」为单位</span></div>
+      <div class="card fx-alloc"
+        data-hot="⑤" data-hot-name="分摊明细与余数" data-hot-pos="bottom-right"
+        data-hot-label="均分 3 人：基数 ¥89.33，余 ¥0.01 按参与人顺序（我 → 妈妈 → 爸爸）分给第 1 人「我」，逐人 89.34 / 89.33 / 89.33；规则可复现，换人也不改顺序">
+        <div class="fx-alloc-row"><span class="fx-alloc-k">分摊方式</span><span class="fx-alloc-v">均分 · 3 人</span></div>
+        <div class="fx-alloc-row"><span class="fx-alloc-k">基数与合计</span><span class="fx-alloc-v num">¥89.33 × 3 = ¥267.99</span></div>
+        <div class="fx-alloc-row"><span class="fx-alloc-k">余数</span><span class="fx-alloc-v num">¥0.01 → 我（第 1 位）</span></div>
+        <div class="fx-alloc-row"><span class="fx-alloc-k">逐人金额</span><span class="fx-alloc-v num">89.34 / 89.33 / 89.33</span></div>
+        <div class="fx-rule">
+          <b>余数规则</b>：余数按参与人固定顺序（我 → 妈妈 → 爸爸）依次 +¥0.01，分给前 N 人；相同输入永远得到同一分配，不在客户端随机或按金额大小重排。
+        </div>
+      </div>
+
+      <div class="fx-sec"><span>关联流水</span><span class="tiny">只读</span></div>
+      <div class="list"
+        data-hot="⑥" data-hot-name="关联流水" data-hot-pos="bottom-right"
+        data-hot-label="分账引用这一笔共享流水，金额与日期以流水为准；点行进流水详情。私密流水不参与分摊，所以这里不会出现私密记录">
+        <a class="fx-link-row" href="finance-tx-detail.html">
+          <span class="fx-link-ic">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h12M4 10h12M4 13.5h7"/></svg>
+          </span>
+          <span class="fx-link-body">
+            <span class="fx-link-title">餐饮 · 周末露营</span>
+            <span class="fx-link-sub">10 月 26 日 09:12 · 共享流水 · 我记账</span>
+          </span>
+          <span class="amount fx-link-amt">-¥268.00</span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </a>
+      </div>
+
+      <p class="fx-note">分账只引用流水，不复制流水：改金额或删流水会同时影响分账；已结清的分账不能被编辑，只能整笔作废后重建。</p>
+    </div>
+
+    <div class="fx-sk" aria-hidden="true">
+      <div class="skeleton" style="height:172px;border-radius:var(--radius-xl);margin-bottom:16px"></div>
+      <div class="skeleton sk-line" style="width:32%"></div>
+      <div class="fx-sk-row"><div class="skeleton fx-sk-av"></div><div class="fx-sk-lines"><div class="skeleton sk-line" style="width:40%"></div><div class="skeleton sk-line" style="width:56%;margin-bottom:0"></div></div></div>
+      <div class="fx-sk-row"><div class="skeleton fx-sk-av"></div><div class="fx-sk-lines"><div class="skeleton sk-line" style="width:34%"></div><div class="skeleton sk-line" style="width:48%;margin-bottom:0"></div></div></div>
+      <div class="fx-sk-row"><div class="skeleton fx-sk-av"></div><div class="fx-sk-lines"><div class="skeleton sk-line" style="width:36%"></div><div class="skeleton sk-line" style="width:50%;margin-bottom:0"></div></div></div>
+      <div class="skeleton" style="height:78px;border-radius:var(--radius-lg);margin-top:12px"></div>
+    </div>
+  </div>
+
+  <div class="fx-foot">
+    <button class="btn btn-primary btn-block" type="button" id="fx-settle" data-go="finance-split-settlement.html"
+      data-hot="⑦" data-hot-name="去结算" data-hot-pos="outer-bottom-right"
+      data-hot-label="进结算中心 finance/split/settlement：本笔的应收应付会并进「谁欠谁」的最简转账清单；进入前不改任何状态，结算确认在结算中心完成">
+      去结算
+    </button>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var detailState = new URLSearchParams(location.search).get('state') || 'default';
+  var tag = document.getElementById('fx-hero-tag');
+  var net = document.getElementById('fx-my-net');
+  var sub = document.getElementById('fx-my-sub');
+  var settle = document.getElementById('fx-settle');
+
+  if (detailState === 'settled') {
+    tag.textContent = '已结清';
+    tag.className = 'tag';
+    net.textContent = '已结清';
+    sub.textContent = '2 / 2 人已结清 · 10 月 28 日';
+    settle.disabled = true;
+    settle.textContent = '已全部结清';
+    settle.removeAttribute('data-go');
+
+    document.querySelectorAll('.fx-part').forEach(function (row) {
+      var amt = row.querySelector('.fx-part-amt');
+      var dir = row.querySelector('.fx-part-dir');
+      amt.textContent = '¥0.00';
+      amt.classList.remove('is-pos', 'is-neg');
+      if (dir) dir.textContent = '已结清';
+    });
+    document.querySelectorAll('.fx-part-state').forEach(function (box) {
+      box.innerHTML = '<span class="tag fx-tag-ok">已结清</span>';
+    });
+    document.querySelector('.fx-check-line').textContent = '0.00 + 0.00 + 0.00 = 0.00';
+    document.querySelector('.fx-check-note').textContent = 'Σ净额 = 0 且 分摊合计 ¥268.00 = 原始金额；全员已结清，应收与应付均已归零。';
+  }
+
+  if (detailState === 'remainder') {
+    document.querySelector('.fx-alloc').classList.add('is-highlight');
+  }
+</script>
+</body>
+</html>

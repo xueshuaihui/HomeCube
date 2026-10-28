@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>登记借出 / 借入 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-content { padding-bottom: 24px; }
+
+  .fx-cancel {
+    height: 36px; padding: 0 2px;
+    display: inline-flex; align-items: center;
+    border: 0; background: none;
+    font-family: inherit; font-size: var(--fs-15); font-weight: 500;
+    color: var(--text-2); cursor: pointer;
+  }
+
+  .fx-banner {
+    display: none; align-items: flex-start; gap: 8px;
+    margin: 4px 0 14px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--danger-soft); color: var(--danger);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-banner svg { flex: none; margin-top: 1px; }
+  .fx-banner b { display: block; font-size: var(--fs-13); margin-bottom: 2px; }
+  body[data-state="error"] .fx-banner { display: flex; }
+
+  .fx-form { padding-top: 2px; }
+  .fx-required { margin-left: 4px; font-size: var(--fs-11); font-weight: 600; color: var(--text-3); }
+
+  .fx-err-party, .fx-err-amt { display: none; }
+  body[data-state="error"] .fx-err-party,
+  body[data-state="error"] .fx-err-amt { display: flex; }
+
+  .fx-seg-full { width: 100%; }
+  .fx-seg-full button { flex: 1; padding: 9px 6px; }
+  .fx-type-help { display: block; margin-top: 6px; line-height: var(--lh-normal); }
+
+  .fx-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .fx-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 34px; padding: 0 12px 0 4px;
+    border: 1px solid var(--border); border-radius: var(--radius-pill);
+    background: var(--surface); color: var(--text-2);
+    font-family: inherit; font-size: var(--fs-13); font-weight: 600;
+    cursor: pointer;
+  }
+  .fx-chip:hover { border-color: var(--border-strong); }
+  .fx-chip[aria-pressed="true"] {
+    background: var(--brand-soft);
+    border-color: var(--brand-soft-border);
+    color: var(--brand-text);
+  }
+  .fx-chip .avatar { width: 26px; height: 26px; font-size: var(--fs-11); }
+  .fx-av-mom { background: var(--accent-soft); color: var(--accent); }
+  .fx-av-dad { background: var(--info-soft); color: var(--info); }
+  .fx-av-kid { background: var(--warning-soft); color: var(--warning); }
+
+  .fx-ext { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: var(--fs-11); color: var(--text-3); }
+  .fx-ext svg { flex: none; }
+
+  .fx-amt { position: relative; }
+  .fx-amt-cur {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    z-index: 1; pointer-events: none;
+    font-family: var(--font-num); font-size: var(--fs-20); font-weight: 700; color: var(--text-2);
+  }
+  .fx-amt-input {
+    height: 56px; padding-left: 34px;
+    font-family: var(--font-num); font-size: var(--fs-20); font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .fx-switch-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .fx-switch-text { flex: 1; min-width: 0; }
+  .fx-switch-k { display: block; font-size: var(--fs-14); font-weight: 600; }
+  .fx-switch-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
+
+  .fx-panel { display: none; margin-top: 8px; }
+  .fx-panel.is-open { display: block; }
+  body[data-state="installment"] .fx-panel { display: block; }
+  .fx-single { margin-top: 8px; }
+  .fx-single[hidden] { display: none; }
+  .fx-box {
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    font-size: var(--fs-12); color: var(--text-2); line-height: var(--lh-normal);
+  }
+  .fx-box-row { display: flex; align-items: center; gap: 10px; }
+  .fx-box-row + .fx-box-row { margin-top: 10px; }
+  .fx-box-k { width: 66px; flex: none; font-size: var(--fs-12); color: var(--text-3); }
+  .fx-box-input {
+    flex: 1; min-width: 0; height: 40px;
+    padding: 0 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface); color: var(--text);
+    font-family: var(--font-num); font-size: var(--fs-14);
+    outline: none;
+  }
+  .fx-box-input:focus { border-color: var(--brand-text); box-shadow: 0 0 0 3px var(--brand-soft); }
+  .fx-box-suf { flex: none; font-size: var(--fs-12); color: var(--text-2); }
+  .fx-per {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    margin-top: 10px; padding-top: 9px;
+    border-top: 1px solid var(--border);
+  }
+  .fx-per-k { font-size: var(--fs-12); color: var(--text-3); }
+  .fx-per-v { font-size: var(--fs-13); font-weight: 700; color: var(--text); }
+
+  .fx-foot {
+    flex: none;
+    padding: 10px 16px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+  .fx-foot-note { margin-top: 8px; text-align: center; line-height: var(--lh-normal); }
+
+  .fx-help-strong { color: var(--text-2); }
+</style>
+</head>
+<body data-screen="F31 登记借贷" data-states="default,installment,error">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <button class="fx-cancel" type="button" data-go="finance-loan.html"
+        data-hot="①" data-hot-name="取消" data-hot-pos="outer-top-left"
+        data-hot-label="回借贷列表；未保存内容直接丢弃，不落草稿、不入离线队列，也不生成借贷台账与还款计划">
+        取消</button>
+    </div>
+    <div class="nav-title">登记借出 / 借入</div>
+    <div class="nav-right"></div>
+  </div>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 保存后先排队，到期注册联网后提交
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-banner">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
+      <div>
+        <b>还有 2 项需要补全</b>
+        对手方与本金必填；本金必须大于 0。缺项只标红对应字段，不弹全局错误层。
+      </div>
+    </div>
+
+    <div class="fx-form">
+      <div class="field">
+        <span class="field-label">类型</span>
+        <div class="segmented fx-seg-full" id="fx-type" role="tablist"
+          data-hot="②" data-hot-name="类型" data-hot-pos="outer-top-right"
+          data-hot-label="借出 = 我借给对方，本页后续看「待收」；借入 = 对方借给我，后续看「待还」。类型在登记时定死，保存后不能改成另一种，要换请重新登记">
+          <button type="button" role="tab" aria-selected="true" data-type="out">借出</button>
+          <button type="button" role="tab" aria-selected="false" data-type="in">借入</button>
+        </div>
+        <span class="help fx-type-help" id="fx-type-help">借出：我先垫钱，之后按约定收回；列表里计入「待收」。</span>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="fx-party">对手方<span class="fx-required">必填</span></label>
+        <div class="fx-chips" role="group" aria-label="从家庭成员选择"
+          data-hot="③" data-hot-name="对手方" data-hot-pos="bottom-right"
+          data-hot-label="可以从家庭成员里点选，也可以直接输入家庭外的姓名；对手方不必是成员，借贷属家庭外往来，不要求先邀请对方进家庭，非成员在列表与详情挂「非成员」">
+          <button class="fx-chip" type="button" aria-pressed="false" data-party="爸爸">
+            <span class="avatar fx-av-dad">爸</span>爸爸
+          </button>
+          <button class="fx-chip" type="button" aria-pressed="false" data-party="妈妈">
+            <span class="avatar fx-av-mom">妈</span>妈妈
+          </button>
+          <button class="fx-chip" type="button" aria-pressed="false" data-party="小雨">
+            <span class="avatar fx-av-kid">雨</span>小雨
+          </button>
+        </div>
+        <input class="input" id="fx-party" type="text" maxlength="20" placeholder="或输入家庭外姓名" value="老周" autocomplete="off">
+        <div class="fx-ext">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="5.5"/><path d="M8 7.2v3.6M8 5.4v.1"/></svg>
+          输入家庭外姓名时，保存后该笔会挂「非成员」，不产生邀请，也不进成员维度报表。
+        </div>
+        <div class="field-error fx-err-party" role="alert">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
+          请填写对手方姓名
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="fx-amount">本金<span class="fx-required">必填</span></label>
+        <div class="fx-amt">
+          <span class="fx-amt-cur">¥</span>
+          <input class="input fx-amt-input" id="fx-amount" type="text" inputmode="decimal" value="4800.00" autocomplete="off"
+            data-hot="④" data-hot-name="本金" data-hot-pos="outer-top-right"
+            data-hot-label="以「分」存储、按家庭币种展示；必须大于 0，为空或为 0 时红框 + 行内「请填写大于 0 的本金」；本金只用于计算待收 / 待还与进度，不会直接改动账户余额">
+        </div>
+        <div class="field-error fx-err-amt" role="alert">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
+          请填写大于 0 的本金
+        </div>
+        <div class="help">本金只记入借贷台账，不自动生成流水、不扣减账户余额；资金流水在「登记还款」时按所选账户生成。</div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="fx-date">借贷日期</label>
+        <input class="input num" id="fx-date" type="date" value="2026-10-29"
+          data-hot="⑤" data-hot-name="借贷日期" data-hot-pos="outer-top-right"
+          data-hot-label="默认今天，按家庭时区（Asia/Shanghai）取日；可改到过去的日期补登，但不允许晚于今天。日期决定首期日的最早可选范围，不改动任何流水">
+        <div class="help">可补登过去的借贷；不能选未来日期。首期还款日从这一天之后算起。</div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">是否分期</span>
+        <div class="fx-switch-row"
+          data-hot="⑥" data-hot-name="是否分期" data-hot-pos="outer-bottom-right"
+          data-hot-label="关 = 就地填一个约定还款日、到期一次还清；开 = 收起单期日，展开期数与首期日，按每月同日排期，每期金额 = 本金 ÷ 期数、末期为余数；开关切换不丢已填的本金与对手方">
+          <span class="fx-switch-text">
+            <span class="fx-switch-k">分多期还款</span>
+            <span class="fx-switch-sub">房租、借款这类按月还的，打开后生成逐期还款计划</span>
+          </span>
+          <label class="switch" aria-label="是否分期还款">
+            <input type="checkbox" id="fx-installment">
+            <span class="track"></span><span class="thumb"></span>
+          </label>
+        </div>
+        <div class="fx-single" id="fx-single">
+          <div class="fx-box">
+            <div class="fx-box-row">
+              <span class="fx-box-k">约定还款日</span>
+              <input class="fx-box-input" id="fx-single-due" type="date" value="2026-11-20">
+            </div>
+            <p class="tiny" style="margin-top:6px">不分期时只记这一个还款日，到期一次还清；登记还款后该笔直接结清。</p>
+          </div>
+        </div>
+        <div class="fx-panel" id="fx-panel"
+          data-hot="⑦" data-hot-name="期数与首期日" data-hot-pos="bottom-right"
+          data-hot-label="只填期数与首期日，其余各期按每月同日自动排；每期金额 = 本金 ÷ 期数，除不尽的余数并到末期；每期到期前 3 天由家庭日历提醒，财务面不自建定时器">
+          <div class="fx-box">
+            <div class="fx-box-row">
+              <span class="fx-box-k">期数</span>
+              <input class="fx-box-input" id="fx-periods" type="number" min="2" max="36" value="6" step="1" inputmode="numeric">
+              <span class="fx-box-suf">期 · 每月</span>
+            </div>
+            <div class="fx-box-row">
+              <span class="fx-box-k">首期日</span>
+              <input class="fx-box-input" id="fx-first" type="date" value="2026-11-05">
+            </div>
+            <div class="fx-per">
+              <span class="fx-per-k">每期金额（估算）</span>
+              <span class="fx-per-v num">¥800.00 × 6 期</span>
+            </div>
+            <p class="tiny" style="margin-top:6px">除不尽的余数并到最后一期，总额始终等于本金；改期数或首期日会重排全部未还期次，已还期次不受影响。</p>
+          </div>
+        </div>
+        <div class="help" id="fx-inst-help">不分期时只记一个约定还款日，到期一次还清。</div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="fx-note">备注</label>
+        <textarea class="textarea" id="fx-note" maxlength="200" placeholder="用途、约定方式等，最多 200 字"
+          data-hot="⑧" data-hot-name="备注" data-hot-pos="bottom-right"
+          data-hot-label="最多 200 字、全家可见；写清用途与约定方式即可，不填也能保存。备注不参与筛选、报表归集与提醒文案">装修周转，按约定还款。</textarea>
+        <div class="help">备注全家可见，最多 200 字；不会写进提醒的推送文案。</div>
+      </div>
+    </div>
+
+    <p class="tiny fx-help-strong" style="margin-top:4px;line-height:var(--lh-normal)">保存后按类型计入「待收 / 待还」，生成还款计划并提交到期注册；日历显示可能稍晚，超过 5 分钟仍未出现可在详情页重新提交。</p>
+  </div>
+
+  <div class="fx-foot">
+    <button class="btn btn-primary btn-block" type="button" id="fx-save"
+      data-hot="⑨" data-hot-name="保存" data-hot-pos="outer-bottom-right"
+      data-hot-label="校验对手方非空、本金大于 0、日期不晚于今天、分期期数 2–36；缺项时只标红对应字段并在顶部给一条错误；成功回借贷列表并落在对应分组，分期时同时生成 N 期还款计划">
+      保存借出
+    </button>
+    <div class="fx-foot-note tiny">保存后生成还款计划，每期到期前 3 天由家庭日历提醒</div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var fxState = new URLSearchParams(location.search).get('state') || 'default';
+  var typeBtns = document.querySelectorAll('#fx-type [data-type]');
+  var typeHelp = document.getElementById('fx-type-help');
+  var party = document.getElementById('fx-party');
+  var amount = document.getElementById('fx-amount');
+  var install = document.getElementById('fx-installment');
+  var panel = document.getElementById('fx-panel');
+  var single = document.getElementById('fx-single');
+  var instHelp = document.getElementById('fx-inst-help');
+  var save = document.getElementById('fx-save');
+
+  function setType(type) {
+    typeBtns.forEach(function (b) {
+      b.setAttribute('aria-selected', String(b.getAttribute('data-type') === type));
+    });
+    var isOut = type === 'out';
+    typeHelp.textContent = isOut
+      ? '借出：我先垫钱，之后按约定收回；列表里计入「待收」。'
+      : '借入：对方先垫钱，我之后按约定还；列表里计入「待还」。';
+    save.textContent = isOut ? '保存借出' : '保存借入';
+  }
+
+  typeBtns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      setType(b.getAttribute('data-type'));
+    });
+  });
+
+  function setPartyChip(name) {
+    document.querySelectorAll('[data-party]').forEach(function (c) {
+      c.setAttribute('aria-pressed', String(c.getAttribute('data-party') === name));
+    });
+  }
+
+  document.querySelectorAll('[data-party]').forEach(function (c) {
+    c.addEventListener('click', function () {
+      var name = c.getAttribute('data-party');
+      var on = c.getAttribute('aria-pressed') !== 'true';
+      setPartyChip(on ? name : '');
+      party.value = on ? name : '';
+      if (on) {
+        party.classList.remove('is-error');
+        window.HC.toast('对手方已选「' + name + '」，保存后按成员记录');
+      }
+    });
+  });
+
+  party.addEventListener('input', function () {
+    setPartyChip(party.value.trim());
+    if (party.value.trim()) party.classList.remove('is-error');
+  });
+
+  function setInstallment(on) {
+    install.checked = on;
+    panel.classList.toggle('is-open', on);
+    single.hidden = on;
+    if (!on && document.body.getAttribute('data-state') === 'installment') {
+      document.body.setAttribute('data-state', 'default');
+    }
+    instHelp.textContent = on
+      ? '按每月同日排期；每期金额 = 本金 ÷ 期数，末期为余数。'
+      : '不分期时只记一个约定还款日，到期一次还清。';
+  }
+
+  install.addEventListener('change', function () {
+    setInstallment(install.checked);
+    window.HC.toast(install.checked
+      ? '已改为分期：填期数与首期日后自动排出各期'
+      : '已改为不分期：只记一个约定还款日');
+  });
+
+  amount.addEventListener('input', function () {
+    if (amount.value.trim() && Number(amount.value.replace(/,/g, '')) > 0) {
+      amount.classList.remove('is-error');
+    }
+  });
+
+  if (fxState === 'installment') {
+    setInstallment(true);
+  } else {
+    setInstallment(false);
+  }
+
+  setType('out');
+
+  if (fxState === 'error') {
+    setType('out');
+    party.value = '';
+    party.classList.add('is-error');
+    amount.value = '';
+    amount.classList.add('is-error');
+    setInstallment(false);
+  }
+
+  save.addEventListener('click', function () {
+    var ok = true;
+    if (!party.value.trim()) {
+      party.classList.add('is-error');
+      ok = false;
+    }
+    if (!amount.value.trim() || !(Number(amount.value.replace(/,/g, '')) > 0)) {
+      amount.classList.add('is-error');
+      ok = false;
+    }
+    if (!ok) {
+      document.body.setAttribute('data-state', 'error');
+      (party.value.trim() ? amount : party).focus();
+      return;
+    }
+    var loanDate = document.getElementById('fx-date').value;
+    var due = install.checked
+      ? document.getElementById('fx-first').value
+      : document.getElementById('fx-single-due').value;
+    if (due && loanDate && due <= loanDate) {
+      window.HC.toast(install.checked ? '首期还款日需晚于借贷日期' : '约定还款日需晚于借贷日期');
+      return;
+    }
+    if (install.checked) {
+      var periods = Number(document.getElementById('fx-periods').value);
+      if (!(periods >= 2 && periods <= 36)) {
+        window.HC.toast('分期期数需在 2–36 期之间');
+        return;
+      }
+    }
+    window.HC.toast('已登记，还款计划与到期注册已提交');
+    setTimeout(function () { location.href = 'finance-loan.html'; }, 1000);
+  });
+</script>
+</body>
+</html>

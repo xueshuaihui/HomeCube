@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>账本 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-content { padding-bottom: 28px; }
+
+  .fx-new {
+    height: 36px; padding: 0 2px;
+    border: 0; background: none;
+    font-family: inherit; font-size: var(--fs-15); font-weight: 600;
+    color: var(--brand-text); cursor: pointer;
+  }
+  .fx-new:hover { color: var(--brand-hover); }
+
+  .fx-note {
+    display: flex; gap: 10px;
+    margin-top: 6px; padding: 12px 14px;
+    border-radius: var(--radius-lg);
+    background: var(--brand-soft);
+    border: 1px solid var(--brand-soft-border);
+    color: var(--text-2);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-note > svg { flex: none; margin-top: 1px; color: var(--brand-text); }
+  .fx-note b { display: block; margin-bottom: 3px; font-size: var(--fs-13); color: var(--text); }
+
+  .fx-sum {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    margin: 16px 2px 8px;
+    font-size: var(--fs-12); color: var(--text-3);
+  }
+  .fx-sum b { font-weight: 600; color: var(--text-2); }
+
+  .fx-segbar { padding-bottom: 4px; }
+  .fx-segbar .segmented { width: 100%; }
+  .fx-segbar .segmented button { flex: 1; padding: 7px 6px; }
+  .fx-seg-n { margin-left: 3px; font-family: var(--font-num); opacity: .55; }
+
+  .fx-lgroup { display: none; }
+  .fx-lgroup.is-on { display: block; }
+
+  .fx-lcard {
+    margin-top: 10px; padding: 12px 14px;
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .fx-lcard.is-current { border-color: var(--brand-soft-border); background: linear-gradient(135deg, var(--brand-soft) 0%, var(--surface) 62%); }
+
+  .fx-lc-head { display: flex; align-items: center; gap: 10px; }
+  .fx-lc-ic {
+    width: 34px; height: 34px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    background: var(--surface-2); color: var(--text-2);
+  }
+  .fx-lcard.is-current .fx-lc-ic { background: var(--surface); color: var(--brand-text); }
+  .fx-lc-body { flex: 1; min-width: 0; display: block; text-decoration: none; color: var(--text); }
+  .fx-lc-name-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .fx-lc-name { font-size: var(--fs-15); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fx-tag-cur { display: none; flex: none; }
+  .fx-lcard.is-current .fx-tag-cur { display: inline-flex; }
+  .fx-lc-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fx-lc-go { flex: none; color: var(--text-3); }
+
+  .fx-lc-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .fx-avs { display: inline-flex; align-items: center; }
+  .fx-avs .avatar { width: 22px; height: 22px; font-size: 10px; }
+  .fx-avs .avatar + .avatar { margin-left: -6px; border: 1px solid var(--surface); }
+  .fx-av-1 { background: var(--brand); color: var(--on-brand); border-color: transparent; }
+  .fx-av-2 { background: var(--accent-soft); color: var(--accent); }
+  .fx-av-3 { background: var(--info-soft); color: var(--info); }
+  .fx-lc-avk { font-size: var(--fs-11); color: var(--text-3); }
+  .fx-lc-amt { margin-left: auto; font-size: var(--fs-12); color: var(--text-2); }
+
+  .fx-lc-scope {
+    margin-top: 9px; padding-top: 9px;
+    border-top: 1px dashed var(--border);
+    font-size: var(--fs-11); color: var(--text-3); line-height: var(--lh-normal);
+  }
+  .fx-lc-scope b { color: var(--text-2); font-weight: 600; }
+
+  .fx-lc-switch {
+    flex: none; height: 28px; padding: 0 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    font-family: inherit; font-size: var(--fs-12); font-weight: 600;
+    color: var(--text-2); cursor: pointer;
+  }
+  .fx-lc-switch:hover { background: var(--surface-2); }
+  .fx-lcard.is-current .fx-lc-switch { border-color: var(--brand-soft-border); color: var(--brand-text); background: var(--surface); }
+
+  .fx-gnote { margin: 10px 2px 0; line-height: var(--lh-normal); }
+
+  .fx-foot-note { margin-top: 18px; line-height: var(--lh-normal); }
+
+  .fx-empty { display: none; }
+  body[data-state="empty"] .fx-empty { display: flex; }
+  body[data-state="empty"] .fx-real { display: none; }
+</style>
+</head>
+<body data-screen="F22 账本" data-states="default,private,project,empty">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <header class="navbar">
+    <div class="nav-left">
+      <a class="icon-btn" href="home.html" aria-label="返回首页"
+        data-hot="①" data-hot-name="返回首页" data-hot-pos="outer-top-left"
+        data-hot-label="回 HomeOS 首页；财务面没有面切换器，去别的面只能回首页矩阵点格">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </a>
+    </div>
+    <div class="nav-title">财务</div>
+    <div class="nav-right">
+      <button class="fx-new" type="button" data-go="finance-ledger-create.html"
+        data-hot="②" data-hot-name="新建账本" data-hot-pos="outer-top-right"
+        data-hot-label="进新建账本页（finance/ledger/create）：名称、类型、成员范围、标签四项；账本只是分组，新建不会搬动任何已有流水">
+        新建</button>
+    </div>
+  </header>
+
+  <nav class="l2-tabs" aria-label="财务二级导航"
+    data-hot="③" data-hot-name="面内二级 Tab" data-hot-pos="bottom-right"
+    data-hot-label="流水 / 报表 / 预算 / 账本 / 账户与设置五页在本分包内互切，本页高亮「账本」；账本页不放时间窗条——账本是范围分组，不是时间维度">
+    <a class="l2-tab" href="finance-flow.html">流水</a>
+    <a class="l2-tab" href="finance-report.html">报表</a>
+    <a class="l2-tab" href="finance-budget.html">预算</a>
+    <a class="l2-tab" href="finance-ledger.html" aria-current="page">账本</a>
+    <a class="l2-tab" href="finance-settings.html">账户与设置</a>
+  </nav>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 笔数显示本机缓存
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-real">
+      <div class="fx-note"
+        data-hot="⑤" data-hot-name="口径说明" data-hot-pos="bottom-right"
+        data-hot-label="常驻一句「账本是分组，不是隔离」：账本只决定流水与报表按什么范围归集，不决定谁能看到什么；可见性仍由角色与单笔流水的可见性决定，切账本不会搬动任何流水的归属">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5h5l1.6 2H17v10.5H3z"/><path d="M3 5.5V4h5"/><path d="M7.5 12h5"/></svg>
+        <span>
+          <b>账本是分组，不是隔离</b>
+          账本只决定流水与报表按什么范围归集；谁能看到什么，仍由成员角色与单笔流水的可见性决定。切账本不搬动任何已记的流水。
+        </span>
+      </div>
+
+      <div class="fx-sum">
+        <span><b>7</b> 个账本 · 当前「日常」</span>
+        <span>本月合计 <b class="num">-¥29,070.40</b></span>
+      </div>
+
+      <div class="fx-segbar"
+        data-hot="④" data-hot-name="分组切换" data-hot-pos="outer-top-right"
+        data-hot-label="共享 / 私有 / 项目三组同页切换，不新增路由；「私有」只是你本人的记账分组，不是隔离域，也不改变家人的可见范围">
+        <div class="segmented" role="tablist">
+          <button type="button" role="tab" aria-selected="true" data-ledger-tab="shared">共享<span class="fx-seg-n">3</span></button>
+          <button type="button" role="tab" aria-selected="false" data-ledger-tab="private">私有<span class="fx-seg-n">2</span></button>
+          <button type="button" role="tab" aria-selected="false" data-ledger-tab="project">项目<span class="fx-seg-n">2</span></button>
+        </div>
+      </div>
+
+      <!-- 共享 -->
+      <section class="fx-lgroup is-on" data-group="shared">
+        <article class="fx-lcard is-current">
+          <div class="fx-lc-head">
+            <span class="fx-lc-ic">
+              <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.4"/><path d="M10 2.6v2.2M10 15.2v2.2M2.6 10h2.2M15.2 10h2.2M4.8 4.8l1.6 1.6M13.6 13.6l1.6 1.6M15.2 4.8l-1.6 1.6M6.4 13.6l-1.6 1.6"/></svg>
+            </span>
+            <a class="fx-lc-body" href="finance-ledger-edit.html"
+              data-hot="⑥" data-hot-name="账本卡片" data-hot-pos="bottom-right"
+              data-hot-label="点名称进编辑页并带 version；卡片四件套：名称与类型、成员头像排、本月笔数、切换后影响范围；「当前」标记只有一个，切到别的账本会同步搬走">
+              <span class="fx-lc-name-row">
+                <span class="fx-lc-name">日常</span>
+                <span class="tag is-brand fx-tag-cur">当前</span>
+              </span>
+              <span class="fx-lc-sub">共享 · 本月 128 笔</span>
+            </a>
+            <button class="fx-lc-switch" type="button" data-switch="日常"
+              data-hot="⑦" data-hot-name="切换账本" data-hot-pos="outer-top-right"
+              data-hot-label="切换只换过滤范围：流水列表与报表按该账本过滤，条数会变、数据一条不动；不接受切换后没有任何流水变化以外的权限变化">
+              切换</button>
+          </div>
+          <div class="fx-lc-row">
+            <span class="fx-avs" aria-hidden="true">
+              <span class="avatar fx-av-1">我</span>
+              <span class="avatar fx-av-2">妈</span>
+              <span class="avatar fx-av-3">满</span>
+            </span>
+            <span class="fx-lc-avk">3 位成员 · 全家一起记</span>
+            <span class="amount fx-lc-amt">-¥8,632.40</span>
+          </div>
+          <p class="fx-lc-scope">切换后：<b>流水与报表按「日常」过滤</b>，家人的视图与可见范围都不变。</p>
+        </article>
+
+        <article class="fx-lcard">
+          <div class="fx-lc-head">
+            <span class="fx-lc-ic">
+              <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5 5.4 4h9.2L16 5.5V16H4z"/><path d="M4 8h12"/><path d="M8 4v4"/></svg>
+            </span>
+            <a class="fx-lc-body" href="finance-ledger-edit.html">
+              <span class="fx-lc-name-row">
+                <span class="fx-lc-name">孩子</span>
+                <span class="tag is-brand fx-tag-cur">当前</span>
+              </span>
+              <span class="fx-lc-sub">共享 · 本月 34 笔</span>
+            </a>
+            <button class="fx-lc-switch" type="button" data-switch="孩子">切换</button>
+          </div>
+          <div class="fx-lc-row">
+            <span class="fx-avs" aria-hidden="true">
+              <span class="avatar fx-av-1">我</span>
+              <span class="avatar fx-av-2">妈</span>
+              <span class="avatar fx-av-3">满</span>
+            </span>
+            <span class="fx-lc-avk">3 位成员 · 含儿童账号记账</span>
+            <span class="amount fx-lc-amt">-¥1,240.00</span>
+          </div>
+          <p class="fx-lc-scope">切换后：<b>流水与报表按「孩子」过滤</b>；儿童账号记的流水照常计入，不因账本变化而受限。</p>
+        </article>
+
+        <article class="fx-lcard">
+          <div class="fx-lc-head">
+            <span class="fx-lc-ic">
+              <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 10 3.5l7 6"/><path d="M5 9v7.5h10V9"/></svg>
+            </span>
+            <a class="fx-lc-body" href="finance-ledger-edit.html">
+              <span class="fx-lc-name-row">
+                <span class="fx-lc-name">家庭公共</span>
+                <span class="tag is-brand fx-tag-cur">当前</span>
+              </span>
+              <span class="fx-lc-sub">共享 · 本月 21 笔</span>
+            </a>
+            <button class="fx-lc-switch" type="button" data-switch="家庭公共">切换</button>
+          </div>
+          <div class="fx-lc-row">
+            <span class="fx-avs" aria-hidden="true">
+              <span class="avatar fx-av-1">我</span>
+              <span class="avatar fx-av-2">妈</span>
+            </span>
+            <span class="fx-lc-avk">2 位成员 · 物业水电等固定开销</span>
+            <span class="amount fx-lc-amt">-¥2,890.00</span>
+          </div>
+          <p class="fx-lc-scope">切换后：<b>流水与报表按「家庭公共」过滤</b>；把固定开销与日常分开看，总额口径不变。</p>
+        </article>
+        <p class="fx-gnote tiny">共享账本按成员范围归集：范围里的人记的流水会自动落进这个分组，也可以记账时手动改。</p>
+      </section>
+
+      <!-- 私有 -->
+      <section class="fx-lgroup" data-group="private">
+        <article class="fx-lcard">
+          <div class="fx-lc-head">
+            <span class="fx-lc-ic">
+              <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5.5" width="14" height="9.5" rx="2.5"/><path d="M3 9h14"/><circle cx="14" cy="12.3" r="1"/></svg>
+            </span>
+            <a class="fx-lc-body" href="finance-ledger-edit.html">
+              <span class="fx-lc-name-row">
+                <span class="fx-lc-name">我的零花</span>
+                <span class="tag is-brand fx-tag-cur">当前</span>
+              </span>
+              <span class="fx-lc-sub">私有 · 本月 12 笔</span>
+            </a>
+            <button class="fx-lc-switch" type="button" data-switch="我的零花">切换</button>
+          </div>
+          <div class="fx-lc-row">
+            <span class="fx-avs" aria-hidden="true"><span class="avatar fx-av-1">我</span></span>
+            <span class="fx-lc-avk">1 位成员 · 你自己记</span>
+            <span class="amount fx-lc-amt">-¥460.00</span>
+          </div>
+          <p class="fx-lc-scope">切换后：<b>你的流水与报表按这个分组看</b>；家人视图不变，账本不授予也不收回任何查看权。</p>
+        </article>
+
+        <article class="fx-lcard">
+          <div class="fx-lc-head">
+            <span class="fx-lc-ic">
+              <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3.5h8.5L16 6v10.5H5z"/><path d="M13.5 3.5V6H16"/><path d="M7.6 10h6M7.6 13h4"/></svg>
+            </span>
+            <a class="fx-lc-body" href="finance-ledger-edit.html">
+              <span class="fx-lc-name-row">
+                <span class="fx-lc-name">个人学习</span>
+                <span class="tag is-brand fx-tag-cur">当前</span>
+              </span>
+              <span class="fx-lc-sub">私有 · 本月 3 笔</span>
+            </a>
+            <button class="fx-lc-switch" type="button" data-switch="个人学习">切换</button>
+          </div>
+          <div class="fx-lc-row">
+            <span class="fx-avs" aria-hidden="true"><span class="avatar fx-av-1">我</span></span>
+            <span class="fx-lc-avk">1 位成员 · 课程与书</span>
+            <span class="amount fx-lc-amt">-¥268.00</span>
+          </div>
+          <p class="fx-lc-scope">切换后：<b>你的流水与报表按这个分组看</b>；只是把个人开销单独归类，不影响家庭报表的总额。</p>
+        </article>
+        <p class="fx-gnote tiny">「私有」指只归到你自己名下记账，不是隔离域：家人能不能看到某笔流水，仍由那笔流水的可见性决定。</p>
+      </section>
+
+      <!-- 项目 -->
+      <section class="fx-lgroup" data-group="project">
+        <article class="fx-lcard">
+          <div class="fx-lc-head">
+            <span class="fx-lc-ic">
+              <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.8 3 6.6l7 3.8 7-3.8z"/><path d="M3 10.4l7 3.8 7-3.8"/><path d="M3 14.2l7 3.8 7-3.8"/></svg>
+            </span>
+            <a class="fx-lc-body" href="finance-ledger-edit.html">
+              <span class="fx-lc-name-row">
+                <span class="fx-lc-name">旅行 2026</span>
+                <span class="tag is-brand fx-tag-cur">当前</span>
+              </span>
+              <span class="fx-lc-sub">项目 · 本月 21 笔</span>
+            </a>
+            <button class="fx-lc-switch" type="button" data-switch="旅行 2026">切换</button>
+          </div>
+          <div class="fx-lc-row">
+            <span class="fx-avs" aria-hidden="true">
+              <span class="avatar fx-av-1">我</span>
+              <span class="avatar fx-av-2">妈</span>
+              <span class="avatar fx-av-3">满</span>
+            </span>
+            <span class="fx-lc-avk">3 位成员 · 标签「甘南自驾」</span>
+            <span class="amount fx-lc-amt">-¥3,180.00</span>
+          </div>
+          <p class="fx-lc-scope">切换后：<b>流水与报表按项目过滤</b>；行程结束后同样按这个分组归集，不另建对象。</p>
+        </article>
+
+        <article class="fx-lcard">
+          <div class="fx-lc-head">
+            <span class="fx-lc-ic">
+              <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15.6 9.2 10.4l1.4 1.4L5.4 17z"/><path d="M12.4 3.6 16.4 7.6"/><path d="M10.6 6.6 13.4 9.4"/><path d="M9.2 10.4 6.4 7.6"/></svg>
+            </span>
+            <a class="fx-lc-body" href="finance-ledger-edit.html">
+              <span class="fx-lc-name-row">
+                <span class="fx-lc-name">装修</span>
+                <span class="tag is-brand fx-tag-cur">当前</span>
+              </span>
+              <span class="fx-lc-sub">项目 · 本月 9 笔</span>
+            </a>
+            <button class="fx-lc-switch" type="button" data-switch="装修">切换</button>
+          </div>
+          <div class="fx-lc-row">
+            <span class="fx-avs" aria-hidden="true">
+              <span class="avatar fx-av-1">我</span>
+              <span class="avatar fx-av-2">妈</span>
+            </span>
+            <span class="fx-lc-avk">2 位成员 · 标签「硬装」</span>
+            <span class="amount fx-lc-amt">-¥12,400.00</span>
+          </div>
+          <p class="fx-lc-scope">切换后：<b>流水与报表按项目过滤</b>；大额支出集中看，家庭总额与净资产不受影响。</p>
+        </article>
+        <p class="fx-gnote tiny">项目账本把一个项目的流水与预算归到一起；成员范围只决定谁往这里记账，不决定谁看得到。</p>
+      </section>
+
+      <p class="fx-foot-note tiny">切换账本只换过滤范围：流水条数变了，数据一条不动，也不会搬动已有流水的归属；账本不是权限边界，数据隔离仍由角色、数据范围与字段级可见性实现。</p>
+    </div>
+
+    <div class="state fx-empty">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5h9l2.4 3H28v15H4z"/><path d="M4 8.5V6h9"/><path d="M12 17h8"/></svg>
+      </div>
+      <div class="state-title">还没有账本</div>
+      <div class="state-desc">新建一个账本，把旅行、装修、孩子这类花销单独归集。账本只换过滤范围，不会搬动已有流水，也不改变任何人的查看权限。</div>
+      <button class="btn btn-secondary" type="button" data-go="finance-ledger-create.html"
+        data-hot="⑧" data-hot-name="空态行动" data-hot-pos="top-right"
+        data-hot-label="零个账本时给可执行动作「新建账本」，直接进新建页；不提示「去别的面看看」，也不预置假账本">
+        新建账本</button>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var fxState = new URLSearchParams(location.search).get('state') || 'default';
+
+  document.querySelectorAll('[data-ledger-tab]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('[data-ledger-tab]').forEach(function (x) {
+        x.setAttribute('aria-selected', String(x === b));
+      });
+      document.querySelectorAll('[data-group]').forEach(function (g) {
+        g.classList.toggle('is-on', g.getAttribute('data-group') === b.getAttribute('data-ledger-tab'));
+      });
+    });
+  });
+
+  document.querySelectorAll('[data-switch]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var card = b.closest('.fx-lcard');
+      document.querySelectorAll('.fx-lcard').forEach(function (c) {
+        c.classList.toggle('is-current', c === card);
+      });
+      window.HC.toast('已切换到「' + b.getAttribute('data-switch') + '」：流水与报表同步过滤，数据仍在同一家庭内');
+    });
+  });
+
+  if (fxState === 'private' || fxState === 'project') {
+    document.querySelectorAll('[data-ledger-tab]').forEach(function (b) {
+      b.setAttribute('aria-selected', String(b.getAttribute('data-ledger-tab') === fxState));
+    });
+    document.querySelectorAll('[data-group]').forEach(function (g) {
+      g.classList.toggle('is-on', g.getAttribute('data-group') === fxState);
+    });
+  }
+</script>
+</body>
+</html>

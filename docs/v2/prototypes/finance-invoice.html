@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>发票与报销 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-content { padding-bottom: 16px; }
+
+  .fx-tabs { width: 100%; padding: 6px 0 10px; }
+  .fx-tabs .segmented { width: 100%; }
+  .fx-tabs button { flex: 1; padding: 7px 4px; }
+  .fx-tabs .num { font-family: var(--font-num); font-weight: 700; }
+
+  .fx-sum {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 14px 16px;
+  }
+  .fx-sum-k { font-size: var(--fs-11); color: var(--text-3); }
+  .fx-sum-v { display: block; margin-top: 3px; font-size: var(--fs-17); }
+  .fx-sum-sub { display: block; margin-top: 2px; font-size: var(--fs-11); color: var(--text-3); }
+
+  .fx-ghead {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin: 16px 2px 8px;
+    font-size: var(--fs-12); font-weight: 600; color: var(--text-3);
+  }
+  .fx-group-pending .fx-ghead { margin-top: 8px; }
+
+  .fx-inv {
+    display: flex; align-items: center; gap: 11px;
+    padding: 12px 14px;
+    background: var(--surface);
+    text-decoration: none; color: var(--text);
+  }
+  .fx-inv + .fx-inv { border-top: 1px solid var(--border); }
+  .fx-inv:hover { background: var(--surface-2); }
+
+  .fx-inv-thumb {
+    width: 44px; height: 54px; flex: none;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text-3);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    font-size: 9px; letter-spacing: .02em;
+  }
+  .fx-inv-thumb svg { display: block; }
+
+  .fx-inv-body { flex: 1; min-width: 0; }
+  .fx-inv-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .fx-inv-title {
+    flex: 1; min-width: 0;
+    font-size: var(--fs-14); font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .fx-inv-sub { display: block; margin-top: 3px; font-size: var(--fs-11); color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fx-inv-right { flex: none; text-align: right; }
+  .fx-inv-amt { display: block; font-size: var(--fs-14); }
+  .fx-inv-go { display: block; margin-top: 3px; font-size: var(--fs-11); color: var(--text-3); }
+
+  .fx-tag-ok { background: var(--success-soft); color: var(--success); }
+  .fx-tag-warn { background: var(--warning-soft); color: var(--warning); }
+
+  .fx-group-done { display: none; }
+  body[data-tab="done"] .fx-group-pending { display: none; }
+  body[data-tab="done"] .fx-group-done { display: block; }
+  body[data-tab="all"] .fx-group-done { display: block; }
+  body[data-tab="all"] .fx-ghead { margin-top: 16px; }
+  body[data-tab="pending"] .fx-group-done { display: none; }
+  body[data-tab="pending"] .fx-group-pending .fx-ghead { margin-top: 8px; }
+
+  .fx-note {
+    margin-top: 12px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    font-size: var(--fs-11); color: var(--text-3); line-height: var(--lh-normal);
+  }
+
+  .fx-foot {
+    flex: none;
+    padding: 10px 16px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+
+  .fx-empty { display: none; }
+  body[data-state="empty"] .fx-empty { display: flex; }
+  body[data-state="empty"] .fx-real,
+  body[data-state="empty"] .fx-foot { display: none; }
+  body[data-state="empty"] .fx-sum { display: none; }
+</style>
+</head>
+<body data-screen="F41 发票与报销" data-states="default,reimbursed,empty" data-tab="pending">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <header class="navbar">
+    <div class="nav-left">
+      <a class="icon-btn" href="finance-flow.html" aria-label="返回流水"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回流水列表；发票是财务面二级页，不带 L2 Tab 与底部五项。入口在流水顶栏「更多」与首页财务格的待报销提醒">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </a>
+    </div>
+    <div class="nav-title">发票与报销</div>
+    <div class="nav-right"></div>
+  </header>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 发票缩略图显示本机缓存
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="segmented fx-tabs" role="tablist"
+      data-hot="②" data-hot-name="分组 Tab" data-hot-pos="outer-top-right"
+      data-hot-label="待报销 / 已报销 / 全部三组同页切换：Tab 上带张数，默认落在待报销；「全部」按时间倒序把两组排在一起，不新增路由，深链用 ?state=reimbursed 直达已报销">
+      <button type="button" role="tab" data-tab-btn="pending" aria-selected="true">待报销 <span class="num" id="fx-count-pending">3</span></button>
+      <button type="button" role="tab" data-tab-btn="done" aria-selected="false">已报销 <span class="num">2</span></button>
+      <button type="button" role="tab" data-tab-btn="all" aria-selected="false">全部 <span class="num" id="fx-count-all">5</span></button>
+    </div>
+
+    <div class="fx-real">
+      <div class="card fx-sum"
+        data-hot="③" data-hot-name="报销汇总" data-hot-pos="bottom-right"
+        data-hot-label="两张卡各管一组：待报销 3 张 ¥1,504.50、本月已报销 2 张 ¥370.00；汇总按票面金额计，未关联流水的发票仍计入待报销金额，但不能提交报销">
+        <div>
+          <span class="fx-sum-k">待报销</span>
+          <span class="amount fx-sum-v">¥1,504.50</span>
+          <span class="fx-sum-sub">3 张 · 本月</span>
+        </div>
+        <div>
+          <span class="fx-sum-k">本月已报销</span>
+          <span class="amount fx-sum-v">¥370.00</span>
+          <span class="fx-sum-sub">2 张 · 已生成报销流水</span>
+        </div>
+      </div>
+
+      <div class="fx-group-pending">
+        <div class="fx-ghead"><span>待报销</span><span>3 张</span></div>
+        <div class="list"
+          data-hot="④" data-hot-name="发票行" data-hot-pos="bottom-right"
+          data-hot-label="整行进发票详情：发票抬头、金额、日期、报销状态与缩略图一眼看全。状态用文案 + 颜色双重表达；未关联流水的行在副标题里点明，不能直接提交报销">
+          <a class="fx-inv" href="finance-invoice-detail.html?state=ocr-review">
+            <span class="fx-inv-thumb" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10v14l-2.5-1.6L10 17l-2.5-1.6L5 17z"/><path d="M7.5 7h5M7.5 10h5M7.5 13h3"/></svg>
+              电子票
+            </span>
+            <span class="fx-inv-body">
+              <span class="fx-inv-top"><span class="fx-inv-title">京东商城</span><span class="tag fx-tag-warn">待报销</span></span>
+              <span class="fx-inv-sub">电子发票 · 10 月 25 日 · 已关联流水 · OCR 待复核</span>
+            </span>
+            <span class="fx-inv-right"><span class="amount fx-inv-amt">¥1,198.00</span><span class="fx-inv-go">查看</span></span>
+          </a>
+
+          <a class="fx-inv" href="finance-invoice-detail.html">
+            <span class="fx-inv-thumb" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10v14l-2.5-1.6L10 17l-2.5-1.6L5 17z"/><path d="M7.5 7h5M7.5 10h5M7.5 13h3"/></svg>
+              电子票
+            </span>
+            <span class="fx-inv-body">
+              <span class="fx-inv-top"><span class="fx-inv-title">中国石化</span><span class="tag fx-tag-warn">待报销</span></span>
+              <span class="fx-inv-sub">加油电子发票 · 10 月 20 日 · 已关联流水 · 已核对</span>
+            </span>
+            <span class="fx-inv-right"><span class="amount fx-inv-amt">¥260.00</span><span class="fx-inv-go">查看</span></span>
+          </a>
+
+          <a class="fx-inv" href="finance-invoice-detail.html">
+            <span class="fx-inv-thumb" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10v14l-2.5-1.6L10 17l-2.5-1.6L5 17z"/><path d="M7.5 7h5M7.5 10h5M7.5 13h3"/></svg>
+              电子票
+            </span>
+            <span class="fx-inv-body">
+              <span class="fx-inv-top"><span class="fx-inv-title">滴滴出行</span><span class="tag fx-tag-warn">待报销</span></span>
+              <span class="fx-inv-sub">网约车电子发票 · 10 月 28 日 · 已关联流水 · 已核对</span>
+            </span>
+            <span class="fx-inv-right"><span class="amount fx-inv-amt">¥46.50</span><span class="fx-inv-go">查看</span></span>
+          </a>
+        </div>
+      </div>
+
+      <div class="fx-group-done">
+        <div class="fx-ghead"><span>已报销</span><span>2 张</span></div>
+        <div class="list">
+          <a class="fx-inv" href="finance-invoice-detail.html?state=reimbursed">
+            <span class="fx-inv-thumb" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10v14l-2.5-1.6L10 17l-2.5-1.6L5 17z"/><path d="M7.5 7h5M7.5 10h5M7.5 13h3"/></svg>
+              电子票
+            </span>
+            <span class="fx-inv-body">
+              <span class="fx-inv-top"><span class="fx-inv-title">美团</span><span class="tag fx-tag-ok">已报销</span></span>
+              <span class="fx-inv-sub">餐饮发票 · 10 月 18 日 · 10 月 19 日报销</span>
+            </span>
+            <span class="fx-inv-right"><span class="amount fx-inv-amt">¥328.00</span><span class="fx-inv-go">查看</span></span>
+          </a>
+          <a class="fx-inv" href="finance-invoice-detail.html?state=reimbursed">
+            <span class="fx-inv-thumb" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10v14l-2.5-1.6L10 17l-2.5-1.6L5 17z"/><path d="M7.5 7h5M7.5 10h5M7.5 13h3"/></svg>
+              电子票
+            </span>
+            <span class="fx-inv-body">
+              <span class="fx-inv-top"><span class="fx-inv-title">顺丰速运</span><span class="tag fx-tag-ok">已报销</span></span>
+              <span class="fx-inv-sub">快递费电子发票 · 10 月 9 日 · 10 月 10 日报销</span>
+            </span>
+            <span class="fx-inv-right"><span class="amount fx-inv-amt">¥42.00</span><span class="fx-inv-go">查看</span></span>
+          </a>
+        </div>
+      </div>
+
+      <p class="fx-note">发票只引用家庭文件里的原件，不复制附件；报销只生成记账层面的报销流水，不涉及真实打款。私密流水不参与报销关联。</p>
+    </div>
+
+    <div class="state fx-empty">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5h16v22l-4-2.6L16 27l-4-2.6L8 27z"/><path d="M12 12h8M12 16h8M12 20h5"/></svg>
+      </div>
+      <div class="state-title">待报销里没有发票</div>
+      <div class="state-desc">拍一张发票自动识别金额与税号；识别不准可手输，核对并关联流水后才进报销。已报销的 2 张在「已报销」里。</div>
+      <button class="btn btn-secondary" type="button" data-sheet-open="sheet-add"
+        data-hot="⑦" data-hot-name="空态添加" data-hot-pos="top-right"
+        data-hot-label="零条时给可执行动作：直接打开添加发票，不只是一句空话；已报销的历史不在这里清空">
+        添加发票</button>
+    </div>
+  </div>
+
+  <div class="fx-foot">
+    <button class="btn btn-primary btn-block" type="button" data-sheet-open="sheet-add"
+      data-hot="⑤" data-hot-name="添加发票" data-hot-pos="outer-bottom-right"
+      data-hot-label="打开添加发票：拍照识别 / 相册选择 / 手输三选一；识别失败可回落纯手输，不阻塞流程。本页不放行内新建">
+      添加发票
+    </button>
+  </div>
+
+  <!-- 添加发票 -->
+  <div class="sheet-mask" id="sheet-add" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>添加发票</h3>
+      <p class="sheet-sub">拍照后自动识别金额、日期、销售方与税号；识别不准可以逐项改，全部核对后才计入待报销。</p>
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" data-toast="已打开相机：对准发票，识别成功后逐项复核；识别失败可直接手输"
+          data-hot="⑥" data-hot-name="拍照识别" data-hot-pos="bottom-right"
+          data-hot-label="拍照走 OCR，识别 4 个字段并进入发票详情逐项复核；识别失败回落纯手输，不阻塞添加">
+          拍照识别</button>
+        <button class="btn btn-secondary btn-block" type="button" data-toast="从相册选择：支持 jpg / png / pdf，单张 ≤10MB，最多 3 张">从相册选择</button>
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var invState = new URLSearchParams(location.search).get('state') || 'default';
+  var tabBtns = Array.prototype.slice.call(document.querySelectorAll('[data-tab-btn]'));
+
+  function setTab(tab) {
+    document.body.setAttribute('data-tab', tab);
+    tabBtns.forEach(function (b) {
+      b.setAttribute('aria-selected', String(b.getAttribute('data-tab-btn') === tab));
+    });
+  }
+
+  setTab(invState === 'reimbursed' ? 'done' : 'pending');
+
+  if (invState === 'empty') {
+    document.getElementById('fx-count-pending').textContent = '0';
+    document.getElementById('fx-count-all').textContent = '2';
+  }
+
+  tabBtns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      var tab = b.getAttribute('data-tab-btn');
+      if (invState === 'empty') {
+        if (tab === 'done') { location.href = 'finance-invoice.html?state=reimbursed'; return; }
+        if (tab === 'pending') { location.href = 'finance-invoice.html'; return; }
+      }
+      setTab(tab);
+      if (tab === 'done') window.HC.toast('已报销 2 张 · 合计 ¥370.00，均已生成报销流水');
+      if (tab === 'all') window.HC.toast('全部 5 张：待报销在前、已报销在后，按日期倒序');
+    });
+  });
+</script>
+</body>
+</html>

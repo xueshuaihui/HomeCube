@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>面目录 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fmod-status {
+    display: flex; align-items: center; gap: 12px;
+    margin-top: 8px; padding: 14px;
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .fmod-status .fs-ic {
+    width: 36px; height: 36px; flex: none;
+    border-radius: 11px;
+    background: var(--brand-soft);
+    color: var(--brand-text);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .fmod-status .fs-body { flex: 1; min-width: 0; }
+  .fmod-status .fs-t { font-size: var(--fs-14); font-weight: 700; }
+  .fmod-status .fs-s { margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
+  .fmod-status .fs-chip {
+    flex: none;
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-2);
+    font-size: var(--fs-11);
+    color: var(--text-3);
+  }
+
+  .fmod-item { cursor: default; }
+  .fmod-item.is-soon:hover { background: var(--surface); }
+  .fmod-item .li-sub { line-height: 1.45; }
+  .fmod-icon {
+    width: 36px; height: 36px; flex: none;
+    border-radius: 11px;
+    background: var(--brand-soft);
+    color: var(--brand-text);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .fmod-item.is-soon .fmod-icon { background: var(--surface-2); color: var(--text-3); }
+  .fmod-badge {
+    flex: none;
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-2);
+    color: var(--text-3);
+    font-size: var(--fs-11);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .fmod-tag {
+    flex: none;
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+    background: var(--brand-soft);
+    color: var(--brand-text);
+    font-size: var(--fs-11);
+    font-weight: 600;
+  }
+  .fmod-period { font-family: var(--font-num); }
+
+  .fmod-empty {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px;
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+  }
+  .fmod-empty .fe-ic {
+    width: 36px; height: 36px; flex: none;
+    border-radius: 11px;
+    background: var(--surface-2);
+    color: var(--text-3);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .fmod-empty .fe-t { font-size: var(--fs-13); font-weight: 600; }
+  .fmod-empty .fe-s { margin-top: 2px; font-size: var(--fs-11); color: var(--text-3); line-height: 1.45; }
+
+  .fmod-foot {
+    margin-top: 18px;
+    padding: 14px;
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .fmod-foot h4 { font-size: var(--fs-13); font-weight: 700; }
+  .fmod-foot ul { margin: 8px 0 0; padding-left: 16px; font-size: var(--fs-12); color: var(--text-2); line-height: var(--lh-loose); }
+  .fmod-foot li + li { margin-top: 4px; }
+  .fmod-foot b { color: var(--text); }
+
+  .fmod-note {
+    display: flex; gap: 10px;
+    margin-top: 8px; padding: 14px;
+    border-radius: var(--radius-lg);
+    background: var(--info-soft);
+    border: 1px solid var(--border);
+  }
+  .fmod-note .fn-ic {
+    width: 28px; height: 28px; flex: none;
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--info);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .fmod-note .fn-t { font-size: var(--fs-13); font-weight: 700; }
+  .fmod-note .fn-s { margin-top: 4px; font-size: var(--fs-12); color: var(--text-2); line-height: var(--lh-normal); }
+
+  .fmod-gov { display: block; }
+  .fmod-ro { display: none; }
+  .fmod-guide { display: none; padding-top: 10px; }
+  body[data-state="readonly"] .fmod-gov { display: none; }
+  body[data-state="readonly"] .fmod-ro { display: block; }
+  body[data-state="onboarding"] .fmod-gov,
+  body[data-state="onboarding-selected"] .fmod-gov { display: none; }
+  body[data-state="onboarding"] .fmod-guide,
+  body[data-state="onboarding-selected"] .fmod-guide { display: block; }
+  body[data-state="onboarding"] .fmod-back,
+  body[data-state="onboarding-selected"] .fmod-back { visibility: hidden; }
+
+  .fmod-step {
+    display: inline-flex;
+    padding: 3px 9px;
+    border-radius: var(--radius-pill);
+    background: var(--brand-soft);
+    color: var(--brand-text);
+    font-size: var(--fs-11);
+    font-weight: 600;
+  }
+  .fmod-title { margin-top: 12px; font-size: var(--fs-24); font-weight: 700; }
+  .fmod-desc { margin-top: 8px; font-size: var(--fs-13); color: var(--text-2); line-height: var(--lh-normal); }
+  .fmod-guide-note { margin-top: 16px; font-size: var(--fs-12); color: var(--text-3); line-height: var(--lh-normal); }
+
+  .fmod-pick {
+    display: flex; align-items: center; gap: 12px;
+    width: 100%;
+    padding: 14px var(--sp-4);
+    border: 0;
+    background: var(--surface);
+    color: var(--text);
+    font-family: inherit;
+    font-size: var(--fs-15);
+    text-align: left;
+    cursor: pointer;
+  }
+  .fmod-pick + .fmod-pick { border-top: 1px solid var(--border); }
+  .fmod-pick .li-text { flex: 1; min-width: 0; }
+  .fmod-pick .li-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
+  .fmod-pick:hover { background: var(--surface-2); }
+  .fmod-pick.is-picked { background: var(--brand-soft); }
+  .fmod-pick .fmod-check {
+    width: 24px; height: 24px; flex: none;
+    border-radius: var(--radius-pill);
+    border: 1.5px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--on-brand);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .fmod-pick .fmod-check svg { opacity: 0; }
+  .fmod-pick.is-picked .fmod-check { background: var(--brand); border-color: var(--brand); }
+  .fmod-pick.is-picked .fmod-check svg { opacity: 1; }
+
+  .fmod-bottom {
+    display: none;
+    flex: none;
+    padding: 12px var(--sp-4) calc(12px + env(safe-area-inset-bottom));
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+  body[data-state="onboarding"] .fmod-bottom,
+  body[data-state="onboarding-selected"] .fmod-bottom { display: block; }
+  .fmod-picked {
+    display: flex; align-items: baseline; gap: 8px;
+    margin-bottom: 10px;
+    font-size: var(--fs-12);
+    color: var(--text-2);
+  }
+  .fmod-picked b { font-size: var(--fs-15); color: var(--text); }
+  .fmod-picked .tiny { margin-left: auto; }
+
+  .fmod-sheet-row {
+    display: flex; align-items: center; gap: 12px;
+    margin-top: 16px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+  }
+  .fmod-sheet-row .li-text { flex: 1; min-width: 0; font-size: var(--fs-14); font-weight: 600; }
+  .fmod-sheet-row .li-sub { display: block; margin-top: 2px; font-size: var(--fs-11); font-weight: 400; color: var(--text-3); }
+  .fmod-warn {
+    margin-top: 12px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--warning-soft);
+    color: var(--warning);
+    font-size: var(--fs-12);
+    line-height: var(--lh-normal);
+  }
+</style>
+</head>
+<body data-screen="26 面目录" data-tab="" data-states="default,confirm,onboarding,onboarding-selected,readonly">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <button class="icon-btn fmod-back" type="button" data-go="me.html"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回「我的」；引导态无返回，未选满 1 个面不得离开创建流程" aria-label="返回">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </button>
+    </div>
+    <div class="nav-title">面目录</div>
+    <div class="nav-right"></div>
+  </div>
+
+  <div class="content bottom-space">
+    <!-- 治理态 -->
+    <div class="fmod-gov">
+      <div class="fmod-status">
+        <span class="fs-ic">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="3" width="6" height="6" rx="1.5"/><rect x="11" y="3" width="6" height="6" rx="1.5"/><rect x="3" y="11" width="6" height="6" rx="1.5"/><path d="M14 11.5v5M11.5 14h5"/></svg>
+        </span>
+        <div class="fs-body">
+          <div class="fs-t">已启用 <span class="fs-n num">1</span> 个面</div>
+          <div class="fs-s">停用只隐藏入口，数据保留并继续参与统计</div>
+        </div>
+        <span class="fs-chip">管理员配置</span>
+      </div>
+
+      <div class="section-title">
+        <span>已启用</span>
+        <span class="tiny">1 个</span>
+      </div>
+      <div class="list">
+        <div class="list-item fmod-item"
+          data-hot="②" data-hot-name="已启用开关" data-hot-pos="top-right"
+          data-hot-label="开关不直改配置：先弹二次确认层，说明入口消失、数据保留；单面家庭确认会被拒并提示「至少保留一个面」">
+          <span class="fmod-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="2.5"/><path d="M2.5 8h15"/><path d="M6 12h3"/></svg>
+          </span>
+          <span class="li-text">财务<span class="li-sub">记账、预算、报表与家庭 AA · 已启用 18 天</span></span>
+          <label class="switch">
+            <input type="checkbox" id="sw-finance" checked aria-label="财务面开关（已启用）">
+            <span class="track"></span>
+            <span class="thumb"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="section-title">
+        <span>可开通</span>
+        <span class="tiny">0 个</span>
+      </div>
+      <div class="fmod-empty"
+        data-hot="③" data-hot-name="可开通分区" data-hot-pos="bottom-right"
+        data-hot-label="P1 只有财务一面出生，因此本区为空；不放假可点条目，也不把即将上线的面混进来">
+        <span class="fe-ic">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 4.5v11M4.5 10h11"/></svg>
+        </span>
+        <div>
+          <div class="fe-t">暂无可开通的面</div>
+          <div class="fe-s">新面随期次出生后出现在这里，开通只写本家庭配置，不创建任何业务数据。</div>
+        </div>
+      </div>
+
+      <div class="section-title">
+        <span>即将上线</span>
+        <span class="tiny">5 个</span>
+      </div>
+      <div class="list"
+        data-hot="④" data-hot-name="即将上线分区" data-hot-pos="bottom-right"
+        data-hot-label="未出生的面只读呈现，右侧是徽章不是开关；标期数，不写「未启用」，也不可点">
+        <div class="list-item fmod-item is-soon">
+          <span class="fmod-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h10l1 9.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 4 16.5z"/><path d="M7.5 7V5.6a2.5 2.5 0 0 1 5 0V7"/></svg>
+          </span>
+          <span class="li-text">采购<span class="li-sub">采购清单与家庭库存 · <span class="fmod-period">P2</span> 上线</span></span>
+          <span class="fmod-badge">即将上线</span>
+        </div>
+        <div class="list-item fmod-item is-soon">
+          <span class="fmod-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10h13a6.5 6.5 0 0 1-13 0z"/><path d="M8 6.6c0-1 .9-1.2.9-2.1M12 6.6c0-1 .9-1.2.9-2.1"/></svg>
+          </span>
+          <span class="li-text">饮食<span class="li-sub">周菜单、点菜与营养参考 · <span class="fmod-period">P3</span> 上线</span></span>
+          <span class="fmod-badge">即将上线</span>
+        </div>
+        <div class="list-item fmod-item is-soon">
+          <span class="fmod-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="7" r="2.5"/><circle cx="13.5" cy="8" r="2"/><path d="M3 16c.6-2.4 2.4-3.8 4.5-3.8S11.4 13.6 12 16"/><path d="M13 13.2c1.8.1 3.2 1.3 3.7 3"/></svg>
+          </span>
+          <span class="li-text">家人<span class="li-sub">家庭档案、家务分工与轮值 · <span class="fmod-period">P4</span> 上线</span></span>
+          <span class="fmod-badge">即将上线</span>
+        </div>
+        <div class="list-item fmod-item is-soon">
+          <span class="fmod-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 15.5h13"/><path d="M5 12.2l3.4-3.8 2.9 2.3L16 5.5"/><path d="M13.2 5.5H16v2.8"/></svg>
+          </span>
+          <span class="li-text">成长<span class="li-sub">成长记录与作业 · <span class="fmod-period">P5</span> 上线</span></span>
+          <span class="fmod-badge">即将上线</span>
+        </div>
+        <div class="list-item fmod-item is-soon">
+          <span class="fmod-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17s5-4.4 5-8a5 5 0 0 0-10 0c0 3.6 5 8 5 8z"/><circle cx="10" cy="9" r="1.8"/></svg>
+          </span>
+          <span class="li-text">出行<span class="li-sub">行程与接送安排 · <span class="fmod-period">P6</span> 上线</span></span>
+          <span class="fmod-badge">即将上线</span>
+        </div>
+      </div>
+
+      <div class="fmod-foot"
+        data-hot="⑤" data-hot-name="规则说明卡" data-hot-pos="bottom-right"
+        data-hot-label="停用语义在这里说清：入口消失、数据保留并继续参与统计、重新开通即刻恢复；同时说明不能出现 0 面家庭">
+        <h4>开通与停用的规则</h4>
+        <ul>
+          <li><b>停用 = 入口消失，不是删数据。</b>该面的历史数据保留，重新开通后可恢复。</li>
+          <li>停用后仍照常参与跨面归集、AA 与备份，统计口径不变。</li>
+          <li>至少要保留一个面：停用最后一个面会被服务端拒绝，开关复位。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 非管理员只读 -->
+    <div class="fmod-ro">
+      <div class="fmod-note"
+        data-hot="⑨" data-hot-name="只读提示条" data-hot-pos="bottom-right"
+        data-hot-label="非管理员只读且不渲染开关；不出现置灰开关，避免「点进去才发现不能改」">
+        <span class="fn-ic">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.6v.1"/></svg>
+        </span>
+        <div>
+          <div class="fn-t">仅管理员可开通或停用面</div>
+          <div class="fn-s">你当前是成人成员，本页为只读视图；开关不渲染，面清单与生效状态照常可看。</div>
+        </div>
+      </div>
+
+      <div class="section-title">
+        <span>已启用</span>
+        <span class="tiny">1 个</span>
+      </div>
+      <div class="list">
+        <div class="list-item fmod-item">
+          <span class="fmod-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="2.5"/><path d="M2.5 8h15"/><path d="M6 12h3"/></svg>
+          </span>
+          <span class="li-text">财务<span class="li-sub">记账、预算、报表与家庭 AA · 已启用 18 天</span></span>
+          <span class="fmod-tag">已启用</span>
+        </div>
+      </div>
+
+      <div class="section-title">
+        <span>可开通</span>
+        <span class="tiny">0 个</span>
+      </div>
+      <div class="fmod-empty">
+        <span class="fe-ic">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 4.5v11M4.5 10h11"/></svg>
+        </span>
+        <div>
+          <div class="fe-t">暂无可开通的面</div>
+          <div class="fe-s">其余面尚未上线；开通与停用由家庭管理员在面目录里完成。</div>
+        </div>
+      </div>
+
+      <div class="section-title">
+        <span>即将上线</span>
+        <span class="tiny">5 个</span>
+      </div>
+      <div class="list">
+        <div class="list-item fmod-item is-soon">
+          <span class="fmod-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h10l1 9.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 4 16.5z"/><path d="M7.5 7V5.6a2.5 2.5 0 0 1 5 0V7"/></svg>
+          </span>
+          <span class="li-text">采购<span class="li-sub">采购清单与家庭库存 · <span class="fmod-period">P2</span> 上线</span></span>
+          <span class="fmod-badge">即将上线</span>
+        </div>
+        <div class="list-item fmod-item is-soon">
+          <span class="fmod-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10h13a6.5 6.5 0 0 1-13 0z"/><path d="M8 6.6c0-1 .9-1.2.9-2.1M12 6.6c0-1 .9-1.2.9-2.1"/></svg>
+          </span>
+          <span class="li-text">饮食<span class="li-sub">周菜单、点菜与营养参考 · <span class="fmod-period">P3</span> 上线</span></span>
+          <span class="fmod-badge">即将上线</span>
+        </div>
+        <div class="list-item fmod-item is-soon">
+          <span class="fmod-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="7" r="2.5"/><circle cx="13.5" cy="8" r="2"/><path d="M3 16c.6-2.4 2.4-3.8 4.5-3.8S11.4 13.6 12 16"/><path d="M13 13.2c1.8.1 3.2 1.3 3.7 3"/></svg>
+          </span>
+          <span class="li-text">家人<span class="li-sub">家庭档案、家务分工与轮值 · <span class="fmod-period">P4</span> 上线</span></span>
+          <span class="fmod-badge">即将上线</span>
+        </div>
+        <div class="list-item fmod-item is-soon">
+          <span class="fmod-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 15.5h13"/><path d="M5 12.2l3.4-3.8 2.9 2.3L16 5.5"/><path d="M13.2 5.5H16v2.8"/></svg>
+          </span>
+          <span class="li-text">成长<span class="li-sub">成长记录与作业 · <span class="fmod-period">P5</span> 上线</span></span>
+          <span class="fmod-badge">即将上线</span>
+        </div>
+        <div class="list-item fmod-item is-soon">
+          <span class="fmod-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17s5-4.4 5-8a5 5 0 0 0-10 0c0 3.6 5 8 5 8z"/><circle cx="10" cy="9" r="1.8"/></svg>
+          </span>
+          <span class="li-text">出行<span class="li-sub">行程与接送安排 · <span class="fmod-period">P6</span> 上线</span></span>
+          <span class="fmod-badge">即将上线</span>
+        </div>
+      </div>
+
+      <div class="fmod-foot">
+        <h4>关于开通与停用</h4>
+        <ul>
+          <li>停用只让入口消失，该面的历史数据保留，重新开通可恢复。</li>
+          <li>开通与停用只写本家庭的面配置，不改动任何业务数据。</li>
+          <li>至少保留一个面：最后一个面不会被停用。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 引导态：新家庭强制选面 -->
+    <div class="fmod-guide">
+      <span class="fmod-step">创建家庭 · 第 2 步</span>
+      <h2 class="fmod-title">选择你们要用的服务</h2>
+      <p class="fmod-desc">至少选 1 个面才能完成创建；之后可在「我的 → 开通更多面」随时调整。未上线的面暂时不能选。</p>
+
+      <div class="section-title">
+        <span>可开通</span>
+        <span class="tiny">1 个</span>
+      </div>
+      <div class="list">
+        <button class="fmod-pick" id="pick-finance" type="button" aria-pressed="false"
+          data-hot="⑦" data-hot-name="引导态选面行" data-hot-pos="top-right"
+          data-hot-label="引导态里已出生的面是可选项（不是开关），点整行选中；没有停用操作，未选满 1 项不能继续">
+          <span class="fmod-check">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
+          </span>
+          <span class="fmod-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="2.5"/><path d="M2.5 8h15"/><path d="M6 12h3"/></svg>
+          </span>
+          <span class="li-text">财务<span class="li-sub">记账、预算、报表与家庭 AA · 现在可用</span></span>
+        </button>
+      </div>
+
+      <div class="section-title">
+        <span>即将上线</span>
+        <span class="tiny">5 个</span>
+      </div>
+      <div class="list">
+        <div class="list-item fmod-item is-soon">
+          <span class="fmod-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h10l1 9.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 4 16.5z"/><path d="M7.5 7V5.6a2.5 2.5 0 0 1 5 0V7"/></svg>
+          </span>
+          <span class="li-text">采购<span class="li-sub">采购清单与家庭库存 · <span class="fmod-period">P2</span> 上线</span></span>
+          <span class="fmod-badge">即将上线</span>
+        </div>
+        <div class="list-item fmod-item is-soon">
+          <span class="fmod-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10h13a6.5 6.5 0 0 1-13 0z"/><path d="M8 6.6c0-1 .9-1.2.9-2.1M12 6.6c0-1 .9-1.2.9-2.1"/></svg>
+          </span>
+          <span class="li-text">饮食<span class="li-sub">周菜单、点菜与营养参考 · <span class="fmod-period">P3</span> 上线</span></span>
+          <span class="fmod-badge">即将上线</span>
+        </div>
+        <div class="list-item fmod-item is-soon">
+          <span class="fmod-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="7" r="2.5"/><circle cx="13.5" cy="8" r="2"/><path d="M3 16c.6-2.4 2.4-3.8 4.5-3.8S11.4 13.6 12 16"/><path d="M13 13.2c1.8.1 3.2 1.3 3.7 3"/></svg>
+          </span>
+          <span class="li-text">家人<span class="li-sub">家庭档案、家务分工与轮值 · <span class="fmod-period">P4</span> 上线</span></span>
+          <span class="fmod-badge">即将上线</span>
+        </div>
+        <div class="list-item fmod-item is-soon">
+          <span class="fmod-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 15.5h13"/><path d="M5 12.2l3.4-3.8 2.9 2.3L16 5.5"/><path d="M13.2 5.5H16v2.8"/></svg>
+          </span>
+          <span class="li-text">成长<span class="li-sub">成长记录与作业 · <span class="fmod-period">P5</span> 上线</span></span>
+          <span class="fmod-badge">即将上线</span>
+        </div>
+        <div class="list-item fmod-item is-soon">
+          <span class="fmod-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17s5-4.4 5-8a5 5 0 0 0-10 0c0 3.6 5 8 5 8z"/><circle cx="10" cy="9" r="1.8"/></svg>
+          </span>
+          <span class="li-text">出行<span class="li-sub">行程与接送安排 · <span class="fmod-period">P6</span> 上线</span></span>
+          <span class="fmod-badge">即将上线</span>
+        </div>
+      </div>
+
+      <div class="fmod-guide-note">开通只写本家庭的面配置，不会创建任何业务数据；之后停用也不会删除数据。</div>
+    </div>
+  </div>
+
+  <div class="fmod-bottom">
+    <div class="fmod-picked">
+      已选 <b class="num" id="pick-count">0</b> 个面
+      <span class="tiny" id="pick-hint">至少选 1 个</span>
+    </div>
+    <button class="btn btn-primary btn-block" id="pick-done" type="button" disabled
+      data-hot="⑧" data-hot-name="引导态底部按钮" data-hot-pos="top-right"
+      data-hot-label="未选满 1 项时禁用并说明原因；选中后可点，无栈替换进首页，消失的是引导态而不是家庭">
+      完成，进入首页
+    </button>
+  </div>
+
+  <!-- 停用二次确认 -->
+  <div class="sheet-mask" id="sheet-disable" aria-hidden="true">
+    <div class="sheet"
+      data-hot="⑥" data-hot-name="停用确认弹层" data-hot-pos="top-right"
+      data-hot-label="二次确认：说明入口消失、数据保留、重新开通可恢复；单面家庭另提示至少保留一个面，确认被拒后开关复位">
+      <div class="sheet-grabber"></div>
+      <h3>停用财务面？</h3>
+      <p class="sheet-sub">停用后，首页格子、＋ 目标、搜索分组里的入口会同时消失；<b>该面数据保留，重新开通后可恢复</b>，历史流水照常参与统计。</p>
+      <div class="fmod-sheet-row">
+        <span class="fmod-icon">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="2.5"/><path d="M2.5 8h15"/><path d="M6 12h3"/></svg>
+        </span>
+        <span class="li-text">财务<span class="li-sub">已启用 18 天 · 1,284 笔流水保留</span></span>
+      </div>
+      <div class="fmod-warn">财务是本家庭最后一个已启用的面。确认后若被拒绝，开关会复位——至少要保留一个面。</div>
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" id="disable-confirm">停用财务面</button>
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var fmodState = new URLSearchParams(location.search).get('state') || 'default';
+  var pick = document.getElementById('pick-finance');
+  var count = document.getElementById('pick-count');
+  var done = document.getElementById('pick-done');
+  var hint = document.getElementById('pick-hint');
+
+  function syncPick() {
+    var n = pick.classList.contains('is-picked') ? 1 : 0;
+    count.textContent = n;
+    done.disabled = n === 0;
+    hint.textContent = n === 0 ? '至少选 1 个' : '开通只写面配置，不建业务数据';
+    pick.setAttribute('aria-pressed', String(n === 1));
+  }
+
+  pick.addEventListener('click', function () {
+    pick.classList.toggle('is-picked');
+    syncPick();
+  });
+
+  done.addEventListener('click', function () {
+    if (done.disabled) return;
+    location.href = 'home.html';
+  });
+
+  if (fmodState === 'onboarding-selected') {
+    pick.classList.add('is-picked');
+  }
+  syncPick();
+
+  document.getElementById('sw-finance').addEventListener('click', function (e) {
+    e.preventDefault();
+    window.HC.openSheet('sheet-disable');
+  });
+
+  document.getElementById('disable-confirm').addEventListener('click', function () {
+    window.HC.closeSheet(document.getElementById('sheet-disable'));
+    document.getElementById('sw-finance').checked = true;
+    window.HC.toast('至少保留一个面，开关已复位');
+  });
+
+  document.addEventListener('DOMContentLoaded', function () {
+    if (fmodState === 'confirm') window.HC.openSheet('sheet-disable');
+  });
+</script>
+</body>
+</html>

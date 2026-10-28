@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>结算中心 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-content { padding-bottom: 18px; }
+
+  .fx-av-me { background: var(--brand); color: var(--on-brand); border-color: transparent; }
+  .fx-av-mom { background: var(--accent-soft); color: var(--accent); }
+  .fx-av-dad { background: var(--info-soft); color: var(--info); }
+  .fx-av-girl { background: var(--face-calendar-soft); color: var(--face-calendar); }
+
+  .fx-sum {
+    margin-top: 6px; padding: 16px 18px 14px;
+    border-radius: var(--radius-xl);
+    background: linear-gradient(135deg, var(--brand-soft) 0%, var(--surface) 72%);
+    border: 1px solid var(--brand-soft-border);
+  }
+  .fx-sum-k { display: flex; align-items: center; gap: 6px; font-size: var(--fs-12); color: var(--text-2); }
+  .fx-sum-v { display: block; margin-top: 5px; font-size: var(--fs-30); line-height: var(--lh-tight); letter-spacing: -.01em; }
+  .fx-sum-sub { margin-top: 8px; font-size: var(--fs-12); color: var(--text-2); line-height: var(--lh-normal); }
+  .fx-sum-sub b { font-family: var(--font-num); color: var(--text); }
+
+  .fx-sec {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin: 18px 2px 8px;
+    font-size: var(--fs-13); font-weight: 700; color: var(--text-2);
+  }
+  .fx-sec .tiny { font-weight: 500; }
+
+  .fx-tr {
+    padding: 13px 14px 12px;
+    background: var(--surface);
+  }
+  .fx-tr + .fx-tr { border-top: 1px solid var(--border); }
+  .fx-tr.is-done { background: var(--surface-2); }
+
+  .fx-tr-top { display: flex; align-items: center; gap: 8px; }
+  .fx-avpair { display: inline-flex; align-items: center; flex: none; }
+  .fx-avpair .avatar { width: 28px; height: 28px; font-size: var(--fs-11); }
+  .fx-avpair .avatar + svg { margin: 0 5px; }
+  .fx-avpair svg { color: var(--text-3); }
+  .fx-tr-names { flex: 1; min-width: 0; font-size: var(--fs-13); color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fx-tr-names b { font-weight: 700; color: var(--text); }
+  .fx-tr-amt { flex: none; font-size: var(--fs-17); }
+
+  .fx-tr-bottom { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding-left: 73px; }
+  .fx-tr-sub { flex: 1; min-width: 0; font-size: var(--fs-11); color: var(--text-3); line-height: var(--lh-normal); }
+  .fx-tr-btn { flex: none; }
+  .fx-tr.is-done .fx-tr-amt { color: var(--text-3); text-decoration: line-through; }
+  .fx-tr.is-done .fx-tr-btn { background: var(--surface); color: var(--text-3); border-color: transparent; pointer-events: none; }
+
+  .fx-tag-ok { background: var(--success-soft); color: var(--success); }
+
+  .fx-note {
+    margin-top: 12px; padding: 12px 14px;
+    border-radius: var(--radius-lg);
+    background: var(--surface-2);
+    font-size: var(--fs-12); color: var(--text-2); line-height: var(--lh-normal);
+  }
+  .fx-note b { display: block; margin-bottom: 3px; font-size: var(--fs-13); color: var(--text); }
+  .fx-note + .fx-note { margin-top: 8px; }
+
+  .fx-sheet-line {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 14px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+  }
+  .fx-sheet-line .fx-tr-names { white-space: normal; }
+  .fx-sheet-amt { flex: none; font-size: var(--fs-15); }
+  .fx-sheet-note { margin-top: 8px; font-size: var(--fs-11); color: var(--text-3); line-height: var(--lh-normal); }
+
+  .fx-all { display: none; }
+  body[data-state="all-settled"] .fx-all { display: flex; }
+  body[data-state="all-settled"] .fx-real { display: none; }
+
+  .fx-sk { display: none; padding-top: 6px; }
+  body[data-state="loading"] .fx-sk { display: block; }
+  body[data-state="loading"] .fx-real { display: none; }
+  .fx-sk-row { display: flex; align-items: center; gap: 10px; padding: 13px 0; }
+  .fx-sk-av { width: 28px; height: 28px; border-radius: var(--radius-pill); flex: none; }
+  .fx-sk-lines { flex: 1; }
+</style>
+</head>
+<body data-screen="F39 结算中心" data-states="default,settle-confirm,all-settled,loading">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <header class="navbar">
+    <div class="nav-left">
+      <a class="icon-btn" href="finance-split-detail.html" aria-label="返回分账详情"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回上一笔分账详情；从分账列表右上角进来时也回列表。返回不改变任何结清状态，弹层里的确认才算写入">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </a>
+    </div>
+    <div class="nav-title">结算中心</div>
+    <div class="nav-right"></div>
+  </header>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 结清先入待同步队列
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-real">
+      <section class="fx-sum"
+        data-hot="②" data-hot-name="净额汇总" data-hot-pos="bottom-right"
+        data-hot-label="把 2 笔未结清分账的应收应付按人相抵后，剩 3 笔转账、合计 ¥263.33；数字是净额不是原始欠款，前端不二次累加，也不逐笔分账列转账">
+        <div class="fx-sum-k">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h14"/><path d="M10 3v14"/></svg>
+          待结清 · <span id="fx-sum-count">3</span> 笔转账
+        </div>
+        <span class="amount fx-sum-v" id="fx-sum-amt">¥263.33</span>
+        <div class="fx-sum-sub" id="fx-sum-sub">涉及 2 个分账、4 位成员；按净额抵消后只需 <b>3</b> 笔转账，所有人净额归零。</div>
+      </section>
+
+      <div class="fx-sec"><span>谁欠谁 · 最简转账</span><span class="tiny">不是逐笔分账</span></div>
+
+      <div class="list"
+        data-hot="③" data-hot-name="转账行" data-hot-pos="bottom-right"
+        data-hot-label="每行是净额抵消后的结果，不逐笔对应某个分账：爸爸 → 我 ¥91.66、爸爸 → 妈妈 ¥84.67、女儿 → 妈妈 ¥87.00。行内标注来源分账，方便回看">
+        <div class="fx-tr" id="fx-row-1">
+          <div class="fx-tr-top">
+            <span class="fx-avpair">
+              <span class="avatar fx-av-dad">爸</span>
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12"/><path d="M12.5 5.5 17 10l-4.5 4.5"/></svg>
+              <span class="avatar fx-av-me">我</span>
+            </span>
+            <span class="fx-tr-names"><b>爸爸</b> 付给 <b>我</b></span>
+            <span class="amount fx-tr-amt">¥91.66</span>
+          </div>
+          <div class="fx-tr-bottom">
+            <span class="fx-tr-sub">净额抵消自 周末露营 · 国庆聚餐</span>
+            <button class="btn btn-sm btn-secondary fx-tr-btn" type="button" data-sheet-open="sheet-settle"
+              data-hot="④" data-hot-name="一键结清" data-hot-pos="bottom-right"
+              data-hot-label="先弹确认层再写入：确认后生成一笔结清流水并把这两人净额归零。重复点按幂等处理只生成一条；不涉及真实资金划转">
+              一键结清</button>
+          </div>
+        </div>
+
+        <div class="fx-tr" id="fx-row-2">
+          <div class="fx-tr-top">
+            <span class="fx-avpair">
+              <span class="avatar fx-av-dad">爸</span>
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12"/><path d="M12.5 5.5 17 10l-4.5 4.5"/></svg>
+              <span class="avatar fx-av-mom">妈</span>
+            </span>
+            <span class="fx-tr-names"><b>爸爸</b> 付给 <b>妈妈</b></span>
+            <span class="amount fx-tr-amt">¥84.67</span>
+          </div>
+          <div class="fx-tr-bottom">
+            <span class="fx-tr-sub">净额抵消自 周末露营 · 国庆聚餐</span>
+            <button class="btn btn-sm btn-secondary fx-tr-btn" type="button" data-sheet-open="sheet-settle">一键结清</button>
+          </div>
+        </div>
+
+        <div class="fx-tr" id="fx-row-3">
+          <div class="fx-tr-top">
+            <span class="fx-avpair">
+              <span class="avatar fx-av-girl">女</span>
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12"/><path d="M12.5 5.5 17 10l-4.5 4.5"/></svg>
+              <span class="avatar fx-av-mom">妈</span>
+            </span>
+            <span class="fx-tr-names"><b>女儿</b> 付给 <b>妈妈</b></span>
+            <span class="amount fx-tr-amt">¥87.00</span>
+          </div>
+          <div class="fx-tr-bottom">
+            <span class="fx-tr-sub">净额抵消自 国庆聚餐</span>
+            <button class="btn btn-sm btn-secondary fx-tr-btn" type="button" data-sheet-open="sheet-settle">一键结清</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="fx-note"
+        data-hot="⑤" data-hot-name="结算口径" data-hot-pos="bottom-right"
+        data-hot-label="结清会生成一笔记账流水，不涉及真实资金划转；结清是生成型单据，重复确认按幂等写只生成一条。只结清净额，不逐笔销掉分账，分账保留可回看">
+        <b>结清会生成一笔记账流水，不涉及真实资金划转</b>
+        确认后只在家庭账本里生成一笔结清流水，把两人的分账净额同时归零；不会从任何银行卡扣款，也不会向对方发起真实收款。它是生成型单据，重复确认按幂等写只生成一条。
+      </div>
+
+      <div class="fx-note">
+        <b>为什么只有 3 笔</b>
+        先把每个人在 2 个分账里的应收与应付相抵，再按净额配对转账；行数少于分账笔数，避免「你转我、我再转回你」的来回。
+      </div>
+    </div>
+
+    <div class="state fx-all">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="16" r="11"/><path d="M11 16.5 14.5 20 21.5 12.5"/></svg>
+      </div>
+      <div class="state-title">大家都结清了</div>
+      <div class="state-desc">3 笔转账已全部结清，各参与人净额为 ¥0.00；结清流水已写入账本，不涉及真实资金划转。</div>
+      <button class="btn btn-secondary" type="button" data-go="finance-split.html"
+        data-hot="⑦" data-hot-name="返回分账列表" data-hot-pos="top-right"
+        data-hot-label="空态给可执行动作：回分账列表看已结清卡片；不留在空页，也不提示去别的面">
+        返回分账列表</button>
+    </div>
+
+    <div class="fx-sk" aria-hidden="true">
+      <div class="skeleton" style="height:142px;border-radius:var(--radius-xl);margin-bottom:18px"></div>
+      <div class="skeleton sk-line" style="width:34%;margin-bottom:12px"></div>
+      <div class="skeleton" style="height:88px;border-radius:var(--radius-lg);margin-bottom:10px"></div>
+      <div class="skeleton" style="height:88px;border-radius:var(--radius-lg);margin-bottom:10px"></div>
+      <div class="skeleton" style="height:88px;border-radius:var(--radius-lg)"></div>
+    </div>
+  </div>
+
+  <!-- 结清确认弹层 -->
+  <div class="sheet-mask" id="sheet-settle" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>结清这笔转账？</h3>
+      <p class="sheet-sub">确认后生成一笔记账流水，把两人的分账净额同时归零。这是记账层面的结清，不涉及真实资金划转。</p>
+      <div class="fx-sheet-line">
+        <span class="fx-avpair">
+          <span class="avatar fx-av-dad">爸</span>
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12"/><path d="M12.5 5.5 17 10l-4.5 4.5"/></svg>
+          <span class="avatar fx-av-me">我</span>
+        </span>
+        <span class="fx-tr-names"><b>爸爸</b> 付给 <b>我</b><br><span class="tiny">由 2 个分账净额抵消得出</span></span>
+        <span class="amount fx-sheet-amt">¥91.66</span>
+      </div>
+      <div class="fx-sheet-note">结清是生成型单据：重复确认按幂等写只生成一条结清流水，不会重复记账。</div>
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" id="fx-confirm"
+          data-hot="⑥" data-hot-name="确认结清" data-hot-pos="bottom-right"
+          data-hot-label="确认后关闭弹层、该行置为已结清并写一笔结清流水；同一笔重复确认只生成一条，按钮随即失效，避免双击写两条">
+          确认结清
+        </button>
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var settleState = new URLSearchParams(location.search).get('state') || 'default';
+  var currentRow = null;
+  var confirmBtn = document.getElementById('fx-confirm');
+
+  document.querySelectorAll('.fx-tr-btn').forEach(function (b) {
+    b.addEventListener('click', function () {
+      currentRow = b.closest('.fx-tr');
+      var pair = currentRow.querySelector('.fx-avpair');
+      var names = currentRow.querySelector('.fx-tr-names');
+      var amt = currentRow.querySelector('.fx-tr-amt');
+      document.querySelector('.fx-sheet-line .fx-avpair').innerHTML = pair.innerHTML;
+      document.querySelector('.fx-sheet-line .fx-tr-names').innerHTML = names.innerHTML + '<br><span class="tiny">由分账净额抵消得出</span>';
+      document.querySelector('.fx-sheet-amt').textContent = amt.textContent;
+    });
+  });
+
+  if (settleState === 'settle-confirm') {
+    currentRow = document.getElementById('fx-row-1');
+    setTimeout(function () { window.HC.openSheet('sheet-settle'); }, 0);
+  }
+
+  confirmBtn.addEventListener('click', function () {
+    var row = currentRow || document.getElementById('fx-row-1');
+    window.HC.closeSheet(document.getElementById('sheet-settle'));
+
+    if (!row.classList.contains('is-done')) {
+      row.classList.add('is-done');
+      var btn = row.querySelector('.fx-tr-btn');
+      btn.textContent = '已结清';
+      btn.disabled = true;
+      row.querySelector('.fx-tr-sub').textContent = '已结清 · 结清流水已写入账本，不涉及真实资金划转';
+    }
+
+    var left = document.querySelectorAll('.fx-tr:not(.is-done)').length;
+    if (left === 0) {
+      document.body.setAttribute('data-state', 'all-settled');
+      window.HC.toast('3 笔转账已全部结清，分账净额归零');
+    } else {
+      var cents = 0;
+      document.querySelectorAll('.fx-tr:not(.is-done) .fx-tr-amt').forEach(function (el) {
+        cents += Math.round(parseFloat(el.textContent.replace(/[^0-9.]/g, '')) * 100);
+      });
+      var sum = (cents / 100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      document.getElementById('fx-sum-count').textContent = left;
+      document.getElementById('fx-sum-amt').textContent = '¥' + sum;
+      document.getElementById('fx-sum-sub').innerHTML = '涉及 2 个分账、4 位成员；剩余 <b>' + left + '</b> 笔转账，所有人净额归零。';
+      window.HC.toast('已结清这一笔，还剩 ' + left + ' 笔转账');
+    }
+  });
+</script>
+</body>
+</html>

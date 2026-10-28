@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>周期记账 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .fx-content { padding-bottom: 28px; }
+
+  .fx-new {
+    height: 36px; padding: 0 2px;
+    border: 0; background: none;
+    font-family: inherit; font-size: var(--fs-15); font-weight: 600;
+    color: var(--brand-text); cursor: pointer;
+  }
+  .fx-new:hover { color: var(--brand-hover); }
+
+  .fx-note {
+    display: flex; gap: 10px;
+    margin-top: 4px; padding: 12px 14px;
+    border-radius: var(--radius-lg);
+    background: var(--brand-soft);
+    border: 1px solid var(--brand-soft-border);
+    color: var(--text-2);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-note > svg { flex: none; margin-top: 1px; color: var(--brand-text); }
+  .fx-note b { display: block; margin-bottom: 3px; font-size: var(--fs-13); color: var(--text); }
+  .fx-note .fx-note-sub { display: block; }
+
+  .fx-sum {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin: 14px 2px 8px;
+    font-size: var(--fs-12); color: var(--text-3);
+  }
+  .fx-sum b { font-weight: 600; color: var(--text-2); }
+
+  .fx-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .fx-rule { display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
+  .fx-rule + .fx-rule { border-top: 1px solid var(--border); }
+  .fx-rule:hover { background: var(--surface-2); }
+
+  .fx-rule-ic {
+    width: 34px; height: 34px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    background: var(--brand-soft); color: var(--brand-text);
+  }
+  .fx-rule-ic.is-income { background: var(--success-soft); color: var(--success); }
+
+  .fx-rule-body { flex: 1; min-width: 0; display: block; text-decoration: none; color: var(--text); }
+  .fx-rule-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .fx-rule-name { font-size: var(--fs-15); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fx-rule-amt { flex: none; font-size: var(--fs-14); }
+  .fx-rule-amt.is-in { color: var(--success); }
+  .fx-rule-meta {
+    margin-top: 3px; display: flex; align-items: center; gap: 5px;
+    font-size: var(--fs-12); color: var(--text-2);
+    overflow: hidden; white-space: nowrap;
+  }
+  .fx-rule-meta .fx-dot { color: var(--text-3); }
+  .fx-rule-sub { margin-top: 2px; display: block; font-size: var(--fs-11); color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fx-paused-tag { display: none; flex: none; }
+  .fx-rule-sw { margin-left: 2px; }
+
+  .fx-rule.is-paused { background: var(--surface-2); }
+  .fx-rule.is-paused .fx-rule-name,
+  .fx-rule.is-paused .fx-rule-amt { color: var(--text-3); }
+  .fx-rule.is-paused .fx-rule-ic { background: var(--surface); color: var(--text-3); }
+  .fx-rule.is-paused .fx-rule-meta { color: var(--text-3); }
+  .fx-rule.is-paused .fx-paused-tag { display: inline-flex; }
+
+  .fx-foot-note { margin-top: 14px; line-height: var(--lh-normal); }
+
+  .fx-sk { display: none; padding-top: 10px; }
+  .fx-sk .sk-block { height: 72px; }
+  body[data-state="loading"] .fx-sk { display: block; }
+  body[data-state="loading"] .fx-data,
+  body[data-state="loading"] .fx-sum { display: none; }
+
+  .fx-empty { display: none; }
+  body[data-state="empty"] .fx-empty { display: flex; }
+  body[data-state="empty"] .fx-data,
+  body[data-state="empty"] .fx-sum { display: none; }
+</style>
+</head>
+<body data-screen="F06 周期记账" data-states="default,paused,empty,loading">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <a class="icon-btn" href="finance-settings.html" aria-label="返回账户与设置"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="回「账户与设置」（finance/settings/index）；本页是周期规则的唯一列表位，从流水页的「周期记账」入口进来时也回到来源页">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </a>
+    </div>
+    <div class="nav-title">周期记账</div>
+    <div class="nav-right">
+      <button class="fx-new" type="button" data-go="finance-recurring-create.html"
+        data-hot="②" data-hot-name="新建规则" data-hot-pos="outer-top-right"
+        data-hot-label="进新建周期规则页（finance/recurring/create）；本页唯一的写入口，空态也指向同一路由">新建</button>
+    </div>
+  </div>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 显示本机缓存，暂停操作排队
+  </div>
+
+  <div class="content bottom-space fx-content">
+    <div class="fx-note"
+      data-hot="③" data-hot-name="口径说明" data-hot-pos="bottom-right"
+      data-hot-label="常驻说明，不随列表状态消失：自动入账时也会计入预算，不会漏提醒；入账由财务服务写，到点触发经 HomeOS 到期中心，本面不自建定时器">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10a6 6 0 0 1 10.4-4.1M16 10a6 6 0 0 1-10.4 4.1"/><path d="M14.4 2.6v3.6H18M5.6 17.4v-3.6H2"/></svg>
+      <span>
+        <b>自动入账时也会计入预算，不会漏提醒</b>
+        <span class="fx-note-sub">到点由财务服务按规则记一笔，入账同时累计当月预算与报表；超支后由家庭消息通知，本页不另设定时器。</span>
+      </span>
+    </div>
+
+    <div class="fx-sum">
+      <span id="fx-sum"><b>4</b> 条规则 · 4 条启用</span>
+      <span>最近一次 11 月 2 日</span>
+    </div>
+
+    <div class="fx-data" id="fx-data">
+      <div class="fx-list">
+        <div class="fx-rule">
+          <span class="fx-rule-ic">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5 10 3l7 4.5v7L10 19l-7-4.5z"/><path d="M3 7.5 10 12l7-4.5M10 12v7"/></svg>
+          </span>
+          <a class="fx-rule-body" href="finance-recurring-edit.html"
+            data-hot="④" data-hot-name="规则行" data-hot-pos="bottom-right"
+            data-hot-label="整行进编辑页并带 version；行内四件套：规则名、金额（负数在符号前）、周期与下次生效时间、所属分类与账户；行尾开关是独立热区，点开关不进编辑">
+            <span class="fx-rule-top">
+              <span class="fx-rule-name">房租</span>
+              <span class="amount fx-rule-amt">-¥4,200.00</span>
+            </span>
+            <span class="fx-rule-meta">
+              <span>每月 5 日</span><span class="fx-dot">·</span><span class="num">下次 11 月 5 日</span>
+              <span class="tag fx-paused-tag">已暂停</span>
+            </span>
+            <span class="fx-rule-sub">居住 · 招商银行储蓄卡</span>
+          </a>
+          <label class="switch fx-rule-sw" aria-label="启用或暂停房租"
+            data-hot="⑤" data-hot-name="启用开关" data-hot-pos="outer-bottom-right"
+            data-hot-label="点开关即时改启停，不进编辑页、不弹确认；暂停后该行置灰、下次生效时间改显「暂停中，不触发」，恢复后从下一个周期继续">
+            <input type="checkbox" checked data-rule="房租">
+            <span class="track"></span><span class="thumb"></span>
+          </label>
+        </div>
+
+        <div class="fx-rule">
+          <span class="fx-rule-ic is-income">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15.5 8 10l3 3 6-7"/><path d="M13.5 6H17v3.5"/></svg>
+          </span>
+          <a class="fx-rule-body" href="finance-recurring-edit.html">
+            <span class="fx-rule-top">
+              <span class="fx-rule-name">工资</span>
+              <span class="amount fx-rule-amt is-in">+¥18,000.00</span>
+            </span>
+            <span class="fx-rule-meta">
+              <span>每月 10 日</span><span class="fx-dot">·</span><span class="num">下次 11 月 10 日</span>
+              <span class="tag fx-paused-tag">已暂停</span>
+            </span>
+            <span class="fx-rule-sub">收入 · 招商银行储蓄卡</span>
+          </a>
+          <label class="switch fx-rule-sw" aria-label="启用或暂停工资">
+            <input type="checkbox" checked data-rule="工资">
+            <span class="track"></span><span class="thumb"></span>
+          </label>
+        </div>
+
+        <div class="fx-rule">
+          <span class="fx-rule-ic">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="15" height="10" rx="2.5"/><path d="M2.5 9h15"/><path d="M6 13h3"/></svg>
+          </span>
+          <a class="fx-rule-body" href="finance-recurring-edit.html">
+            <span class="fx-rule-top">
+              <span class="fx-rule-name">宽带续费</span>
+              <span class="amount fx-rule-amt">-¥129.00</span>
+            </span>
+            <span class="fx-rule-meta">
+              <span>每月 12 日</span><span class="fx-dot">·</span><span class="num">下次 11 月 12 日</span>
+              <span class="tag fx-paused-tag">已暂停</span>
+            </span>
+            <span class="fx-rule-sub">居住 · 支付宝</span>
+          </a>
+          <label class="switch fx-rule-sw" aria-label="启用或暂停宽带续费">
+            <input type="checkbox" checked data-rule="宽带续费">
+            <span class="track"></span><span class="thumb"></span>
+          </label>
+        </div>
+
+        <div class="fx-rule">
+          <span class="fx-rule-ic">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v3.5M10 13.5V17M3 10h3.5M13.5 10H17"/><circle cx="10" cy="10" r="3.4"/></svg>
+          </span>
+          <a class="fx-rule-body" href="finance-recurring-edit.html">
+            <span class="fx-rule-top">
+              <span class="fx-rule-name">家政保洁</span>
+              <span class="amount fx-rule-amt">-¥150.00</span>
+            </span>
+            <span class="fx-rule-meta">
+              <span>每周一</span><span class="fx-dot">·</span><span class="num">下次 11 月 2 日</span>
+              <span class="tag fx-paused-tag">已暂停</span>
+            </span>
+            <span class="fx-rule-sub">家务 · 微信零钱</span>
+          </a>
+          <label class="switch fx-rule-sw" aria-label="启用或暂停家政保洁">
+            <input type="checkbox" checked data-rule="家政保洁">
+            <span class="track"></span><span class="thumb"></span>
+          </label>
+        </div>
+      </div>
+
+      <p class="fx-foot-note tiny">暂停后规则保留、下次生效时间停止推进，恢复后从下一个周期继续；到点自动入账带幂等键，重复提交不会重复入账。</p>
+    </div>
+
+    <div class="fx-sk" aria-hidden="true">
+      <div class="skeleton sk-line" style="width:42%"></div>
+      <div class="skeleton sk-block"></div>
+      <div class="skeleton sk-block"></div>
+      <div class="skeleton sk-block"></div>
+      <div class="skeleton sk-block"></div>
+    </div>
+
+    <div class="state fx-empty">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11a10 10 0 0 1 17.2-3.4M26 21a10 10 0 0 1-17.2 3.4"/><path d="M22.5 3.5v4.6h-4.6M9.5 28.5v-4.6h4.6"/><circle cx="16" cy="16" r="3"/></svg>
+      </div>
+      <div class="state-title">还没有周期记账规则</div>
+      <div class="state-desc">房租、工资、订阅这类固定收支设成规则后到点自动入账；入账同样计入预算，不会漏提醒。</div>
+      <button class="btn btn-secondary" type="button" data-go="finance-recurring-create.html"
+        data-hot="⑥" data-hot-name="空态行动" data-hot-pos="top-right"
+        data-hot-label="零条时给可执行动作「新建规则」，直接进新建页；不给「去别处看看」这类空话">新建规则</button>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var fxState = new URLSearchParams(location.search).get('state') || 'default';
+
+  function setPaused(row, on) {
+    row.classList.toggle('is-paused', on);
+    var box = row.querySelector('input[type="checkbox"]');
+    if (box) box.checked = !on;
+    var next = row.querySelector('.fx-rule-meta .num');
+    if (next) next.textContent = on ? '暂停中，不触发' : row.getAttribute('data-next');
+  }
+
+  var rows = Array.prototype.slice.call(document.querySelectorAll('.fx-rule'));
+  rows.forEach(function (row) {
+    var next = row.querySelector('.fx-rule-meta .num');
+    if (next) row.setAttribute('data-next', next.textContent);
+  });
+
+  function syncSum() {
+    var on = rows.filter(function (r) { return !r.classList.contains('is-paused'); }).length;
+    var sum = document.getElementById('fx-sum');
+    if (sum) sum.innerHTML = '<b>' + rows.length + '</b> 条规则 · ' + on + ' 条启用';
+  }
+
+  rows.forEach(function (row) {
+    var box = row.querySelector('input[type="checkbox"]');
+    if (!box) return;
+    box.addEventListener('change', function () {
+      setPaused(row, !box.checked);
+      syncSum();
+      window.HC.toast(box.checked
+        ? '已启用「' + box.getAttribute('data-rule') + '」，下次生效时间恢复推进'
+        : '已暂停「' + box.getAttribute('data-rule') + '」，不再自动入账');
+    });
+  });
+
+  if (fxState === 'paused') {
+    setPaused(rows[0], true);
+    syncSum();
+  }
+</script>
+</body>
+</html>
