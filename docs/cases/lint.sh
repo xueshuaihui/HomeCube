@@ -24,9 +24,13 @@ SPRINTS = ({"S1", "S2", "S3", "S4", "S5", "S6", "S13", "S14", "S19",
             "未点名(P1-M1)", "未点名(P1-M2)", "S6+S14"})
 
 REQUIRED = ["- 关联需求：", "- 前置条件：", "- 步骤：", "- 预期结果：", "- 实现现状（快照）：", "- 执行状态："]
-HEAD = re.compile(r"^## ((?:HOM|FIN)-[A-Z]+-\d{3})\s*·\s*(.+)$")
+HEAD = re.compile(r"^## ((?:HOM|FIN|CAL)-[A-Z]+-\d{3})\s*·\s*(.+)$")
 
-files = sorted(list((ROOT / "homeos").glob("*.md")) + list((ROOT / "finance").glob("*.md")))
+files = sorted(
+    list((ROOT / "homeos").glob("*.md"))
+    + list((ROOT / "finance").glob("*.md"))
+    + list((ROOT / "calendar").glob("*.md"))
+)
 errors, warns = [], []
 ids, cases = [], {}
 
@@ -131,7 +135,7 @@ if total != len(cases):
 
 # G-D2 index.md 一致性
 idx = (ROOT / "index.md").read_text(encoding="utf-8")
-idx_ids = re.findall(r"^\|\s*((?:HOM|FIN)-[A-Z]+-\d{3})\s*\|", idx, re.M)
+idx_ids = re.findall(r"^\|\s*((?:HOM|FIN|CAL)-[A-Z]+-\d{3})\s*\|", idx, re.M)
 idx_dup = [k for k, v in Counter(idx_ids).items() if v > 1]
 if idx_dup:
     errors.append(f"index.md 重复行：{sorted(idx_dup)}")
@@ -176,9 +180,9 @@ check_stat("按优先级", ["P0", "P1", "P2"], "pri")
 check_stat("按实现现状（副指标·快照）", ["已实现(HTTP)", "已实现(分层)", "契约偏差", "待自动化", "未实现", "纯手动", "引用脚本", "CI门禁"], "auto")
 
 # G-D3 crosscutting 引用的 case ID 必须存在
-cc = ROOT / "crosscutting" / "acceptance-18.2-18.3.md"
+cc = ROOT / "crosscutting" / "acceptance-19.2-19.3.md"
 if cc.exists():
-    refs = set(re.findall(r"((?:HOM|FIN)-[A-Z]+-\d{3})", cc.read_text(encoding="utf-8")))
+    refs = set(re.findall(r"((?:HOM|FIN|CAL)-[A-Z]+-\d{3})", cc.read_text(encoding="utf-8")))
     ghost = sorted(refs - set(cases))
     if ghost:
         errors.append(f"crosscutting 引用了不存在的 case ID：{ghost}")
@@ -225,7 +229,7 @@ if blp.exists():
         if not on_book:
             errors.append(f"crosscutting 引用了不在册的编号 {ref}（已撤销/迁移的编号不得再当依赖）")
 
-# G-A 抽查：PRD 章节号存在性（形如 4.5.1 / 18.2#4 / 21.5）
+# G-A 抽查：PRD 章节号存在性（形如 4.5.1 / 19.2#4 / 22.5）
 prd = (ROOT.parent / "prd-homecube.md").read_text(encoding="utf-8")
 secs = set(re.findall(r"^#{2,4}\s+([0-9]+(?:\.[0-9]+)*)", prd, re.M))
 bad_sec = set()
@@ -301,7 +305,7 @@ bl = ROOT / "BACKLOG.md"
 if not bl.exists():
     errors.append("缺 BACKLOG.md（反向开发清单缺失）")
 else:
-    ghost = sorted(set(re.findall(r"(?:HOM|FIN)-[A-Z]+-\d{3}", bl.read_text(encoding="utf-8"))) - set(cases))
+    ghost = sorted(set(re.findall(r"(?:HOM|FIN|CAL)-[A-Z]+-\d{3}", bl.read_text(encoding="utf-8"))) - set(cases))
     if ghost:
         errors.append(f"BACKLOG.md 引用了不存在的 case ID：{ghost}")
 

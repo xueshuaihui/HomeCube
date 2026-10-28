@@ -1,7 +1,7 @@
 # 财务 · 分类
 
 > 范围：两级分类（一级/二级）、预置字典 + 家庭自定义、停用（不影响历史流水）、手动排序、图标集名（禁 emoji）、为跨面统一费用字典。
-> 权威源：`docs/prd-homecube.md` 4.4（分类能力域）、4.5.9（分类可维护性）、4.7（Category：`family_id` 可空、is_active、sort_order、version）、4.8（分类接口）、18.3#10（停用语义）、16.2（Category 为跨面唯一费用字典）。
+> 权威源：`docs/prd-homecube.md` 4.4（分类能力域）、4.5.9（分类可维护性）、4.7（Category：`family_id` 可空、is_active、sort_order、version）、4.8（分类接口）、19.3#10（停用语义）、17.2（Category 为跨面唯一费用字典）。
 > 本文件 case 前缀 `FIN-CAT`。
 
 ---
@@ -25,7 +25,7 @@
 - 执行状态：未执行
 
 ## FIN-CAT-003 · 分类停用：不进选择器、历史流水可筛可统计
-- 关联需求：PRD 4.5.9（is_active=false 不进记账选择器、历史流水照常显示与统计）、4.7、4.8 `PUT .../archive`、18.3#10（五项断言）
+- 关联需求：PRD 4.5.9（is_active=false 不进记账选择器、历史流水照常显示与统计）、4.7、4.8 `PUT .../archive`、19.3#10（五项断言）
 - 类型：功能 | 优先级：P0 | 建议归属 Sprint：S7-S8
 - 前置条件：某分类已用于历史流水
 - 步骤：停用该分类 → 检查记账选择器与历史流水
@@ -70,7 +70,7 @@
 - 执行状态：未执行
 
 ## FIN-CAT-008 · Category 作为跨面统一费用字典（finance_category_id）
-- 关联需求：PRD 16.2（Category 同时是跨面唯一费用字典，他面引用 finance_category_id）、16.5（首次映射弹确认框）
+- 关联需求：PRD 17.2（Category 同时是跨面唯一费用字典，他面引用 finance_category_id）、17.5（首次映射弹确认框）
 - 类型：功能 | 优先级：P1 | 建议归属 Sprint：S7-S8
 - 前置条件：他面（P2+）引用分类
 - 步骤：采购/出行等对象携带 finance_category_id

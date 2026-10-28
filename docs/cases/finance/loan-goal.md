@@ -1,7 +1,7 @@
 # 财务 · 借贷与目标（M2）
 
 > 范围：借入/借出、还款计划（RepaymentPlan 逐期注册到期）、结算、储蓄目标（Goal 进度/自动存入记账层生成）。
-> 权威源：`docs/prd-homecube.md` 4.4（借贷/目标能力域，P1-M2）、4.5.6（借贷）、4.5.7（目标）、4.7（Loan/RepaymentPlan/Goal）、4.8（loans/goals 接口，M2）、16.4（Loan→RepaymentPlan 注册契约）。
+> 权威源：`docs/prd-homecube.md` 4.4（借贷/目标能力域，P1-M2）、4.5.6（借贷）、4.5.7（目标）、4.7（Loan/RepaymentPlan/Goal）、4.8（loans/goals 接口，M2）、17.4（Loan→RepaymentPlan 注册契约）。
 > 本文件 case 前缀 `FIN-LOAN`。**属 M2（S15-S16），P1-M1 不计入分母。**
 
 ---
@@ -16,7 +16,7 @@
 - 执行状态：未执行
 
 ## FIN-LOAN-002 · 还款计划逐期注册到期中心
-- 关联需求：PRD 4.5.6（RepaymentPlan 逐期到期走 16.4 注册）、4.7（RepaymentPlan）、16.4（Loan→RepaymentPlan.due_at → Reminder 每期前 3 天）
+- 关联需求：PRD 4.5.6（RepaymentPlan 逐期到期走 17.4 注册）、4.7（RepaymentPlan）、17.4（Loan→RepaymentPlan.due_at → Reminder 每期前 3 天）
 - 类型：功能 | 优先级：P0 | 建议归属 Sprint：S15-S16
 - 前置条件：存在 Loan 与还款计划
 - 步骤：检查到期中心是否出现每期还款提醒
@@ -47,12 +47,12 @@
 - 类型：功能 | 优先级：P1 | 建议归属 Sprint：S15-S16
 - 前置条件：设周期规则自动存入
 - 步骤：触发自动存入
-- 预期结果：生成转账/收款记录（记账层）；不触达任何真实资金通道（合规边界 20.4）
+- 预期结果：生成转账/收款记录（记账层）；不触达任何真实资金通道（合规边界 21.4）
 - 实现现状（快照）：待自动化
 - 执行状态：未执行
 
 ## FIN-LOAN-006 · Goal 注册到期中心（deadline 前 30 天）
-- 关联需求：PRD 16.4（finance.Goal.deadline → Reminder 前 30 天）
+- 关联需求：PRD 17.4（finance.Goal.deadline → Reminder 前 30 天）
 - 类型：功能 | 优先级：P1 | 建议归属 Sprint：S15-S16
 - 前置条件：存在带 deadline 的目标
 - 步骤：检查到期中心前 30 天提醒

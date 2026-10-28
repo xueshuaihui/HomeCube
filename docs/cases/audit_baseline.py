@@ -29,7 +29,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 CASES = ROOT / "docs" / "cases"
 MODULE_FILES = sorted(
-    list((CASES / "homeos").glob("*.md")) + list((CASES / "finance").glob("*.md"))
+    list((CASES / "homeos").glob("*.md"))
+    + list((CASES / "finance").glob("*.md"))
+    + list((CASES / "calendar").glob("*.md"))
 )
 
 # 状态值按长度降序，保证 `已实现(HTTP)` 不被 `已实现` 截断
@@ -45,7 +47,7 @@ STATUSES = [
 ]
 IMPLEMENTED = {"已实现(HTTP)", "已实现(分层)"}
 
-CASE_RE = re.compile(r"^## ((?:HOM|FIN)-[A-Z]+-\d{3}) · (.+)$")
+CASE_RE = re.compile(r"^## ((?:HOM|FIN|CAL)-[A-Z]+-\d{3}) · (.+)$")
 STATUS_PREFIX = "- 实现现状（快照）："
 EXEC_PREFIX = "- 执行状态："
 
@@ -347,10 +349,15 @@ def check_scripts(case, findings):
 
 
 def load_routes():
-    """解析两个 main.go 实际注册的路由，得到 {(svc, METHOD, 归一化路径)}。"""
+    """解析三个 main.go 实际注册的路由，得到 {(svc, METHOD, 归一化路径)}。
+
+    `svc-calendar` 是定版 ㉚ 新增的服务：目录在盘上不存在时按「未出生」处理
+    （`continue`），不把它算成路由缺失。
+    """
     svcs = (
         ("homeos", ROOT / "server/services/svc-homeos/cmd/svc-homeos/main.go"),
         ("finance", ROOT / "server/services/svc-finance/cmd/svc-finance/main.go"),
+        ("calendar", ROOT / "server/services/svc-calendar/cmd/svc-calendar/main.go"),
     )
     routes = set()
     for svc, f in svcs:
@@ -368,7 +375,7 @@ def load_routes():
 
 
 def norm_path(p: str) -> str:
-    p = re.sub(r"^/api/(?:homeos|finance)", "", p)
+    p = re.sub(r"^/api/(?:homeos|finance|calendar)", "", p)
     p = re.sub(r":\w+|\{[^}]+\}", "{id}", p)
     return p.rstrip("/") or "/"
 
@@ -396,6 +403,8 @@ def check_endpoint(case, findings, routes):
             svc = "homeos"
         elif "/api/finance" in raw:
             svc = "finance"
+        elif "/api/calendar" in raw:
+            svc = "calendar"
         else:
             continue
         path = norm_path(raw)

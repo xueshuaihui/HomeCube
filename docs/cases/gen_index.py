@@ -9,12 +9,12 @@ from collections import Counter, OrderedDict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-HEAD = re.compile(r"^## ((?:HOM|FIN)-[A-Z]+-\d{3})\s*·\s*(.+)$", re.M)
+HEAD = re.compile(r"^## ((?:HOM|FIN|CAL)-[A-Z]+-\d{3})\s*·\s*(.+)$", re.M)
 
 ORDER = [
     "homeos/identity-family.md", "homeos/identity-member.md", "homeos/session.md",
     "homeos/auth.md", "homeos/architecture.md", "homeos/navigation.md",
-    "homeos/time-collab.md", "homeos/notification.md", "homeos/home-summary.md",
+    "homeos/collab.md", "homeos/notification.md", "homeos/home-summary.md",
     "homeos/search.md", "homeos/sync-data.md", "homeos/contracts.md",
     "homeos/data-lifecycle.md", "homeos/admin-ops.md", "homeos/app-config.md",
     "homeos/compliance.md",
@@ -22,16 +22,17 @@ ORDER = [
     "finance/category.md", "finance/balance-stats.md", "finance/budget-bill.md",
     "finance/export-voice.md", "finance/loan-goal.md", "finance/split-asset.md",
     "finance/settings.md", "finance/demo.md",
+    "calendar/time-collab.md", "calendar/due-center.md", "calendar/face-integration.md",
 ]
 
 DESC = {
     "homeos/identity-family.md": ("HOM-FAM", "家庭 / 面配置 / 强制选面 / 解散冷存"),
     "homeos/identity-member.md": ("HOM-MEM", "成员 / 无账号代管 / 邀请四态 / 角色 / 访客 / 成员退出"),
     "homeos/session.md": ("HOM-SESS", "验证码 / 登录 / refresh / 切换重签 / 会话记录"),
-    "homeos/auth.md": ("HOM-AUTH", "SDK / 45 格矩阵 / 字段级可见性 / 设备锁 / L2·L3 加密"),
+    "homeos/auth.md": ("HOM-AUTH", "SDK / 50 格矩阵 / 字段级可见性 / 设备锁 / L2·L3 加密"),
     "homeos/navigation.md": ("HOM-NAV", "顶栏与底部五项 / 切面 3 步 / 路由与破坏性弹层 / 「＋」/ base URL"),
     "homeos/architecture.md": ("HOM-ARCH", "系统边界（不做/不存/不定规则）/ 分层 / 路由前缀 / claims / 事件总线七要素 / 全库兜底"),
-    "homeos/time-collab.md": ("HOM-TIME", "到期中心 / 待办 / 提醒 / 周期任务 / 日历 / 投票 / 留言 / 动态"),
+    "homeos/collab.md": ("HOM-TIME", "底座协作三类：留言 / 投票 / 动态（时间语义 11 条已迁 `calendar/time-collab.md`）"),
     "homeos/notification.md": ("HOM-NOTI", "三分型 / 99+ / 同源同清 / 去重 / 免打扰 / @"),
     "homeos/home-summary.md": ("HOM-SUM", "首页四区聚合 / 前 3 条 / faces 四层 / 0 格态"),
     "homeos/search.md": ("HOM-SRCH", "关键词搜索 / 分组 / 时延 / 深链"),
@@ -52,6 +53,9 @@ DESC = {
     "finance/split-asset.md": ("FIN-SPLIT", "AA 分账 / 结算 / 多币种 / 发票 / 净资产 / 报销"),
     "finance/settings.md": ("FIN-SET", "财务设置：默认值 / 部分更新 / 校验 / 活配置"),
     "finance/demo.md": ("FIN-DEMO", "跨服务五步 demo 的建与删（S19 零残留）"),
+    "calendar/time-collab.md": ("CAL-TIME", "到期中心 / 待办 / 提醒 / 周期任务 / 日历多视图 / 到期注册与完成回写"),
+    "calendar/due-center.md": ("CAL-DUE", "19.4#2-#5 判据 / 19 行注册表 / 不注册清单 / 触发出口 / 到达率两口径"),
+    "calendar/face-integration.md": ("CAL-FACE", "19.4#1/#6/#7 / 分包按需加载 / 必选面停用被拒 / 日历行五格 / 命名域门禁 / 五步"),
 }
 
 
@@ -62,7 +66,7 @@ def parse():
         if p.exists():
             files.append(p)
     # 兜底：ORDER 之外的文件也要进表，避免新增文件被漏掉
-    for d in ("homeos", "finance"):
+    for d in ("homeos", "finance", "calendar"):
         for p in sorted((ROOT / d).glob("*.md")):
             if p not in files:
                 files.append(p)
@@ -100,6 +104,13 @@ def main():
     all_cases = [c for items in data.values() for c in items]
     total = len(all_cases)
 
+    # crosscutting 验收映射条数：从文件实测，别手写（曾写死 24，19.4 落位后是 31）
+    cc_dir = ROOT / "crosscutting"
+    cc_rows = 0
+    if cc_dir.exists():
+        for p in sorted(cc_dir.glob("*.md")):
+            cc_rows += len(re.findall(r"^\| \d+ \|", p.read_text(encoding="utf-8"), re.M))
+
     idx_path = ROOT / "index.md"
     old = idx_path.read_text(encoding="utf-8")
 
@@ -111,7 +122,7 @@ def main():
     pri_c = Counter(c["pri"] for c in all_cases)
     auto_c = Counter(c["auto"] for c in all_cases)
     sprint_c = Counter(c["sprint"] for c in all_cases)
-    dom_c = Counter("homeos" if k.startswith("homeos/") else "finance" for k in data for _ in data[k])
+    dom_c = Counter(k.split("/")[0] for k in data for _ in data[k])
     impl = auto_c["已实现(HTTP)"] + auto_c["已实现(分层)"]
     m2_keys = {"S15-S16", "S17-S18", "未点名(P1-M2)"}
     m2 = sum(v for k, v in sprint_c.items() if k in m2_keys)
@@ -157,7 +168,7 @@ def main():
     out.append("| 文件 | 作用 | 更新方式 |")
     out.append("|---|---|---|")
     out.append(f"| `requirements.md` | **需求点清单（{req_total} 条）**：PRD 规则级条目 → case，覆盖率的唯一主判据 | `gen_requirements.py` 生成 |")
-    out.append("| `traceability.md` | 一期 75 接口行 / 102 接口 → case 追溯（接口粒度，不与需求点重复） | `gen_traceability.py` 生成 |")
+    out.append(f"| `traceability.md` | 一期 {ep_rows} 接口行 / {ep_ifaces} 接口 → case 追溯（接口粒度，不与需求点重复） | `gen_traceability.py` 生成 |")
     out.append("| `gen_requirements.py` | 需求点生成器（含 `--check`，G-F 门禁） | 需求变更时先改 `REQS` |")
     out.append("| `gen_traceability.py` | 接口追溯生成器（含 `--check`，G-E 门禁） | PRD 接口表变更后重跑 |")
     out.append("| `gen_index.py` | 本文件生成器（目录索引 + 矩阵 + 统计） | 改完 case 后重跑 |")
@@ -167,7 +178,7 @@ def main():
     out.append("| `audit_baseline.py` | 证据体检：路由级交叉验证 `已实现/未实现/契约偏差` 是否还成立（STALE/DRIFT/WEAK） | 每轮 W0 与每周跑一次 |")
     out.append("| `SPEC-GAP-PROPOSAL.md` | 需求缺口补齐提案（8 项 + 建议值 + 影响 case + 可判判据） | 需求方确认后写进 PRD |")
     out.append("| `AUDIT-REPORT.md` | 多轮审核记录（发现 → 修复 → 结余） | 每轮追加 |")
-    out.append("| `crosscutting/acceptance-18.2-18.3.md` | 18.2 十四项 + 18.3 十项验收口径映射 | 验收口径变更时改 |")
+    out.append(f"| `crosscutting/acceptance-19.2-19.3.md` | PRD 十九章验收口径逐条映射（19.2 / 19.3 / 19.4，实测 {cc_rows} 条） | 验收口径变更时改 |")
     out.append("")
 
     out.append(f"## 覆盖矩阵（{total} 条 · 列含义见「状态枚举」）")
@@ -203,7 +214,7 @@ def main():
     out.append("")
     out.append("| 维度 | 分布 |")
     out.append("|---|---|")
-    out.append(f"| **总数** | **{total} 条 case**（homeos {dom_c['homeos']} + finance {dom_c['finance']}）+ crosscutting 24 条验收映射 |")
+    out.append(f"| **总数** | **{total} 条 case**（homeos {dom_c['homeos']} + finance {dom_c['finance']} + calendar {dom_c['calendar']}）+ crosscutting {cc_rows} 条验收映射 |")
     out.append(f"| **需求覆盖率（主指标）** | 需求点 {req_total} 条 → **100% 有 case 承接**；一期 {ep_rows} 接口行 / {ep_ifaces} 接口 → **100% 承接**（`requirements.md` + `traceability.md`，均可脚本校验） |")
     out.append("| **按类型** | " + " / ".join(f"{k} {type_c[k]}" for k in ["功能", "边界", "异常", "安全", "性能"] if type_c[k]) + " |")
     out.append("| **按优先级** | " + " / ".join(f"{k} {pri_c[k]}" for k in ["P0", "P1", "P2"] if pri_c[k]) + " |")
@@ -217,9 +228,14 @@ def main():
     out.append("")
     out.append("> 「已实现合计」是**快照**，会随开发推进上升；它**不改变分母**——"
                f"{total} 条始终是 P1 的验收总量。")
-    out.append("> 与上一版（188 条）相比 **+69 条**：新增 4 个模块文件（导航 10 / 跨面契约 7 / 数据生命周期 7 / 合规 6）"
-               "+ 在 10 个既有模块补 39 条细则（事件契约 8、时间协作 6、成员与访客 4、主题与首页态 8、"
-               "财务细则 9、运维 2、首页区 3、图片 1）。")
+    cal_time = sum(1 for c in all_cases if c["id"].startswith("CAL-TIME-"))
+    cal_new = sum(1 for c in all_cases if c["id"].startswith(("CAL-DUE-", "CAL-FACE-")))
+    hom_time = sum(1 for c in all_cases if c["id"].startswith("HOM-TIME-"))
+    out.append(f"> **定版 ㉚ 的日历面拆分（只增不减）**：`calendar/` 域 {dom_c['calendar']} 条 = "
+               f"从 `homeos/time-collab.md` **迁来**的 {cal_time} 条（ID `HOM-TIME-` → `CAL-TIME-`，数字不变，"
+               f"步骤 / 预期结果 / 优先级 / Sprint 一字不改）+ 为 19.4 与面级形态**新增**的 {cal_new} 条；"
+               f"`homeos/collab.md` 保留底座协作类 {hom_time} 条。"
+               f"本轮未删任何 case：迁移前 {total - cal_new} 条 → 现 {total} 条。")
     out.append("")
 
     idx_path.write_text("\n".join(out) + "\n" + tail, encoding="utf-8")

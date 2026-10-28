@@ -5,8 +5,8 @@
 因此「PRD 里每个一期接口，是否都有 case 承接」必须是可机械校验的，不能靠人记。
 
 数据来源：
-  - 接口清单：docs/prd-homecube.md 的 3.7（HomeOS）与 4.8（Finance）表格行
-  - case：docs/cases/{homeos,finance}/*.md 的 `## XXX-NNN · 标题`
+  - 接口清单：docs/prd-homecube.md 的 3.7（HomeOS）、4.8（Finance）与 5.8（Calendar，㉚ 迁入）表格行
+  - case：docs/cases/{homeos,finance,calendar}/*.md 的 `## XXX-NNN · 标题`
 输出：
   - 一期接口追溯表（每个接口 → 承接 case）
   - 非一期接口（P2+ 面 / P6 能力）——不进入分母，单列以免误判为缺口
@@ -34,15 +34,15 @@ MAP = {
     "GET /api/homeos/members": ["HOM-MEM-011"],
     "POST /api/homeos/members/invite": ["HOM-MEM-004"],
     "GET /api/homeos/permissions": ["HOM-AUTH-014", "HOM-AUTH-005"],
-    "POST /api/homeos/reminders": ["HOM-TIME-005"],
-    "POST /api/homeos/todos": ["HOM-TIME-002"],
+    "POST /api/calendar/reminders": ["CAL-TIME-005"],
+    "POST /api/calendar/todos": ["CAL-TIME-002", "CAL-TIME-011", "CAL-TIME-012"],
     "GET /api/homeos/notifications": ["HOM-NOTI-003", "HOM-NOTI-007"],
     "POST /api/homeos/devices/push-token": ["HOM-NOTI-005"],
     "POST /api/homeos/events/publish": ["HOM-ADM-005"],
     "POST /api/homeos/rules": [],  # P6，规则引擎随 P6 交付
     "GET /api/homeos/family/modules": ["HOM-FAM-009", "HOM-FAM-007"],
     "PUT /api/homeos/family/modules": ["HOM-FAM-006", "HOM-FAM-008"],
-    "GET /api/homeos/app/bundles": ["HOM-SYNC-014"],
+    "GET /api/homeos/app/bundles": ["HOM-SYNC-014", "CAL-FACE-004"],
     "GET /api/homeos/app/bundles?codes=": ["HOM-SYNC-014"],
     "GET /api/homeos/home/summary": ["HOM-SUM-001", "HOM-SUM-003", "HOM-SUM-004"],
     "GET /api/homeos/permissions/snapshot": ["HOM-AUTH-014"],
@@ -52,15 +52,15 @@ MAP = {
     "GET /api/homeos/settings": ["HOM-APP-001", "HOM-APP-002"],
     "PUT /api/homeos/settings": ["HOM-APP-001", "HOM-APP-002"],
     "GET /api/homeos/app/version": ["HOM-APP-005", "HOM-APP-006"],
-    "POST /api/homeos/calendar/events": ["HOM-TIME-010"],
+    "POST /api/calendar/events": ["CAL-TIME-010"],
     "POST /api/homeos/votes": ["HOM-TIME-007"],
     "POST /api/homeos/auth/sms-code": ["HOM-SESS-001"],
     "POST /api/homeos/families": ["HOM-FAM-001"],
     "POST /api/homeos/family/invite/accept": ["HOM-FAM-003"],
     "POST /api/homeos/members": ["HOM-MEM-001", "HOM-MEM-002"],
-    "GET /api/homeos/calendar/events": ["HOM-TIME-001"],
-    "GET /api/homeos/todos": ["HOM-TIME-002", "HOM-TIME-003"],
-    "GET /api/homeos/reminders": ["HOM-TIME-005", "HOM-TIME-006"],
+    "GET /api/calendar/events": ["CAL-TIME-001", "CAL-DUE-001", "CAL-FACE-002", "CAL-FACE-008"],
+    "GET /api/calendar/todos": ["CAL-TIME-002", "CAL-TIME-004", "CAL-DUE-004"],
+    "GET /api/calendar/reminders": ["CAL-TIME-005", "CAL-TIME-006", "CAL-DUE-008"],
     "GET /api/homeos/dynamics": ["HOM-TIME-009"],
     "GET /api/homeos/board/messages": ["HOM-TIME-008"],
     "GET /api/homeos/votes/{id}": ["HOM-TIME-007"],
@@ -109,7 +109,7 @@ MAP = {
     "GET /api/finance/transactions/{id}/attachments": ["FIN-TX-014", "FIN-EXP-007"],
 }
 
-P1_FACES = {"homeos", "finance"}
+P1_FACES = {"homeos", "finance", "calendar"}
 METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE")
 
 
@@ -132,9 +132,10 @@ def parse_prd():
 def parse_cases():
     """返回 {case_id: (file, title)}。"""
     out = {}
-    for f in sorted(list((CASES / "homeos").glob("*.md")) + list((CASES / "finance").glob("*.md"))):
+    for f in sorted(list((CASES / "homeos").glob("*.md")) + list((CASES / "finance").glob("*.md"))
+                    + list((CASES / "calendar").glob("*.md"))):
         for ln in f.read_text(encoding="utf-8").splitlines():
-            m = re.match(r"^## ((?:HOM|FIN)-[A-Z]+-\d{3})\s*·\s*(.+)$", ln)
+            m = re.match(r"^## ((?:HOM|FIN|CAL)-[A-Z]+-\d{3})\s*·\s*(.+)$", ln)
             if m:
                 out[m.group(1)] = (f.relative_to(CASES).as_posix(), m.group(2).strip())
     return out

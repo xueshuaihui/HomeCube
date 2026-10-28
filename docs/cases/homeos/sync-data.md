@@ -1,13 +1,13 @@
 # HomeOS · 数据同步、备份与事件总线
 
 > 范围：多端同步（实时/离线/冲突）、change_log 与 delta 接口、冲突解决策略（按对象类别）、备份恢复（RPO≤15min/RTO≤30min）、家庭数据导出、事件总线（outbox/JetStream/幂等/死信/版本）、`app/bundles` 分包契约。
-> 权威源：`docs/prd-homecube.md` 3.4.4（数据系统）、3.4.6（事件系统）、3.6（Event/DeadLetter/DataLevel）、3.7（`sync/changes`、`data/export`、`app/bundles`、`dead-letters`）、10.4（死信）、16.3（跨面读取三方式）、18.2#3/#5/#13、21.3（备份）、21.6（离线）。
+> 权威源：`docs/prd-homecube.md` 3.4.4（数据系统）、3.4.6（事件系统）、3.6（Event/DeadLetter/DataLevel）、3.7（`sync/changes`、`data/export`、`app/bundles`、`dead-letters`）、11.4（死信）、17.3（跨面读取三方式）、19.2#3/#5/#13、22.3（备份）、22.6（离线）。
 > 本文件 case 前缀 `HOM-SYNC`。
 
 ---
 
 ## HOM-SYNC-001 · 同步 delta 接口（每个服务一条）
-- 关联需求：PRD 3.7 `GET /api/{code}/sync/changes`（`since_lsn`+`family_id`+`limit`）、14.5 第 5 项
+- 关联需求：PRD 3.7 `GET /api/{code}/sync/changes`（`since_lsn`+`family_id`+`limit`）、15.5 第 5 项
 - 类型：功能 | 优先级：P0 | 建议归属 Sprint：S6
 - 前置条件：客户端持有 `(family_id, service)` 游标
 - 步骤：以 `since_lsn` 拉取增量
@@ -16,16 +16,16 @@
 - 执行状态：未执行
 
 ## HOM-SYNC-002 · 同步延迟 ≤1 秒（双设备并发写）
-- 关联需求：PRD 3.8（同步延迟 ≤1 秒）、18.2#3（双设备并发写 200 次，在线 P95 ≤1s）
+- 关联需求：PRD 3.8（同步延迟 ≤1 秒）、19.2#3（双设备并发写 200 次，在线 P95 ≤1s）
 - 类型：性能 | 优先级：P0 | 建议归属 Sprint：S6
 - 前置条件：两台真机同家庭
 - 步骤：A 端写入，B 端读同 version 数据，测耗时
-- 预期结果：在线态 P95 ≤1s；离线态转 21.6 重放口径
+- 预期结果：在线态 P95 ≤1s；离线态转 22.6 重放口径
 - 实现现状（快照）：引用脚本（`make soak` → `deploy/scripts/soak_test.sh`，Makefile:275）
 - 执行状态：未执行
 
 ## HOM-SYNC-003 · 冲突策略：金额型乐观锁拒绝后到
-- 关联需求：PRD 3.4.4（财务流水/账单/借贷=服务端版本号乐观锁+拒绝后到）、14.5 第 5 项（业务对象无 version 不得进 P1-M1）
+- 关联需求：PRD 3.4.4（财务流水/账单/借贷=服务端版本号乐观锁+拒绝后到）、15.5 第 5 项（业务对象无 version 不得进 P1-M1）
 - 类型：异常 | 优先级：P0 | 建议归属 Sprint：S6
 - 前置条件：同一笔流水两设备并发改
 - 步骤：后到请求携带旧 version 提交
@@ -61,7 +61,7 @@
 - 执行状态：未执行
 
 ## HOM-SYNC-007 · 事件幂等：重放不产生重复业务对象
-- 关联需求：PRD 3.4.6（按 `idempotency_key` 去重）、18.2#5（1000 事件重跑 3 次，新增对象=0）
+- 关联需求：PRD 3.4.6（按 `idempotency_key` 去重）、19.2#5（1000 事件重跑 3 次，新增对象=0）
 - 类型：功能 | 优先级：P0 | 建议归属 Sprint：S2
 - 前置条件：1000 事件
 - 步骤：重跑 3 次
@@ -70,7 +70,7 @@
 - 执行状态：未执行
 
 ## HOM-SYNC-008 · 消费失败指数退避 + 死信
-- 关联需求：PRD 3.4.6（失败指数退避至多 3 次、超限进死信）、10.4、3.6 DeadLetter
+- 关联需求：PRD 3.4.6（失败指数退避至多 3 次、超限进死信）、11.4、3.6 DeadLetter
 - 类型：异常 | 优先级：P0 | 建议归属 Sprint：S2
 - 前置条件：消费者持续失败
 - 步骤：投递失败消息
@@ -79,16 +79,16 @@
 - 执行状态：未执行
 
 ## HOM-SYNC-009 · 未登记事件不得发布（契约门禁拦截）
-- 关联需求：PRD 3.4.6（未在目录登记的事件不得发布）、22.5 第 5 道门禁
+- 关联需求：PRD 3.4.6（未在目录登记的事件不得发布）、23.5 第 5 道门禁
 - 类型：安全 | 优先级：P0 | 建议归属 Sprint：S2
 - 前置条件：尝试发布未登记事件
 - 步骤：发未登记事件
-- 预期结果：契约门禁拦截（CI 22.5 第 5 道）
+- 预期结果：契约门禁拦截（CI 23.5 第 5 道）
 - 实现现状（快照）：CI门禁（registry 事件目录校验；未登记事件拒绝发布）
 - 执行状态：未执行
 
 ## HOM-SYNC-010 · 死信查看与重放（人审入口）
-- 关联需求：PRD 3.7 `GET/POST /api/homeos/dead-letters/{id}/replay`（覆盖 homeos 自身死信）、10.4
+- 关联需求：PRD 3.7 `GET/POST /api/homeos/dead-letters/{id}/replay`（覆盖 homeos 自身死信）、11.4
 - 类型：功能 | 优先级：P1 | 建议归属 Sprint：S2
 - 前置条件：存在 dead letter
 - 步骤：查看 → 重放
@@ -97,7 +97,7 @@
 - 执行状态：未执行
 
 ## HOM-SYNC-011 · 每日备份 + WAL 归档（RPO≤15min/RTO≤30min）
-- 关联需求：PRD 3.4.4（每日全备+binlog/WAL 连续归档）、21.3（RPO≤15min、RTO≤30min、整集群备份）
+- 关联需求：PRD 3.4.4（每日全备+binlog/WAL 连续归档）、22.3（RPO≤15min、RTO≤30min、整集群备份）
 - 类型：功能 | 优先级：P0 | 建议归属 Sprint：S14
 - 前置条件：生产/同构环境
 - 步骤：验证备份频率与归档加密
@@ -106,7 +106,7 @@
 - 执行状态：未执行
 
 ## HOM-SYNC-012 · 恢复演练（全栈 Compose 重建，首次即 M1 门禁）
-- 关联需求：PRD 21.3（每季度真实恢复演练、首次即 P1-M1 门禁、含全栈 Compose 重建）、18.2 附加门禁
+- 关联需求：PRD 22.3（每季度真实恢复演练、首次即 P1-M1 门禁、含全栈 Compose 重建）、19.2 附加门禁
 - 类型：功能 | 优先级：P0 | 建议归属 Sprint：S14
 - 前置条件：已备份
 - 步骤：`make restore-drill` 全栈重建
@@ -124,7 +124,7 @@
 - 执行状态：未执行
 
 ## HOM-SYNC-014 · 分包清单契约（按需加载与远程下发载体）
-- 关联需求：PRD 3.7 `GET /api/homeos/app/bundles`（version/url/sha256/size/min_compat）、17.8（P1 只用清单契约+随基座发布，真实远程下发 P2 起）
+- 关联需求：PRD 3.7 `GET /api/homeos/app/bundles`（version/url/sha256/size/min_compat）、18.8（P1 只用清单契约+随基座发布，真实远程下发 P2 起）
 - 类型：功能 | 优先级：P1 | 建议归属 Sprint：S6
 - 前置条件：客户端携带 codes 与 installed
 - 步骤：请求分包清单
@@ -133,7 +133,7 @@
 - 执行状态：未执行
 
 ## HOM-SYNC-015 · 离线记账可用、重放冲突提示不静默丢弃
-- 关联需求：PRD 21.6（离线可用：记账；重放冲突金额型被拒绝需重拉重试，不静默丢弃）
+- 关联需求：PRD 22.6（离线可用：记账；重放冲突金额型被拒绝需重拉重试，不静默丢弃）
 - 类型：异常 | 优先级：P1 | 建议归属 Sprint：S6
 - 前置条件：断网记账多条
 - 步骤：恢复网络后重放
@@ -142,13 +142,13 @@
 - 执行状态：未执行
 
 ## HOM-SYNC-016 · `business_id` 周期后缀：四条可重复事件不得被当作重复丢弃
-- 关联需求：PRD 10.4:1358（同对象可合法重复发生的事件，`business_id` 必须带周期或版本后缀；P1 四条：`finance.budget.exceeded` = `{budget_id}:{period}`、`{code}.due.registered` = `{source_id}:{due_at}`、`homeos.reminder.fired` = `{reminder_id}:{fire_date}`、`homeos.family.module.updated` = `{family_id}:{code}:{version}`）、10.2:1330（`idempotency_key` = `event_type + business_id`）
+- 关联需求：PRD 11.4:1576（同对象可合法重复发生的事件，`business_id` 必须带周期或版本后缀；P1 四条：`finance.budget.exceeded` = `{budget_id}:{period}`、`{code}.due.registered` = `{source_id}:{due_at}`、`calendar.reminder.fired` = `{reminder_id}:{fire_date}`（㉚ 换宿主与换前缀：发布方 `svc-calendar`、消费方 `svc-homeos` 走投递，5.5.8）、`homeos.family.module.updated` = `{family_id}:{code}:{version}`）、11.2:1548（`idempotency_key` = `event_type + business_id`）
 - 类型：功能 | 优先级：P0 | 建议归属 Sprint：S2
 - 前置条件：四条事件各构造「同一对象、不同周期」的两次合法发生
 - 步骤：
   1. 同一预算连续两个月超支，各发一次 `finance.budget.exceeded`
   2. 同一账单改期后重发 `{code}.due.registered`
-  3. 同一周期提醒连续两天触发 `homeos.reminder.fired`
+  3. 同一周期提醒连续两天触发 `calendar.reminder.fired`（发布方 `svc-calendar`，消费方 `svc-homeos` 走投递）
   4. 同一面连续两次启停 `homeos.family.module.updated`
 - 预期结果：
   - 四次「第二次」均**不被消费端幂等表当重复丢弃**（各产生一次业务效果）
@@ -158,7 +158,7 @@
 - 执行状态：未执行
 
 ## HOM-SYNC-017 · 事件信封字段完整（幂等键 / 因果链 / 版本 / 重试 / 投递形态）
-- 关联需求：PRD 10.2:1329-1335（`event_id` 不作幂等键；`idempotency_key` = `event_type + business_id`；`causation_id` 用于链路追溯，无上游为 `null`；`version` 语义化只允许向后兼容；`attempt` 从 0 起；`delivery` 为 `stream`；`family_id`/`member_id` 消费端不得跨家庭处理）
+- 关联需求：PRD 11.2:1547-1553（`event_id` 不作幂等键；`idempotency_key` = `event_type + business_id`；`causation_id` 用于链路追溯，无上游为 `null`；`version` 语义化只允许向后兼容；`attempt` 从 0 起；`delivery` 为 `stream`；`family_id`/`member_id` 消费端不得跨家庭处理）
 - 类型：功能 | 优先级：P0 | 建议归属 Sprint：S2
 - 前置条件：一次跨服务事件链路（财务写 → 事件 → HomeOS 消费）
 - 步骤：
@@ -173,7 +173,7 @@
 - 执行状态：未执行
 
 ## HOM-SYNC-018 · 事件版本兼容：破坏性变更须升 `version` 并保留旧 subject 一个期
-- 关联需求：PRD 10.4:1362（语义化版本、向后兼容；破坏性变更须升 `version` 并保留旧 subject 一个期，由 22.5 契约门禁检测未升级即失败）
+- 关联需求：PRD 11.4:1580（语义化版本、向后兼容；破坏性变更须升 `version` 并保留旧 subject 一个期，由 23.5 契约门禁检测未升级即失败）
 - 类型：异常 | 优先级：P1 | 建议归属 Sprint：S2
 - 前置条件：事件目录可改；一份不兼容变更（删除必填字段）
 - 步骤：
@@ -188,7 +188,7 @@
 - 执行状态：未执行
 
 ## HOM-SYNC-019 · 分区有序：同 `(source_system, source_id)` 有序，不承诺全局有序
-- 关联需求：PRD 10.4:1365（只承诺同一 `(source_system, source_id)` 分区内有序；消费端**不得依赖跨对象事件顺序**）
+- 关联需求：PRD 11.4:1583（只承诺同一 `(source_system, source_id)` 分区内有序；消费端**不得依赖跨对象事件顺序**）
 - 类型：边界 | 优先级：P1 | 建议归属 Sprint：S2
 - 前置条件：同一对象连发两次状态变更；另有两个不同对象乱序到达
 - 步骤：
@@ -201,7 +201,7 @@
 - 执行状态：未执行
 
 ## HOM-SYNC-020 · 人工删除后不重建（EventIgnore 忽略表）
-- 关联需求：PRD 10.4:1364（`EventIgnore(business_id, event_type, ignored_at, operator)` 实现「人工删除后不重建」，落归属服务自己的 schema）、10.3:1344（生成型单据适用该语义）
+- 关联需求：PRD 11.4:1582（`EventIgnore(business_id, event_type, ignored_at, operator)` 实现「人工删除后不重建」，落归属服务自己的 schema）、11.3:1562（生成型单据适用该语义）
 - 类型：异常 | 优先级：P1 | 建议归属 Sprint：S2
 - 前置条件：一条事件生成的单据被人工删除；忽略表已登记该 `business_id`
 - 步骤：
@@ -216,7 +216,7 @@
 - 执行状态：未执行
 
 ## HOM-SYNC-021 · 文本型对象的字段级 LWW（档案 / 偏好 / 正文）
-- 关联需求：PRD 3.4.4:292（档案、偏好、菜谱正文 = 字段级 LWW，文本型可接受后到覆盖）
+- 关联需求：PRD 3.4.4:314（档案、偏好、菜谱正文 = 字段级 LWW，文本型可接受后到覆盖）
 - 类型：功能 | 优先级：P1 | 建议归属 Sprint：S6
 - 前置条件：两设备同时编辑同一对象的**不同字段**
 - 步骤：
@@ -230,12 +230,12 @@
 - 执行状态：未执行
 
 ## HOM-SYNC-022 · 业务对象无 `version` 列不得进 P1-M1
-- 关联需求：PRD 3.4.4:295（写路径一开始就落 `version` 与乐观锁；对象级版本 + 冲突返回 409 及双版本 payload；**业务对象无 `version` 列不得进 P1-M1**）
+- 关联需求：PRD 3.4.4:317（写路径一开始就落 `version` 与乐观锁；对象级版本 + 冲突返回 409 及双版本 payload；**业务对象无 `version` 列不得进 P1-M1**）
 - 类型：安全 | 优先级：P1 | 建议归属 Sprint：S6
 - 前置条件：两服务全部业务表
 - 步骤：
   1. 扫描 `information_schema.columns`，列出缺 `version` 的业务表
-  2. 对每张缺列的表检查是否在 16.2 归属表内、是否属 P1 业务对象
+  2. 对每张缺列的表检查是否在 17.2 归属表内、是否属 P1 业务对象
 - 预期结果：
   - P1 业务对象缺 `version` 列的数量 = 0
   - 底座运行表族（`_outbox`/`_idempotency` 等）按白名单豁免，不误判
@@ -243,7 +243,7 @@
 - 执行状态：未执行
 
 ## HOM-SYNC-023 · 离线不可用清单：五类操作在离线态必须明确拒绝
-- 关联需求：PRD 21.6:2310（离线可用：记账、清单勾选、库存出入、饮食/成长记录、查看档案与行程；**离线不可用：跨家庭切换、邀请成员、权限修改、AI 录入**）、21.6:2311（重放冲突保留提示，不静默丢弃）
+- 关联需求：PRD 22.6:2566（离线可用：记账、清单勾选、库存出入、饮食/成长记录、查看档案与行程；**离线不可用：跨家庭切换、邀请成员、权限修改、AI 录入**）、22.6:2567（重放冲突保留提示，不静默丢弃）
 - 类型：异常 | 优先级：P1 | 建议归属 Sprint：S6
 - 前置条件：设备断网
 - 步骤：
@@ -258,7 +258,7 @@
 - 执行状态：未执行
 
 ## HOM-SYNC-024 · 幂等表落在消费方自己的 schema，跨 schema 读写幂等表 = 0
-- 关联需求：PRD 14.7:1700（**每个事件消费者必须幂等**：以 `event_type + business_id`（或 16.4 的注册幂等键）判重，重复投递不产生重复业务对象；**幂等表落在消费方自己的 schema**）、22.2:2337 第 2 条（数据库账号即边界）、16.2
+- 关联需求：PRD 15.7:1919（**每个事件消费者必须幂等**：以 `event_type + business_id`（或 17.4 的注册幂等键）判重，重复投递不产生重复业务对象；**幂等表落在消费方自己的 schema**）、23.2:2593 第 2 条（数据库账号即边界）、17.2
 - 类型：边界 | 优先级：P0 | 建议归属 Sprint：S2
 - 前置条件：两个服务各有专属账号；可构造重复投递
 - 步骤：

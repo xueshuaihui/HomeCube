@@ -1,13 +1,13 @@
 # HomeOS · 身份域 — 家庭与面配置
 
 > 范围：家庭创建/加入/切换/解散、面配置（强制选面、开通/停用）、`FamilyModule` 唯一权威源。
-> 权威源：`docs/prd-homecube.md` 3.4.1、3.6（Family/FamilyModule）、3.7（家庭相关接口）、15.2（scope=module）、17.8（面配置与目录）。
+> 权威源：`docs/prd-homecube.md` 3.4.1、3.6（Family/FamilyModule）、3.7（家庭相关接口）、16.2（scope=module）、18.8（面配置与目录）。
 > 本文件 case 前缀 `HOM-FAM`。每条含：关联需求 / 类型 / 优先级 / 建议归属 Sprint / 前置 / 步骤 / 预期 / 自动化状态 / 执行状态。
 
 ---
 
 ## HOM-FAM-001 · 创建家庭（含强制选面引导）
-- 关联需求：PRD 3.4.1、3.7 `POST /api/homeos/families`、17.8；验收 18.2#1、18.2#9
+- 关联需求：PRD 3.4.1、3.7 `POST /api/homeos/families`、18.8；验收 19.2#1、19.2#9
 - 类型：功能 | 优先级：P0 | 建议归属 Sprint：S3
 - 前置条件：已通过验证码登录，当前无所属家庭
 - 步骤：
@@ -16,7 +16,7 @@
   3. 系统接续「强制选面」引导
 - 预期结果：
   - 家庭创建成功，JWT claims 带 `family_id` 与角色快照（owner）
-  - 必须至少启用 1 个面（如 finance），**不存在 0 面家庭**（17.8）
+  - 必须至少启用 1 个面（如 finance），**不存在 0 面家庭**（18.8）
   - 跳过/取消选面 → 不允许完成创建
 - 实现现状（快照）：已实现(HTTP)（`server/services/svc-homeos/internal/handler/auth_test.go:689` 建家与未出生面；`repo/identity_events_test.go:135` 发 family/member.created）
 - 执行状态：未执行
@@ -44,7 +44,7 @@
 - 执行状态：未执行
 
 ## HOM-FAM-004 · 多家庭切换（≤5 个）上下文重建
-- 关联需求：PRD 3.4.1（一个账号 ≤5 个家庭、同账号跨家庭数据不合并）、3.7 `POST /api/homeos/families/switch`、18.2#1
+- 关联需求：PRD 3.4.1（一个账号 ≤5 个家庭、同账号跨家庭数据不合并）、3.7 `POST /api/homeos/families/switch`、19.2#1
 - 类型：功能 | 优先级：P0 | 建议归属 Sprint：S3
 - 前置条件：账号已属 ≥2 个家庭，各家庭有不同面配置/币种/时区
 - 步骤：
@@ -66,7 +66,7 @@
 - 执行状态：未执行
 
 ## HOM-FAM-006 · 管理员开通/停用某个面（乐观锁 + pver+1）
-- 关联需求：PRD 3.4.1（面配置变更）、3.7 `PUT /api/homeos/family/modules`、15.6（pver+1 + 事件）、17.8（开通不建业务数据、停用不删数据）
+- 关联需求：PRD 3.4.1（面配置变更）、3.7 `PUT /api/homeos/family/modules`、16.6（pver+1 + 事件）、18.8（开通不建业务数据、停用不删数据）
 - 类型：功能 | 优先级：P0 | 建议归属 Sprint：S3
 - 前置条件：管理员身份、目标面当前未启用
 - 步骤：
@@ -74,12 +74,12 @@
   2. 检查首页矩阵、其余四个消费位
 - 预期结果：
   - 落审计、`pver+1`、发 `homeos.family.module.updated`
-  - 开通**不创建该面任何业务数据**；各服务失效 module 缓存、客户端重建首页矩阵（≤2 秒，18.2#9）
+  - 开通**不创建该面任何业务数据**；各服务失效 module 缓存、客户端重建首页矩阵（≤2 秒，19.2#9）
 - 实现现状（快照）：已实现(HTTP)（`handler/faces_test.go:302` 管理员门禁与最后一面下限）
 - 执行状态：未执行
 
 ## HOM-FAM-007 · 停用面：入口消失但数据保留并继续参与统计
-- 关联需求：PRD 3.4.1、15.2（停用=入口消失+数据保留并继续参与统计）、17.8（三条逐条断言）
+- 关联需求：PRD 3.4.1、16.2（停用=入口消失+数据保留并继续参与统计）、18.8（三条逐条断言）
 - 类型：功能 | 优先级：P0 | 建议归属 Sprint：S3
 - 前置条件：某面已启用且有历史数据（如 finance 有流水）
 - 步骤：
@@ -92,7 +92,7 @@
 - 执行状态：未执行
 
 ## HOM-FAM-008 · 停用最后一个已启用面被拒
-- 关联需求：PRD 3.7 `PUT /api/homeos/family/modules`（仅剩最后一个已启用面时停用被拒）、18.2#9（8 次负样本）
+- 关联需求：PRD 3.7 `PUT /api/homeos/family/modules`（仅剩最后一个已启用面时停用被拒）、19.2#9（8 次负样本）
 - 类型：异常 | 优先级：P1 | 建议归属 Sprint：S3
 - 前置条件：家庭仅启用 1 个面
 - 步骤：尝试停用该唯一面
@@ -101,7 +101,7 @@
 - 执行状态：未执行
 
 ## HOM-FAM-009 · 面配置与目录权威源一致（enabled∧visible）
-- 关联需求：PRD 3.7 `GET /api/homeos/family/modules`（两接口集合由服务端同源合成、逐项一致）、17.8（比对口径 `enabled ∧ visible`）
+- 关联需求：PRD 3.7 `GET /api/homeos/family/modules`（两接口集合由服务端同源合成、逐项一致）、18.8（比对口径 `enabled ∧ visible`）
 - 类型：安全 | 优先级：P0 | 建议归属 Sprint：S3
 - 前置条件：家庭启用部分面、当前成员为访客（部分面不可见）
 - 步骤：
@@ -112,7 +112,7 @@
 - 执行状态：未执行
 
 ## HOM-FAM-010 · 解散家庭（二次确认 + 30 天冷存）
-- 关联需求：PRD 3.4.1（解散需管理员+二次确认、数据保留 30 天冷存后可导出、逾期物理删除）、3.7 `POST /api/homeos/family/disband`、21.4
+- 关联需求：PRD 3.4.1（解散需管理员+二次确认、数据保留 30 天冷存后可导出、逾期物理删除）、3.7 `POST /api/homeos/family/disband`、22.4
 - 类型：功能 | 优先级：P1 | 建议归属 Sprint：S3
 - 前置条件：管理员身份
 - 步骤：
@@ -123,7 +123,7 @@
 - 执行状态：未执行
 
 ## HOM-FAM-011 · 退出家庭（非 owner）
-- 关联需求：PRD 3.7 `POST /api/homeos/family/leave`、15.5（数据留家庭、作者显「已退出成员」）
+- 关联需求：PRD 3.7 `POST /api/homeos/family/leave`、16.5（数据留家庭、作者显「已退出成员」）
 - 类型：功能 | 优先级：P1 | 建议归属 Sprint：S3
 - 前置条件：成人成员（非 owner）
 - 步骤：退出家庭
@@ -132,7 +132,7 @@
 - 执行状态：未执行
 
 ## HOM-FAM-012 · owner 不可移除自身 / 必须先转让
-- 关联需求：PRD 15.1（不能移除自己）、3.7 `POST /api/homeos/family/transfer-owner`
+- 关联需求：PRD 16.1（不能移除自己）、3.7 `POST /api/homeos/family/transfer-owner`
 - 类型：异常 | 优先级：P1 | 建议归属 Sprint：S3
 - 前置条件：管理员（owner）
 - 步骤：

@@ -1,6 +1,6 @@
 # 契约偏差登记（DEVIATIONS）
 
-> **为什么有这个文件**：有一类条目「代码主体在、但 HTTP 面与 PRD 不符」。把它标 `已实现` 会让 18.2#1 被误判可验收；把它标 `未实现` 会重复派卡去重建已有功能。这类条目单列，登记为 `DEV-NN`。
+> **为什么有这个文件**：有一类条目「代码主体在、但 HTTP 面与 PRD 不符」。把它标 `已实现` 会让 19.2#1 被误判可验收；把它标 `未实现` 会重复派卡去重建已有功能。这类条目单列，登记为 `DEV-NN`。
 > **与三条线的关系**：L1 需求缺口 → `SPEC-GAP`（BACKLOG §一）；L2 实现缺口 → `IMPL`（BACKLOG §二）；`契约偏差` → 本文件。三者互不替代。
 
 ## 一、边界规则（唯一判据，防滥用）
@@ -33,8 +33,8 @@
 
 | 编号 | 差异类型 | 阻塞 case | 代码现状（证据） | 契约要求 | 派卡 | 状态 |
 |---|---|---|---|---|---|---|
-| DEV-01 | **路径单复数** | HOM-SESS-004（P0） | `cmd/svc-homeos/main.go:228` 注册 `POST /family/switch` | PRD 3.7:394 `POST /api/homeos/families/switch` | C-H-01 | 开 |
-| DEV-02 | **路由未注册** | FIN-TX-011、FIN-TX-012（P1） | 四个 tag handler 在 `handler/finance.go:1770/1797/1979/2027`；`cmd/svc-finance/main.go` 全文 `tag` 零命中 | PRD 4.7:627 `Tag` 实体 + 4.4/4.5.1「按标签筛选」（**4.8 接口表未登记任何 tag 接口**，见 §4.2） | C-F-01 | 开 |
+| DEV-01 | **路径单复数** | HOM-SESS-004（P0） | `cmd/svc-homeos/main.go:228` 注册 `POST /family/switch` | PRD 3.7:419 `POST /api/homeos/families/switch` | C-H-01 | 开 |
+| DEV-02 | **路由未注册** | FIN-TX-011、FIN-TX-012（P1） | 四个 tag handler 在 `handler/finance.go:1770/1797/1979/2027`；`cmd/svc-finance/main.go` 全文 `tag` 零命中 | PRD 4.7:646 `Tag` 实体 + 4.4/4.5.1「按标签筛选」（**4.8 接口表未登记任何 tag 接口**，见 §4.2） | C-F-01 | 开 |
 
 ---
 
@@ -47,10 +47,10 @@
 | 代码实际路径 | `/api/homeos/family/switch`（`cmd/svc-homeos/main.go:228` `protected.POST("/family/switch", …)`，组前缀为 `services.RoutePrefix`；实际注册结果见 `server/test/acceptance/routes.json:378`） |
 | 业务实现 | `internal/handler/family.go:381` `SwitchFamily`（响应体 `:359 SwitchFamilyResponse` 含轮换后的 token pair 与新家庭快照） |
 | 已有测试 | `internal/handler/auth_test.go:431` 断言「切到非本家庭 → 403 + 落审计」；`:442` 起校验审计条数为下限 |
-| PRD 要求 | 3.7:394 `GET /api/homeos/families` / `POST /api/homeos/families/switch`，P1-M1 新建 |
+| PRD 要求 | 3.7:419 `GET /api/homeos/families` / `POST /api/homeos/families/switch`，P1-M1 新建 |
 | 契约文件 | **`server/contracts/openapi/homeos.yaml` 未登记任何 `/family*/switch`**（该文件 20 条 path 中无 switch）——契约文件本身也缺这一条 |
 | 追溯表 | `traceability.md:15` 按**复数**登记，与代码不一致 |
-| 影响 | 按 PRD 路径打请求 → 404，HOM-SESS-004 的「切换后重签发」不可验收；18.2#1 多家庭上下文重建无法端到端证明 |
+| 影响 | 按 PRD 路径打请求 → 404，HOM-SESS-004 的「切换后重签发」不可验收；19.2#1 多家庭上下文重建无法端到端证明 |
 
 **关闭动作**（顺序不可颠倒）：
 
@@ -71,9 +71,9 @@
 | handler（已在盘） | `internal/handler/finance.go:1770` `CreateTag`（声明 `POST /api/finance/tags`）、`:1797` `ListTags`（`GET /api/finance/tags?family_id=`）、`:1979` `UpdateTag`（`PUT /api/finance/tags/:id`）、`:2027` `DeleteTag`（`DELETE /api/finance/tags/:id`） |
 | 仓储层 | `internal/repo/finance_tag_test.go`（测试在盘，覆盖建/列/改/删） |
 | 路由 | `cmd/svc-finance/main.go` 全文大小写不敏感检索 `tag` → **零命中**。故四条路由均未注册，HTTP 不可达 |
-| PRD 要求 | 4.7:627 `Tag` 实体（`finance_tag`，`Transaction.tags` 经 id 引用）；4.4/4.5.1「标签」与「按标签筛选」；18.3 闭环域含「标签可按筛选命中」 |
+| PRD 要求 | 4.7:646 `Tag` 实体（`finance_tag`，`Transaction.tags` 经 id 引用）；4.4/4.5.1「标签」与「按标签筛选」；19.3 闭环域含「标签可按筛选命中」 |
 | **需求缺口（新发现）** | **PRD 4.8 接口表（648-667）没有登记任何 tag 接口**，`contracts/openapi/finance.yaml` 也只有 schema 里的 `tags` 字段、无 `/finance/tags` 路径。→ 已登记 `SPEC-GAP-08`（建议路径即 handler 注释所写的四条，待确认后写进 4.8） |
-| 影响 | FIN-TX-011 只能停在「已实现(分层)」、FIN-TX-012 停在「待自动化」；18.3「标签可按筛选命中」当前**无 HTTP 面可判** |
+| 影响 | FIN-TX-011 只能停在「已实现(分层)」、FIN-TX-012 停在「待自动化」；19.3「标签可按筛选命中」当前**无 HTTP 面可判** |
 
 **关闭动作**：先在 4.8 与 openapi 补登记（SPEC-GAP-08 确认后），再在 `main.go` 挂 4 条路由（放在 `protected` 组，鉴权口径与 `categories` 一致），补 http 场景「建标签 → 记账挂标签 → 按标签筛选命中 2 条 → 删标签后流水标签置空」，改 FIN-TX-011/012 为 `已实现(HTTP)`。
 
