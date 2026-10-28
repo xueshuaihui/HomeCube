@@ -25,6 +25,14 @@ web/dist-acceptance/
 web/unpackage/
 admin/dist/
 
+# ---- 发布产物（scripts/build-base.sh 生成；重新构建可复原，不进版本库）--------
+# dist/releases/ 是待发布的 zip + site + manifest.json；根目录的 *.zip/*.wgt 是旧流程残留的
+# 打包件。清单的"可提交副本"只有一个：server/services/svc-homeos/internal/handler/
+# bundle_manifest.json（供 go:embed），它必须随源码提交，不能一并忽略。
+/dist/
+/*.zip
+/*.wgt
+
 # ---- 运行期数据：备份包与长压报告（§10.1 原文路径）--------------------------
 # backup 的 pg_dump -Fd + NATS 流快照 + uploads tar 落 deploy/data/backups，
 # soak 的门禁 3 归档件落 deploy/data/soak/report.json；两者都是本机/演练产物，
@@ -55,3 +63,6 @@ deploy/data/
 .DS_Store
 .idea/
 .vscode/
+
+# ---- 本机 agent 工作笔记（会话过程记录，不进公开仓）--------------------------
+.workbuddy/

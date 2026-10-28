@@ -10,6 +10,8 @@
 //     POST /api/finance/trash/:id/restore
 //     DELETE /api/finance/trash/:id
 //     POST /api/finance/trash/clear-expired
+//     （restore / 彻底删除 / 清空过期**不带** family_id：家庭作用域取自会话 token，
+//     2026-10-04 实测三端点无 family_id 查询参数亦返回 200，故不附加。）
 
 import { ref, computed, onMounted } from 'vue'
 import { request } from '@/utils/request'
@@ -19,20 +21,31 @@ import { useHomeStore } from '@/stores/home'
 interface TrashItem {
   id: string
   family_id: string
-  original_type: 'transaction' | 'category' | 'account' | 'budget' | 'bill'
-  original_id: string
+  // 实测 GET /api/finance/trash 返回的是**事务行本身**（type: "expense"|"income"、
+  // amount_cents 等），**没有** original_type/original_id/data 这几个资源种类字段——
+  // 后端注释明写 "Other types not yet implemented"，当前只会返回流水。
+  // original_type 待后端补齐（见 API ask）；缺失时按「流水」处理，不再渲染 undefined。
+  original_type?: 'transaction' | 'category' | 'account' | 'budget' | 'bill'
+  original_id?: string
   deleted_at: string
   expires_at: string
-  data: Record<string, any>
+  data?: Record<string, any>
   can_restore: boolean
 }
 
 const trashItems = ref<TrashItem[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
-const activeFilter = ref<'all' | 'transaction' | 'category' | 'account'>('all')
+// 标签页只列后端**实际能返回**的资源种类：当前 /api/finance/trash 只返回流水，
+// 「分类」「账户」标签永远为空，是 API 无法兑现的承诺，故删去；后端支持后再加回。
+const activeFilter = ref<'all' | 'transaction'>('all')
 
 const homeStore = useHomeStore()
+
+/** 条目的资源种类：无 original_type 字段时即流水（API 现状，非猜测兜底）。 */
+function kindOf(item: TrashItem): string {
+  return item.original_type ?? 'transaction'
+}
 
 async function resolveSessionFamilyId(): Promise<string> {
   if (homeStore.sessionFamilyId) return homeStore.sessionFamilyId
@@ -77,9 +90,10 @@ async function restoreItem(item: TrashItem) {
     return
   }
 
+  const label = getTypeLabel(kindOf(item))
   uni.showModal({
     title: '恢复记录',
-    content: `确定要恢复这条${getTypeLabel(item.original_type)}记录吗？`,
+    content: label ? `确定要恢复这条${label}记录吗？` : '确定要恢复该记录吗？',
     success: async (res) => {
       if (!res.confirm) return
       try {
@@ -132,7 +146,9 @@ async function clearExpired() {
   })
 }
 
-function getTypeLabel(type: string): string {
+/** 资源种类文案：未知/缺失一律返回空串，由调用方降级成「该」「记录」，
+ *  绝不把 undefined 或原始枚举串直接渲染给用户。 */
+function getTypeLabel(type?: string): string {
   const labels: Record<string, string> = {
     transaction: '流水',
     category: '分类',
@@ -140,7 +156,7 @@ function getTypeLabel(type: string): string {
     budget: '预算',
     bill: '账单',
   }
-  return labels[type] || type
+  return labels[type ?? ''] ?? ''
 }
 
 function getDaysRemaining(expiresAt: string): number {
@@ -150,10 +166,10 @@ function getDaysRemaining(expiresAt: string): number {
   return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
 }
 
-// Computed: filtered items
+// Computed: filtered items（按 kindOf 过滤：当前 API 无 original_type，条目即流水）
 const filteredItems = computed(() => {
   if (activeFilter.value === 'all') return trashItems.value
-  return trashItems.value.filter((item) => item.original_type === activeFilter.value)
+  return trashItems.value.filter((item) => kindOf(item) === activeFilter.value)
 })
 
 // Computed: expired count
@@ -186,8 +202,6 @@ onMounted(() => {
         v-for="filter in [
           { key: 'all', label: '全部' },
           { key: 'transaction', label: '流水' },
-          { key: 'category', label: '分类' },
-          { key: 'account', label: '账户' },
         ]"
         :key="filter.key"
         class="filter-item"
@@ -223,7 +237,7 @@ onMounted(() => {
       <view v-for="item in filteredItems" :key="item.id" class="trash-item">
         <view class="trash-header">
           <view class="trash-info">
-            <text class="trash-type">{{ getTypeLabel(item.original_type) }}</text>
+            <text class="trash-type">{{ getTypeLabel(kindOf(item)) || '记录' }}</text>
             <text v-if="!item.can_restore" class="trash-expired-badge">已过期</text>
           </view>
           <text class="trash-days">剩余{{ getDaysRemaining(item.expires_at) }}天</text>

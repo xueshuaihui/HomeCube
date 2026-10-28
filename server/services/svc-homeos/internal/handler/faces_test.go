@@ -86,7 +86,7 @@ func firstUnbornFace(t *testing.T) registry.Domain {
 func addOutboxTable(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	require.NoError(t, db.Exec(
-		`CREATE TABLE homeos_outbox (
+		`CREATE TABLE IF NOT EXISTS homeos_outbox (
 			id INTEGER PRIMARY KEY AUTOINCREMENT, family_id TEXT, subject TEXT NOT NULL,
 			envelope TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending'
 				CHECK (status IN ('pending','sent')),
@@ -362,7 +362,10 @@ func TestUpdateFamilyModuleLockAdminGateAndLastFaceFloor(t *testing.T) {
 	assert.Equal(t, int64(1), countEnabledRows(t, db, familyID), "409 之后配置行必须还是提交前的样子")
 	assert.Equal(t, int64(1), rowVersion(t, db, familyID, born.Code))
 	assert.Equal(t, auditAfterMount, countAuditRows(t, db, familyID), "被锁挡下的请求不得留下审计行")
-	assert.Equal(t, int64(2), countOutboxRowsAll(t, db), "409 的事务必须整体回滚")
+	// 4 (was 2): 15.5's audit writes now publish homeos.audit.recorded in the same transaction, so the
+	// ledger at this point is ①'s denied-audit event + ②'s module.updated + permission.updated +
+	// mount-audit event. The 409 above must still add NOTHING.
+	assert.Equal(t, int64(4), countOutboxRowsAll(t, db), "409 的事务必须整体回滚")
 
 	// ④ PRD 17.8 第 4 条「不允许出现 0 面家庭」: the FLOOR, with a perfectly current version. The lock
 	// passes and the repo's in-transaction count is what refuses.
@@ -374,7 +377,7 @@ func TestUpdateFamilyModuleLockAdminGateAndLastFaceFloor(t *testing.T) {
 	assert.Equal(t, int64(1), rowVersion(t, db, familyID, born.Code), "被拒的写不得烧掉 version")
 	assert.Equal(t, seededPVer+1, familyPVer(t, db, familyID), "被拒的写不得推进 pver")
 	assert.Equal(t, auditAfterMount, countAuditRows(t, db, familyID), "被拒的写不得留下审计行")
-	assert.Equal(t, int64(2), countOutboxRowsAll(t, db), "被拒的写不得留下事件")
+	assert.Equal(t, int64(4), countOutboxRowsAll(t, db), "被拒的写不得留下事件（含审计事件）")
 
 	// ⑤ 未出生的面是只读格（17.8「可选项只列服务已出生的面」）: both directions refused, with the live
 	// epoch, so the refusal is about the face and not about the lock.

@@ -985,7 +985,7 @@ func (h *FinanceHandler) PayBill(c *gin.Context) {
 		return
 	}
 
-	_, familyID, ok := scopeFamily(c, h.OnDenied, c.Query("family_id"))
+	sess, familyID, ok := scopeFamily(c, h.OnDenied, c.Query("family_id"))
 	if !ok {
 		return
 	}
@@ -993,7 +993,8 @@ func (h *FinanceHandler) PayBill(c *gin.Context) {
 	// 结清是写操作，并且它会顺带写一条 finance.due.revoked 撤销**对方家庭**的到期注册
 	// （writeDueRevokedEvent 用的是行上的 family_id）—— 不带家庭条件的话，
 	// 一个猜到的 bill id 就能同时改掉别人的账单与别人的到期提醒。
-	bill, err := h.repo.MarkAsPaid(c.Request.Context(), familyID, id)
+	// paidBy 是契约 finance.bill.paid 的字段（repo.MarkAsPaid 的注释写明传 sess.MemberID）。
+	bill, err := h.repo.MarkAsPaid(c.Request.Context(), familyID, id, sess.MemberID)
 	if err != nil {
 		rejectScopedError(c, h.OnDenied, "failed to mark bill as paid", "bill", err)
 		return

@@ -2,12 +2,19 @@
 
 /**
  * Format amount in cents to human-readable currency string
- * @param cents Amount in cents (integer)
- * @returns Formatted string like "¥123.45"
+ * @param cents Amount in cents (integer, 收入为正 / 支出为负, PRD 17.7 第 5 条以「分」计)
+ * @returns Formatted string like "¥123.45"; negatives render "-¥1406.32"
+ *
+ * 单一口径（PRD 17.7 第 5 条、18.3#9）：符号在货币符号**之前**，与服务端的
+ * `formatMoney`（server/services/svc-homeos/internal/handler/faces.go:242-259）
+ * 逐字节一致。旧实现 `¥${yuan.toFixed(2)}` 会把负数渲染成 `¥-1406.32`，
+ * 同一笔金额客户端与服务器口径不一。全项目只有这一个共享金额格式化函数，
+ * 任何调用点都不得再自行处理符号。
  */
 export function formatAmount(cents: number): string {
-  const yuan = cents / 100
-  return `¥${yuan.toFixed(2)}`
+  const sign = cents < 0 ? '-' : ''
+  const yuan = Math.abs(cents) / 100
+  return `${sign}¥${yuan.toFixed(2)}`
 }
 
 /**

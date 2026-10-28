@@ -76,8 +76,9 @@ async function resolveSessionFamilyId(): Promise<string> {
 }
 
 // Computed: total expense and income for current period
-// 服务端的 expense 行 amount_cents 本身就是负数（CreateTransaction 会取负），
-// 求和取绝对值，才不会出现「支出 = ¥-1234.00」。
+// 服务端的 expense 行 amount_cents 本身就是负数（CreateTransaction 会取负）。
+// 「支出」标签行显示的是**数额**、不带方向符号——与后端投影把 expense_cents 存成
+// 非负幅值、headlineSpend 不做符号翻转（svc-homeos faces.go:236）同一口径。
 const totalExpense = computed(() => {
   return transactions.value
     .filter(t => t.type === 'expense')
@@ -92,10 +93,10 @@ const totalIncome = computed(() => {
 
 const netAmount = computed(() => totalIncome.value - totalExpense.value)
 
-/** 行的金额文案：符号由 type 决定，数字取绝对值（避免出现「-¥-299.50」）。 */
+/** 行的金额文案：负号由 `formatAmount` 统一产出（符号在 `¥` 之前，与服务端 formatMoney 同口径；
+ *  支出行落库即负数，无需再剥号重拼）。收入行加 `+` 前缀作方向装饰——格式化函数不产出加号。 */
 function amountText(item: Transaction): string {
-  const text = formatAmount(Math.abs(item.amount_cents))
-  if (item.type === 'expense') return `-${text}`
+  const text = formatAmount(item.amount_cents)
   if (item.type === 'income') return `+${text}`
   return text
 }

@@ -178,19 +178,44 @@ func applyTransactionUpdated(ctx context.Context, db *gorm.DB, ev *transactionEv
 
 		occurredAt := resolveOccurredAt(ev)
 		if occurredAt.IsZero() {
-			if t, ok := readMirrorOccurredAt(ctx, tx, ev.TransactionID); ok {
-				occurredAt = t
-			} else {
+			t, ok := readMirrorOccurredAt(ctx, tx, ev.TransactionID)
+			if !ok {
 				return ErrTxnOccurredAt
 			}
+			occurredAt = t
 		}
-		inc, exp := normalizeMoney(resolveType(ev), resolveAmount(ev))
+		typ := resolveType(ev)
+		amt := resolveAmount(ev)
+		var inc, exp int64
+		if amt == 0 {
+			if !found {
+				// No amount in the event and no mirror to take the money from: this updated cannot
+				// define money -- nil, not an error; created's own copy (or a later money-carrying
+				// update) writes the real wings. Inventing a 0/0 mirror here would fake a bucket row.
+				return nil
+			}
+			mi, me, err := readMirrorMoney(ctx, tx, ev.TransactionID)
+			if err != nil {
+				return err
+			}
+			if typ == "" {
+				inc, exp = mi, me // 纯改期/改元信息：钱原样保留，只换月桶
+			} else {
+				inc, exp = normalizeMoney(typ, mi+me) // 只改类型：幅值不动，换翼
+			}
+		} else {
+			inc, exp = normalizeMoney(typ, amt)
+		}
 		bucket := bucketMonthOf(occurredAt)
 
 		if err := upsertTxnMirror(ctx, tx, ev.TransactionID, familyID, bucket, inc, exp, occurredAt); err != nil {
 			return err
 		}
-		if err := recomputeFinanceBucket(ctx, tx, familyID, bucket); err != nil {
+		// Family-wide, not just the new bucket: an amount edit that moves the transaction to another
+		// month leaves the OLD bucket's aggregate row stale unless it is recomputed too, and recompute
+		// (delete-empties + SUM) across all of the family's buckets is exactly the pass that catches it
+		// -- the mirror is small, and correctness beats one-bucket micro-optimisation here.
+		if err := recomputeFinanceFamily(ctx, tx, familyID); err != nil {
 			return err
 		}
 		if found && oldFamily != familyID {
@@ -321,6 +346,23 @@ func readMirrorFamily(ctx context.Context, tx *gorm.DB, txnID string) (string, b
 		return "", false
 	}
 	return row.FamilyID, true
+}
+
+// readMirrorMoney returns the normalized wings the mirror currently holds for one transaction, so an
+// update that carries only SOME money keys (a month move without an amount, a type flip without an
+// amount) re-buckets or re-wings the existing figure instead of recomputing it from zero.
+func readMirrorMoney(ctx context.Context, tx *gorm.DB, txnID string) (int64, int64, error) {
+	var row struct {
+		Income  int64 `gorm:"column:income_cents"`
+		Expense int64 `gorm:"column:expense_cents"`
+	}
+	err := tx.WithContext(ctx).Raw(
+		"SELECT income_cents, expense_cents FROM "+projFinanceTxnTable+" WHERE transaction_id = ?", txnID).
+		Scan(&row).Error
+	if err != nil {
+		return 0, 0, fmt.Errorf("读回流水镜像金额失败: %w", err)
+	}
+	return row.Income, row.Expense, nil
 }
 
 // readMirrorOccurredAt fetches the mirror's stored occurred_at so an update that omits it can bucket by

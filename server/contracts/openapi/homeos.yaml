@@ -1022,8 +1022,12 @@ paths:
     get:
       summary: 前端分包清单
       description: >
-        按 codes 与客户端 installed 返回每面分包的 version/url/sha256/size/min_compat。
-        供按需加载与远程下发使用。
+        按 codes 返回每面分包的 version/url/sha256/size/min_compat，供按需加载与远程下发使用。
+        内容来自构建时生成并随 svc-homeos 编译的清单快照（scripts/build-base.sh）。
+        P1 中每个面分包的 url/sha256/size 指向承载它的基座包（财务分包随基座发布，17.8）；
+        基座本身不是 bundles 条目，其版本见 /app/version。
+        未知或尚未出生的 code 被忽略；installed 仅接收、不参与过滤——客户端自行比对本地
+        (code, version)（导航文档「比对本地」）。
       operationId: getAppBundles
       tags:
         - app
@@ -1041,7 +1045,7 @@ paths:
           required: false
           schema:
             type: string
-          description: 客户端已安装的分包版本 JSON
+          description: 客户端已安装的分包版本 JSON（仅接收，客户端自行比对）
       responses:
         '200':
           description: 分包清单
@@ -1067,6 +1071,8 @@ paths:
                           type: integer
                         min_compat:
                           type: string
+        '503':
+          description: 随服务发布的清单不可用（构建缺陷），客户端应保持当前面状态而不是白屏
 
   /app/version:
     get:
@@ -1094,8 +1100,8 @@ paths:
                     type: string
                   min_compat:
                     type: string
-                  force_update:
-                    type: boolean
+        '503':
+          description: 随服务发布的清单不可用（构建缺陷）；检查失败不阻断首屏
 
 components:
   securitySchemes:

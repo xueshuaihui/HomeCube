@@ -1,0 +1,21 @@
+{
+  "generated_at": "2026-10-26T13:44:40.746Z",
+  "base": {
+    "version": "1.0.0",
+    "url": "/releases/base/1.0.0/homecube-base-1.0.0.zip",
+    "sha256": "3ee7d0db78341580993f977fffecd129db382e32ae0abe56565ab038c160b595",
+    "size": 205732,
+    "update_notes": "P1：HomeOS 基座 + 财务管理面",
+    "min_compat": "1.0.0"
+  },
+  "bundles": [
+    {
+      "code": "finance",
+      "version": "1.0.0",
+      "url": "/releases/base/1.0.0/homecube-base-1.0.0.zip",
+      "sha256": "3ee7d0db78341580993f977fffecd129db382e32ae0abe56565ab038c160b595",
+      "size": 205732,
+      "min_compat": "1.0.0"
+    }
+  ]
+}

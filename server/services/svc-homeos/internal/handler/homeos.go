@@ -2,15 +2,160 @@
 package handler
 
 import (
+	_ "embed"
+	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/xueshuaihui/HomeCube/server/packages/registry"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/model"
 	"github.com/xueshuaihui/HomeCube/server/services/svc-homeos/internal/repo"
 	"gorm.io/gorm"
 )
+
+// bundleManifestJSON is written by scripts/build-base.sh on every build (byte-identical to the
+// published dist/releases/manifest.json) and compiled into the binary. The service therefore never
+// reads the filesystem: what it advertises is exactly what was built and hash-verified at release
+// time, and container working directories/permissions cannot change the answer (PRD 17.8).
+//
+//go:embed bundle_manifest.json
+var bundleManifestJSON []byte
+
+// bundleManifest is the single source of truth behind both /app/bundles and /app/version:
+// PRD 12.4 requires the client's min_compat to come from the same place as the bundle manifest.
+type bundleManifest struct {
+	GeneratedAt string           `json:"generated_at"`
+	Base        manifestRelease  `json:"base"`
+	Bundles     []manifestBundle `json:"bundles"`
+}
+
+// manifestRelease describes the base (H5 shell) artifact.
+type manifestRelease struct {
+	Version     string `json:"version"`
+	URL         string `json:"url"`
+	SHA256      string `json:"sha256"`
+	Size        int    `json:"size"`
+	UpdateNotes string `json:"update_notes"`
+	MinCompat   string `json:"min_compat"`
+}
+
+// manifestBundle describes one face's bundle. In P1 a bundle ships inside the base package
+// (PRD 17.8 P1 row), so its url/sha256/size point at that package; P2 switches to one package per
+// face without changing these fields.
+type manifestBundle struct {
+	Code      string `json:"code"`
+	Version   string `json:"version"`
+	URL       string `json:"url"`
+	SHA256    string `json:"sha256"`
+	Size      int    `json:"size"`
+	MinCompat string `json:"min_compat"`
+}
+
+var (
+	semverPattern = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+$`)
+	sha256Pattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
+)
+
+// appManifest and appManifestErr hold the validated embedded manifest. A bad manifest is a build
+// defect, so the endpoints answer 503 rather than serving a guessed version (the previous
+// "fall back to 1.0.0" behaviour would advertise a hash that does not match any artifact).
+var (
+	appManifest    bundleManifest
+	appManifestErr error
+)
+
+func init() {
+	if err := json.Unmarshal(bundleManifestJSON, &appManifest); err != nil {
+		appManifestErr = fmt.Errorf("解析 bundle_manifest.json: %w", err)
+	} else {
+		appManifestErr = appManifest.validate()
+	}
+	if appManifestErr != nil {
+		slog.Error("分包清单不可用：/app/bundles 与 /app/version 将返回 503", "error", appManifestErr)
+	}
+}
+
+// validate checks the manifest against the registry, which is the only authority on which domains
+// have been born (PRD 16.1). Structural checks come first so a hand-edited manifest fails with a
+// field name instead of a downstream nil/short string.
+func (m bundleManifest) validate() error {
+	if strings.TrimSpace(m.GeneratedAt) == "" {
+		return fmt.Errorf("generated_at 为空")
+	}
+	if err := validateArtifact("base", m.Base.Version, m.Base.URL, m.Base.SHA256, m.Base.MinCompat, m.Base.Size); err != nil {
+		return err
+	}
+	if strings.TrimSpace(m.Base.UpdateNotes) == "" {
+		return fmt.Errorf("base.update_notes 为空")
+	}
+
+	seen := make(map[string]bool, len(m.Bundles))
+	for i, b := range m.Bundles {
+		label := fmt.Sprintf("bundles[%d]", i)
+		if err := validateArtifact(label, b.Version, b.URL, b.SHA256, b.MinCompat, b.Size); err != nil {
+			return err
+		}
+		if b.Code == "" {
+			return fmt.Errorf("%s.code 为空", label)
+		}
+		if b.Code == registry.HomeosCode {
+			return fmt.Errorf("%s.code 不能是 %q（主包不是分包）", label, registry.HomeosCode)
+		}
+		domain, ok := registry.ByCode(b.Code)
+		if !ok {
+			return fmt.Errorf("%s.code %q 不在 registry 域表里", label, b.Code)
+		}
+		if !domain.Born() {
+			return fmt.Errorf("%s.code %q 尚未出生（出生期 %s，当期 %s）", label, b.Code, domain.BirthPhase, registry.CurrentPhase)
+		}
+		if seen[b.Code] {
+			return fmt.Errorf("%s.code %q 重复", label, b.Code)
+		}
+		seen[b.Code] = true
+	}
+
+	// Set equality with registry.BundleSet() is the drift alarm: if a face is born (phase bumped,
+	// pages.json updated) but the manifest was not regenerated, the shell would be told a face
+	// exists with no entry. Refuse to serve instead of silently omitting it.
+	want := registry.BundleSet()
+	if len(want) != len(m.Bundles) {
+		return fmt.Errorf("清单分面包数 %d 与 registry 当期分包数 %d 不一致（registry：%s）",
+			len(m.Bundles), len(want), strings.Join(want, ","))
+	}
+	for _, code := range want {
+		if !seen[code] {
+			return fmt.Errorf("registry 当期分包 %q 不在清单里", code)
+		}
+	}
+	return nil
+}
+
+func validateArtifact(label, version, url, sha256, minCompat string, size int) error {
+	if !semverPattern.MatchString(version) {
+		return fmt.Errorf("%s.version 不是 x.y.z：%q", label, version)
+	}
+	if !semverPattern.MatchString(minCompat) {
+		return fmt.Errorf("%s.min_compat 不是 x.y.z：%q", label, minCompat)
+	}
+	if size <= 0 {
+		return fmt.Errorf("%s.size 必须为正数：%d", label, size)
+	}
+	if !sha256Pattern.MatchString(sha256) {
+		return fmt.Errorf("%s.sha256 不是 64 位小写十六进制：%q", label, sha256)
+	}
+	if !strings.HasPrefix(url, "/releases/") {
+		return fmt.Errorf("%s.url 必须落在 /releases/ 下：%q", label, url)
+	}
+	if strings.Contains(url, "..") {
+		return fmt.Errorf("%s.url 含路径穿越：%q", label, url)
+	}
+	return nil
+}
 
 // GetPrivacyPolicy handles GET /api/homeos/legal/privacy-policy.
 func GetPrivacyPolicy(c *gin.Context) {
@@ -165,52 +310,76 @@ type BundleInfo struct {
 	MinCompat string `json:"min_compat"`
 }
 
-// GetAppBundles handles GET /api/homeos/app/bundles.
-// Returns frontend bundle metadata for on-demand loading and remote distribution.
+// GetAppBundles handles GET /api/homeos/app/bundles?codes=…&installed=….
+//
+// It is a pure snapshot of the embedded manifest, filtered by codes (PRD 3.7/17.8):
+//   - no codes → every bundle born in the current phase, in registry order;
+//   - unknown/unborn codes are ignored, the caller learns availability from /faces and
+//     /family/modules, not from an error here;
+//   - installed is accepted but not interpreted: the shell compares (code, version) itself
+//     (navigation doc §6.11「比对本地 (code, version)」), which keeps this response cacheable.
+//
+// The base package is not a bundle entry; its version and min_compat come from /app/version.
 func GetAppBundles(c *gin.Context) {
-	// P1: Return stub data for implemented faces (homeos + finance)
-	// In production, this would read from a bundles table or configuration
-	bundles := []BundleInfo{
-		{
-			Code:      "homeos",
-			Version:   "1.0.0",
-			URL:       "/static/bundles/homeos-1.0.0.js",
-			SHA256:    "placeholder_sha256_homeos",
-			Size:      1024000, // ~1MB
-			MinCompat: "1.0.0",
-		},
-		{
-			Code:      "finance",
-			Version:   "1.0.0",
-			URL:       "/static/bundles/finance-1.0.0.js",
-			SHA256:    "placeholder_sha256_finance",
-			Size:      850000, // ~850KB
-			MinCompat: "1.0.0",
-		},
+	if appManifestErr != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "bundle_manifest_invalid"})
+		return
+	}
+
+	requested := parseBundleCodes(c.Query("codes"))
+	bundles := make([]BundleInfo, 0, len(appManifest.Bundles))
+	for _, b := range appManifest.Bundles {
+		if len(requested) > 0 && !requested[b.Code] {
+			continue
+		}
+		bundles = append(bundles, BundleInfo{
+			Code:      b.Code,
+			Version:   b.Version,
+			URL:       b.URL,
+			SHA256:    b.SHA256,
+			Size:      b.Size,
+			MinCompat: b.MinCompat,
+		})
 	}
 
 	c.JSON(http.StatusOK, AppBundlesResponse{Bundles: bundles})
 }
 
+// parseBundleCodes turns "finance, purchase" into a set; empty input yields an empty set, which
+// the caller reads as "all bundles".
+func parseBundleCodes(raw string) map[string]bool {
+	out := make(map[string]bool)
+	for _, code := range strings.Split(raw, ",") {
+		if code = strings.TrimSpace(code); code != "" {
+			out[code] = true
+		}
+	}
+	return out
+}
+
 // AppVersionResponse represents the response for GET /app/version.
+// PRD 3.4.8/12.4 fix the field set: current version + update notes + min_compat. Forced update is
+// derived by the client from min_compat; there is no separate flag (㉕: min_compat is the only
+// trigger).
 type AppVersionResponse struct {
 	CurrentVersion string `json:"current_version"`
 	UpdateNotes    string `json:"update_notes"`
 	MinCompat      string `json:"min_compat"`
-	ForceUpdate    bool   `json:"force_update"`
 }
 
 // GetAppVersion handles GET /api/homeos/app/version.
 // Silent version check after login. Returns current version + update notes + min_compat.
 // Still goes through middleware auth (with token), but response contains no family data.
 func GetAppVersion(c *gin.Context) {
-	// P1: Return static version info
-	// In production, this would be configurable via admin panel or config file
+	if appManifestErr != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "bundle_manifest_invalid"})
+		return
+	}
+
 	c.JSON(http.StatusOK, AppVersionResponse{
-		CurrentVersion: "1.0.0",
-		UpdateNotes:    "P1-M2 release: Complete financial management, loan tracking, split settlements",
-		MinCompat:      "1.0.0",
-		ForceUpdate:    false,
+		CurrentVersion: appManifest.Base.Version,
+		UpdateNotes:    appManifest.Base.UpdateNotes,
+		MinCompat:      appManifest.Base.MinCompat,
 	})
 }
 

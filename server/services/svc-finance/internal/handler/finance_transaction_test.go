@@ -92,6 +92,9 @@ func setupTxHandlerDB(t *testing.T) (*gorm.DB, *FinanceHandler) {
 	require.NoError(t, db.Exec(ddlFinanceChangeLog).Error)
 	require.NoError(t, db.Exec(ddlFinanceIdempotency).Error)
 	require.NoError(t, db.Exec(ddlFinanceIdempotencyUidx).Error)
+	// CreateTransaction 现在在同一事务里落 finance.transaction.created 的 outbox 行
+	//（finance_events.go），缺表会让写流水整体 500 —— 底座运行表的形状与 finance_bill_test.go 一致。
+	require.NoError(t, db.Exec(ddlOutbox).Error)
 
 	// 请求体里的 account_id 必须在本家庭真实存在：CreateTransaction 现在先走
 	// repo.AssertRefsExist（`WHERE id = ? AND family_id = ?`），查不到就 404 拒写。

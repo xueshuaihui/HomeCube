@@ -97,6 +97,7 @@ func setupTestRepo(t *testing.T) (*repo.FinanceRepo, *gorm.DB) {
 		&model.FinanceCreditCard{},
 		&model.FinanceInvoice{},
 		&model.FinanceAssetLiabilityReport{},
+		&model.FinanceLiability{},
 	)
 	if err != nil {
 		t.Fatalf("failed to migrate models: %v", err)
@@ -848,7 +849,7 @@ func TestMarkBillAsPaid(t *testing.T) {
 	}
 
 	// Mark as paid
-	updatedBill, err := r.MarkAsPaid(ctx, bill.FamilyID, bill.ID)
+	updatedBill, err := r.MarkAsPaid(ctx, bill.FamilyID, bill.ID, "")
 	if err != nil {
 		t.Fatalf("failed to mark bill as paid: %v", err)
 	}

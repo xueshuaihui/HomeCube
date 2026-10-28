@@ -139,6 +139,14 @@ func setupIdentityDB(t *testing.T) (*gorm.DB, string, string, string) {
 			result TEXT NOT NULL DEFAULT 'allowed' CHECK (result IN ('allowed','denied')),
 			reason TEXT, ip TEXT, user_agent TEXT,
 			created_at DATETIME NOT NULL, occurred_at DATETIME NOT NULL)`,
+		// homeos_outbox: CreateFamily / member mutations now append contract events inside their
+		// business transactions (packages/bus's 7-column shape, same fixture as faces_test.go's
+		// addOutboxTable), so the identity handler tests must carry the sink or the tx rolls back.
+		`CREATE TABLE IF NOT EXISTS homeos_outbox (
+			id INTEGER PRIMARY KEY AUTOINCREMENT, family_id TEXT, subject TEXT NOT NULL,
+			envelope TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending'
+				CHECK (status IN ('pending','sent')),
+			attempts INTEGER NOT NULL DEFAULT 0, created_at DATETIME NOT NULL)`,
 	}
 	for _, s := range stmts {
 		require.NoError(t, db.Exec(s).Error)
