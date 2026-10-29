@@ -68,9 +68,9 @@
     background: var(--brand-soft); color: var(--brand-text);
   }
   .cal-rel-os { display: none; }
-  body[data-state="homeos"] .cal-rel-fin { display: none; }
-  body[data-state="homeos"] .cal-rel-os { display: block; }
-  body[data-state="homeos"] .cal-rel-icon { background: var(--accent-soft); color: var(--accent); }
+  body[data-state="calendar"] .cal-rel-fin { display: none; }
+  body[data-state="calendar"] .cal-rel-os { display: block; }
+  body[data-state="calendar"] .cal-rel-icon { background: var(--accent-soft); color: var(--accent); }
   .cal-rel-body { flex: 1; min-width: 0; }
   .cal-rel-title { font-size: var(--fs-15); font-weight: 600; }
   .cal-rel-sub { margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
@@ -108,7 +108,7 @@
   .cal-foot-note { margin-top: 8px; text-align: center; line-height: var(--lh-normal); }
 </style>
 </head>
-<body data-screen="11 事件详情 · 日历面" data-tab="" data-states="default,homeos,sourceUnavailable,offline">
+<body data-screen="11 事件详情 · 日历面" data-tab="" data-states="default,calendar,sourceUnavailable,offline">
 <div class="harness"></div>
 
 <div class="phone">
@@ -155,7 +155,7 @@
       <div class="cal-hero-meta">
         <span class="cal-src cal-src-fin cal-hero-src"
           data-hot="③" data-hot-name="来源标注" data-hot-pos="outer-bottom-right"
-          data-hot-label="来源系统由注册时的 source_system 决定，不按标题猜；P1 只可能是 HomeOS 或财务">财务<span class="cal-src-suffix"> · 暂不可用</span></span>
+          data-hot-label="来源系统由注册时的 source_system 决定，不按标题猜；P1 只可能是 日历 或 财务">财务<span class="cal-src-suffix"> · 暂不可用</span></span>
         <span class="cal-st cal-st-wait cal-hero-status">待缴</span>
       </div>
     </section>
@@ -205,7 +205,7 @@
     </div>
     <a class="btn btn-primary btn-block cal-go" id="go" href="finance-bill-detail.html"
       data-hot="②" data-hot-name="前往源对象" data-hot-pos="bottom-right"
-      data-hot-label="source_system / source_id 决定深链：财务账单进财务账单详情；HomeOS 自带对象回首页；源面不可用时禁用">
+      data-hot-label="source_system / source_id 决定深链：财务账单进财务账单详情；日历自带对象回本面内页（待办 → calendar/todo/detail，日程 → 本页）；源面不可用时禁用">
       前往源对象
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h8M8.8 4.8 12 8l-3.2 3.2"/></svg>
     </a>
@@ -223,13 +223,13 @@
     go.setAttribute('aria-disabled', 'true');
   }
 
-  if (state === 'homeos') {
+  if (state === 'calendar') {
     document.querySelector('.cal-hero-time').textContent = '16:30';
     document.querySelector('.cal-hero-title').textContent = '接女儿放学';
 
     var src = document.querySelector('.cal-hero-src');
     src.className = 'cal-src cal-src-os cal-hero-src';
-    src.textContent = 'HomeOS';
+    src.textContent = '日历';
 
     var st = document.querySelector('.cal-hero-status');
     st.className = 'cal-st cal-st-todo cal-hero-status';
@@ -238,11 +238,11 @@
     document.getElementById('rel-title').textContent = '待办 · 接女儿放学';
     document.getElementById('rel-sub').textContent = '家庭待办 · 负责人 我';
     document.getElementById('rel-amount').style.display = 'none';
-    document.getElementById('row-source').textContent = 'HomeOS · 待办';
+    document.getElementById('row-source').textContent = '日历 · 待办';
     document.getElementById('row-remind').textContent = '当天 16:15 · 提前 15 分钟 · 站内信';
-    document.getElementById('footnote').textContent = '回到首页即可继续处理这条待办';
+    document.getElementById('footnote').textContent = '回到到期中心即可继续处理这条待办';
 
-    go.setAttribute('href', 'home.html');
+    go.setAttribute('href', 'todo-detail.html');
   }
 </script>
 </body>

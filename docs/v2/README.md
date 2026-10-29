@@ -42,7 +42,7 @@ docs/v2/
 
 P1 全量 **73 屏** = 底座 22 + 日历面 9 + 财务面 42。日历 9 屏的路由域是 `calendar/*`（三段式 `{分包}/{域}/{页}`），分包 `pages/calendar`；财务 42 屏的路由域是 `finance/*`，分包 `pages/finance`。`homeos/vote/detail` 属 P3 出生，不在本轮。
 
-页面墙 [prototypes/index.html](prototypes/index.html) 已收录全部 73 张卡（含状态帧直达链接）；静态门禁：在本目录执行 `node check.mjs`，覆盖链接可达性、重复 id / 热区、状态声明与底栏一致性。
+页面墙 [prototypes/index.html](prototypes/index.html) 已收录全部 73 张卡（含状态帧直达链接）；静态门禁：在本目录执行 `node check.mjs`，检查 href/src 存在、重复 id、重复热点、状态帧声明与底栏一致性，并交叉校验 73 张屏卡的「原型 / 状态帧 / 热区数」与原型一致；面内原型不得出现底部 tabbar。
 
 ## 约定
 

@@ -151,7 +151,7 @@
       <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 10a7 7 0 0 1 11.5-5.4M17 10a7 7 0 0 1-11.5 5.4"/><path d="M4 3l12 14"/></svg>
       <div>
         <b>当前离线</b>
-        保存后先存本机并入待同步队列，联网自动提交；到期注册在提交成功后才发出，重试不会重复登记。
+        保存后先存本机并入待同步队列，联网自动提交；对象落库即由本面纳入到期中心（原生对象，不经 17.4 注册事件，不发 {code}.due.registered），重试不会重复登记。
       </div>
     </div>
 
@@ -159,7 +159,7 @@
       <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.2v4.2l2.6 1.6"/></svg>
       <div>
         <b>正在保存</b>
-        对象落库后会异步发出到期注册事件，页面不承诺保存完立刻出现在日历上。
+        对象落库即由本面纳入到期中心（原生对象，不经 17.4 注册事件，不发 {code}.due.registered），页面不承诺保存完立刻在日历上看到。
       </div>
     </div>
 
@@ -195,7 +195,7 @@
         <span class="field-label">截止时间</span>
         <button class="todo-pick" type="button" data-sheet-open="sheet-due"
           data-hot="④" data-hot-name="截止时间" data-hot-pos="outer-top-right"
-          data-hot-label="可选今天 / 明天 / 本周内的快捷时间；只写一次截止，不做重复规则；保存后才发出到期注册，页面不承诺即时上日历">
+          data-hot-label="可选今天 / 明天 / 本周内的快捷时间；只写一次截止，不做重复规则；对象落库即由本面纳入到期中心（原生对象，不经 17.4 注册事件，不发 {code}.due.registered）">
           <span class="todo-pick-icon">
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.2v4.2l2.6 1.6"/></svg>
           </span>
@@ -205,13 +205,13 @@
           </span>
           <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
         </button>
-        <div class="help">保存后由 HomeOS 异步注册到到期中心，通常几秒内生效。</div>
+        <div class="help">对象落库即由本面纳入到期中心（原生对象，不经 17.4 注册事件，不发 {code}.due.registered）。</div>
       </div>
 
       <div class="todo-source">
         <span class="todo-source-k">来源面</span>
         <span class="todo-source-main">
-          <span class="todo-source-v">HomeOS · 待办</span>
+          <span class="todo-source-v">日历 · 待办</span>
           <span class="todo-source-sub">由创建入口决定，不可修改</span>
         </span>
         <span class="todo-ro">只读</span>
@@ -226,7 +226,7 @@
     </div>
 
     <div class="todo-foot-note">
-      <b>保存后</b>：待办立即出现在「我创建的」；到期注册由 HomeOS 异步发出，到期中心与首页今日区稍后同步。
+      <b>保存后</b>：待办立即出现在「我创建的」；对象落库即由本面纳入到期中心（原生对象，不经 17.4 注册事件，不发 {code}.due.registered），到期中心与首页今日区随投影刷新。
     </div>
   </div>
 
@@ -336,7 +336,7 @@
       setTimeout(function () { location.href = 'todo.html'; }, 1100);
       return;
     }
-    window.HC.toast('已保存，到期注册稍后生效');
+    window.HC.toast('已保存');
     setTimeout(function () { location.href = 'todo.html'; }, 1100);
   });
 </script>

@@ -123,7 +123,7 @@
     <div class="nav-right">
       <button class="rem-save" type="button" id="rem-save"
         data-hot="⑥" data-hot-name="保存" data-hot-pos="outer-top-right"
-        data-hot-label="标题为空只给字段红框与行内错误；渠道降级时保存仍可用；保存中变「保存中…」且表单只读；成功后回列表并提示注册稍后生效">
+        data-hot-label="标题为空只给字段红框与行内错误；渠道降级时保存仍可用；保存中变「保存中…」且表单只读；成功后回列表并提示已保存">
         <span class="rem-save-on">保存</span>
         <span class="rem-save-busy">保存中…</span>
       </button>
@@ -148,7 +148,7 @@
       <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.2v4.2l2.6 1.6"/></svg>
       <div>
         <b>正在保存</b>
-        提醒落库后由 HomeOS 注册到到期中心与日历，页面不承诺保存完立刻出现在日历上。
+        提醒落库后由本面 30s 扫描纳入到期；到点由底座投递，页面不承诺保存完立刻生效。
       </div>
     </div>
 
@@ -229,7 +229,7 @@
     </div>
 
     <div class="rem-foot-note">
-      <b>保存后</b>：这条提醒由 HomeOS 注册到到期中心与日历，稍后生效；暂停与删除在编辑页里做。
+      <b>保存后</b>：这条提醒落库后由本面 30s 扫描纳入到期，到点由底座投递；暂停与删除在编辑页里做。
       <span class="rem-foot-line num" id="preview-line">下次触发：明天 08:00 · 准时 · 推送 + 站内信</span>
     </div>
   </div>
@@ -351,7 +351,7 @@
     if (remState === 'fallback' || channel === '站内信') {
       window.HC.toast('已保存，改由站内信送达');
     } else {
-      window.HC.toast('已保存，提醒注册稍后生效');
+      window.HC.toast('已保存');
     }
     setTimeout(function () { location.href = 'reminder.html'; }, 1100);
   });

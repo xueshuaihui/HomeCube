@@ -219,7 +219,7 @@
     <div class="nav-left">
       <button class="icon-btn fmod-back" type="button" data-go="me.html"
         data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
-        data-hot-label="回「我的」；引导态无返回，未选满 1 个面不得离开创建流程" aria-label="返回">
+        data-hot-label="回「我的」；引导态无返回，未选满 1 个可选面不得离开创建流程" aria-label="返回">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
       </button>
     </div>
@@ -235,7 +235,7 @@
           <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="3" width="6" height="6" rx="1.5"/><rect x="11" y="3" width="6" height="6" rx="1.5"/><rect x="3" y="11" width="6" height="6" rx="1.5"/><path d="M14 11.5v5M11.5 14h5"/></svg>
         </span>
         <div class="fs-body">
-          <div class="fs-t">已启用 <span class="fs-n num">1</span> 个面</div>
+          <div class="fs-t">已启用 <span class="fs-n num">2</span> 个面</div>
           <div class="fs-s">停用只隐藏入口，数据保留并继续参与统计</div>
         </div>
         <span class="fs-chip">管理员配置</span>
@@ -243,12 +243,12 @@
 
       <div class="section-title">
         <span>已启用</span>
-        <span class="tiny">1 个</span>
+        <span class="tiny">2 个</span>
       </div>
       <div class="list">
         <div class="list-item fmod-item"
           data-hot="②" data-hot-name="已启用开关" data-hot-pos="top-right"
-          data-hot-label="开关不直改配置：先弹二次确认层，说明入口消失、数据保留；单面家庭确认会被拒并提示「至少保留一个面」">
+          data-hot-label="只给可选面渲染开关；日历行是必选面、只有恒启用标签。开关不直改配置：先弹二次确认层，说明入口消失、数据保留；单面家庭确认会被拒并提示「至少保留一个可选面」">
           <span class="fmod-icon">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="2.5"/><path d="M2.5 8h15"/><path d="M6 12h3"/></svg>
           </span>
@@ -259,6 +259,13 @@
             <span class="thumb"></span>
           </label>
         </div>
+        <div class="list-item fmod-item">
+          <span class="fmod-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="4.5" width="14" height="12" rx="2"/><path d="M3 8.5h14M6.5 3v3M13.5 3v3"/></svg>
+          </span>
+          <span class="li-text">日历<span class="li-sub">日程 / 待办 / 提醒 · 恒启用，不可停用</span></span>
+          <span class="fmod-tag">必选面</span>
+        </div>
       </div>
 
       <div class="section-title">
@@ -267,7 +274,7 @@
       </div>
       <div class="fmod-empty"
         data-hot="③" data-hot-name="可开通分区" data-hot-pos="bottom-right"
-        data-hot-label="P1 只有财务一面出生，因此本区为空；不放假可点条目，也不把即将上线的面混进来">
+        data-hot-label="P1 已出生的财务与日历都在「已启用」段，因此可开通区为空；不放假可点条目，也不把即将上线的面混进来">
         <span class="fe-ic">
           <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 4.5v11M4.5 10h11"/></svg>
         </span>
@@ -328,7 +335,7 @@
         <ul>
           <li><b>停用 = 入口消失，不是删数据。</b>该面的历史数据保留，重新开通后可恢复。</li>
           <li>停用后仍照常参与跨面归集、AA 与备份，统计口径不变。</li>
-          <li>至少要保留一个面：停用最后一个面会被服务端拒绝，开关复位。</li>
+          <li>至少要保留一个可选面：停用最后一个可选面会被服务端拒绝，开关复位。</li>
         </ul>
       </div>
     </div>
@@ -349,7 +356,7 @@
 
       <div class="section-title">
         <span>已启用</span>
-        <span class="tiny">1 个</span>
+        <span class="tiny">2 个</span>
       </div>
       <div class="list">
         <div class="list-item fmod-item">
@@ -358,6 +365,13 @@
           </span>
           <span class="li-text">财务<span class="li-sub">记账、预算、报表与家庭 AA · 已启用 18 天</span></span>
           <span class="fmod-tag">已启用</span>
+        </div>
+        <div class="list-item fmod-item">
+          <span class="fmod-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="4.5" width="14" height="12" rx="2"/><path d="M3 8.5h14M6.5 3v3M13.5 3v3"/></svg>
+          </span>
+          <span class="li-text">日历<span class="li-sub">日程 / 待办 / 提醒 · 恒启用，不可停用</span></span>
+          <span class="fmod-tag">必选面</span>
         </div>
       </div>
 
@@ -422,7 +436,7 @@
         <ul>
           <li>停用只让入口消失，该面的历史数据保留，重新开通可恢复。</li>
           <li>开通与停用只写本家庭的面配置，不改动任何业务数据。</li>
-          <li>至少保留一个面：最后一个面不会被停用。</li>
+          <li>至少保留一个可选面：最后一个可选面不会被停用。</li>
         </ul>
       </div>
     </div>
@@ -431,7 +445,21 @@
     <div class="fmod-guide">
       <span class="fmod-step">创建家庭 · 第 2 步</span>
       <h2 class="fmod-title">选择你们要用的服务</h2>
-      <p class="fmod-desc">至少选 1 个面才能完成创建；之后可在「我的 → 开通更多面」随时调整。未上线的面暂时不能选。</p>
+      <p class="fmod-desc">至少选 1 个<b>可选面</b>（日历为必选面、已默认开通）才能完成创建；之后可在「我的 → 开通更多面」随时调整。未上线的面暂时不能选。</p>
+
+      <div class="section-title">
+        <span>必选面</span>
+        <span class="tiny">1 个</span>
+      </div>
+      <div class="list">
+        <div class="list-item fmod-item">
+          <span class="fmod-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="4.5" width="14" height="12" rx="2"/><path d="M3 8.5h14M6.5 3v3M13.5 3v3"/></svg>
+          </span>
+          <span class="li-text">日历<span class="li-sub">日程 / 待办 / 提醒 · 必选面 · 已默认开通（不可取消）</span></span>
+          <span class="fmod-tag">必选面</span>
+        </div>
+      </div>
 
       <div class="section-title">
         <span>可开通</span>
@@ -440,7 +468,7 @@
       <div class="list">
         <button class="fmod-pick" id="pick-finance" type="button" aria-pressed="false"
           data-hot="⑦" data-hot-name="引导态选面行" data-hot-pos="top-right"
-          data-hot-label="引导态里已出生的面是可选项（不是开关），点整行选中；没有停用操作，未选满 1 项不能继续">
+          data-hot-label="引导态里已出生的可选面是可选项（不是开关），点整行选中；日历恒选、不可点掉；没有停用操作，未选满 1 项不能继续">
           <span class="fmod-check">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
           </span>
@@ -499,8 +527,8 @@
 
   <div class="fmod-bottom">
     <div class="fmod-picked">
-      已选 <b class="num" id="pick-count">0</b> 个面
-      <span class="tiny" id="pick-hint">至少选 1 个</span>
+      已启用 <b class="num" id="pick-count">1</b> 面（含必选面日历）
+      <span class="tiny" id="pick-hint">至少选 1 个可选面</span>
     </div>
     <button class="btn btn-primary btn-block" id="pick-done" type="button" disabled
       data-hot="⑧" data-hot-name="引导态底部按钮" data-hot-pos="top-right"
@@ -513,7 +541,7 @@
   <div class="sheet-mask" id="sheet-disable" aria-hidden="true">
     <div class="sheet"
       data-hot="⑥" data-hot-name="停用确认弹层" data-hot-pos="top-right"
-      data-hot-label="二次确认：说明入口消失、数据保留、重新开通可恢复；单面家庭另提示至少保留一个面，确认被拒后开关复位">
+      data-hot-label="二次确认：说明入口消失、数据保留、重新开通可恢复；单面家庭另提示至少保留一个可选面，确认被拒后开关复位">
       <div class="sheet-grabber"></div>
       <h3>停用财务面？</h3>
       <p class="sheet-sub">停用后，首页格子、＋ 目标、搜索分组里的入口会同时消失；<b>该面数据保留，重新开通后可恢复</b>，历史流水照常参与统计。</p>
@@ -523,7 +551,7 @@
         </span>
         <span class="li-text">财务<span class="li-sub">已启用 18 天 · 1,284 笔流水保留</span></span>
       </div>
-      <div class="fmod-warn">财务是本家庭最后一个已启用的面。确认后若被拒绝，开关会复位——至少要保留一个面。</div>
+      <div class="fmod-warn">财务是本家庭最后一个<b>可选面</b>（日历为必选面、恒启用）。停用最后一个可选面会被服务端拒绝，开关会复位。</div>
       <div class="sheet-actions">
         <button class="btn btn-primary btn-block" type="button" id="disable-confirm">停用财务面</button>
         <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
@@ -543,9 +571,9 @@
 
   function syncPick() {
     var n = pick.classList.contains('is-picked') ? 1 : 0;
-    count.textContent = n;
+    count.textContent = 1 + n;
     done.disabled = n === 0;
-    hint.textContent = n === 0 ? '至少选 1 个' : '开通只写面配置，不建业务数据';
+    hint.textContent = n === 0 ? '至少选 1 个可选面' : '开通只写面配置，不建业务数据';
     pick.setAttribute('aria-pressed', String(n === 1));
   }
 
@@ -572,7 +600,7 @@
   document.getElementById('disable-confirm').addEventListener('click', function () {
     window.HC.closeSheet(document.getElementById('sheet-disable'));
     document.getElementById('sw-finance').checked = true;
-    window.HC.toast('至少保留一个面，开关已复位');
+    window.HC.toast('至少保留一个可选面，开关已复位');
   });
 
   document.addEventListener('DOMContentLoaded', function () {

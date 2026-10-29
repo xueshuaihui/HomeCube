@@ -46,7 +46,7 @@
   .fperm-matrix { padding: 0; overflow: hidden; }
   .fperm-row {
     display: grid;
-    grid-template-columns: 88px repeat(4, 1fr);
+    grid-template-columns: 88px repeat(5, 1fr);
     align-items: stretch;
   }
   .fperm-row + .fperm-row { border-top: 1px solid var(--border); }
@@ -150,15 +150,16 @@
 
       <div class="section-title">
         <span>角色默认矩阵</span>
-        <span class="tiny">三口之家 · 已启用 1 面</span>
+        <span class="tiny">三口之家 · 已启用 2 面</span>
       </div>
 
       <div class="card fperm-matrix"
         data-hot="③" data-hot-name="角色默认矩阵" data-hot-pos="bottom-right"
-        data-hot-label="行 = 角色，列 = 已启用面与基础能力；✓ 可见、— 不可见。整张表只读，单元格上没有开关、没有覆盖层、没有对象级 ACL 控件">
+        data-hot-label="行 = 角色，列 = 已启用且已出生的面（P1 = 财务 + 日历）+ 基础能力；✓ 可见、— 不可见。整张表只读，单元格上没有开关、没有覆盖层、没有对象级 ACL 控件">
         <div class="fperm-row is-head">
           <div class="fperm-th is-role">角色</div>
           <div class="fperm-th">财务<span>已启用面</span></div>
+          <div class="fperm-th">日历<span>必选面</span></div>
           <div class="fperm-th">家庭动态<span>可查看</span></div>
           <div class="fperm-th">管理成员<span>可管理</span></div>
           <div class="fperm-th">开通面<span>仅管理员</span></div>
@@ -169,9 +170,11 @@
           <div class="fperm-td fperm-yes">✓</div>
           <div class="fperm-td fperm-yes">✓</div>
           <div class="fperm-td fperm-yes">✓</div>
+          <div class="fperm-td fperm-yes">✓</div>
         </div>
         <div class="fperm-row">
           <div class="fperm-rh">成人成员<small>默认角色</small></div>
+          <div class="fperm-td fperm-yes">✓</div>
           <div class="fperm-td fperm-yes">✓</div>
           <div class="fperm-td fperm-yes">✓</div>
           <div class="fperm-td fperm-no">—</div>
@@ -181,6 +184,7 @@
           <div class="fperm-rh">访客<small>限时只读</small></div>
           <div class="fperm-td fperm-no">—</div>
           <div class="fperm-td fperm-yes">✓</div>
+          <div class="fperm-td fperm-yes">✓</div>
           <div class="fperm-td fperm-no">—</div>
           <div class="fperm-td fperm-no">—</div>
         </div>
@@ -188,6 +192,7 @@
       <div class="fperm-legend">
         <span>✓ 可见　— 不可见</span>
         <span>财务：成人成员本人可写、全家可读</span>
+        <span>日历：全员可读，按角色可勾选完成、不可删他人</span>
       </div>
       <div class="tiny" style="margin-top:6px;line-height:var(--lh-normal)">其余面尚未上线，不出现在矩阵列里；全量清单见<a href="family-modules.html" style="color:var(--brand-text);font-weight:600;text-decoration:none">面目录页</a>。</div>
 
@@ -229,12 +234,14 @@
         <div class="fperm-row is-head">
           <div class="fperm-th is-role">角色</div>
           <div class="fperm-th">财务<span>已启用面</span></div>
+          <div class="fperm-th">日历<span>必选面</span></div>
           <div class="fperm-th">家庭动态<span>可查看</span></div>
           <div class="fperm-th">管理成员<span>可管理</span></div>
           <div class="fperm-th">开通面<span>仅管理员</span></div>
         </div>
         <div class="fperm-row is-me">
           <div class="fperm-rh">成人成员<small>我</small></div>
+          <div class="fperm-td fperm-yes">✓</div>
           <div class="fperm-td fperm-yes">✓</div>
           <div class="fperm-td fperm-yes">✓</div>
           <div class="fperm-td fperm-no">—</div>

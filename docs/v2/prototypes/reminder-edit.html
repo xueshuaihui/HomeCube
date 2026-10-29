@@ -166,7 +166,7 @@
     <div class="nav-right">
       <button class="rem-save" type="button" id="rem-save"
         data-hot="④" data-hot-name="保存" data-hot-pos="outer-top-right"
-        data-hot-label="带 version 提交；版本不一致不静默覆盖，弹三选一冲突层；保存成功后重发到期注册，旧注册项由撤销事件失效">
+        data-hot-label="带 version 提交；版本不一致不静默覆盖，弹三选一冲突层；保存成功后整条更新本面到期项，旧项随对象失效（原生对象不发 {code}.due.revoked）">
         保存
       </button>
     </div>
@@ -207,7 +207,7 @@
 
     <div class="rem-form"
       data-hot="③" data-hot-name="字段" data-hot-pos="outer-top-right"
-      data-hot-label="标题、时间、周期、提前量、渠道五项与新建同构；改动只在本页，保存才提交，并整条重发到期注册">
+      data-hot-label="标题、时间、周期、提前量、渠道五项与新建同构；改动只在本页，保存才提交，并整条更新本面到期项">
       <div class="field">
         <label class="field-label" for="rem-title">标题<span class="rem-required">必填</span></label>
         <input class="input rem-title-input" id="rem-title" type="text" maxlength="40"
@@ -243,7 +243,7 @@
             <button type="button" aria-selected="false" data-cycle="每月">每月</button>
           </div>
         </div>
-        <div class="help">改周期会整条重发到期注册，旧注册项由撤销事件失效。</div>
+        <div class="help">改周期会整条更新本面到期项，旧项随对象失效（原生对象不发 {code}.due.revoked）。</div>
       </div>
 
       <div class="field">
@@ -274,7 +274,7 @@
     <div class="rem-del">
       <button class="btn btn-danger" type="button" id="rem-delete"
         data-hot="⑤" data-hot-name="删除" data-hot-pos="outer-top-right"
-        data-hot-label="删除不即时生效，先弹确认层；确认后发出撤销事件，已注册的日历项与到期项同步移除，不可恢复">
+        data-hot-label="删除不即时生效，先弹确认层；确认后直写删除并由服务端级联失效其到期项，日历上不再出现、不可恢复">
         <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h12M8 6.5V5a1.5 1.5 0 0 1 1.5-1.5h1A1.5 1.5 0 0 1 12 5v1.5"/><path d="M5.5 6.5l.8 9a1.5 1.5 0 0 0 1.5 1.4h4.4a1.5 1.5 0 0 0 1.5-1.4l.8-9"/></svg>
         删除提醒
       </button>
@@ -316,7 +316,7 @@
 
       <div class="rem-warn">
         <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 3.5 17.5 17h-15z"/><path d="M10 8v4M10 14.4v.1"/></svg>
-        <span>覆盖保存会用你的字段整体替换版本 4，妈妈的改动不再保留；查看最新会丢弃你本次未保存的改动；两者都会重发到期注册。</span>
+        <span>覆盖保存会用你的字段整体替换版本 4，妈妈的改动不再保留；查看最新会丢弃你本次未保存的改动；两者都会整条更新本面到期项。</span>
       </div>
 
       <div class="sheet-actions">
@@ -344,7 +344,7 @@
 
       <div class="rem-cal-warn">
         <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="12" height="11" rx="2"/><path d="M4 8.5h12M7.5 3.5V6M12.5 3.5V6"/></svg>
-        <span>已注册的日历项会同步移除；家人此前收到的站内信不会被撤回。</span>
+        <span>删除后本面到期项由服务端级联失效，日历上不再出现；家人此前收到的站内信不会被撤回。</span>
       </div>
 
       <div class="sheet-actions">
@@ -359,7 +359,7 @@
     <div class="sheet">
       <div class="sheet-grabber"></div>
       <h3>触发时间</h3>
-      <p class="sheet-sub">改时间会整条重发到期注册；旧注册项由撤销事件失效，不由客户端删日历条目。</p>
+      <p class="sheet-sub">改时间会整条更新本面到期项，旧项随对象失效（原生对象不发 {code}.due.revoked），不由客户端删日历条目。</p>
       <div class="list" style="margin-top:16px">
         <button class="list-item" type="button" data-time="07:30" data-sheet-close>
           <span class="li-text">07:30<span class="li-sub">早于常用起床时间</span></span>

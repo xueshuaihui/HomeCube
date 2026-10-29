@@ -154,7 +154,7 @@
     <div class="nav-right">
       <button class="todo-save" type="button" id="todo-save"
         data-hot="④" data-hot-name="保存" data-hot-pos="outer-top-right"
-        data-hot-label="带 version 提交；版本不一致时不静默覆盖，弹三选一冲突层；保存成功后回到已保存态并提示到期注册已重发">
+        data-hot-label="带 version 提交；版本不一致时不静默覆盖，弹三选一冲突层；保存成功后回到已保存态并提示到期项已更新">
         <span class="todo-save-on">保存</span>
       </button>
     </div>
@@ -170,7 +170,7 @@
       <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M6.4 10.3l2.4 2.4 4.8-4.9"/></svg>
       <div>
         <b>已保存</b>
-        版本已更新为 4；到期注册已按新截止重新发出，稍后在到期中心生效。
+        版本已更新为 4；到期项已按新截止更新，旧项随对象失效。
       </div>
     </div>
 
@@ -217,7 +217,7 @@
         <span class="field-label">截止时间</span>
         <button class="todo-pick" type="button" data-sheet-open="sheet-due"
           data-hot="③" data-hot-name="截止时间" data-hot-pos="outer-top-right"
-          data-hot-label="改截止会重发到期注册（幂等键含 source_id + due_at）；旧注册项由撤销事件失效，不由客户端删日历条目">
+          data-hot-label="改期直写本面对象，旧到期项随对象更新失效，不发撤销事件（原生对象不经 17.4），不由客户端删日历条目">
           <span class="todo-pick-icon">
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.2v4.2l2.6 1.6"/></svg>
           </span>
@@ -227,13 +227,13 @@
           </span>
           <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
         </button>
-        <div class="help">改期后由 HomeOS 重新注册，通常几秒内生效。</div>
+        <div class="help">改期直写本面对象，到期项随对象按新截止更新。</div>
       </div>
 
       <div class="todo-source">
         <span class="todo-source-k">来源面</span>
         <span class="todo-source-main">
-          <span class="todo-source-v">HomeOS · 待办</span>
+          <span class="todo-source-v">日历 · 待办</span>
           <span class="todo-source-sub">由创建入口决定，编辑不改变来源</span>
         </span>
         <span class="todo-ro">只读</span>
@@ -327,7 +327,7 @@
     <div class="sheet">
       <div class="sheet-grabber"></div>
       <h3>截止时间</h3>
-      <p class="sheet-sub">改截止后由 HomeOS 撤销旧注册、登记新注册；页面不承诺立即在日历上看到变化。</p>
+      <p class="sheet-sub">改截止直写本面对象，旧到期项随对象更新失效，不发撤销事件（原生对象不经 17.4）；页面不承诺立即在日历上看到变化。</p>
       <div class="list" style="margin-top:16px">
         <button class="list-item" type="button" data-due="今天 18:00" data-due-sub="10 月 29 日 · 周四" data-sheet-close>
           <span class="li-text">今天 18:00<span class="li-sub">2 小时后</span></span>
@@ -368,7 +368,7 @@
 
   if (todoState === 'saved') {
     document.getElementById('ver-tag').textContent = '版本 4';
-    document.getElementById('ver-note').textContent = '刚刚保存 · 到期注册已重新发出';
+    document.getElementById('ver-note').textContent = '刚刚保存 · 到期项已更新';
   }
 
   document.querySelectorAll('[data-owner]').forEach(function (b) {

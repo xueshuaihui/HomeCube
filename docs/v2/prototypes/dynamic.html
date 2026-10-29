@@ -82,7 +82,8 @@
     text-decoration: none; color: var(--text);
   }
   .dyn-item:last-child { border-bottom: 0; }
-  body[data-state="filtered"] .dyn-item-os { display: none; }
+  body[data-state="filtered"] .dyn-item-os,
+  body[data-state="filtered"] .dyn-item-cal { display: none; }
 
   .dyn-face {
     position: relative; width: 34px; height: 34px; flex: none;
@@ -90,7 +91,9 @@
   }
   .dyn-face-fin { background: var(--brand-soft); color: var(--brand-text); }
   .dyn-face-os { background: var(--accent-soft); color: var(--accent); }
+  .dyn-face-cal { background: var(--face-calendar-soft); color: var(--face-calendar); }
   .dyn-av-os { color: var(--accent); }
+  .dyn-av-cal { color: var(--face-calendar); }
   .dyn-av {
     position: absolute; right: -6px; bottom: -6px;
     width: 18px; height: 18px; border-radius: 50%;
@@ -158,11 +161,15 @@
   <div class="content dyn-content">
     <div class="dyn-chips"
       data-hot="①" data-hot-name="面筛选" data-hot-pos="bottom-right"
-      data-hot-label="只列本家庭已启用且服务已出生的面（P1 = 全部面 + 财务）；选中财务后列表只留财务条目，分组计数同步按筛选后口径">
+      data-hot-label="只列本家庭已启用且服务已出生的面（P1 = 全部面 + 财务 + 日历）；选中财务后列表只留财务条目，分组计数同步按筛选后口径">
       <a class="dyn-chip dyn-chip-all" href="dynamic.html">全部面</a>
       <a class="dyn-chip dyn-chip-fin" href="dynamic.html?state=filtered">
         <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/></svg>
         财务
+      </a>
+      <a class="dyn-chip dyn-chip-cal" href="dynamic.html" data-toast="按日历筛选（演示）">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="4.5" width="14" height="12" rx="2"/><path d="M3 8.5h14M6.5 3v3M13.5 3v3"/></svg>
+        日历
       </a>
     </div>
 
@@ -188,7 +195,7 @@
       <div class="dyn-list">
         <a class="dyn-item dyn-item-fin" href="finance-tx-detail.html"
           data-hot="③" data-hot-name="动态条目" data-hot-pos="top-right"
-          data-hot-label="点击任意条目进源对象，不在动态页展开详情；财务流水与预算调整走财务面深链，HomeOS 条目进待办详情或留言板">
+          data-hot-label="点击任意条目进源对象，不在动态页展开详情；财务流水与预算调整走财务面深链，日历条目进待办详情 / 日程详情 / 提醒编辑，底座条目进留言板">
           <span class="dyn-face dyn-face-fin">
             <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/></svg>
             <span class="dyn-av">妈</span>
@@ -200,14 +207,14 @@
           <span class="amount dyn-amount">-¥128.00</span>
         </a>
 
-        <a class="dyn-item dyn-item-os" href="todo-detail.html">
-          <span class="dyn-face dyn-face-os">
+        <a class="dyn-item dyn-item-cal" href="todo-detail.html">
+          <span class="dyn-face dyn-face-cal">
             <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14l8-8"/><path d="M3 17h14"/></svg>
-            <span class="dyn-av dyn-av-os">我</span>
+            <span class="dyn-av dyn-av-cal">我</span>
           </span>
           <span class="dyn-body">
             <span class="dyn-line"><b>我</b> 完成了待办 · 交物业费</span>
-            <span class="dyn-meta"><span class="dyn-face-name">HomeOS</span><span>·</span><span>1 小时前</span></span>
+            <span class="dyn-meta"><span class="dyn-face-name">日历</span><span>·</span><span>1 小时前</span></span>
           </span>
         </a>
 
@@ -254,14 +261,14 @@
           <span class="amount dyn-amount">-¥236.50</span>
         </a>
 
-        <a class="dyn-item dyn-item-os" href="todo-detail.html">
-          <span class="dyn-face dyn-face-os">
+        <a class="dyn-item dyn-item-cal" href="todo-detail.html">
+          <span class="dyn-face dyn-face-cal">
             <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 5h12M4 10h8M4 15h10"/></svg>
-            <span class="dyn-av dyn-av-os">爸</span>
+            <span class="dyn-av dyn-av-cal">爸</span>
           </span>
           <span class="dyn-body">
             <span class="dyn-line"><b>爸爸</b> 新建了待办 · 接女儿放学</span>
-            <span class="dyn-meta"><span class="dyn-face-name">HomeOS</span><span>·</span><span>昨天 08:15</span></span>
+            <span class="dyn-meta"><span class="dyn-face-name">日历</span><span>·</span><span>昨天 08:15</span></span>
           </span>
         </a>
       </div>
@@ -285,14 +292,14 @@
           <span class="amount dyn-amount">¥2,000.00</span>
         </a>
 
-        <a class="dyn-item dyn-item-os" href="todo-detail.html">
-          <span class="dyn-face dyn-face-os">
+        <a class="dyn-item dyn-item-cal" href="todo-detail.html">
+          <span class="dyn-face dyn-face-cal">
             <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14l8-8"/><path d="M3 17h14"/></svg>
-            <span class="dyn-av dyn-av-os">我</span>
+            <span class="dyn-av dyn-av-cal">我</span>
           </span>
           <span class="dyn-body">
             <span class="dyn-line"><b>我</b> 完成了待办 · 缴水电费</span>
-            <span class="dyn-meta"><span class="dyn-face-name">HomeOS</span><span>·</span><span>10 月 26 日 10:05</span></span>
+            <span class="dyn-meta"><span class="dyn-face-name">日历</span><span>·</span><span>10 月 26 日 10:05</span></span>
           </span>
         </a>
       </div>

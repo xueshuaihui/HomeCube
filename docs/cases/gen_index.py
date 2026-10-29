@@ -235,7 +235,8 @@ def main():
                f"从 `homeos/time-collab.md` **迁来**的 {cal_time} 条（ID `HOM-TIME-` → `CAL-TIME-`，数字不变，"
                f"步骤 / 预期结果 / 优先级 / Sprint 一字不改）+ 为 19.4 与面级形态**新增**的 {cal_new} 条；"
                f"`homeos/collab.md` 保留底座协作类 {hom_time} 条。"
-               f"本轮未删任何 case：迁移前 {total - cal_new} 条 → 现 {total} 条。")
+               f"本轮未删任何 case：迁移前 {total - cal_new - 1} 条 → 现 {total} 条"
+               f"（{total - cal_new - 1} + CAL 新增 {cal_new} + 复核轮 HOM-SRCH-006 1）。")
     out.append("")
 
     idx_path.write_text("\n".join(out) + "\n" + tail, encoding="utf-8")

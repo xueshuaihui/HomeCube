@@ -193,11 +193,11 @@
   <div class="content cal-content">
     <nav class="face-tabs is-calendar" aria-label="日历面二级 Tab"
       data-hot="⑦" data-hot-name="面内二级 Tab" data-hot-pos="outer-top-right"
-      data-hot-label="日程 / 待办 / 提醒在本分包内互切（calendar/calendar/index · calendar/todo/index · calendar/reminder/index），不叠加底部栏、不放面切换器；末位「设置」P1 无路由位，点按只给未交付提示">
+      data-hot-label="日程 / 待办 / 提醒在本分包内互切（calendar/calendar/index · calendar/todo/index · calendar/reminder/index），不叠加底部栏、不放面切换器；末位「设置」跨包指向主包 homeos/settings/index（18.1 Tab 账法），不新增路由位">
       <a class="face-tab" href="calendar.html" aria-current="page">日程</a>
       <a class="face-tab" href="todo.html">待办</a>
       <a class="face-tab" href="reminder.html">提醒</a>
-      <button class="face-tab" type="button" data-unbuilt="日历面后续（面内设置页，不在 P1 的 9 页路由位）">设置</button>
+      <a class="face-tab" href="settings.html">设置</a>
     </nav>
     <div class="cal-unavail">
       <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.5V10M10 13v.1"/></svg>
@@ -381,7 +381,7 @@
         </div>
       </div>
 
-      <div class="cal-foot-note tiny">只聚合已出生服务的注册项：日历面原生三类（日程 / 待办 / 提醒，17.4 的到期对象注册表在本面）+ 财务面按 17.4 注册的预算阈值与周期记账。未出生与未启用的面不出现在这里，也不占位。</div>
+      <div class="cal-foot-note tiny">只聚合已出生服务的到期对象：本面原生三类（日程 / 待办 / 提醒，直接持有 `calendar_*`，不经 17.4 注册表）+ 财务面按 17.4 注册的账单与周期记账。未出生与未启用的面不出现在这里，也不占位。</div>
     </div>
 
     <!-- 周视图 -->
@@ -515,7 +515,7 @@
         <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="7" width="22" height="20" rx="4"/><path d="M5 13h22M11 4v5M21 4v5"/></svg>
       </div>
       <div class="state-title">本月没有到期项</div>
-      <div class="state-desc">财务账单、待办与提醒在创建时按到期时间注册到这里；未出生的服务不会占位。</div>
+      <div class="state-desc">财务账单按 17.4 注册到这里；待办与提醒是本面原生对象，落库即在这里出现。未出生的服务不会占位。</div>
       <a class="btn btn-secondary" href="todo-create.html">新建待办</a>
     </div>
   </div>

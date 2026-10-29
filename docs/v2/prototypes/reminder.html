@@ -104,7 +104,7 @@
     <div class="nav-left">
       <button class="icon-btn" type="button" data-go="calendar.html"
         data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
-        data-hot-label="回到期中心 calendar/calendar/index（本面一级页）；㉚ 起提醒不再从「我的 → 时间与提醒」进，那一行只剩时区与免打扰；返回不重置列表滚动与已展开条目" aria-label="返回">
+        data-hot-label="回到到期中心 calendar/calendar/index（本面一级页）；「我的 → 时间与提醒」与首页 B 区「日历 ›」都是指向 calendar/calendar/index 的定向深链（§1.3#13），不渲染面切换器；返回不重置列表滚动与已展开条目" aria-label="返回">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
       </button>
     </div>
@@ -124,11 +124,11 @@
   <div class="content rem-content">
     <nav class="face-tabs is-calendar" aria-label="日历面二级 Tab"
       data-hot="⑥" data-hot-name="面内二级 Tab" data-hot-pos="outer-top-right"
-      data-hot-label="日程 / 待办 / 提醒在本分包内互切（calendar/calendar/index · calendar/todo/index · calendar/reminder/index），本页高亮「提醒」；不叠加底部栏、没有面切换器；末位「设置」P1 无路由位，点按只给未交付提示">
+      data-hot-label="日程 / 待办 / 提醒在本分包内互切（calendar/calendar/index · calendar/todo/index · calendar/reminder/index），本页高亮「提醒」；不叠加底部栏、没有面切换器；末位「设置」跨包指向主包 homeos/settings/index（18.1 Tab 账法），不新增路由位">
       <a class="face-tab" href="calendar.html">日程</a>
       <a class="face-tab" href="todo.html">待办</a>
       <a class="face-tab" href="reminder.html" aria-current="page">提醒</a>
-      <button class="face-tab" type="button" data-unbuilt="日历面后续（面内设置页，不在 P1 的 9 页路由位）">设置</button>
+      <a class="face-tab" href="settings.html">设置</a>
     </nav>
     <div class="rem-note"
       data-hot="⑤" data-hot-name="位置提醒说明" data-hot-pos="bottom-right"
@@ -254,7 +254,7 @@
       <button class="btn btn-secondary" type="button" data-go="reminder-create.html">新建提醒</button>
     </div>
 
-    <div class="rem-foot-note tiny">开关与删除会同步重发本面的到期注册（17.4）；到点后由 <code>calendar.reminder.fired</code> 交底座投递，本面不直连任何推送通道；暂停只停触发，不改周期规则。</div>
+    <div class="rem-foot-note tiny">开关与删除直写本面对象并级联失效其到期项（原生对象不发 {code}.due.revoked）；到点后由 <code>calendar.reminder.fired</code> 交底座投递，本面不直连任何推送通道；暂停只停触发，不改周期规则。</div>
   </div>
 
   <div class="toast"></div>

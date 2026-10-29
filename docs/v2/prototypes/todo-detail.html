@@ -282,12 +282,12 @@
       </div>
       <button class="todo-row todo-row-btn" type="button"
         data-hot="⑥" data-hot-name="来源" data-hot-pos="bottom-right"
-        data-hot-label="来源面由创建时登记决定，只读；来源为 HomeOS 时到期注册也由 HomeOS 聚合，业务面不得改写来源或另建待办"
-        data-toast="来源面为创建时登记（HomeOS · 待办），不由客户端改写；到期中心按此标记聚合">
+        data-hot-label="来源面由创建时登记决定，只读；来源为日历时到期项由本面聚合，他面不自建定时器；业务面不得改写来源或另建待办"
+        data-toast="来源面为创建时登记（日历 · 待办），不由客户端改写；到期项由本面聚合，其余业务面不自建定时器">
         <span class="todo-k">来源</span>
         <span class="todo-v">
-          HomeOS · 待办
-          <span class="todo-v-sub">到期注册由 HomeOS 聚合，业务面不自建定时器</span>
+          日历 · 待办
+          <span class="todo-v-sub">到期项由本面聚合，其余业务面不自建定时器</span>
         </span>
         <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
       </button>
@@ -328,7 +328,7 @@
     <div class="sheet">
       <div class="sheet-grabber"></div>
       <h3>完成这条待办？</h3>
-      <p class="sheet-sub">确认后向 HomeOS 发出完成回写，到期中心与首页今日区会同步移除；完成状态只进不退，不能再改回待处理。</p>
+      <p class="sheet-sub">确认后发 calendar.todo.completed（本面事件，刷新投影与首页今日区），到期中心与首页今日区随之移除；完成状态只进不退，不能再改回待处理。</p>
       <div class="todo-sheet-line">
         <span class="todo-sheet-title">交物业费</span>
         <span class="todo-sheet-due num">今天 20:00</span>

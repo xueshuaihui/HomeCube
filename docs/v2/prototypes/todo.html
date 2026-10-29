@@ -145,7 +145,7 @@
     <div class="nav-right">
       <button class="todo-new" type="button" data-go="todo-create.html"
         data-hot="②" data-hot-name="新建" data-hot-pos="outer-top-right"
-        data-hot-label="进新建待办页 calendar/todo/create；标题、负责人、截止、来源面四项，保存后由本面（svc-calendar）异步登记到到期对象注册表">新建</button>
+        data-hot-label="进新建待办页 calendar/todo/create；标题、负责人、截止、来源面四项，保存后对象直写本面（svc-calendar），到期中心直接聚合；原生对象不经 17.4 注册表、不发 `{code}.due.registered`">新建</button>
     </div>
   </div>
 
@@ -157,11 +157,11 @@
   <div class="content todo-content">
     <nav class="face-tabs is-calendar" aria-label="日历面二级 Tab"
       data-hot="⑦" data-hot-name="面内二级 Tab" data-hot-pos="outer-top-right"
-      data-hot-label="日程 / 待办 / 提醒在本分包内互切（calendar/calendar/index · calendar/todo/index · calendar/reminder/index），本页高亮「待办」；不叠加底部栏、没有面切换器；末位「设置」P1 无路由位，点按只给未交付提示">
+      data-hot-label="日程 / 待办 / 提醒在本分包内互切（calendar/calendar/index · calendar/todo/index · calendar/reminder/index），本页高亮「待办」；不叠加底部栏、没有面切换器；末位「设置」跨包指向主包 homeos/settings/index（18.1 Tab 账法），不新增路由位">
       <a class="face-tab" href="calendar.html">日程</a>
       <a class="face-tab" href="todo.html" aria-current="page">待办</a>
       <a class="face-tab" href="reminder.html">提醒</a>
-      <button class="face-tab" type="button" data-unbuilt="日历面后续（面内设置页，不在 P1 的 9 页路由位）">设置</button>
+      <a class="face-tab" href="settings.html">设置</a>
     </nav>
     <div class="todo-cache">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="5.5"/><path d="M8 4.8V8l2.2 1.3"/></svg>
