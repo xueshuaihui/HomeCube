@@ -229,14 +229,23 @@ def main():
     out.append("> 「已实现合计」是**快照**，会随开发推进上升；它**不改变分母**——"
                f"{total} 条始终是 P1 的验收总量。")
     cal_time = sum(1 for c in all_cases if c["id"].startswith("CAL-TIME-"))
-    cal_new = sum(1 for c in all_cases if c["id"].startswith(("CAL-DUE-", "CAL-FACE-")))
+    cal_due = sum(1 for c in all_cases if c["id"].startswith("CAL-DUE-"))
+    cal_face = sum(1 for c in all_cases if c["id"].startswith("CAL-FACE-"))
     hom_time = sum(1 for c in all_cases if c["id"].startswith("HOM-TIME-"))
+    # 不属于 ㉚ 平移的两条：CAL-TIME-017 是审核轮新增（编号恰好落在 CAL-TIME- 序列里，
+    # 不能算「迁入」），HOM-SRCH-006 是复核轮补入的底座侧 case。
+    cal_time_new = {"CAL-TIME-017"}
+    hom_extra = {"HOM-SRCH-006"}
+    cal_migrated = cal_time - sum(1 for c in all_cases if c["id"] in cal_time_new)
+    cal_new = cal_due + cal_face + len(cal_time_new)
+    baseline = total - cal_new - len(hom_extra)
     out.append(f"> **定版 ㉚ 的日历面拆分（只增不减）**：`calendar/` 域 {dom_c['calendar']} 条 = "
-               f"从 `homeos/time-collab.md` **迁来**的 {cal_time} 条（ID `HOM-TIME-` → `CAL-TIME-`，数字不变，"
-               f"步骤 / 预期结果 / 优先级 / Sprint 一字不改）+ 为 19.4 与面级形态**新增**的 {cal_new} 条；"
+               f"从 `homeos/time-collab.md` **迁来**的 {cal_migrated} 条（ID `HOM-TIME-` → `CAL-TIME-`，数字不变，"
+               f"步骤 / 预期结果 / 优先级 / Sprint 一字不改）+ 为 19.4 与面级形态**新增**的 {cal_new} 条"
+               f"（`CAL-DUE-` {cal_due} + `CAL-FACE-` {cal_face} + 审核轮补的 `CAL-TIME-017` 1）；"
                f"`homeos/collab.md` 保留底座协作类 {hom_time} 条。"
-               f"本轮未删任何 case：迁移前 {total - cal_new - 1} 条 → 现 {total} 条"
-               f"（{total - cal_new - 1} + CAL 新增 {cal_new} + 复核轮 HOM-SRCH-006 1）。")
+               f"本轮未删任何 case：迁移前 {baseline} 条 → 现 {total} 条"
+               f"（{baseline} + CAL 新增 {cal_new} + 复核轮 HOM-SRCH-006 1）。")
     out.append("")
 
     idx_path.write_text("\n".join(out) + "\n" + tail, encoding="utf-8")

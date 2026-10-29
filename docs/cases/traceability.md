@@ -5,7 +5,7 @@
 > `自动化` / `实现现状` 是另一条线，不影响本表——**case 不因实现缺席而消失**。
 > 非一期接口（P2-P6 面、P6 能力）单列在末节，**不进入分母**，避免被误判为缺口。
 
-**统计**：一期接口行 75 条（合计 107 个接口，全部有 case 承接）· 非一期 51 行（52 个接口）· 覆盖 case 309 条
+**统计**：一期接口行 75 条（合计 111 个接口，全部有 case 承接）· 非一期 51 行（52 个接口）· 覆盖 case 310 条
 
 ## 一、一期接口追溯表
 
@@ -76,12 +76,12 @@
 | :684 | `POST /api/finance/invoices`<br>`POST /api/finance/expenses` | `FIN-SPLIT-005`<br>`FIN-SPLIT-007` |
 | :685 | `GET /api/finance/demo-items`<br>`POST /api/finance/demo-items` | `FIN-DEMO-001`<br>`FIN-DEMO-002` |
 | :686 | `GET /api/finance/transactions/{id}/attachments`<br>`POST /api/finance/transactions/{id}/attachments` | `FIN-TX-014`<br>`FIN-EXP-007` |
-| :879 | `POST /api/calendar/reminders` | `CAL-TIME-005` |
-| :880 | `POST /api/calendar/todos` | `CAL-TIME-002`<br>`CAL-TIME-011`<br>`CAL-TIME-012` |
-| :881 | `POST /api/calendar/events` | `CAL-TIME-010` |
+| :879 | `POST /api/calendar/reminders` | `CAL-TIME-005`<br>`CAL-TIME-017` |
+| :880 | `POST /api/calendar/todos` | `CAL-TIME-002`<br>`CAL-TIME-011`<br>`CAL-TIME-012`<br>`CAL-TIME-017` |
+| :881 | `POST /api/calendar/events`<br>`PUT /api/calendar/events/{id}`<br>`DELETE /api/calendar/events/{id}` | `CAL-TIME-010`<br>`CAL-TIME-017` |
 | :882 | `GET /api/calendar/events`<br>`GET /api/calendar/events/{id}` | `CAL-TIME-001`<br>`CAL-DUE-001`<br>`CAL-FACE-002`<br>`CAL-FACE-008` |
-| :883 | `GET /api/calendar/todos`<br>`PUT /api/calendar/todos/{id}` | `CAL-TIME-002`<br>`CAL-TIME-004`<br>`CAL-DUE-004` |
-| :884 | `GET /api/calendar/reminders`<br>`PUT /api/calendar/reminders/{id}` | `CAL-TIME-005`<br>`CAL-TIME-006`<br>`CAL-DUE-008` |
+| :883 | `GET /api/calendar/todos`<br>`PUT /api/calendar/todos/{id}`<br>`DELETE /api/calendar/todos/{id}` | `CAL-TIME-002`<br>`CAL-TIME-004`<br>`CAL-DUE-004` |
+| :884 | `GET /api/calendar/reminders`<br>`PUT /api/calendar/reminders/{id}`<br>`DELETE /api/calendar/reminders/{id}` | `CAL-TIME-005`<br>`CAL-TIME-006`<br>`CAL-DUE-008` |
 | :1876 | `PUT /api/finance/recurring` | `FIN-BUD-006` |
 | :2153 | `GET /api/homeos/dynamics` | `HOM-TIME-009` |
 | :2253 | `GET /api/homeos/app/bundles?codes=` | `HOM-SYNC-014` |

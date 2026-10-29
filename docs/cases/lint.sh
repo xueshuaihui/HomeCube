@@ -245,6 +245,21 @@ for f in files:
 if bad_sec:
     errors.append(f"关联需求引用了 PRD 不存在的章节号：{sorted(bad_sec)}")
 
+# G-A 续：`节:行号` 锚点必须落在 PRD 的非空行上（空行 = 锚点漂移，引用形同虚设）
+prd_lines = prd.splitlines()
+bad_anchor = []
+for f in files:
+    rel = f.relative_to(ROOT).as_posix()
+    for ln in f.read_text(encoding="utf-8").splitlines():
+        if not ln.startswith("- 关联需求："):
+            continue
+        for sec, num in re.findall(r"(?<![0-9.])(\d{1,2}\.\d{1,2}(?:\.\d{1,2})?):(\d+)", ln):
+            n = int(num)
+            if n < 1 or n > len(prd_lines) or not prd_lines[n - 1].strip():
+                bad_anchor.append(f"{rel} {sec}:{num}")
+if bad_anchor:
+    errors.append(f"`节:行号` 锚点指向空行或越界（PRD 共 {len(prd_lines)} 行）：{bad_anchor[:8]}")
+
 # G-A 续：接口路径必须在 PRD 中出现（未实现接口也应「PRD 有、代码无」，不能凭空造路径）
 bad_path = {}
 for f in files:
