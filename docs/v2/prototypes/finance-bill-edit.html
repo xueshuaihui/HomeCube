@@ -252,7 +252,7 @@
   <div class="fx-foot">
     <button class="btn btn-primary btn-block" type="button" id="fx-save"
       data-hot="⑧" data-hot-name="保存修改" data-hot-pos="outer-bottom-right"
-      data-hot-label="带 version=4 提交；改期时同时重发注册并提示「日历可能稍晚」。409 只弹冲突层，给「查看最新 / 覆盖保存」两条出路">
+      data-hot-label="带 version=4 提交；改期时同时重发注册并提示「日历可能稍晚」。409 只弹冲突层，给「查看最新 / 用我的」两条出路">
       保存修改
     </button>
   </div>
@@ -283,7 +283,7 @@
     <div class="sheet">
       <div class="sheet-grabber"></div>
       <h3>这条记录已被修改</h3>
-      <p class="sheet-sub">家人刚刚改过这张账单，你的修改还没提交。可以查看最新内容，或用你的版本覆盖。</p>
+      <p class="sheet-sub">家人刚刚改过这张账单，你的修改还没提交。可以查看最新内容，或直接保存你的修改。</p>
       <div class="fx-conflict-kv">
         <div class="fx-conflict-row">
           <span>你编辑的版本</span>
@@ -301,9 +301,9 @@
           查看最新
         </button>
         <button class="btn btn-secondary btn-block" type="button" id="fx-overwrite"
-          data-hot="⑨" data-hot-name="覆盖保存" data-hot-pos="outer-bottom-right"
-          data-hot-label="以你的内容写成版本 6，并按你的到期日重发注册；覆盖后仍只承诺「已提交注册」，日历可能稍晚">
-          覆盖保存
+          data-hot="⑨" data-hot-name="用我的" data-hot-pos="outer-bottom-right"
+          data-hot-label="以你的内容写成版本 6，并按你的到期日重发注册；保存后仍只承诺「已提交注册」，日历可能稍晚">
+          用我的
         </button>
       </div>
     </div>
@@ -349,7 +349,7 @@
   });
 
   document.getElementById('fx-overwrite').addEventListener('click', function () {
-    window.HC.toast('已用你的版本覆盖，生成版本 6；注册已重发');
+    window.HC.toast('已按你的修改保存，生成版本 6；注册已重发');
     setTimeout(function () { location.href = 'finance-bill-detail.html'; }, 1100);
   });
 

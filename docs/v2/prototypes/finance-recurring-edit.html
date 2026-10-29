@@ -264,7 +264,7 @@
   <div class="fx-foot">
     <button class="btn btn-primary btn-block" type="button" id="fx-save"
       data-hot="⑤" data-hot-name="保存修改" data-hot-pos="outer-bottom-right"
-      data-hot-label="保存带 version=4 提交；服务端返回 409 时弹冲突层并给「查看最新 / 覆盖保存」两条出路，不静默覆盖家人的修改">
+      data-hot-label="保存带 version=4 提交；服务端返回 409 时弹冲突层并给「查看最新 / 用我的」两条出路，不静默覆盖家人的修改">
       保存修改
     </button>
   </div>
@@ -357,7 +357,7 @@
     <div class="sheet">
       <div class="sheet-grabber"></div>
       <h3>这条记录已被修改</h3>
-      <p class="sheet-sub">家人刚刚改过这条规则，你的修改还没提交。可以查看最新内容，或用你的版本覆盖。</p>
+      <p class="sheet-sub">家人刚刚改过这条规则，你的修改还没提交。可以查看最新内容，或直接保存你的修改。</p>
       <div class="fx-conflict-kv">
         <div class="fx-conflict-row">
           <span>你编辑的版本</span>
@@ -371,10 +371,10 @@
       <div class="sheet-actions">
         <button class="btn btn-primary btn-block" type="button" data-go="finance-recurring-edit.html"
           data-hot="⑥" data-hot-name="冲突处理" data-hot-pos="outer-bottom-right"
-          data-hot-label="两条出路：查看最新会载入版本 5 并丢弃你的草稿；覆盖保存会以你的内容写成版本 6。不提供「稍后再说」——冲突必须选一条">
+          data-hot-label="两条出路：查看最新会载入版本 5 并丢弃你的草稿；用我的会以你的内容写成版本 6。不提供「稍后再说」——冲突必须选一条">
           查看最新
         </button>
-        <button class="btn btn-secondary btn-block" type="button" id="fx-overwrite">覆盖保存</button>
+        <button class="btn btn-secondary btn-block" type="button" id="fx-overwrite">用我的</button>
       </div>
     </div>
   </div>
@@ -430,7 +430,7 @@
   });
 
   document.getElementById('fx-overwrite').addEventListener('click', function () {
-    window.HC.toast('已用你的版本覆盖，生成版本 6');
+    window.HC.toast('已按你的修改保存，生成版本 6');
     setTimeout(function () { location.href = 'finance-recurring.html'; }, 1000);
   });
 

@@ -383,7 +383,7 @@
     <div class="fx-foot-note tiny">保存会带上版本 3；家人同时在改会弹冲突层，两条出路都由你选，不会静默覆盖。</div>
     <button class="btn btn-primary btn-block" type="button" id="fx-save"
       data-hot="⑩" data-hot-name="保存修改" data-hot-pos="outer-bottom-right"
-      data-hot-label="带 version=3 提交；成功回详情并显示新值。返回 409 时弹「这条记录已被修改」，给「查看最新 / 仍按我的修改保存」两条出路，同一冲突最多连弹 2 次">
+      data-hot-label="带 version=3 提交；成功回详情并显示新值。返回 409 时弹「这条记录已被修改」，给「查看最新 / 用我的」两条出路，同一冲突最多连弹 2 次">
       保存修改
     </button>
   </div>
@@ -425,10 +425,10 @@
           <div class="fx-ver-card-line tiny">版本 4 · 爸爸 19:26</div>
         </div>
       </div>
-      <div class="fx-conflict-note">「查看最新」丢弃我的改动并重拉版本 4；「仍按我的修改保存」以版本 4 为底写成版本 5，我的金额优先。同一冲突最多连弹 2 次，仍冲突则提示稍后再试。</div>
+      <div class="fx-conflict-note">「查看最新」丢弃我的改动并重拉版本 4；「用我的」以版本 4 为底写成版本 5，我的金额优先。同一冲突最多连弹 2 次，仍冲突则提示稍后再试。</div>
       <div class="sheet-actions">
         <button class="btn btn-primary btn-block" type="button" data-go="finance-tx-edit.html">查看最新</button>
-        <button class="btn btn-secondary btn-block" type="button" data-go="finance-tx-edit.html?state=saved-toast">仍按我的修改保存</button>
+        <button class="btn btn-secondary btn-block" type="button" data-go="finance-tx-edit.html?state=saved-toast">用我的</button>
       </div>
     </div>
   </div>
@@ -451,7 +451,7 @@
 
   saveBtn.addEventListener('click', function () {
     if (editState === 'conflict') {
-      window.HC.toast('请先在冲突层里选一条出路：查看最新，或仍按我的修改保存');
+      window.HC.toast('请先在冲突层里选一条出路：查看最新，或用我的');
       return;
     }
     if (editState === 'saved-toast') {

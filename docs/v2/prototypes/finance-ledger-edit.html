@@ -322,7 +322,7 @@
   <div class="fx-foot">
     <button class="btn btn-primary btn-block" type="button" id="fx-save"
       data-hot="⑧" data-hot-name="保存修改" data-hot-pos="outer-bottom-right"
-      data-hot-label="保存带 version=5 提交；服务端返回 409 时弹冲突层给「查看最新 / 覆盖保存」两条出路，不静默覆盖家人的改动；成功回账本列表并回显新成员数">
+      data-hot-label="保存带 version=5 提交；服务端返回 409 时弹冲突层给「查看最新 / 用我的」两条出路，不静默覆盖家人的改动；成功回账本列表并回显新成员数">
       保存修改
     </button>
     <div class="fx-foot-note tiny">保存只改分组设置，不动任何一笔已记流水</div>
@@ -350,7 +350,7 @@
     <div class="sheet">
       <div class="sheet-grabber"></div>
       <h3>这个账本已被修改</h3>
-      <p class="sheet-sub">家人刚刚改过成员范围，你的修改还没提交。可以查看最新内容，或用你的版本覆盖；两边都不改动历史流水的归属。</p>
+      <p class="sheet-sub">家人刚刚改过成员范围，你的修改还没提交。可以查看最新内容，或直接保存你的修改；两条出路都不改动历史流水的归属。</p>
       <div class="fx-conflict-kv">
         <div class="fx-conflict-row">
           <span>你编辑的版本</span>
@@ -368,10 +368,10 @@
       <div class="sheet-actions">
         <button class="btn btn-primary btn-block" type="button" data-go="finance-ledger.html"
           data-hot="⑨" data-hot-name="冲突处理" data-hot-pos="outer-bottom-right"
-          data-hot-label="两条出路：查看最新会载入版本 6 并丢弃你的草稿；覆盖保存把内容写成版本 7。冲突必须选一条，不提供「稍后再说」">
+          data-hot-label="两条出路：查看最新会载入版本 6 并丢弃你的草稿；用我的把内容写成版本 7。冲突必须选一条，不提供「稍后再说」">
           查看最新
         </button>
-        <button class="btn btn-secondary btn-block" type="button" id="fx-overwrite">覆盖保存</button>
+        <button class="btn btn-secondary btn-block" type="button" id="fx-overwrite">用我的</button>
       </div>
     </div>
   </div>
@@ -473,7 +473,7 @@
   });
 
   document.getElementById('fx-overwrite').addEventListener('click', function () {
-    window.HC.toast('已用你的版本覆盖，生成版本 7');
+    window.HC.toast('已按你的修改保存，生成版本 7');
     setTimeout(function () { location.href = 'finance-ledger.html'; }, 1000);
   });
 

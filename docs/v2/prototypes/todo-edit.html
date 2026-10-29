@@ -254,11 +254,11 @@
   <!-- 冲突层：默认隐藏，保存时版本不一致才出现 -->
   <div class="sheet-mask" id="sheet-conflict" aria-hidden="true"
     data-hot="⑤" data-hot-name="冲突弹层" data-hot-pos="outer-top-left"
-    data-hot-label="版本不一致时弹出：说明这条待办已被他人修改，给查看最新 / 覆盖保存 / 放弃修改三选一；不做字段自动合并，也不静默覆盖">
+    data-hot-label="版本不一致时弹出：说明这条待办已被他人修改，给查看最新 / 用我的 / 放弃修改三选一；不做字段自动合并，也不静默覆盖">
     <div class="sheet">
       <div class="sheet-grabber"></div>
       <h3>这条待办已被他人修改</h3>
-      <p class="sheet-sub">你打开的是版本 3，服务器上已是版本 4。为不静默覆盖别人的改动，请选择接下来的处理方式。</p>
+      <p class="sheet-sub">你打开的是版本 3，服务器上已是版本 4。别人的改动不会被自动合并，请选择接下来的处理方式。</p>
 
       <div class="todo-diff">
         <div class="todo-diff-row">
@@ -281,12 +281,12 @@
 
       <div class="todo-warn">
         <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 3.5 17.5 17h-15z"/><path d="M10 8v4M10 14.4v.1"/></svg>
-        <span>覆盖保存会用你的字段整体替换版本 4，妈妈的改动不再保留；查看最新会丢弃你本次未保存的改动。</span>
+        <span>「用我的」会以你的字段整体替换版本 4，妈妈的改动不再保留；查看最新会丢弃你本次未保存的改动。</span>
       </div>
 
       <div class="sheet-actions">
         <button class="btn btn-primary btn-block" type="button" data-go="todo-detail.html">查看最新</button>
-        <button class="btn btn-danger btn-block" type="button" data-go="todo-edit.html?state=saved">覆盖保存</button>
+        <button class="btn btn-danger btn-block" type="button" data-go="todo-edit.html?state=saved">用我的</button>
         <button class="btn btn-secondary btn-block" type="button" data-go="todo-detail.html">放弃修改</button>
       </div>
     </div>
