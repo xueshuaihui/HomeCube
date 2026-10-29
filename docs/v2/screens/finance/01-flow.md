@@ -7,7 +7,7 @@
 | 面 | 财务 |
 | 权限 | 管理员 A；成人成员 M 写 + R 全家庭读（本人流水可改，他人流水可看不可改）；私密行仅作者与管理员可读；儿童、无账号成员被记录（无写）；访客不进财务面（16.3 财务行、16.4） |
 | 原型 | [finance-flow.html](../../prototypes/finance-flow.html) |
-| 状态帧 | [默认](../../prototypes/finance-flow.html) · [多选](../../prototypes/finance-flow.html?state=select) · [筛选](../../prototypes/finance-flow.html?state=filter) · [私密行](../../prototypes/finance-flow.html?state=private) · [加载](../../prototypes/finance-flow.html?state=loading) · [空](../../prototypes/finance-flow.html?state=empty) |
+| 状态帧 | [默认](../../prototypes/finance-flow.html) · [多选](../../prototypes/finance-flow.html?state=select) · [筛选](../../prototypes/finance-flow.html?state=filter) · [私密行](../../prototypes/finance-flow.html?state=private) · [加载](../../prototypes/finance-flow.html?state=loading) · [空](../../prototypes/finance-flow.html?state=empty) · [到底](../../prototypes/finance-flow.html?state=end) |
 
 **一屏说清**：流水是财务面的一级页，也是整个面的默认落点——五个 L2 Tab 常驻、不带底部五项、不放面切换器。一屏只做三件事：按月/季/年窗看按日分组的流水、用六个 chip 收敛列表、点行进单笔详情；长按多选只是本页的一个状态帧，不成新页面。金额以「分」整数存、按家庭币种显示、负号在货币符号之前；转账是成对的转出 / 转入，不计入收支小计；私密行只对作者与管理员可读，他人视角不下发金额与分类。
 
@@ -36,6 +36,7 @@
 | 私密行 | 他人视角 / 深链 | 列表保留私密行占位（锁图标 + 「私密」+ 「他人不可读」），金额与分类显示为「私密」胶囊；顶部出现说明细条：金额、分类、备注与附件不下发到本机 |
 | 加载 | 首屏请求中 | 隐藏汇总、列表、筛选摘要与悬浮按钮，用与行高一致的骨架；时间窗条与 Tab 仍在，不用 spinner 遮内容 |
 | 空 | 本月零条流水 | 隐藏汇总、列表与「加载更多」；空态「本月还没有流水」+「记一笔」直达新建；不出现「去别处看看」这类空话 |
+| 到底 | 已加载完全部 | 「加载更多」按钮换成不可点的「已显示本月全部 31 笔」，不再发下一页请求；滑到底也不再追加 |
 
 ## 字段与校验（页面级硬规则）
 

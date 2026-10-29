@@ -172,6 +172,9 @@
   }
   .fx-more-btn:hover { background: var(--surface-2); }
   .fx-more-hint { font-size: var(--fs-11); color: var(--text-3); }
+  .fx-more-end { display: none; font-size: var(--fs-12); color: var(--text-3); padding: 10px 0 2px; }
+  body[data-state="end"] .fx-more-btn { display: none; }
+  body[data-state="end"] .fx-more-end { display: block; }
 
   .fx-groups { display: block; }
   .fx-filtered { display: none; }
@@ -205,7 +208,7 @@
   }
 </style>
 </head>
-<body data-screen="F01 流水" data-states="default,select,filter,private,loading,empty">
+<body data-screen="F01 流水" data-states="default,end,select,filter,private,loading,empty">
 <div class="harness"></div>
 
 <div class="phone">
@@ -512,6 +515,7 @@
       <button class="fx-more-btn" type="button" id="fx-load-more"
         data-hot="⑩" data-hot-name="加载更多" data-hot-pos="bottom-right"
         data-hot-label="游标分页：只按 cursor 追加，不用页码、不重拉已加载的日组；滑到底自动加载一次，手动点也只追加不替换。列表已到底时按钮换成「已显示本月全部 31 笔」">加载更多</button>
+      <span class="fx-more-end num">已显示本月全部 31 笔</span>
       <span class="fx-more-hint">已按日分组 · 每页 20 条 · 14:32 更新</span>
     </div>
 
@@ -592,7 +596,7 @@
       <p class="sheet-sub">账本是报表与归集的分组，不是数据隔离域：换账本后流水与报表同步过滤，数据仍在同一个家庭里，成员该看的照常能看。</p>
       <div class="list" style="margin-top:16px">
         <button class="list-item" type="button" data-ledger="日常" data-sheet-close>
-          <span class="li-text">日常<span class="li-sub">默认账本 · 本月 24 笔</span></span>
+          <span class="li-text">日常<span class="li-sub">默认账本 · 本月 20 笔</span></span>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
         </button>
         <button class="list-item" type="button" data-ledger="旅行" data-sheet-close>

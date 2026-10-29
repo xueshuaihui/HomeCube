@@ -7,11 +7,17 @@
 ---
 
 ## HOM-SYNC-001 · 同步 delta 接口（每个服务一条）
-- 关联需求：PRD 3.7 `GET /api/{code}/sync/changes`（`since_lsn`+`family_id`+`limit`）、15.5 第 5 项
+- 关联需求：PRD 3.7 `GET /api/{code}/sync/changes`（`since_lsn`+`family_id`+`limit`）、3.4.4:323（`calendar_change_log` 与按 `(family_id, service)` 维护的客户端游标）、15.5 第 5 项
 - 类型：功能 | 优先级：P0 | 建议归属 Sprint：S6
-- 前置条件：客户端持有 `(family_id, service)` 游标
-- 步骤：以 `since_lsn` 拉取增量
-- 预期结果：返回该 lsn 之后变更；游标可前进；离线重放后增量补齐
+- 前置条件：客户端持有 `(family_id, service)` 游标；S6 现场三条服务（`homeos`/`finance`/`calendar`）均已出生
+- 步骤：
+  1. 以 `since_lsn` 分别拉取三条服务的增量
+  2. 推进其中一条的游标后重拉另两条
+  3. 在 `calendar` 侧改三类对象与注册项后拉增量
+- 预期结果：
+  - 返回该 lsn 之后变更；游标可前进；离线重放后增量补齐
+  - **三条游标按 `(family_id, service)` 各自维护、互不干扰**：推进 `finance` 游标不退 `homeos`/`calendar` 的增量
+  - `calendar` 的 delta 覆盖 `calendar_event`/`calendar_todo`/`calendar_reminder`/`calendar_recurring_rule`/`calendar_due_registration` 五表的变更（3.4.4:323）
 - 实现现状（快照）：已实现(分层)（`server/packages/sync/repo_test.go:468` `GetChanges`、`:550` delta JSON 无数据体）
 - 执行状态：未执行
 
@@ -115,11 +121,13 @@
 - 执行状态：未执行
 
 ## HOM-SYNC-013 · 家庭数据导出（HomeOS 与 Finance 两接口不得复用 handler）
-- 关联需求：PRD 3.7 `POST /api/homeos/data/export`（按成员范围）、4.8 `GET /api/finance/reports/export`（两接口不得复用同一 handler）
+- 关联需求：PRD 3.7 `POST /api/homeos/data/export`（按成员范围）、3.4.4:323（`calendar` 五表进家庭数据导出范围）、4.8 `GET /api/finance/reports/export`（两接口不得复用同一 handler）
 - 类型：功能 | 优先级：P1 | 建议归属 Sprint：未点名(P1-M1)
-- 前置条件：家庭有数据
+- 前置条件：家庭有数据（含日历面五表各 ≥1 行）
 - 步骤：分别调用两导出接口
-- 预期结果：两接口独立实现；HomeOS 导出家庭级、Finance 导出财务级
+- 预期结果：
+  - 两接口独立实现；HomeOS 导出家庭级、Finance 导出财务级
+  - HomeOS 导出的对象清单**含 `calendar` 域五表**（`calendar_event`/`calendar_todo`/`calendar_reminder`/`calendar_recurring_rule`/`calendar_due_registration`），且**不含 `homeos_` 前缀下的任何同构表**（3.4.4:323、5.7）
 - 实现现状（快照）：未实现（全仓无 `POST /api/homeos/data/export` 路由与 handler）
 - 执行状态：未执行
 

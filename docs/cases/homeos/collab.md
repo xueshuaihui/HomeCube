@@ -17,11 +17,17 @@
 - 执行状态：未执行
 
 ## HOM-TIME-007 · 投票创建与投票（饮食/家人出生前只建对象与接口）
-- 关联需求：PRD 3.4.3（Vote 对象，业务面引用 `vote_id`）、3.7 `POST /api/homeos/votes` + ballot
+- 关联需求：PRD 3.4.3:293（投票：**单选、多选、匿名、截止时间**）、3.4.3:298（`deadline` 是对象字段、**不是一条到期注册项**）、3.6:406（Vote：id、family_id、question、options、mode、deadline）、3.7 `POST /api/homeos/votes` + ballot
 - 类型：功能 | 优先级：P2 | 建议归属 Sprint：S5
 - 前置条件：P1 期（页面与创建入口随饮食 P3/家人 P4 出生）
-- 步骤：创建投票、投票
-- 预期结果：对象与接口在 P1-M1 建；业务面不自建投票表
+- 步骤：
+  1. 创建投票、投票
+  2. 分别建单选与多选两类投票，各投 1 票与 2 票
+  3. 把 `deadline` 设到过去后投票
+- 预期结果：
+  - 对象与接口在 P1-M1 建；业务面不自建投票表；Vote 字段与 3.6:406 一致（`mode` 区分单选/多选）
+  - 单选重复投被拒、多选可投多张且不重复计同一选项
+  - `deadline` 已过时拒绝新票；**投票不进 `calendar_due_registration`、不产生 `calendar.reminder.fired`**（3.4.3:298）
 - 实现现状（快照）：待自动化
 - 执行状态：未执行
 

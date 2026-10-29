@@ -26,6 +26,10 @@
   .cal-label-week { display: none; font-size: var(--fs-13); }
   body[data-state="week"] .cal-label-month { display: none; }
   body[data-state="week"] .cal-label-week { display: inline; }
+  .cal-label-day { display: none; }
+  body[data-state="day"] .cal-label-month { display: none; }
+  body[data-state="day"] .cal-label-day { display: inline; }
+  body[data-state="day"] .cal-grid-wrap { display: none; }
 
   .cal-grid-wrap {
     background: var(--surface); border: 1px solid var(--border);
@@ -160,7 +164,7 @@
   .cal-tabnote { margin: -4px 0 12px; font-size: var(--fs-11); color: var(--text-2); }
 </style>
 </head>
-<body data-screen="10 到期中心 · 日历面" data-tab="home" data-states="default,week,empty,loading,offline,unavailable">
+<body data-screen="10 到期中心 · 日历面" data-tab="home" data-states="default,day,week,empty,loading,offline,unavailable">
 <div class="harness"></div>
 
 <div class="phone">
@@ -212,12 +216,13 @@
     <div class="cal-bar">
       <div class="cal-month"
         data-hot="③" data-hot-name="月份切换" data-hot-pos="outer-top-left"
-        data-hot-label="月视图按月切、周视图按周切；只重拉当期注册项，不预取相邻周期">
+        data-hot-label="月视图按月切、周视图按周切、日视图按日切；只重拉当期注册项，不预取相邻周期">
         <button class="cal-arrow" type="button" data-toast="已切到 2026 年 9 月：只重拉该月注册项，不预取相邻月" aria-label="上一月">
           <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
         </button>
         <span class="cal-label cal-label-month">2026 年 10 月</span>
         <span class="cal-label cal-label-week">10月26日–11月1日</span>
+        <span class="cal-label cal-label-day">10 月 29 日 · 周四</span>
         <button class="cal-arrow" type="button" data-toast="已切到 2026 年 11 月：只重拉该月注册项，不预取相邻月" aria-label="下一月">
           <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4l6 6-6 6"/></svg>
         </button>
@@ -226,7 +231,7 @@
       <div class="segmented"
         data-hot="②" data-hot-name="日 / 周 / 月" data-hot-pos="outer-top-right"
         data-hot-label="三视图共用同一份注册项聚合，只换铺法；视图选择是本地偏好，不产生新请求路径">
-        <button type="button" data-toast="日视图：当天条目全量，与下方「今天 5 项」同一份数据">日</button>
+        <button type="button" class="cal-seg-day" data-go="calendar.html?state=day">日</button>
         <button type="button" class="cal-seg-week" data-go="calendar.html?state=week">周</button>
         <button type="button" class="cal-seg-month" aria-selected="true" data-go="calendar.html">月</button>
       </div>
@@ -528,6 +533,11 @@
 
   if (state === 'week') {
     document.querySelector('.cal-seg-week').setAttribute('aria-selected', 'true');
+    document.querySelector('.cal-seg-month').setAttribute('aria-selected', 'false');
+  }
+
+  if (state === 'day') {
+    document.querySelector('.cal-seg-day').setAttribute('aria-selected', 'true');
     document.querySelector('.cal-seg-month').setAttribute('aria-selected', 'false');
   }
 

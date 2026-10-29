@@ -10,9 +10,9 @@
 ## CAL-TIME-001 · 到期中心聚合已出生域注册项
 - 关联需求：PRD 5.5.4（到期中心不是轮询六面私有库）、17.4（六面按契约登记）、19.2 补充（聚合按本家庭已挂载面过滤）
 - 类型：功能 | 优先级：P0 | 建议归属 Sprint：S5
-- 前置条件：家庭启用 finance，存在 Bill/Goal 等到期对象与日历面原生待办/提醒样本
+- 前置条件：家庭启用 `finance` 面；**S5 现场的注册项经 17.4 契约构造**（测试发布方按真实路径发 `{code}.due.registered`，由 `svc-calendar` 消费落 `calendar_due_registration`，不直接伪造表行），另加日历面原生待办/提醒样本；`finance` 的真实账单与周期记账两路在 S11-S12 出生后、`Goal` 在 S15-S16 按同一条用例复验（同判据、同分母，不另立条目）
 - 步骤：打开到期中心日/周/月视图
-- 预期结果：聚合 `calendar` 原生三对象（日程/待办/提醒）+ `finance` 注册项；被停用面的注册项不出现不触发；未出生面无占位行
+- 预期结果：聚合 `calendar` 原生三对象（日程/待办/提醒）+ 其他已出生面的注册项；被停用面的注册项不出现不触发；未出生面无占位行
 - 实现现状（快照）：已实现(分层)（`consumer/due_trigger_scanner_test.go:97` 等 6 例；`repo/homeos_due_test.go:23`）（旧实现快照，代码已随基线清空，路径仅作历史指认）
 - 执行状态：未执行
 
@@ -124,11 +124,11 @@
 ## CAL-TIME-016 · 到期注册幂等键 `(source_system, source_id, kind)`
 - 关联需求：PRD 17.4:2090（注册幂等键为 `(source_system, source_id, kind)`；改期即重发）、17.4:2092（业务对象删除 → 注册项级联失效）、5.5.5（本面是 17.4 的消费方与权威载体，落 `calendar_due_registration`）
 - 类型：功能 | 优先级：P0 | 建议归属 Sprint：S5
-- 前置条件：一条账单已注册；可改期与删除
+- 前置条件：一条 `finance.bill` 注册项已按 17.4 契约构造（S5 用测试发布方发事件；S11-S12 账单出生后改用真实账单复验同一用例）；可改期与撤销
 - 步骤：
   1. 重复发送同一注册事件 3 次
-  2. 修改账单到期日，重发注册
-  3. 删除账单，检查注册项
+  2. 修改到期日，重发注册
+  3. 撤销注册（发 `finance.bill.due.revoked`），检查注册项
 - 预期结果：
   - 重复注册只落 1 条注册项（按 `(source_system, source_id, kind)` 幂等）
   - 改期后注册项**更新为新的 `due_at`**，不产生第二条
@@ -139,14 +139,14 @@
 ## CAL-TIME-017 · 三类对象的改与软删（`deleted_by` + 注册项级联失效）
 - 关联需求：PRD 5.2:730（功能基线含三类对象的**增删改查与归档**）、5.2:736（**删除一律软删 + `deleted_by`**，注册项随之级联失效）、5.4（日程的三视图读写）、5.8:881/883/884（`PUT`/`DELETE /api/calendar/events/{id}`、`DELETE /api/calendar/todos/{id}`、`DELETE /api/calendar/reminders/{id}` 三个写/删口）
 - 类型：功能 | 优先级：P0 | 建议归属 Sprint：S5
-- 前置条件：本面原生日程 / 待办 / 提醒各 1 条（提醒带已排期的触发）；`finance` 账单注册项 1 条；同家庭非作者成员 1 名
+- 前置条件：本面原生日程 / 待办 / 提醒各 1 条（提醒带已排期的触发）；经 17.4 契约构造的 `finance.bill` 注册项 1 条（S11-S12 账单出生后改用真实账单）；同家庭非作者成员 1 名
 - 步骤：
   1. 作者改日程标题与起止时间，用旧 `version` 再提交一次
   2. 作者删该日程，直接读 `calendar_event` 行
   3. 作者删一条带已排期触发的提醒，等到原触发时刻
   4. 删除一条带关联提醒的日程（提醒经 `calendar_reminder.calendar_event_id` 挂在该日程上）
   5. 非作者成员尝试删除他人的待办
-  6. 删除 `finance` 侧账单来源对象后看 `calendar_due_registration`
+  6. 来源面撤销该注册（发 `finance.bill.due.revoked`；S11-S12 账单出生后由真实账单删除触发）后看 `calendar_due_registration`
 - 预期结果：
   - 改动后 `version` +1；旧 `version` 提交返回 409 与双版本 payload，不静默覆盖（3.4.4）
   - 删除**不物理删行**：`deleted_at` 非空且 `deleted_by` = 操作人 `member_id`；该对象从列表与到期中心同时消失

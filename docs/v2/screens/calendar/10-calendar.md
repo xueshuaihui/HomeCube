@@ -6,7 +6,7 @@
 | 期 | ① |
 | 权限 | 全角色；聚合结果按 16.3 / 16.4 / 21.2 由服务端裁剪 |
 | 原型 | [calendar.html](../../prototypes/calendar.html) |
-| 状态帧 | [月视图](../../prototypes/calendar.html) · [周视图](../../prototypes/calendar.html?state=week) · [空](../../prototypes/calendar.html?state=empty) · [加载](../../prototypes/calendar.html?state=loading) · [离线](../../prototypes/calendar.html?state=offline) · [服务不可用](../../prototypes/calendar.html?state=unavailable) |
+| 状态帧 | [月视图](../../prototypes/calendar.html) · [日视图](../../prototypes/calendar.html?state=day) · [周视图](../../prototypes/calendar.html?state=week) · [空](../../prototypes/calendar.html?state=empty) · [加载](../../prototypes/calendar.html?state=loading) · [离线](../../prototypes/calendar.html?state=offline) · [服务不可用](../../prototypes/calendar.html?state=unavailable) |
 
 **一屏说清**：到期中心是**日历面的一级页**（面内二级 Tab「日程」），也是全平台唯一的时间聚合页：把**本面原生三对象**（`CalendarEvent` / `Todo` / `Reminder`，不经注册契约、直接由 `svc-calendar` 持有）与**各面按 17.4 注册进来的到期项**按日 / 周 / 月铺开。它只读已出生服务（P1 = `calendar` + `finance`）的注册项——未出生、未启用的面在这里不出现、不占位，也不产生空事件。进本页的路径有**三条**：**首页 C 区日历格 → 本页**、**首页 B 今日区「日历 ›」深链**、**「我的 → 时间与提醒」深链**（IA §1.3 第 13 条，只加不减；两条深链都是指向 `calendar/calendar/index` 的定向入口、不是面切换器，§12.10 第 1 条）；自面内切到别的面恒定 3 步（回本页 → D 行「首页」→ 点目标格）。
 
@@ -28,6 +28,7 @@
 | 态 | 触发 | 呈现 |
 |---|---|---|
 | 月视图（默认） | 进入页面 | 周一至周日表头 + 当月网格；今天实心高亮，带点的日期有注册项；下方「今天 N 项」列表 |
+| 日视图 | 切到「日」 | 收起网格、顶部日期条换成「10 月 29 日 · 周四」；当日全部条目不分页列出（与「今天 N 项」同一份数据、同一请求）；‹ › 按日前后翻 |
 | 周视图 | 切到「周」 | 顶部换成周区间与 7 日条；按天分组列出本周条目，今天组只展开前两条并给出「还有 N 项」 |
 | 空 | 当期零注册项 | 网格保留但不带点，列表位置给「本月没有到期项」+「新建待办」；不出现「即将上线」或未出生面占位 |
 | 加载 | 首屏请求中 | 日历与列表的骨架贴合网格与行高，不用 spinner 遮内容；月份条保留 |
