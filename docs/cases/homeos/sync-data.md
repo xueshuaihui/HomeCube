@@ -18,7 +18,7 @@
   - 返回该 lsn 之后变更；游标可前进；离线重放后增量补齐
   - **三条游标按 `(family_id, service)` 各自维护、互不干扰**：推进 `finance` 游标不退 `homeos`/`calendar` 的增量
   - `calendar` 的 delta 覆盖 `calendar_event`/`calendar_todo`/`calendar_reminder`/`calendar_recurring_rule`/`calendar_due_registration` 五表的变更（3.4.4:323）
-- 实现现状（快照）：已实现(分层)（`server/packages/sync/repo_test.go:468` `GetChanges`、`:550` delta JSON 无数据体）
+- 实现现状（快照）：已实现(分层)（`server/packages/sync/repo_test.go:468` `GetChanges`、`:550` delta JSON 无数据体）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## HOM-SYNC-002 · 同步延迟 ≤1 秒（双设备并发写）
@@ -27,7 +27,7 @@
 - 前置条件：两台真机同家庭
 - 步骤：A 端写入，B 端读同 version 数据，测耗时
 - 预期结果：在线态 P95 ≤1s；离线态转 22.6 重放口径
-- 实现现状（快照）：引用脚本（`make soak` → `deploy/scripts/soak_test.sh`，Makefile:275）
+- 实现现状（快照）：引用脚本（`make soak` → `deploy/scripts/soak_test.sh`，Makefile:275）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## HOM-SYNC-003 · 冲突策略：金额型乐观锁拒绝后到
@@ -63,7 +63,7 @@
 - 前置条件：服务进程在事务提交后崩溃
 - 步骤：触发写事务 → 模拟崩溃 → 恢复
 - 预期结果：事件经 outbox 重投，不丢；at-least-once
-- 实现现状（快照）：已实现(分层)（`server/packages/bus/bus_test.go:324` 投递推进、`:355` 已投不重发、`:374` 失败保 pending）
+- 实现现状（快照）：已实现(分层)（`server/packages/bus/bus_test.go:324` 投递推进、`:355` 已投不重发、`:374` 失败保 pending）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## HOM-SYNC-007 · 事件幂等：重放不产生重复业务对象
@@ -72,7 +72,7 @@
 - 前置条件：1000 事件
 - 步骤：重跑 3 次
 - 预期结果：新增业务对象=0；按 `causation_id` 可还原链路
-- 实现现状（快照）：已实现(分层)（`packages/bus/bus_test.go` 去重；另 `repo/finance_test.go:341` 幂等）
+- 实现现状（快照）：已实现(分层)（`packages/bus/bus_test.go` 去重；另 `repo/finance_test.go:341` 幂等）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## HOM-SYNC-008 · 消费失败指数退避 + 死信
@@ -81,7 +81,7 @@
 - 前置条件：消费者持续失败
 - 步骤：投递失败消息
 - 预期结果：退避 [1s,10s,60s]×3 后入 `{code}_dead_letter`；可查可重放
-- 实现现状（快照）：已实现(分层)（`server/packages/bus/bus_test.go:490` 失败写死信、`:609` 仅在最大投递时写死信、`:552` 重投后重跑）
+- 实现现状（快照）：已实现(分层)（`server/packages/bus/bus_test.go:490` 失败写死信、`:609` 仅在最大投递时写死信、`:552` 重投后重跑）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## HOM-SYNC-009 · 未登记事件不得发布（契约门禁拦截）
@@ -108,7 +108,7 @@
 - 前置条件：生产/同构环境
 - 步骤：验证备份频率与归档加密
 - 预期结果：每日全备（加密保留 30 天+月备 12 月）；WAL 归档加密、RPO≤15min
-- 实现现状（快照）：引用脚本（`make backup` / `make restore`，Makefile:157/175）
+- 实现现状（快照）：引用脚本（`make backup` / `make restore`，Makefile:157/175）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## HOM-SYNC-012 · 恢复演练（全栈 Compose 重建，首次即 M1 门禁）
@@ -117,7 +117,7 @@
 - 前置条件：已备份
 - 步骤：`make restore-drill` 全栈重建
 - 预期结果：先恢复整集群 → 各服务重放迁移序列校验版本表 → 重启当期全部服务与 JetStream 消费组；不允许只恢复单 schema
-- 实现现状（快照）：引用脚本（`make restore-drill`，Makefile:202）
+- 实现现状（快照）：引用脚本（`make restore-drill`，Makefile:202）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## HOM-SYNC-013 · 家庭数据导出（HomeOS 与 Finance 两接口不得复用 handler）
@@ -137,7 +137,7 @@
 - 前置条件：客户端携带 codes 与 installed
 - 步骤：请求分包清单
 - 预期结果：返回每面分包 metadata；sha256/size/min_compat 齐全；P1 不实现远程下发链路
-- 实现现状（快照）：已实现(HTTP)（`handler/bundle_manifest_test.go:71` bundles 线形、`:114` app/version 线形）
+- 实现现状（快照）：已实现(HTTP)（`handler/bundle_manifest_test.go:71` bundles 线形、`:114` app/version 线形）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## HOM-SYNC-015 · 离线记账可用、重放冲突提示不静默丢弃
@@ -150,7 +150,7 @@
 - 执行状态：未执行
 
 ## HOM-SYNC-016 · `business_id` 周期后缀：四条可重复事件不得被当作重复丢弃
-- 关联需求：PRD 11.4:1576（同对象可合法重复发生的事件，`business_id` 必须带周期或版本后缀；P1 四条：`finance.budget.exceeded` = `{budget_id}:{period}`、`{code}.due.registered` = `{source_id}:{due_at}`、`calendar.reminder.fired` = `{reminder_id}:{fire_date}`（㉚ 换宿主与换前缀：发布方 `svc-calendar`、消费方 `svc-homeos` 走投递，5.5.8）、`homeos.family.module.updated` = `{family_id}:{code}:{version}`）、11.2:1548（`idempotency_key` = `event_type + business_id`）
+- 关联需求：PRD 11.4:1628（同对象可合法重复发生的事件，`business_id` 必须带周期或版本后缀；P1 四条：`finance.budget.exceeded` = `{budget_id}:{period}`、`{code}.due.registered` = `{source_id}:{due_at}`、`calendar.reminder.fired` = `{reminder_id}:{fire_date}`（㉚ 换宿主与换前缀：发布方 `svc-calendar`、消费方 `svc-homeos` 走投递，5.5.8）、`homeos.family.module.updated` = `{family_id}:{code}:{version}`）、11.2:1600（`idempotency_key` = `event_type + business_id`）
 - 类型：功能 | 优先级：P0 | 建议归属 Sprint：S2
 - 前置条件：四条事件各构造「同一对象、不同周期」的两次合法发生
 - 步骤：
@@ -166,7 +166,7 @@
 - 执行状态：未执行
 
 ## HOM-SYNC-017 · 事件信封字段完整（幂等键 / 因果链 / 版本 / 重试 / 投递形态）
-- 关联需求：PRD 11.2:1547-1553（`event_id` 不作幂等键；`idempotency_key` = `event_type + business_id`；`causation_id` 用于链路追溯，无上游为 `null`；`version` 语义化只允许向后兼容；`attempt` 从 0 起；`delivery` 为 `stream`；`family_id`/`member_id` 消费端不得跨家庭处理）
+- 关联需求：PRD 11.2:1600-1586（`event_id` 不作幂等键；`idempotency_key` = `event_type + business_id`；`causation_id` 用于链路追溯，无上游为 `null`；`version` 语义化只允许向后兼容；`attempt` 从 0 起；`delivery` 为 `stream`；`family_id`/`member_id` 消费端不得跨家庭处理）
 - 类型：功能 | 优先级：P0 | 建议归属 Sprint：S2
 - 前置条件：一次跨服务事件链路（财务写 → 事件 → HomeOS 消费）
 - 步骤：
@@ -181,7 +181,7 @@
 - 执行状态：未执行
 
 ## HOM-SYNC-018 · 事件版本兼容：破坏性变更须升 `version` 并保留旧 subject 一个期
-- 关联需求：PRD 11.4:1580（语义化版本、向后兼容；破坏性变更须升 `version` 并保留旧 subject 一个期，由 23.5 契约门禁检测未升级即失败）
+- 关联需求：PRD 11.4:1632（语义化版本、向后兼容；破坏性变更须升 `version` 并保留旧 subject 一个期，由 23.5 契约门禁检测未升级即失败）
 - 类型：异常 | 优先级：P1 | 建议归属 Sprint：S2
 - 前置条件：事件目录可改；一份不兼容变更（删除必填字段）
 - 步骤：
@@ -196,7 +196,7 @@
 - 执行状态：未执行
 
 ## HOM-SYNC-019 · 分区有序：同 `(source_system, source_id)` 有序，不承诺全局有序
-- 关联需求：PRD 11.4:1583（只承诺同一 `(source_system, source_id)` 分区内有序；消费端**不得依赖跨对象事件顺序**）
+- 关联需求：PRD 11.4:1635（只承诺同一 `(source_system, source_id)` 分区内有序；消费端**不得依赖跨对象事件顺序**）
 - 类型：边界 | 优先级：P1 | 建议归属 Sprint：S2
 - 前置条件：同一对象连发两次状态变更；另有两个不同对象乱序到达
 - 步骤：
@@ -209,7 +209,7 @@
 - 执行状态：未执行
 
 ## HOM-SYNC-020 · 人工删除后不重建（EventIgnore 忽略表）
-- 关联需求：PRD 11.4:1582（`EventIgnore(business_id, event_type, ignored_at, operator)` 实现「人工删除后不重建」，落归属服务自己的 schema）、11.3:1562（生成型单据适用该语义）
+- 关联需求：PRD 11.4:1634（`EventIgnore(business_id, event_type, ignored_at, operator)` 实现「人工删除后不重建」，落归属服务自己的 schema）、11.3:1614（生成型单据适用该语义）
 - 类型：异常 | 优先级：P1 | 建议归属 Sprint：S2
 - 前置条件：一条事件生成的单据被人工删除；忽略表已登记该 `business_id`
 - 步骤：
@@ -251,7 +251,7 @@
 - 执行状态：未执行
 
 ## HOM-SYNC-023 · 离线不可用清单：五类操作在离线态必须明确拒绝
-- 关联需求：PRD 22.6:2566（离线可用：记账、清单勾选、库存出入、饮食/成长记录、查看档案与行程；**离线不可用：跨家庭切换、邀请成员、权限修改、AI 录入**）、22.6:2567（重放冲突保留提示，不静默丢弃）
+- 关联需求：PRD 22.6:2619（离线可用：记账、清单勾选、库存出入、饮食/成长记录、查看档案与行程；**离线不可用：跨家庭切换、邀请成员、权限修改、AI 录入**）、22.6:2619（重放冲突保留提示，不静默丢弃）
 - 类型：异常 | 优先级：P1 | 建议归属 Sprint：S6
 - 前置条件：设备断网
 - 步骤：
@@ -266,7 +266,7 @@
 - 执行状态：未执行
 
 ## HOM-SYNC-024 · 幂等表落在消费方自己的 schema，跨 schema 读写幂等表 = 0
-- 关联需求：PRD 15.7:1919（**每个事件消费者必须幂等**：以 `event_type + business_id`（或 17.4 的注册幂等键）判重，重复投递不产生重复业务对象；**幂等表落在消费方自己的 schema**）、23.2:2593 第 2 条（数据库账号即边界）、17.2
+- 关联需求：PRD 15.7:1971（**每个事件消费者必须幂等**：以 `event_type + business_id`（或 17.4 的注册幂等键）判重，重复投递不产生重复业务对象；**幂等表落在消费方自己的 schema**）、23.2:2645 第 2 条（数据库账号即边界）、17.2
 - 类型：边界 | 优先级：P0 | 建议归属 Sprint：S2
 - 前置条件：两个服务各有专属账号；可构造重复投递
 - 步骤：
@@ -279,5 +279,5 @@
   - 判重键为 `event_type + business_id`；以 `event_id` 判重的实现命中数 = 0（`event_id` 每次投递都变，用它判重等于没有幂等）
   - 重复投递 3 次，业务对象只产生 1 个，且三方的幂等记录各自独立
   - 幂等记录释放（失败回滚场景）不留下永久占位（见 `server/packages/bus/consumer.go:351` `releaseDedupe`）
-- 实现现状（快照）：已实现(分层)（`server/packages/bus/consumer.go:309` `checkDedupe`、`:351` `releaseDedupe`、`server/packages/bus/outbox.go:55` `OutboxTableName`；`server/migrations/homeos/homeos_0002_outbox_dedupe_dead_letter.up.sql` 建幂等表）
+- 实现现状（快照）：已实现(分层)（`server/packages/bus/consumer.go:309` `checkDedupe`、`:351` `releaseDedupe`、`server/packages/bus/outbox.go:55` `OutboxTableName`；`server/migrations/homeos/homeos_0002_outbox_dedupe_dead_letter.up.sql` 建幂等表）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行

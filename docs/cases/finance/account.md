@@ -12,7 +12,7 @@
 - 前置条件：已选 finance 面
 - 步骤：新建自定义账户（类型/币种/初始余额/账单日）
 - 预期结果：账户创建成功，带 `version`；初始余额计入余额口径
-- 实现现状（快照）：已实现(分层)（`repo/finance_test.go:110` `CreateAndGetAccount`、`:141` `ListAccountsByFamily`）
+- 实现现状（快照）：已实现(分层)（`repo/finance_test.go:110` `CreateAndGetAccount`、`:141` `ListAccountsByFamily`）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## FIN-ACC-002 · 每家庭至多一个默认账户（is_default）
@@ -39,7 +39,7 @@
 - 前置条件：账户余额=0 且有历史流水
 - 步骤：归档账户
 - 预期结果：从记账默认位与账户汇总移出；历史流水仍参与统计与净资产
-- 实现现状（快照）：已实现(分层)（`repo/finance_test.go:170` `ArchiveAccountWithZeroBalance`）
+- 实现现状（快照）：已实现(分层)（`repo/finance_test.go:170` `ArchiveAccountWithZeroBalance`）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## FIN-ACC-005 · 余额非 0 时归档被拒绝并提示先转账
@@ -48,7 +48,7 @@
 - 前置条件：账户余额 ≠ 0
 - 步骤：尝试归档
 - 预期结果：服务端拒绝并返回业务错误码，提示先转账/显式确认 0；避免净资产与账户合计不一致
-- 实现现状（快照）：已实现(分层)（`repo/finance_test.go:202` `ArchiveAccountWithNonZeroBalance`）
+- 实现现状（快照）：已实现(分层)（`repo/finance_test.go:202` `ArchiveAccountWithNonZeroBalance`）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## FIN-ACC-006 · 账户归档恢复（可逆）
@@ -75,7 +75,7 @@
 - 前置条件：M2 期
 - 步骤：建信用卡账户并设账单日/还款日
 - 预期结果：字段落库；还款提醒经 17.4 注册；与 Invoice/AssetLiability 关联
-- 实现现状（快照）：已实现(分层)（`repo/finance_test.go:1810` `CreateAndGetCreditCard`、`:1884` `UpdateCreditCardBalance`）
+- 实现现状（快照）：已实现(分层)（`repo/finance_test.go:1810` `CreateAndGetCreditCard`、`:1884` `UpdateCreditCardBalance`）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## FIN-ACC-009 · 负债对象与净资产负债端（M2）

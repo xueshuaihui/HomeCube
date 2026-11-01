@@ -144,7 +144,7 @@
         </div>
         <span class="fperm-chip">
           <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3.5" y="7" width="9" height="6" rx="1.8"/><path d="M5.8 7V5.4a2.2 2.2 0 0 1 4.4 0V7"/></svg>
-          P1 只读 · 本页不产生权限版本变更
+          本页只读 · 任何操作都不改变家人的权限
         </span>
       </div>
 
@@ -155,14 +155,14 @@
 
       <div class="card fperm-matrix"
         data-hot="③" data-hot-name="角色默认矩阵" data-hot-pos="bottom-right"
-        data-hot-label="行 = 角色，列 = 已启用且已出生的面（P1 = 财务 + 日历）+ 基础能力；✓ 可见、— 不可见。整张表只读，单元格上没有开关、没有覆盖层、没有对象级 ACL 控件">
+        data-hot-label="行 = 16.3 角色全集五档（管理员 / 成员 / 只读（儿童）/ 只读（无账号成员）/ 只读（访客）），行名前缀与成员列表徽章同词；列 = 本家庭已启用的面（P1 = 财务 + 日历）+ 基础能力；每格 ✓/— 依 16.3 逐格落；整张表只读，单元格上没有开关、没有覆盖层、没有对象级 ACL 控件，P1 恒 6 列不横向滚动">
         <div class="fperm-row is-head">
           <div class="fperm-th is-role">角色</div>
           <div class="fperm-th">财务<span>已启用面</span></div>
-          <div class="fperm-th">日历<span>必选面</span></div>
+          <div class="fperm-th">日历<span>始终开启</span></div>
           <div class="fperm-th">家庭动态<span>可查看</span></div>
           <div class="fperm-th">管理成员<span>可管理</span></div>
-          <div class="fperm-th">开通面<span>仅管理员</span></div>
+          <div class="fperm-th">开通<span>仅管理员</span></div>
         </div>
         <div class="fperm-row">
           <div class="fperm-rh">管理员<small>家庭创建者</small></div>
@@ -173,7 +173,7 @@
           <div class="fperm-td fperm-yes">✓</div>
         </div>
         <div class="fperm-row">
-          <div class="fperm-rh">成人成员<small>默认角色</small></div>
+          <div class="fperm-rh">成员<small>默认角色</small></div>
           <div class="fperm-td fperm-yes">✓</div>
           <div class="fperm-td fperm-yes">✓</div>
           <div class="fperm-td fperm-yes">✓</div>
@@ -181,7 +181,23 @@
           <div class="fperm-td fperm-no">—</div>
         </div>
         <div class="fperm-row">
-          <div class="fperm-rh">访客<small>限时只读</small></div>
+          <div class="fperm-rh">只读（儿童）<small>有自己的账号</small></div>
+          <div class="fperm-td fperm-no">—</div>
+          <div class="fperm-td fperm-yes">✓</div>
+          <div class="fperm-td fperm-yes">✓</div>
+          <div class="fperm-td fperm-no">—</div>
+          <div class="fperm-td fperm-no">—</div>
+        </div>
+        <div class="fperm-row">
+          <div class="fperm-rh">只读（无账号成员）<small>不能登录，内容由代管人代为记录</small></div>
+          <div class="fperm-td fperm-no">—</div>
+          <div class="fperm-td fperm-no">—</div>
+          <div class="fperm-td fperm-no">—</div>
+          <div class="fperm-td fperm-no">—</div>
+          <div class="fperm-td fperm-no">—</div>
+        </div>
+        <div class="fperm-row">
+          <div class="fperm-rh">只读（访客）<small>限时只读</small></div>
           <div class="fperm-td fperm-no">—</div>
           <div class="fperm-td fperm-yes">✓</div>
           <div class="fperm-td fperm-yes">✓</div>
@@ -191,19 +207,20 @@
       </div>
       <div class="fperm-legend">
         <span>✓ 可见　— 不可见</span>
-        <span>财务：成人成员本人可写、全家可读</span>
+        <span>这张表是角色的默认档，每个人实际能看到什么，以成员页里的授权为准</span>
+        <span>财务：成员本人可写、全家可读</span>
         <span>日历：全员可读，按角色可勾选完成、不可删他人</span>
       </div>
       <div class="tiny" style="margin-top:6px;line-height:var(--lh-normal)">其余面尚未上线，不出现在矩阵列里；全量清单见<a href="family-modules.html" style="color:var(--brand-text);font-weight:600;text-decoration:none">面目录页</a>。</div>
 
       <div class="fperm-foot"
         data-hot="④" data-hot-name="边界说明卡" data-hot-pos="bottom-right"
-        data-hot-label="说明为什么没有开关：P1 只有角色默认矩阵、面挂载（在面目录页）与字段级可见性三层；覆盖层与对象级 ACL 不渲染任何控件，本页也不产生权限版本变更">
+        data-hot-label="用户可见部分用动作语：P1 只有角色默认档、家庭开通清单（family/modules）与单条信息可见性三层；family_overrides / object_acls 恒空、不渲染控件不留占位（㉖）；图例句『逐成员授权优先于角色默认矩阵』常驻；本页不产生 pver">
         <h4>为什么这一页没有开关</h4>
         <ul>
-          <li>P1 只实现三层：<b>角色默认矩阵</b>、<b>面挂载</b>（唯一入口在面目录页）、<b>字段级可见性</b>。</li>
-          <li>家庭级覆盖与对象级 ACL 尚未出生，本页不为它们渲染任何控件，也不留占位入口。</li>
-          <li>权限版本只由「改成员角色」推进；本页任何操作都不改权限版本。</li>
+          <li>一期只做了三层：<b>角色的默认档</b>（这张表）、<b>家庭开通清单</b>（开通与停用只在面目录页）、<b>单条信息的可见范围</b>。</li>
+          <li>每个人的实际范围，以成员页里管理员给 TA 的授权为准；本页不做按人调整，也不留占位入口——没有入口就不画控件。</li>
+          <li>只有「修改家人的角色」会让全家的权限跟着变；本页任何操作都不改变家人的权限。</li>
         </ul>
       </div>
     </div>
@@ -217,7 +234,7 @@
           <span class="fn-icon">
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="7.2" r="2.8"/><path d="M4.5 16.5c.8-2.8 3.1-4.3 5.5-4.3s4.7 1.5 5.5 4.3"/></svg>
           </span>
-          你当前是成人成员
+          你当前是成员
         </div>
         <p>本页只读，只展示你所在角色的可见范围。要调整角色或权限，请联系家庭管理员在成员治理页操作。</p>
         <div class="fperm-links">
@@ -227,20 +244,20 @@
 
       <div class="section-title">
         <span>你的可见范围</span>
-        <span class="tiny">成人成员 · 只读</span>
+        <span class="tiny">成员 · 只读</span>
       </div>
 
       <div class="card fperm-matrix">
         <div class="fperm-row is-head">
           <div class="fperm-th is-role">角色</div>
           <div class="fperm-th">财务<span>已启用面</span></div>
-          <div class="fperm-th">日历<span>必选面</span></div>
+          <div class="fperm-th">日历<span>始终开启</span></div>
           <div class="fperm-th">家庭动态<span>可查看</span></div>
           <div class="fperm-th">管理成员<span>可管理</span></div>
-          <div class="fperm-th">开通面<span>仅管理员</span></div>
+          <div class="fperm-th">开通<span>仅管理员</span></div>
         </div>
         <div class="fperm-row is-me">
-          <div class="fperm-rh">成人成员<small>我</small></div>
+          <div class="fperm-rh">成员<small>我</small></div>
           <div class="fperm-td fperm-yes">✓</div>
           <div class="fperm-td fperm-yes">✓</div>
           <div class="fperm-td fperm-yes">✓</div>
@@ -250,13 +267,14 @@
       </div>
       <div class="fperm-legend">
         <span>✓ 可见　— 不可见</span>
+        <span>这张表是角色的默认档，你实际能看到什么，以成员页里的授权为准</span>
         <span>其他角色的范围不对你展示</span>
       </div>
 
       <div class="fperm-foot">
         <h4>需要更多权限？</h4>
         <ul>
-          <li>管理成员、开通面只对家庭管理员开放；其他角色的这些格子恒为 —。</li>
+          <li>管理成员、开通这些能力只对家庭管理员开放；其他角色的这些格子恒为 —。</li>
           <li>本页不提供申请或临时授权：管理员在成员治理页改角色后，下一次请求即按新权限生效。</li>
         </ul>
       </div>

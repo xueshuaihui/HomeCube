@@ -38,8 +38,10 @@
   .todo-banner b { display: block; font-size: var(--fs-13); margin-bottom: 2px; }
   .todo-banner-offline { background: var(--warning-soft); color: var(--warning); }
   .todo-banner-saving { background: var(--info-soft); color: var(--info); }
+  .todo-banner-fail { background: var(--danger-soft); color: var(--danger); }
   body[data-state="offline"] .todo-banner-offline { display: flex; }
   body[data-state="submitting"] .todo-banner-saving { display: flex; }
+  body[data-state="fail"] .todo-banner-fail { display: flex; }
   body[data-state="offline"] .offline-bar { display: flex; }
 
   .todo-form { padding-top: 4px; }
@@ -109,9 +111,105 @@
   }
   .todo-foot-note b { color: var(--text); }
 
+  .todo-retry {
+    margin-top: 8px; height: 30px; padding: 0 14px;
+    border-radius: var(--radius-pill);
+    border: 1px solid currentColor; background: transparent;
+    font-family: inherit; font-size: var(--fs-12); font-weight: 600;
+    color: inherit; cursor: pointer;
+  }
+
+  /* 选择层：页面内自绘的月历与时分步进 */
+  .sheet { max-height: 88%; overflow-y: auto; }
+  .pk-bar { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
+  .pk-arrow {
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--text-2); font-size: var(--fs-17); line-height: 1;
+    font-family: inherit; cursor: pointer;
+  }
+  .pk-arrow:hover { background: var(--surface-2); }
+  .pk-month { font-size: var(--fs-15); font-weight: 700; }
+  .pk-week { display: grid; grid-template-columns: repeat(7, 1fr); margin-top: 10px; }
+  .pk-week span { text-align: center; font-size: var(--fs-11); font-weight: 600; color: var(--text-3); }
+  .pk-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-top: 4px; }
+  .pk-day {
+    height: 40px; border: 0; border-radius: var(--radius-sm);
+    background: transparent; color: var(--text);
+    font-family: var(--font-num); font-size: var(--fs-14); cursor: pointer;
+  }
+  .pk-day:hover { background: var(--surface-2); }
+  .pk-day.is-blank { pointer-events: none; }
+  .pk-day.is-today { box-shadow: inset 0 0 0 1.5px var(--brand-soft-border); }
+  .pk-day.is-on { background: var(--brand); color: var(--on-brand); font-weight: 700; }
+  .pk-time {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 14px; padding: 10px 12px;
+    border-radius: var(--radius-md); background: var(--surface-2);
+  }
+  .pk-time-k { font-size: var(--fs-13); color: var(--text-3); }
+  .pk-step { display: inline-flex; align-items: center; gap: 4px; }
+  .pk-step button {
+    width: 28px; height: 28px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong); background: var(--surface);
+    color: var(--text-2); font-family: inherit; font-size: var(--fs-14); cursor: pointer;
+  }
+  .pk-step b { min-width: 24px; text-align: center; font-family: var(--font-num); font-size: var(--fs-15); }
+  .pk-colon { font-weight: 700; }
+  .pk-time-hint { margin-left: auto; font-size: var(--fs-11); color: var(--text-3); }
+  .pk-hidden { display: none; }
+
+  .todo-pkbtn {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    width: 100%; margin-top: 8px; padding: 10px 12px;
+    border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
+    background: var(--surface); color: var(--text);
+    font-family: inherit; font-size: var(--fs-14); cursor: pointer;
+  }
+  .todo-pkbtn:hover { background: var(--surface-2); }
+  .todo-pkbtn .chevron { color: var(--text-3); }
+
+  .todo-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .todo-chip {
+    min-width: 46px; padding: 7px 10px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border-strong);
+    background: var(--surface); color: var(--text-2);
+    font-family: inherit; font-size: var(--fs-12); font-weight: 600; cursor: pointer;
+  }
+  .todo-chip[aria-pressed="true"] {
+    background: var(--brand); border-color: var(--brand); color: var(--on-brand);
+  }
+  .todo-quick {
+    width: 100%; margin-top: 8px; padding: 9px 12px;
+    border-radius: var(--radius-sm); border: 1px dashed var(--brand-soft-border);
+    background: var(--brand-soft); color: var(--brand-text);
+    font-family: inherit; font-size: var(--fs-13); font-weight: 600; cursor: pointer;
+  }
+  .todo-rule { display: none; margin-top: 14px; padding: 12px 14px; border-radius: var(--radius-md); background: var(--surface-2); }
+  .todo-rule.is-on { display: block; }
+  .todo-rule-k { display: block; font-size: var(--fs-12); color: var(--text-3); }
+  .todo-rule-v { display: block; margin-top: 2px; font-size: var(--fs-14); font-weight: 600; }
+  .todo-rule-note { display: block; margin-top: 8px; font-size: var(--fs-12); color: var(--text-2); line-height: var(--lh-normal); }
+  .todo-interval { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: var(--fs-13); color: var(--text-2); }
+  .todo-interval input {
+    width: 64px; padding: 8px 10px;
+    border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
+    background: var(--surface); color: var(--text);
+    font-family: var(--font-num); font-size: var(--fs-14);
+  }
+  .todo-interval .todo-chips { margin-top: 0; }
+  .todo-subline { display: block; margin-top: 10px; font-size: var(--fs-12); color: var(--text-3); }
+  .todo-end-row { margin-top: 8px; font-size: var(--fs-13); color: var(--text-2); }
+  .todo-end-row input {
+    width: 64px; padding: 8px 10px;
+    border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
+    background: var(--surface); color: var(--text);
+    font-family: var(--font-num); font-size: var(--fs-14);
+  }
 </style>
 </head>
-<body data-screen="13 新建待办 · 日历面" data-tab="" data-states="default,error,submitting,offline">
+<body data-screen="13 新建待办 · 日历面" data-tab="" data-states="default,error,submitting,fail,offline">
 <div class="harness"></div>
 
 <div class="phone">
@@ -126,15 +224,15 @@
 
   <div class="navbar">
     <div class="nav-left">
-      <button class="todo-cancel" type="button" data-go="todo.html"
+      <button class="todo-cancel" type="button" id="todo-cancel"
         data-hot="①" data-hot-name="取消" data-hot-pos="outer-top-left"
-        data-hot-label="返回待办列表；未保存内容直接丢弃，不落草稿、不入离线队列，也不产生动态">取消</button>
+        data-hot-label="有未保存内容时先弹「放弃？」确认，无改动直接回待办列表；放弃后不落草稿、不入待同步队列、不产生动态">取消</button>
     </div>
     <div class="nav-title">新建待办</div>
     <div class="nav-right">
       <button class="todo-save" type="button" id="todo-save"
-        data-hot="⑤" data-hot-name="保存" data-hot-pos="outer-top-right"
-        data-hot-label="标题为空时只给字段红框与行内错误，不弹全局错误层；保存中按钮变「保存中…」；离线时入待同步队列并提示">
+        data-hot="⑥" data-hot-name="保存" data-hot-pos="outer-top-right"
+        data-hot-label="标题为空时只给字段红框与行内错误、不发请求；提交中按钮变「保存中…」且表单锁定；成功后 toast「已保存」并回待办列表；服务端拒绝则留在本页、保留输入、给可重试条；离线时先存本机、联网自动提交">
         <span class="todo-save-on">保存</span>
         <span class="todo-save-busy">保存中…</span>
       </button>
@@ -151,7 +249,7 @@
       <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 10a7 7 0 0 1 11.5-5.4M17 10a7 7 0 0 1-11.5 5.4"/><path d="M4 3l12 14"/></svg>
       <div>
         <b>当前离线</b>
-        保存后先存本机并入待同步队列，联网自动提交；对象落库即由本面纳入到期中心（原生对象，不经 17.4 注册事件，不发 {code}.due.registered），重试不会重复登记。
+        保存后先存到本机，联网自动提交；重试不会重复登记，你填的内容不会丢。
       </div>
     </div>
 
@@ -159,7 +257,18 @@
       <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.2v4.2l2.6 1.6"/></svg>
       <div>
         <b>正在保存</b>
-        对象落库即由本面纳入到期中心（原生对象，不经 17.4 注册事件，不发 {code}.due.registered），页面不承诺保存完立刻在日历上看到。
+        到期与重复的时间由服务器按家庭时区安排，本页不预告触发时刻。
+      </div>
+    </div>
+
+    <div class="todo-banner todo-banner-fail">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.2v4.6M10 14.2v.1"/></svg>
+      <div>
+        <b>保存没有成功</b>
+        请检查网络后重试——你填的内容都还在，这条待办还没有建好。
+        <div><button class="todo-retry" type="button" id="todo-retry"
+          data-hot="⑦" data-hot-name="失败重试" data-hot-pos="outer-top-right"
+          data-hot-label="失败整页态：字段值与所选周期全保留、顶部给可重试条；重试沿用同一请求标识，不产生第二条待办">重试</button></div>
       </div>
     </div>
 
@@ -167,25 +276,25 @@
       <div class="field">
         <label class="field-label" for="todo-title">标题<span class="todo-required">必填</span></label>
         <input class="input todo-title-input" id="todo-title" type="text" maxlength="60"
-          placeholder="例如：交物业费" value="交物业费" autocomplete="off"
+          placeholder="例如：倒垃圾" value="倒垃圾" autocomplete="off"
           data-hot="②" data-hot-name="标题" data-hot-pos="outer-top-right"
-          data-hot-label="必填、上限 60 字；只做首尾空白裁剪，不做敏感词拦截；为空时红框 + 行内错误，不弹全局错误">
+          data-hot-label="必填、上限 60 字；为空时红框 + 行内错误、不发请求；错误落在字段上，不弹全局错误层">
         <div class="field-error todo-title-err" role="alert">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
           请填写标题
         </div>
-        <div class="help">标题会显示在到期中心、首页今日区与通知里。</div>
+        <div class="help">标题会显示在日历、首页今日区与通知里。</div>
       </div>
 
       <div class="field">
-        <span class="field-label">负责人</span>
+        <span class="field-label">负责人<span class="todo-required">本家庭任一成员</span></span>
         <button class="todo-pick" type="button" data-sheet-open="sheet-owner"
           data-hot="③" data-hot-name="负责人" data-hot-pos="outer-top-right"
-          data-hot-label="上拉本家庭成员选择；默认本人，可指派给家人，被指派者在「分配给我」里看到；只列本家庭成员，不提供「所有人」">
-          <span class="avatar todo-pick-av todo-av-me" id="owner-av">我</span>
+          data-hot-label="默认本人，可选本家庭任一成员（含其他成人与儿童）；被指派者能勾选完成、能回应这条，但不能改待办本体、截止与重复规则，也不能归档或删除——写权只在创建人与管理员；访客不出现本入口">
+          <span class="avatar todo-pick-av todo-av-dad" id="owner-av">爸</span>
           <span class="todo-pick-body">
-            <span class="todo-pick-v" id="owner-name">我</span>
-            <span class="todo-pick-sub">可指派给本家庭的任一成员</span>
+            <span class="todo-pick-v" id="owner-name">爸爸</span>
+            <span class="todo-pick-sub" id="owner-sub">他能在自己的「分配给我」里看到并勾选完成</span>
           </span>
           <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
         </button>
@@ -195,17 +304,34 @@
         <span class="field-label">截止时间</span>
         <button class="todo-pick" type="button" data-sheet-open="sheet-due"
           data-hot="④" data-hot-name="截止时间" data-hot-pos="outer-top-right"
-          data-hot-label="可选今天 / 明天 / 本周内的快捷时间；只写一次截止，不做重复规则；对象落库即由本面纳入到期中心（原生对象，不经 17.4 注册事件，不发 {code}.due.registered）">
+          data-hot-label="快捷档 + 页面内自绘的月历与时分步进（精确到分钟，不依赖系统日期控件外观）；单一时间点按家庭时区解释；到期只把这条待办呈到期状态，不自动发通知——要收到提醒请再挂一条提醒">
           <span class="todo-pick-icon">
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.2v4.2l2.6 1.6"/></svg>
           </span>
           <span class="todo-pick-body">
-            <span class="todo-pick-v num" id="due-value">今天 20:00</span>
+            <span class="todo-pick-v num" id="due-value">今天 19:00</span>
             <span class="todo-pick-sub" id="due-sub">10 月 29 日 · 周四</span>
           </span>
           <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
         </button>
-        <div class="help">对象落库即由本面纳入到期中心（原生对象，不经 17.4 注册事件，不发 {code}.due.registered）。</div>
+        <div class="help">保存后这条待办会出现在日历上；到点它只是变「到期」，不会自动给你发通知，要提前收到提醒请再挂一条提醒。</div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">重复</span>
+        <button class="todo-pick" type="button" data-sheet-open="sheet-repeat"
+          data-hot="⑤" data-hot-name="重复" data-hot-pos="outer-top-right"
+          data-hot-label="六档：不重复 / 每天 / 每周 / 每月 / 每年 / 自定义（5.5.3 的封闭枚举）；「工作日」是自定义里的快捷、不是并列档位；每周可多选星期、每月可选日号、自定义可设每 N 天/周/月与结束条件；只存规则、不提前生成每一期">
+          <span class="todo-pick-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 8.5a4.5 4.5 0 0 1 8.4-2.2M15 11.5a4.5 4.5 0 0 1-8.4 2.2"/><path d="M13 4.5l.8 2.2-2.2.6M7 15.5l-.8-2.2 2.2-.6"/></svg>
+          </span>
+          <span class="todo-pick-body">
+            <span class="todo-pick-v" id="repeat-value">每天</span>
+            <span class="todo-pick-sub" id="repeat-sub">每天 19:00 · 只存规则，不提前生成每一期</span>
+          </span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+        <div class="help">勾一次只算完成那一回：完成这期的下一期照常来；想让它不再出现，请改回「不重复」或归档。</div>
       </div>
 
       <div class="todo-source">
@@ -220,13 +346,13 @@
       <div class="field">
         <label class="field-label" for="todo-note">备注</label>
         <textarea class="textarea" id="todo-note" maxlength="200" rows="3"
-          placeholder="可选：写清账期、地点或注意事项">物业费 10 月账期，缴完把回执拍照存到附件。</textarea>
+          placeholder="可选：写清地点或注意事项">每天晚上 7 点倒，厨余单独一袋放门口左侧。</textarea>
         <div class="help">备注仅本家庭成员可见，不进入通知正文。</div>
       </div>
     </div>
 
     <div class="todo-foot-note">
-      <b>保存后</b>：待办立即出现在「我创建的」；对象落库即由本面纳入到期中心（原生对象，不经 17.4 注册事件，不发 {code}.due.registered），到期中心与首页今日区随投影刷新。
+      <b>保存后</b>：回待办列表，这条出现在「我创建的」里；日历与首页今日区随它刷新。指派给家人后，对方也能在自己的「分配给我」里看到并勾选完成。
     </div>
   </div>
 
@@ -235,23 +361,27 @@
     <div class="sheet">
       <div class="sheet-grabber"></div>
       <h3>选择负责人</h3>
-      <p class="sheet-sub">默认是你本人；指派给家人后，这条待办会出现在对方的「分配给我」里。</p>
+      <p class="sheet-sub">本家庭任一成员都可选，含其他成人与儿童。指派后这条会出现在对方的「分配给我」里；对方能勾选完成、能回应，但改标题、改时间、改重复规则要由你（创建人）或管理员动手，她也不能归档或删除。</p>
       <div class="list" style="margin-top:16px">
-        <button class="list-item" type="button" data-owner="我" data-owner-av="我" data-owner-cls="todo-av-me" data-sheet-close>
+        <button class="list-item" type="button" data-owner="我" data-owner-av="我" data-owner-cls="todo-av-me" data-owner-sub="管理员 · 创建人" data-sheet-close>
           <span class="avatar todo-av-me">我</span>
-          <span class="li-text">我<span class="li-sub">管理员 · 当前选择</span></span>
+          <span class="li-text">我<span class="li-sub">管理员 · 创建人</span></span>
         </button>
-        <button class="list-item" type="button" data-owner="妈妈" data-owner-av="妈" data-owner-cls="todo-av-mom" data-sheet-close>
+        <button class="list-item" type="button" data-owner="妈妈" data-owner-av="妈" data-owner-cls="todo-av-mom" data-owner-sub="成人成员" data-sheet-close>
           <span class="avatar todo-av-mom">妈</span>
           <span class="li-text">妈妈<span class="li-sub">成人成员</span></span>
         </button>
-        <button class="list-item" type="button" data-owner="爸爸" data-owner-av="爸" data-owner-cls="todo-av-dad" data-sheet-close>
+        <button class="list-item" type="button" data-owner="爸爸" data-owner-av="爸" data-owner-cls="todo-av-dad" data-owner-sub="成人成员 · 当前选择" data-sheet-close>
           <span class="avatar todo-av-dad">爸</span>
-          <span class="li-text">爸爸<span class="li-sub">成人成员</span></span>
+          <span class="li-text">爸爸<span class="li-sub">成人成员 · 当前选择</span></span>
         </button>
-        <button class="list-item" type="button" data-owner="女儿" data-owner-av="女" data-owner-cls="todo-av-girl" data-sheet-close>
-          <span class="avatar todo-av-girl">女</span>
-          <span class="li-text">女儿<span class="li-sub">儿童成员 · 由监护人代管</span></span>
+        <button class="list-item" type="button" data-owner="小满" data-owner-av="满" data-owner-cls="todo-av-girl" data-owner-sub="儿童成员 · 有账号 · 可勾选完成、可回应" data-sheet-close>
+          <span class="avatar todo-av-girl">满</span>
+          <span class="li-text">小满<span class="li-sub">儿童成员 · 有账号 · 可勾选完成、可回应</span></span>
+        </button>
+        <button class="list-item" type="button" data-owner="奶奶" data-owner-av="奶" data-owner-cls="todo-av-girl" data-owner-sub="无账号 · 由爸爸代管" data-sheet-close>
+          <span class="avatar todo-av-girl">奶</span>
+          <span class="li-text">奶奶<span class="li-sub">无账号 · 由爸爸代管</span></span>
         </button>
       </div>
       <div class="sheet-actions">
@@ -260,18 +390,18 @@
     </div>
   </div>
 
-  <!-- 截止时间选择层 -->
+  <!-- 截止时间选择层：快捷档 + 自绘日期与时分 -->
   <div class="sheet-mask" id="sheet-due" aria-hidden="true">
     <div class="sheet">
       <div class="sheet-grabber"></div>
       <h3>截止时间</h3>
-      <p class="sheet-sub">只写一个截止时间，不做重复规则；需要周期提醒时请用「提醒」。</p>
+      <p class="sheet-sub">只写一个时间点；到点它变「到期」，不会自动发通知。日期与时刻都在页面里选，不弹系统日期控件。</p>
       <div class="list" style="margin-top:16px">
         <button class="list-item" type="button" data-due="今天 18:00" data-due-sub="10 月 29 日 · 周四" data-sheet-close>
-          <span class="li-text">今天 18:00<span class="li-sub">2 小时后</span></span>
+          <span class="li-text">今天 18:00<span class="li-sub">傍晚</span></span>
         </button>
-        <button class="list-item" type="button" data-due="今天 20:00" data-due-sub="10 月 29 日 · 周四" data-sheet-close>
-          <span class="li-text">今天 20:00<span class="li-sub">当前选择</span></span>
+        <button class="list-item" type="button" data-due="今天 19:00" data-due-sub="10 月 29 日 · 周四" data-sheet-close>
+          <span class="li-text">今天 19:00<span class="li-sub">当前选择</span></span>
         </button>
         <button class="list-item" type="button" data-due="明天 09:00" data-due-sub="10 月 30 日 · 周五" data-sheet-close>
           <span class="li-text">明天 09:00<span class="li-sub">10 月 30 日 · 周五</span></span>
@@ -279,13 +409,187 @@
         <button class="list-item" type="button" data-due="10 月 31 日 10:00" data-due-sub="10 月 31 日 · 周六" data-sheet-close>
           <span class="li-text">10 月 31 日 10:00<span class="li-sub">本周六上午</span></span>
         </button>
-        <button class="list-item" type="button" data-toast="自定义日期与时间选择器随系统组件接入；P1 先给常用快捷时间">
-          <span class="li-text">自定义日期与时间<span class="li-sub">精确到分钟</span></span>
+        <button class="list-item" type="button" data-pick="due" data-sheet-open="sheet-picker">
+          <span class="li-text">自己选日期与时刻<span class="li-sub">月历 + 时分，精确到分钟</span></span>
           <span class="chevron">›</span>
         </button>
       </div>
       <div class="sheet-actions">
         <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 自绘日期选择层：月历 + 时分步进，供截止 / 不重复 / 每年 / 结束条件复用 -->
+  <div class="sheet-mask" id="sheet-picker" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>选日期</h3>
+      <p class="sheet-sub" id="pk-sub">在页面里选，不弹系统的日期选择器。</p>
+      <div class="pk-bar">
+        <button class="pk-arrow" type="button" data-pk-prev aria-label="上个月">‹</button>
+        <span class="pk-month" id="pk-month">2026 年 10 月</span>
+        <button class="pk-arrow" type="button" data-pk-next aria-label="下个月">›</button>
+      </div>
+      <div class="pk-week"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+      <div class="pk-grid" id="pk-grid"></div>
+      <div class="pk-time" id="pk-time">
+        <span class="pk-time-k">时间</span>
+        <div class="pk-step">
+          <button type="button" data-pk-step="h" data-dir="-1" aria-label="小时减">−</button>
+          <b id="pk-hour">19</b>
+          <button type="button" data-pk-step="h" data-dir="1" aria-label="小时加">+</button>
+        </div>
+        <span class="pk-colon">:</span>
+        <div class="pk-step">
+          <button type="button" data-pk-step="m" data-dir="-5" aria-label="分钟减">−</button>
+          <b id="pk-minute">00</b>
+          <button type="button" data-pk-step="m" data-dir="5" aria-label="分钟加">+</button>
+        </div>
+        <span class="pk-time-hint">按分钟调整</span>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" id="pk-apply">用这个日期</button>
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 重复选择层：六档 + 各档细节 + 自定义（含工作日快捷 / 间隔 / 结束条件） -->
+  <div class="sheet-mask" id="sheet-repeat" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>重复</h3>
+      <p class="sheet-sub">六档：不重复 / 每天 / 每周 / 每月 / 每年 / 自定义。只按规则安排，不提前生成每一期的条目。</p>
+      <div class="list" style="margin-top:16px">
+        <button class="list-item" type="button" data-repeat="不重复" data-rule="none">
+          <span class="li-text">不重复<span class="li-sub">只到期一次，可在下面选日期</span></span>
+        </button>
+        <button class="list-item" type="button" data-repeat="每天" data-rule="day">
+          <span class="li-text">每天<span class="li-sub">每天按截止时间的时刻到期</span></span>
+        </button>
+        <button class="list-item" type="button" data-repeat="每周" data-rule="week">
+          <span class="li-text">每周<span class="li-sub">按所选的星期，可多选</span></span>
+        </button>
+        <button class="list-item" type="button" data-repeat="每月" data-rule="month">
+          <span class="li-text">每月<span class="li-sub">按日号，可选 1–31 日</span></span>
+        </button>
+        <button class="list-item" type="button" data-repeat="每年" data-rule="year">
+          <span class="li-text">每年<span class="li-sub">按所选的月与日</span></span>
+        </button>
+        <button class="list-item" type="button" data-repeat="自定义" data-rule="custom">
+          <span class="li-text">自定义<span class="li-sub">每 N 天 / 周 / 月，可选结束条件；含「工作日」快捷</span></span>
+        </button>
+      </div>
+
+      <div class="todo-rule" id="rule-none">
+        <span class="todo-rule-k">到期日期</span>
+        <button class="todo-pkbtn" type="button" data-pick="due" data-sheet-open="sheet-picker">
+          <span id="none-date-label">10 月 29 日 · 周四</span>
+          <span class="chevron">›</span>
+        </button>
+        <span class="todo-rule-note">不重复就只到期这一次；时刻以上面「截止时间」选的为准。</span>
+      </div>
+
+      <div class="todo-rule" id="rule-week">
+        <span class="todo-rule-k">星期（可多选）</span>
+        <div class="todo-chips" role="group" aria-label="选择星期">
+          <button class="todo-chip" type="button" data-wd="周一" aria-pressed="false">周一</button>
+          <button class="todo-chip" type="button" data-wd="周二" aria-pressed="false">周二</button>
+          <button class="todo-chip" type="button" data-wd="周三" aria-pressed="true">周三</button>
+          <button class="todo-chip" type="button" data-wd="周四" aria-pressed="false">周四</button>
+          <button class="todo-chip" type="button" data-wd="周五" aria-pressed="false">周五</button>
+          <button class="todo-chip" type="button" data-wd="周六" aria-pressed="false">周六</button>
+          <button class="todo-chip" type="button" data-wd="周日" aria-pressed="false">周日</button>
+        </div>
+        <span class="todo-rule-note">今天不是周三也能设成每周一：直接点要的那几天，不用等到那天再建。</span>
+      </div>
+
+      <div class="todo-rule" id="rule-month">
+        <span class="todo-rule-k">每月几日</span>
+        <input id="month-day" type="number" min="1" max="31" value="1" aria-label="每月的日号" style="width:80px;padding:8px 10px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font-family:var(--font-num);font-size:var(--fs-14)">
+        <span class="todo-rule-note">按日号：某个月没有那一天（29 / 30 / 31 日）时，那个月不生成、也不顺延，页面不报错；规则仍记着你选的日号。</span>
+      </div>
+
+      <div class="todo-rule" id="rule-year">
+        <span class="todo-rule-k">每年的几月几日</span>
+        <button class="todo-pkbtn" type="button" data-pick="year" data-sheet-open="sheet-picker">
+          <span id="year-label">12 月 31 日</span>
+          <span class="chevron">›</span>
+        </button>
+        <span class="todo-rule-note">每年只到期一次；选 2 月 29 日时，平年那一年不生成、不顺延，也不报错。</span>
+      </div>
+
+      <div class="todo-rule" id="rule-custom">
+        <span class="todo-rule-k">快捷</span>
+        <button class="todo-quick" type="button" id="custom-workday">工作日（周一至周五）</button>
+        <span class="todo-rule-note">这只是一个快捷：点它等于把下面的间隔设成「每 1 周」并勾上周一至周五；它不是和每天 / 每周 / 每月并列的档位，放假日照常到期。</span>
+
+        <span class="todo-rule-k" style="margin-top:14px">间隔</span>
+        <div class="todo-interval">
+          <span>每</span>
+          <input id="custom-n" type="number" min="1" max="30" value="3" aria-label="间隔数量">
+          <div class="todo-chips" role="group" aria-label="间隔单位">
+            <button class="todo-chip" type="button" data-unit="day" aria-pressed="true">天</button>
+            <button class="todo-chip" type="button" data-unit="week" aria-pressed="false">周</button>
+            <button class="todo-chip" type="button" data-unit="month" aria-pressed="false">月</button>
+          </div>
+        </div>
+
+        <div id="custom-week" class="pk-hidden">
+          <span class="todo-subline">每周的哪几天（可多选）</span>
+          <div class="todo-chips" role="group" aria-label="自定义每周的星期">
+            <button class="todo-chip" type="button" data-cwd="周一" aria-pressed="false">周一</button>
+            <button class="todo-chip" type="button" data-cwd="周二" aria-pressed="false">周二</button>
+            <button class="todo-chip" type="button" data-cwd="周三" aria-pressed="true">周三</button>
+            <button class="todo-chip" type="button" data-cwd="周四" aria-pressed="false">周四</button>
+            <button class="todo-chip" type="button" data-cwd="周五" aria-pressed="false">周五</button>
+            <button class="todo-chip" type="button" data-cwd="周六" aria-pressed="false">周六</button>
+            <button class="todo-chip" type="button" data-cwd="周日" aria-pressed="false">周日</button>
+          </div>
+        </div>
+
+        <div id="custom-month" class="pk-hidden">
+          <span class="todo-subline">每月的第几日</span>
+          <input id="custom-monthday" type="number" min="1" max="31" value="1" aria-label="自定义每月的日号" style="width:80px;margin-top:6px;padding:8px 10px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font-family:var(--font-num);font-size:var(--fs-14)">
+          <span class="todo-rule-note">某个月没有这一天时，那个月不生成、不顺延，页面不报错。</span>
+        </div>
+
+        <span class="todo-rule-k" style="margin-top:14px">结束</span>
+        <div class="todo-chips" role="group" aria-label="结束条件">
+          <button class="todo-chip" type="button" data-end="never" aria-pressed="true">永不</button>
+          <button class="todo-chip" type="button" data-end="date" aria-pressed="false">到某日</button>
+          <button class="todo-chip" type="button" data-end="count" aria-pressed="false">共 N 次</button>
+        </div>
+        <div id="end-date-row" class="pk-hidden">
+          <button class="todo-pkbtn" type="button" data-pick="end" data-sheet-open="sheet-picker">
+            <span id="end-date-label">12 月 31 日</span>
+            <span class="chevron">›</span>
+          </button>
+        </div>
+        <div id="end-count-row" class="todo-end-row pk-hidden">
+          共 <input id="end-count" type="number" min="1" max="99" value="12" aria-label="共出现几次"> 次
+          <span class="todo-rule-note">到次数用完就不再生成下一期。</span>
+        </div>
+        <span class="todo-rule-note" id="custom-summary">现在：每 3 天 · 永不结束</span>
+      </div>
+
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" id="repeat-apply" data-sheet-close>完成</button>
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 放弃确认层 -->
+  <div class="sheet-mask" id="sheet-discard" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>放弃这次填写？</h3>
+      <p class="sheet-sub">已填的内容不会保存，也没有草稿可以找回。</p>
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" data-sheet-close>继续填写</button>
+        <a class="btn btn-secondary btn-block" href="todo.html">放弃</a>
       </div>
     </div>
   </div>
@@ -297,19 +601,156 @@
   var todoState = new URLSearchParams(location.search).get('state') || 'default';
   var title = document.getElementById('todo-title');
   var save = document.getElementById('todo-save');
+  var cancel = document.getElementById('todo-cancel');
+  var dirty = false;
 
   if (todoState === 'error') title.value = '';
 
+  ['todo-title', 'todo-note'].forEach(function (id) {
+    var el = document.getElementById(id);
+    el.addEventListener('input', function () { dirty = true; });
+  });
+  document.querySelectorAll('[data-due], [data-repeat], [data-owner]').forEach(function (b) {
+    b.addEventListener('click', function () { dirty = true; });
+  });
+
+  cancel.addEventListener('click', function () {
+    if (dirty) { window.HC.openSheet('sheet-discard'); return; }
+    location.href = 'todo.html';
+  });
+
+  document.getElementById('todo-retry').addEventListener('click', function () {
+    window.HC.toast('正在重新提交…');
+  });
+
+  /* ---------- 负责人 ---------- */
   document.querySelectorAll('[data-owner]').forEach(function (b) {
     b.addEventListener('click', function () {
       var av = document.getElementById('owner-av');
       av.textContent = b.getAttribute('data-owner-av');
       av.className = 'avatar todo-pick-av ' + b.getAttribute('data-owner-cls');
       document.getElementById('owner-name').textContent = b.getAttribute('data-owner');
+      document.getElementById('owner-sub').textContent =
+        b.getAttribute('data-owner') === '奶奶'
+          ? '奶奶没有账号，由爸爸代管；这条会记在爸爸名下'
+          : b.getAttribute('data-owner') + ' 能在自己的「分配给我」里看到并勾选完成';
+      dirty = true;
       window.HC.toast('负责人已改为「' + b.getAttribute('data-owner') + '」');
     });
   });
 
+  /* ---------- 自绘日期选择器 ---------- */
+  var WD = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  var MONTH_NAMES = ['1 月', '2 月', '3 月', '4 月', '5 月', '6 月', '7 月', '8 月', '9 月', '10 月', '11 月', '12 月'];
+  var pick = { y: 2026, m: 10, d: 29, h: 19, mi: 0, target: 'due' };
+  var pickTarget = 'due';
+  var endDateLabel = '12 月 31 日';
+
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+
+  function renderGrid() {
+    var grid = document.getElementById('pk-grid');
+    var first = new Date(pick.y, pick.m - 1, 1);
+    var offset = (first.getDay() + 6) % 7;
+    var days = new Date(pick.y, pick.m, 0).getDate();
+    var html = '';
+    for (var i = 0; i < offset; i++) html += '<button class="pk-day is-blank" type="button" tabindex="-1"></button>';
+    for (var d = 1; d <= days; d++) {
+      var cls = 'pk-day';
+      if (d === pick.d) cls += ' is-on';
+      if (pick.y === 2026 && pick.m === 10 && d === 29) cls += ' is-today';
+      html += '<button class="' + cls + '" type="button" data-pk-day="' + d + '">' + d + '</button>';
+    }
+    grid.innerHTML = html;
+    document.getElementById('pk-month').textContent = pick.y + ' 年 ' + MONTH_NAMES[pick.m - 1];
+    document.getElementById('pk-hour').textContent = pad(pick.h);
+    document.getElementById('pk-minute').textContent = pad(pick.mi);
+  }
+
+  function syncPickerMode() {
+    var withTime = pickTarget === 'due';
+    document.getElementById('pk-time').style.display = withTime ? 'flex' : 'none';
+    document.getElementById('pk-apply').textContent = withTime ? '用这个日期和时间' : '用这个日期';
+    document.getElementById('pk-sub').textContent = pickTarget === 'end'
+      ? '选结束日期；到了这天之后不再生成下一期。'
+      : (withTime ? '在页面里选日期与时刻，不弹系统的日期选择器。' : '在页面里选日期，不弹系统的日期选择器。');
+  }
+
+  document.querySelectorAll('[data-pick]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      pickTarget = b.getAttribute('data-pick');
+      pick.target = pickTarget;
+      if (pickTarget === 'year') { pick.m = 12; pick.d = 31; }
+      if (pickTarget === 'end') { pick.m = 12; pick.d = 31; }
+      syncPickerMode();
+      renderGrid();
+    });
+  });
+
+  document.querySelectorAll('[data-pk-prev]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      pick.m -= 1;
+      if (pick.m < 1) { pick.m = 12; pick.y -= 1; }
+      pick.d = 1;
+      renderGrid();
+    });
+  });
+  document.querySelectorAll('[data-pk-next]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      pick.m += 1;
+      if (pick.m > 12) { pick.m = 1; pick.y += 1; }
+      pick.d = 1;
+      renderGrid();
+    });
+  });
+
+  document.getElementById('pk-grid').addEventListener('click', function (e) {
+    var day = e.target.closest('[data-pk-day]');
+    if (!day) return;
+    pick.d = Number(day.getAttribute('data-pk-day'));
+    renderGrid();
+  });
+
+  document.querySelectorAll('[data-pk-step]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var unit = b.getAttribute('data-pk-step');
+      var delta = Number(b.getAttribute('data-dir'));
+      if (unit === 'h') {
+        pick.h = (pick.h + delta + 24) % 24;
+      } else {
+        pick.mi = (pick.mi + delta + 60) % 60;
+      }
+      renderGrid();
+    });
+  });
+
+  function shortDate(y, m, d) {
+    return m + ' 月 ' + d + ' 日';
+  }
+
+  document.getElementById('pk-apply').addEventListener('click', function () {
+    var label = shortDate(pick.y, pick.m, pick.d);
+    var wd = WD[new Date(pick.y, pick.m - 1, pick.d).getDay()];
+    if (pickTarget === 'due') {
+      var isToday = pick.y === 2026 && pick.m === 10 && pick.d === 29;
+      document.getElementById('due-value').textContent =
+        (isToday ? '今天 ' : label + ' ') + pad(pick.h) + ':' + pad(pick.mi);
+      document.getElementById('due-sub').textContent = label + ' · ' + wd;
+      document.getElementById('none-date-label').textContent = label + ' · ' + wd;
+    } else if (pickTarget === 'year') {
+      document.getElementById('year-label').textContent = label;
+    } else if (pickTarget === 'end') {
+      endDateLabel = label;
+      document.getElementById('end-date-label').textContent = label;
+      updateCustom();
+    }
+    syncPickerMode();
+    renderGrid();
+    window.HC.closeSheet(document.getElementById('sheet-picker'));
+    window.HC.toast('已选 ' + label + (pickTarget === 'due' ? ' ' + pad(pick.h) + ':' + pad(pick.mi) : ''));
+  });
+
+  /* ---------- 快捷时间 ---------- */
   document.querySelectorAll('[data-due]').forEach(function (b) {
     b.addEventListener('click', function () {
       document.getElementById('due-value').textContent = b.getAttribute('data-due');
@@ -317,6 +758,152 @@
       window.HC.toast('截止时间已设为 ' + b.getAttribute('data-due'));
     });
   });
+
+  /* ---------- 重复 + 自定义 ---------- */
+  var repeatTier = 'day';
+  var custom = { unit: 'day', n: 3, days: ['周三'], monthDay: 1, end: 'never', count: 12 };
+
+  function endText() {
+    if (custom.end === 'never') return '永不结束';
+    if (custom.end === 'date') return '到 ' + endDateLabel + ' 结束';
+    return '共 ' + (custom.count || 1) + ' 次';
+  }
+
+  function isWorkdayPick() {
+    return custom.unit === 'week' && custom.n === 1 && custom.days.length === 5 &&
+      ['周一', '周二', '周三', '周四', '周五'].every(function (d) { return custom.days.indexOf(d) >= 0; });
+  }
+
+  function customText() {
+    var base;
+    if (custom.unit === 'day') base = '每 ' + custom.n + ' 天';
+    else if (custom.unit === 'week') base = (isWorkdayPick() ? '工作日 · ' : '每 ' + custom.n + ' 周 · ') + custom.days.join('、');
+    else base = '每 ' + custom.n + ' 月 · ' + custom.monthDay + ' 日';
+    return base + ' · ' + endText();
+  }
+
+  function updateCustom() {
+    document.getElementById('custom-summary').textContent = '现在：' + customText();
+    document.getElementById('custom-week').classList.toggle('pk-hidden', custom.unit !== 'week');
+    document.getElementById('custom-month').classList.toggle('pk-hidden', custom.unit !== 'month');
+    document.getElementById('end-date-row').classList.toggle('pk-hidden', custom.end !== 'date');
+    document.getElementById('end-count-row').classList.toggle('pk-hidden', custom.end !== 'count');
+    if (repeatTier === 'custom') document.getElementById('repeat-value').textContent = '自定义';
+  }
+
+  function showRule(tier) {
+    repeatTier = tier;
+    document.querySelectorAll('.todo-rule').forEach(function (p) {
+      p.classList.toggle('is-on', p.id === 'rule-' + tier);
+    });
+  }
+
+  document.querySelectorAll('[data-repeat]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var tier = b.getAttribute('data-rule');
+      document.getElementById('repeat-value').textContent = b.getAttribute('data-repeat');
+      showRule(tier);
+    });
+  });
+
+  document.querySelectorAll('[data-wd]').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      var on = chip.getAttribute('aria-pressed') !== 'true';
+      chip.setAttribute('aria-pressed', String(on));
+      var picked = Array.prototype.slice.call(document.querySelectorAll('[data-wd][aria-pressed="true"]'))
+        .map(function (x) { return x.getAttribute('data-wd'); });
+      document.getElementById('repeat-value').textContent = picked.length ? '每周' + picked.join('、') : '每周';
+    });
+  });
+
+  document.getElementById('month-day').addEventListener('input', function () {
+    document.getElementById('repeat-value').textContent = '每月 ' + (this.value || 1) + ' 日';
+  });
+
+  document.querySelectorAll('[data-unit]').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      custom.unit = chip.getAttribute('data-unit');
+      document.querySelectorAll('[data-unit]').forEach(function (x) {
+        x.setAttribute('aria-pressed', String(x === chip));
+      });
+      updateCustom();
+    });
+  });
+
+  document.getElementById('custom-n').addEventListener('input', function () {
+    custom.n = Number(this.value) || 1;
+    updateCustom();
+  });
+
+  document.querySelectorAll('[data-cwd]').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      var on = chip.getAttribute('aria-pressed') !== 'true';
+      chip.setAttribute('aria-pressed', String(on));
+      custom.days = Array.prototype.slice.call(document.querySelectorAll('[data-cwd][aria-pressed="true"]'))
+        .map(function (x) { return x.getAttribute('data-cwd'); });
+      updateCustom();
+    });
+  });
+
+  document.getElementById('custom-monthday').addEventListener('input', function () {
+    custom.monthDay = Number(this.value) || 1;
+    updateCustom();
+  });
+
+  document.getElementById('custom-workday').addEventListener('click', function () {
+    custom.unit = 'week';
+    custom.n = 1;
+    custom.days = ['周一', '周二', '周三', '周四', '周五'];
+    document.querySelectorAll('[data-unit]').forEach(function (x) {
+      x.setAttribute('aria-pressed', String(x.getAttribute('data-unit') === 'week'));
+    });
+    document.getElementById('custom-n').value = 1;
+    document.querySelectorAll('[data-cwd]').forEach(function (x) {
+      x.setAttribute('aria-pressed', String(custom.days.indexOf(x.getAttribute('data-cwd')) >= 0));
+    });
+    updateCustom();
+    window.HC.toast('已设为工作日：每周一至周五，属于自定义档');
+  });
+
+  document.querySelectorAll('[data-end]').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      custom.end = chip.getAttribute('data-end');
+      document.querySelectorAll('[data-end]').forEach(function (x) {
+        x.setAttribute('aria-pressed', String(x === chip));
+      });
+      updateCustom();
+    });
+  });
+
+  document.getElementById('end-count').addEventListener('input', function () {
+    custom.count = Number(this.value) || 1;
+    updateCustom();
+  });
+
+  document.getElementById('repeat-apply').addEventListener('click', function () {
+    var map = {
+      none: '不重复 · 只到期一次',
+      day: '每天按截止时刻 · 只存规则',
+      week: '每周按星期 · 只存规则，不提前生成每一期',
+      month: '每月按日号 · 没有那天的月份不生成也不顺延',
+      year: '每年一次 · 按所选月日',
+      custom: customText()
+    };
+    if (repeatTier === 'month' && Number(document.getElementById('month-day').value) >= 29) {
+      document.getElementById('repeat-sub').textContent =
+        '每月 ' + document.getElementById('month-day').value + ' 日 · 没有这天的月份不生成也不顺延';
+    } else if (repeatTier === 'week') {
+      var picked = Array.prototype.slice.call(document.querySelectorAll('[data-wd][aria-pressed="true"]'))
+        .map(function (x) { return x.getAttribute('data-wd'); });
+      document.getElementById('repeat-sub').textContent = (picked.length ? '每周' + picked.join('、') : '每周') + ' · 只存规则';
+    } else {
+      document.getElementById('repeat-sub').textContent = map[repeatTier];
+    }
+  });
+
+  updateCustom();
+  showRule('day');
+  renderGrid();
 
   title.addEventListener('input', function () {
     if (document.body.getAttribute('data-state') === 'error' && title.value.trim()) {
@@ -332,8 +919,12 @@
       return;
     }
     if (todoState === 'offline') {
-      window.HC.toast('已存入待同步队列，联网后自动提交');
+      window.HC.toast('已存到本机，联网后自动提交');
       setTimeout(function () { location.href = 'todo.html'; }, 1100);
+      return;
+    }
+    if (todoState === 'fail') {
+      window.HC.toast('正在重新提交…');
       return;
     }
     window.HC.toast('已保存');

@@ -118,6 +118,11 @@
   body[data-state="filtered"] .dyn-more-fin { display: inline; }
   .dyn-data { padding-bottom: 4px; }
 
+  .dyn-footnote {
+    margin: 14px 16px 0; text-align: center;
+    font-size: var(--fs-12); color: var(--text-3); line-height: var(--lh-normal);
+  }
+
   .dyn-sk { display: none; padding-top: 6px; }
   .dyn-sk-block { margin: 0 16px 10px; }
   body[data-state="loading"] .dyn-sk { display: block; }
@@ -309,6 +314,12 @@
         data-hot-label="游标分页，点击续读并追加到底部，不重排已读条目；末页后按钮消失并显示「没有更多了」；续读失败只在底部重试，不清空列表">
         加载更多 · 还有 <span class="dyn-more-all">6</span><span class="dyn-more-fin">2</span> 条
       </button>
+
+      <div class="dyn-footnote"
+        data-hot="⑦" data-hot-name="底部中性说明" data-hot-pos="top-right"
+        data-hot-label="列表末尾固定一行中性说明，文案由服务端随列表响应下发、客户端原样渲染；不带条数、不带计数、不带动作位，也不提示裁剪的存在">
+        只显示与你相关的动态
+      </div>
     </div>
 
     <div class="dyn-sk" aria-hidden="true">

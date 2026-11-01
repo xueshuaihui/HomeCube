@@ -108,6 +108,57 @@
   body[data-state="offline"] .todo-cache { display: flex; }
   body[data-state="offline"] .offline-bar { display: flex; }
 
+  /* 完成回写失败 · 局部条：状态回滚、给重试 */
+  .todo-fail {
+    display: none; align-items: flex-start; gap: 8px;
+    margin: 8px 0 0; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--danger-soft); color: var(--danger);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .todo-fail b { display: block; font-size: var(--fs-13); margin-bottom: 2px; }
+  .todo-fail svg { flex: none; margin-top: 1px; }
+  body[data-state="fail"] .todo-fail { display: flex; }
+  .todo-retry {
+    margin-top: 8px; height: 28px; padding: 0 12px;
+    border-radius: var(--radius-pill);
+    border: 1px solid currentColor; background: transparent;
+    font-family: inherit; font-size: var(--fs-12); font-weight: 600;
+    color: inherit; cursor: pointer;
+  }
+
+  /* 首屏加载失败 · 整页态 */
+  .todo-error { display: none; }
+  body[data-state="error"] .todo-error { display: flex; }
+  body[data-state="error"] .todo-data,
+  body[data-state="error"] .todo-segbar,
+  body[data-state="error"] .todo-sum,
+  body[data-state="error"] .todo-foot-note { display: none; }
+
+  .todo-undo {
+    flex: none; height: 28px; padding: 0 10px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border-strong); background: var(--surface);
+    font-family: inherit; font-size: var(--fs-12); font-weight: 600;
+    color: var(--text-2); cursor: pointer;
+  }
+  .todo-undo:hover { background: var(--surface-2); }
+
+  .todo-claim {
+    flex: none; height: 28px; padding: 0 12px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--brand); background: var(--brand);
+    font-family: inherit; font-size: var(--fs-12); font-weight: 600;
+    color: var(--on-brand); cursor: pointer;
+  }
+  .todo-claim:hover { background: var(--brand-hover); }
+  .todo-claim[disabled] { background: var(--surface-2); border-color: transparent; color: var(--text-3); pointer-events: none; }
+  .todo-av-none {
+    background: var(--surface-2); color: var(--text-3);
+    border: 1px dashed var(--border-strong);
+  }
+  .todo-unowned-note { margin: 0 2px 8px; font-size: var(--fs-12); color: var(--text-3); line-height: var(--lh-normal); }
+
   .todo-sheet-line {
     display: flex; align-items: center; gap: 10px;
     margin-top: 14px; padding: 12px 14px;
@@ -120,7 +171,7 @@
   .todo-content .face-tabs { margin-top: 2px; }
 </style>
 </head>
-<body data-screen="12 待办 · 日历面" data-tab="home" data-states="default,empty,loading,offline">
+<body data-screen="12 待办 · 日历面" data-tab="home" data-states="default,empty,loading,error,fail,offline">
 <div class="harness"></div>
 
 <div class="phone">
@@ -151,7 +202,7 @@
 
   <div class="offline-bar">
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
-    当前离线 · 1 项完成待同步
+    当前离线 · 1 项完成还没记上
   </div>
 
   <div class="content todo-content">
@@ -168,24 +219,79 @@
       显示本机缓存 · 截至 10 月 29 日 08:10
     </div>
 
-    <div class="todo-sum" id="todo-sum">分配给我 · 共 4 项 · 1 项已逾期</div>
+    <div class="todo-fail">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.2v4.6M10 14.2v.1"/></svg>
+      <div>
+        <b>这条没有记上完成</b>
+        「准备女儿家长会」的完成没有送达服务器，已放回未完成的列表里，你勾选的那一下没有丢。
+        <div><button class="todo-retry" type="button" id="todo-retry"
+          data-hot="⑧" data-hot-name="回写失败重试" data-hot-pos="outer-top-right"
+          data-hot-label="完成回写失败的局部态：该行回滚为未勾选、不显示为已完成；顶部给可重试条，重试沿用同一条待办，不产生第二条">再试一次</button></div>
+      </div>
+    </div>
+
+    <div class="todo-sum" id="todo-sum">分配给我 · 共 4 项 · 另有 2 项未指派</div>
 
     <div class="todo-segbar"
       data-hot="③" data-hot-name="分段" data-hot-pos="outer-top-right"
-      data-hot-label="分配给我 / 我创建的 / 已归档三段同页切换，不新增路由；已归档段只读、不显示勾选框">
+      data-hot-label="分配给我 / 我创建的 / 已归档三段同页切换，不新增路由；已归档段对创建人与参与人共见（妈妈完成爸爸派的待办后，爸爸仍能在这一段的同一条上查到），段内条目给「取消归档」与「删除」两个动作">
       <div class="segmented" role="tablist">
         <button type="button" role="tab" aria-selected="true" data-seg-btn="assigned"
-          data-sum="分配给我 · 共 4 项 · 1 项已逾期">分配给我<span class="todo-seg-n">4</span></button>
+          data-sum="分配给我 · 共 4 项 · 另有 2 项未指派">分配给我<span class="todo-seg-n">4</span></button>
         <button type="button" role="tab" aria-selected="false" data-seg-btn="created"
           data-sum="我创建的 · 共 3 项 · 今天 1 项">我创建的<span class="todo-seg-n">3</span></button>
         <button type="button" role="tab" aria-selected="false" data-seg-btn="archived"
-          data-sum="已归档 · 共 3 项 · 仅本人可见">已归档<span class="todo-seg-n">3</span></button>
+          data-sum="已归档 · 共 3 项 · 创建人与参与人共见">已归档<span class="todo-seg-n">3</span></button>
       </div>
     </div>
 
     <div class="todo-data">
       <!-- 分配给我 -->
       <div class="todo-seg is-on" data-seg="assigned">
+        <div class="todo-group">
+          <div class="todo-group-head">
+            <span class="todo-group-title">未指派</span>
+            <span class="todo-group-count">2 项 · 先到先得</span>
+          </div>
+          <div class="todo-unowned-note">家里还没人认领。点「认领」这一步就归你，之后出现在「分配给我」里；已被别人认领时会告诉你已经归谁。</div>
+          <div class="todo-list">
+            <div class="todo-item">
+              <span class="todo-mark" aria-hidden="true">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="8" cy="8" r="5.5"/><path d="M8 5.2V8l1.8 1.1"/></svg>
+              </span>
+              <a class="todo-body" href="todo-detail.html?state=unclaimed">
+                <span class="todo-row1">
+                  <span class="todo-title">擦阳台纱窗</span>
+                  <span class="todo-due num">10 月 31 日</span>
+                </span>
+                <span class="todo-meta">
+                  <span class="todo-src todo-src-cal">日历</span>
+                  <span>未指派 · 创建人 妈妈</span>
+                </span>
+              </a>
+              <button class="todo-claim" type="button" data-claim="ok" data-title="擦阳台纱窗"
+                data-hot="⑪" data-hot-name="认领" data-hot-pos="bottom-right"
+                data-hot-label="未指派段的认领入口：一步把负责人置为本人并记操作人，随即移入「分配给我」；已被他人认领时返回冲突并提示「已由某某认领」，本条不移动、不改负责人；访客不渲染">认领</button>
+            </div>
+            <div class="todo-item">
+              <span class="todo-mark" aria-hidden="true">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="8" cy="8" r="5.5"/><path d="M8 5.2V8l1.8 1.1"/></svg>
+              </span>
+              <a class="todo-body" href="todo-detail.html?state=unclaimed">
+                <span class="todo-row1">
+                  <span class="todo-title">给鱼缸换水</span>
+                  <span class="todo-due num">11 月 1 日</span>
+                </span>
+                <span class="todo-meta">
+                  <span class="todo-src todo-src-cal">日历</span>
+                  <span>未指派 · 创建人 爸爸</span>
+                </span>
+              </a>
+              <button class="todo-claim" type="button" data-claim="taken" data-title="给鱼缸换水">认领</button>
+            </div>
+          </div>
+        </div>
+
         <div class="todo-group">
           <div class="todo-group-head">
             <span class="todo-group-title">已逾期</span>
@@ -232,6 +338,7 @@
                 </span>
                 <span class="todo-meta">
                   <span class="todo-src todo-src-cal">日历</span>
+                  <span>每周一至周五 · 今天这一期</span>
                   <span>子任务 1/2</span>
                 </span>
               </a>
@@ -248,7 +355,7 @@
                 </span>
                 <span class="todo-meta">
                   <span class="todo-src todo-src-cal">日历</span>
-                  <span>子任务 1/3 · 附件 1</span>
+                  <span>子任务 1/3</span>
                 </span>
               </a>
               <span class="avatar todo-av todo-av-me">我</span>
@@ -291,17 +398,17 @@
           </div>
           <div class="todo-list">
             <div class="todo-item">
-              <button class="todo-check" type="button" data-title="陪女儿做手工" data-due="今天 19:30" aria-label="完成 陪女儿做手工">
+              <button class="todo-check" type="button" data-title="倒垃圾" data-due="今天 19:00" aria-label="完成 倒垃圾">
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
               </button>
               <a class="todo-body" href="todo-detail.html">
                 <span class="todo-row1">
-                  <span class="todo-title">陪女儿做手工</span>
-                  <span class="todo-due is-today num">今天 19:30</span>
+                  <span class="todo-title">倒垃圾</span>
+                  <span class="todo-due is-today num">今天 19:00</span>
                 </span>
                 <span class="todo-meta">
                   <span class="todo-src todo-src-cal">日历</span>
-                  <span>负责人 爸爸</span>
+                  <span>每天 19:00 · 本次已跳过 · 下次 10 月 30 日 19:00</span>
                 </span>
               </a>
               <span class="avatar todo-av" style="background:var(--brand-soft);color:var(--brand-text)">爸</span>
@@ -356,7 +463,7 @@
         <div class="todo-group">
           <div class="todo-group-head">
             <span class="todo-group-title">近期归档</span>
-            <span class="todo-group-count">3 项</span>
+            <span class="todo-group-count">3 项 · 创建人与参与人都能查到</span>
           </div>
           <div class="todo-list">
             <div class="todo-item">
@@ -370,9 +477,12 @@
                 </span>
                 <span class="todo-meta">
                   <span class="todo-src todo-src-cal">日历</span>
-                  <span>归档 · 已完成</span>
+                  <span>归档 · 已完成 · 创建人 我</span>
                 </span>
               </a>
+              <button class="todo-undo" type="button" data-toast="已取消归档，这条回到未完成的列表里；完成状态不变，仍是已完成"
+                data-hot="⑨" data-hot-name="取消归档" data-hot-pos="outer-top-left"
+                data-hot-label="归档段的恢复动作：点「取消归档」回到进入归档前的分段；只改归档位，不改完成状态，也不产生第二条待办；仅创建人与管理员可见该按钮">取消归档</button>
               <span class="avatar todo-av todo-av-me">我</span>
             </div>
             <div class="todo-item">
@@ -386,7 +496,7 @@
                 </span>
                 <span class="todo-meta">
                   <span class="todo-src todo-src-cal">日历</span>
-                  <span>归档 · 已完成</span>
+                  <span>归档 · 已完成 · 创建人 我 · 妈妈完成</span>
                 </span>
               </a>
               <span class="avatar todo-av" style="background:var(--accent-soft);color:var(--accent)">妈</span>
@@ -402,7 +512,7 @@
                 </span>
                 <span class="todo-meta">
                   <span class="todo-src todo-src-cal">日历</span>
-                  <span>归档 · 已完成</span>
+                  <span>归档 96 天 · 仅创建人与管理员可见</span>
                 </span>
               </a>
               <span class="avatar todo-av todo-av-me">我</span>
@@ -432,7 +542,19 @@
         data-hot-label="零条时给可执行动作「新建待办」，直接进新建页；不只放一句空话，也不提示「去别的面看看」">新建待办</button>
     </div>
 
-    <div class="todo-foot-note tiny">完成与归档会同步到到期中心与首页今日区；待办的唯一归属是日历面（<code>calendar_todo</code>），业务面不另建待办清单，只按 17.4 把自己的到期项注册进来。</div>
+    <div class="state todo-error">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="16" cy="16" r="11"/><path d="M16 10v7M16 21v.6"/></svg>
+      </div>
+      <div class="state-title">待办没有加载出来</div>
+      <div class="state-desc">这条列表还是空的不是因为你没有待办，是刚才没取到。已经记着你上次看到的内容，联网后再试一次就行。</div>
+      <button class="btn btn-primary" type="button" id="todo-reload"
+        data-hot="⑩" data-hot-name="首屏失败重试" data-hot-pos="top-right"
+        data-hot-label="首屏加载失败（超时 / 5xx）走整页失败态：给原因一句话 +「再试一次」，重试成功回默认态；分段条不显示空数据、不拿骨架冒充加载完">再试一次</button>
+      <a class="btn btn-secondary btn-sm" href="calendar.html" style="margin-top:8px">回日历</a>
+    </div>
+
+    <div class="todo-foot-note tiny">完成与归档会同步到日历与首页今日区；待办只归日历面这一处，业务面的到期事项由该面自己登记到日历上，不另建一份待办清单。</div>
   </div>
 
   <!-- 完成待办确认层 -->
@@ -490,15 +612,49 @@
   document.getElementById('done-confirm').addEventListener('click', function () {
     window.HC.closeSheet(document.getElementById('sheet-done'));
     if (!currentRow) return;
+    if (todoState === 'fail') {
+      window.HC.toast('这条没有记上完成 · 已放回未完成，可以点上面的「再试一次」');
+      currentRow = null;
+      return;
+    }
     currentRow.classList.add('is-done');
     var due = currentRow.querySelector('.todo-due');
     due.textContent = '已完成';
     due.className = 'todo-due is-done num';
     window.HC.toast(todoState === 'offline'
-      ? '已记为完成，联网后自动回写'
-      : '已完成，到期项已从日历移除');
+      ? '已记为完成，联网后自动提交'
+      : '已完成，日历上这一条也移走了');
     currentRow = null;
   });
+
+  var retry = document.getElementById('todo-retry');
+  if (retry) retry.addEventListener('click', function () { window.HC.toast('正在重新提交这条完成…'); });
+
+  document.querySelectorAll('.todo-claim').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      if (btn.getAttribute('data-claim') === 'taken') {
+        window.HC.toast('已由妈妈认领，换一条试试');
+        return;
+      }
+      var row = btn.closest('.todo-item');
+      var meta = row.querySelector('.todo-meta');
+      if (meta) meta.innerHTML = '<span class="todo-src todo-src-cal">日历</span><span>已认领 · 负责人 我</span>';
+      var av = row.querySelector('.avatar');
+      if (!av) {
+        av = document.createElement('span');
+        av.className = 'avatar todo-av todo-av-me';
+        row.appendChild(av);
+      }
+      av.className = 'avatar todo-av todo-av-me';
+      av.textContent = '我';
+      btn.textContent = '已认领';
+      btn.setAttribute('disabled', 'disabled');
+      window.HC.toast('已认领 · 这条进了「分配给我」');
+    });
+  });
+
+  var reload = document.getElementById('todo-reload');
+  if (reload) reload.addEventListener('click', function () { window.HC.toast('正在重新加载待办…'); });
 </script>
 </body>
 </html>

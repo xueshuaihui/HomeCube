@@ -118,9 +118,16 @@
   .fam-sk-row { display: flex; align-items: center; gap: 12px; padding: 14px 0; }
   .fam-sk-av { width: 36px; height: 36px; border-radius: var(--radius-pill); }
   .fam-sk-lines { flex: 1; }
+
+  .fam-need-admin { display: none; margin-top: 4px; font-size: var(--fs-11); color: var(--text-3); }
+  body[data-state="member"] .fam-need-admin { display: block; }
+
+  .fam-error { display: none; }
+  body[data-state="error"] .fam-error { display: block; }
+  body[data-state="error"] .fam-real { display: none; }
 </style>
 </head>
-<body data-screen="21 家庭成员" data-tab="" data-states="default,noaccount,member,empty,loading">
+<body data-screen="21 家庭成员" data-tab="" data-states="default,noaccount,member,empty,loading,error">
 <div class="harness"></div>
 
 <div class="phone">
@@ -170,9 +177,10 @@
             <span class="fam-pending-many">邀请待接受 <span class="num">1</span></span>
             <span class="fam-pending-none">暂无待接受邀请</span>
           </div>
+          <span class="fam-need-admin">以上信息照常可见；成员与邀请的调整需要管理员修改</span>
         </div>
         <span class="fam-role-pill fam-pill-admin">你是管理员</span>
-        <span class="fam-role-pill fam-pill-member">你是成人成员</span>
+        <span class="fam-role-pill fam-pill-member">你是成员</span>
       </section>
 
       <div class="fam-recall">
@@ -261,6 +269,19 @@
           <span>仅管理员可以邀请成员或调整角色。你可以点开任一成员，查看只读的公开页。</span>
         </div>
       </div>
+    </div>
+
+    <!-- 首屏失败：不展示上一次读到的名单 -->
+    <div class="state fam-error" style="padding-top:72px">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="16" cy="16" r="12"/><path d="M16 9.5v8M16 21.6v.1"/></svg>
+      </div>
+      <div class="state-title">成员列表没加载出来</div>
+      <div class="state-desc">名单来自服务端，本地不缓存。失败期间不展示上一次读到的名单，避免把已离开的成员或已收回的调整当成现状。</div>
+      <div class="state-code">HC-4202</div>
+      <button class="btn btn-secondary" type="button" style="margin-top:8px" data-go="family.html"
+        data-hot="⑧" data-hot-name="首屏失败的重试" data-hot-pos="top-right"
+        data-hot-label="只重发一次成员列表请求；重试期间回到骨架态，不展示上一次读到的名单——治理页拿过期名单当现状，就会把已收回的授权当成还在">重新加载</button>
     </div>
   </div>
 

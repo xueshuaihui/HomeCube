@@ -91,9 +91,30 @@
   }
   .fx-sheet-line .fx-sl-name { flex: 1; min-width: 0; font-size: var(--fs-14); font-weight: 600; }
   .fx-sheet-line .num { flex: none; font-size: var(--fs-13); color: var(--text-2); }
+
+  .fx-impact { list-style: none; margin: 12px 0 0; padding: 0; }
+  .fx-impact li {
+    display: flex; gap: 8px; align-items: flex-start;
+    padding: 9px 0; font-size: var(--fs-13); line-height: var(--lh-normal); color: var(--text-2);
+  }
+  .fx-impact li + li { border-top: 1px solid var(--border); }
+  .fx-impact svg { flex: none; margin-top: 2px; color: var(--brand-text); }
+  .fx-impact b { color: var(--text); }
+
+  body[data-state="offline"] .offline-bar { display: flex; }
+
+  .fx-sk, .fx-error { display: none; }
+  .fx-sk { padding-top: 6px; }
+  body[data-state="loading"] .fx-content > :not(.fx-sk):not(.fx-error),
+  body[data-state="error"] .fx-content > :not(.fx-sk):not(.fx-error) { display: none; }
+  body[data-state="loading"] .fx-sk { display: block; }
+  body[data-state="error"] .fx-error { display: flex; }
+  .fx-sk-row { display: flex; align-items: center; gap: 10px; padding: 12px 0; }
+  .fx-sk-ic { width: 32px; height: 32px; border-radius: 10px; flex: none; }
+  .fx-sk-lines { flex: 1; }
 </style>
 </head>
-<body data-screen="F12 归档与恢复" data-states="default,balance-block,restore-confirm,empty">
+<body data-screen="F12 归档与恢复" data-states="default,archive-confirm,balance-block,restore-confirm,empty,loading,error,offline">
 <div class="harness"></div>
 
 <div class="phone">
@@ -120,7 +141,7 @@
 
   <div class="offline-bar">
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
-    当前离线 · 归档与恢复需联网确认
+    当前离线 · 显示 10 月 29 日 09:20 的本机缓存，归档与恢复需联网确认
   </div>
 
   <div class="content bottom-space fx-content">
@@ -165,22 +186,22 @@
           <span class="fx-aname">京东小金库<span class="tag">已归档</span></span>
           <span class="fx-asub">其他 · 9 月 21 日归档 · 余额 <span class="num">¥0.00</span></span>
         </span>
-        <button class="btn btn-sm btn-secondary" type="button" data-sheet-open="sheet-restore">
-          恢复
-        </button>
+        <button class="btn btn-sm btn-secondary" type="button" data-sheet-open="sheet-restore">恢复</button>
       </div>
     </div>
 
     <div class="fx-ghead">
       <span class="fx-gtitle">可归档账户</span>
-      <span class="fx-gcount">3 个 · 仅余额为 0 可归档</span>
+      <span class="fx-gcount">4 个 · 余额为 0 才能归档</span>
     </div>
 
-    <div class="fx-blocked-banner" role="alert">
+    <div class="fx-blocked-banner" role="alert"
+      data-hot="④" data-hot-name="归档被拒说明" data-hot-pos="bottom-right"
+      data-hot-label="确认归档后余额仍不为 0，服务端拒绝；就地说明「请先把余额转到其他账户，或记一笔调整流水调为 0」，不伪造成功、不把余额清零">
       <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
       <span>
-        <b>归档被拒绝 · 微信零钱余额 ¥2,140.00 不为 0</b>
-        服务端拒绝归档：请先把余额转到其他账户，或记一笔调整流水把余额调为 0，再回来归档。
+        <b>归档被拒绝 · 招商银行余额 ¥32,480.00 不为 0</b>
+        请先把余额转到其他账户，或记一笔调整流水把余额调为 0，再回来归档。账户现在还在原处，什么都没改。
       </span>
     </div>
 
@@ -190,44 +211,110 @@
           <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="15" height="10" rx="2.5"/><path d="M2.5 9h15"/></svg>
         </span>
         <span class="fx-abody">
-          <span class="fx-aname">招商银行信用卡</span>
-          <span class="fx-asub">信用卡 · 负债账户 · 余额 <span class="num">-¥3,250.00</span></span>
-          <span class="fx-ahint"
-            data-hot="④" data-hot-name="归档被拒说明" data-hot-pos="bottom-right"
-            data-hot-label="余额非 0 时归档按钮禁用并就地说明「请先把余额转到其他账户」；服务端同样拒绝，前端不得伪造可归档或把余额清零">
-            请先把余额转到其他账户
-          </span>
+          <span class="fx-aname">招商银行<span class="tag is-brand">默认</span></span>
+          <span class="fx-asub">储蓄卡 · 余额 <span class="num">¥32,480.00</span></span>
+          <span class="fx-ahint">余额不为 0，归档会被拒绝</span>
         </span>
-        <button class="btn btn-sm" type="button" disabled>归档</button>
+        <button class="btn btn-sm" type="button" data-sheet-open="sheet-archive" data-name="招商银行" data-balance="¥32,480.00"
+          data-hot="③" data-hot-name="归档" data-hot-pos="outer-bottom-right"
+          data-hot-label="点归档先弹二次确认：说明移出默认账户位与账户汇总、历史流水与净资产不变、可随时恢复；余额非 0 时确认后由服务端拒绝，前端不把余额清零">
+          归档
+        </button>
       </div>
       <div class="fx-arow">
         <span class="fx-aic">
           <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="14" rx="4"/><path d="M7 8.2h6M7 11.8h4"/></svg>
         </span>
         <span class="fx-abody">
-          <span class="fx-aname">微信零钱</span>
-          <span class="fx-asub">其他 · 余额 <span class="num">¥2,140.00</span></span>
-          <span class="fx-ahint">请先把余额转到其他账户</span>
+          <span class="fx-aname">支付宝</span>
+          <span class="fx-asub">其他 · 余额 <span class="num">¥4,210.00</span></span>
+          <span class="fx-ahint">余额不为 0，归档会被拒绝</span>
         </span>
-        <button class="btn btn-sm" type="button" disabled>归档</button>
+        <button class="btn btn-sm" type="button" data-sheet-open="sheet-archive" data-name="支付宝" data-balance="¥4,210.00">归档</button>
       </div>
       <div class="fx-arow">
         <span class="fx-aic">
-          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M6.5 5V3.6h7V5"/></svg>
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="14" rx="4"/><path d="M7 8.2h6M7 11.8h4"/></svg>
         </span>
         <span class="fx-abody">
-          <span class="fx-aname">饭卡</span>
-          <span class="fx-asub">其他 · 余额 <span class="num">¥0.00</span></span>
+          <span class="fx-aname">微信</span>
+          <span class="fx-asub">其他 · 余额 <span class="num">¥1,268.40</span></span>
+          <span class="fx-ahint">余额不为 0，归档会被拒绝</span>
         </span>
-        <button class="btn btn-sm btn-secondary" type="button" id="fx-archive-ok"
-          data-hot="③" data-hot-name="归档" data-hot-pos="outer-bottom-right"
-          data-hot-label="仅余额为 0 的账户可点；归档后移入上方已归档分组，不再出现在默认账户位与记账选择器，历史流水仍计入报表">
-          归档
-        </button>
+        <button class="btn btn-sm" type="button" data-sheet-open="sheet-archive" data-name="微信" data-balance="¥1,268.40">归档</button>
+      </div>
+      <div class="fx-arow">
+        <span class="fx-aic">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5.5" width="15" height="9" rx="2"/><circle cx="10" cy="10" r="2.2"/><path d="M5 8.5v3M15 8.5v3"/></svg>
+        </span>
+        <span class="fx-abody">
+          <span class="fx-aname">现金</span>
+          <span class="fx-asub">现金 · 余额 <span class="num">¥860.00</span></span>
+          <span class="fx-ahint">余额不为 0，归档会被拒绝</span>
+        </span>
+        <button class="btn btn-sm" type="button" data-sheet-open="sheet-archive" data-name="现金" data-balance="¥860.00">归档</button>
       </div>
     </div>
 
-    <p class="fx-foot-note tiny">恢复不改变流水归属与余额：账户回到列表后余额按历史流水重新累计；归档与恢复都会写 `version`，失败时不改动本地状态。</p>
+    <p class="fx-foot-note tiny">恢复不改变流水归属与余额：账户回到列表后余额按历史流水重新累计。归档与恢复都以家里最新状态为准，失败时本机显示不变；账户没有物理删除，误建账户也走归档。</p>
+
+    <div class="fx-sk" aria-hidden="true">
+      <div class="skeleton" style="height:52px;border-radius:var(--radius-lg);margin-bottom:16px"></div>
+      <div class="skeleton sk-line" style="width:28%"></div>
+      <div class="fx-sk-row"><div class="skeleton fx-sk-ic"></div><div class="fx-sk-lines"><div class="skeleton sk-line" style="width:54%"></div><div class="skeleton sk-line" style="width:32%;margin-bottom:0"></div></div><div class="skeleton" style="width:56px;height:30px;border-radius:8px"></div></div>
+      <div class="fx-sk-row"><div class="skeleton fx-sk-ic"></div><div class="fx-sk-lines"><div class="skeleton sk-line" style="width:46%"></div><div class="skeleton sk-line" style="width:30%;margin-bottom:0"></div></div><div class="skeleton" style="width:56px;height:30px;border-radius:8px"></div></div>
+      <div class="skeleton sk-line" style="width:32%;margin-top:16px"></div>
+      <div class="fx-sk-row"><div class="skeleton fx-sk-ic"></div><div class="fx-sk-lines"><div class="skeleton sk-line" style="width:50%"></div><div class="skeleton sk-line" style="width:34%;margin-bottom:0"></div></div><div class="skeleton" style="width:56px;height:30px;border-radius:8px"></div></div>
+      <div class="fx-sk-row"><div class="skeleton fx-sk-ic"></div><div class="fx-sk-lines"><div class="skeleton sk-line" style="width:44%"></div><div class="skeleton sk-line" style="width:28%;margin-bottom:0"></div></div><div class="skeleton" style="width:56px;height:30px;border-radius:8px"></div></div>
+    </div>
+
+    <div class="state fx-error">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 5 3 27h26L16 5Z"/><path d="M16 13v6"/><circle cx="16" cy="23" r="1" fill="currentColor" stroke="none"/></svg>
+      </div>
+      <div class="state-title">归档与恢复没加载出来</div>
+      <div class="state-desc">可能是网络不稳。账户和流水都没有被改动，重新加载一次就好。</div>
+      <button class="btn btn-secondary" type="button" id="fx-retry"
+        data-hot="⑦" data-hot-name="重新加载" data-hot-pos="outer-bottom-right"
+        data-hot-label="首屏加载失败整页报错，只留重新加载；点击重试当前请求，成功回到默认态，失败仍停在本页">
+        重新加载
+      </button>
+    </div>
+  </div>
+
+  <!-- 归档二次确认层 -->
+  <div class="sheet-mask" id="sheet-archive" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>归档「<span id="fx-archive-name">招商银行</span>」？</h3>
+      <p class="sheet-sub">归档不是删除。确认前先看看会影响什么；余额不为 0 时会被拒绝。</p>
+      <div class="fx-sheet-line">
+        <span class="fx-sl-name" id="fx-archive-line-name">招商银行</span>
+        <span class="num" id="fx-archive-balance">¥32,480.00</span>
+      </div>
+      <ul class="fx-impact">
+        <li>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4 6.4 12 13 4.6"/></svg>
+          <span>从<strong>记账默认账户位</strong>移除；之后记一笔需要手选其他账户。</span>
+        </li>
+        <li>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4 6.4 12 13 4.6"/></svg>
+          <span>不再计入<strong>账户汇总</strong>；历史流水、报表与<strong>净资产都不变</strong>。</span>
+        </li>
+        <li>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4 6.4 12 13 4.6"/></svg>
+          <span>随时可以恢复：回到列表后余额按历史流水生效，不会重复累计。</span>
+        </li>
+      </ul>
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" id="fx-archive-confirm"
+          data-hot="⑥" data-hot-name="确认归档" data-hot-pos="outer-bottom-right"
+          data-hot-label="确认后提交归档；余额非 0 时服务端拒绝并回到本页显示原因，账户保持原样；余额为 0 才移入已归档分组">
+          确认归档
+        </button>
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
   </div>
 
   <!-- 恢复确认层 -->
@@ -256,6 +343,8 @@
 
 <script>
   var fxState = new URLSearchParams(location.search).get('state') || 'default';
+  var selectedName = '招商银行';
+  var selectedBalance = '¥32,480.00';
 
   document.querySelectorAll('[data-sheet-open="sheet-restore"]').forEach(function (b) {
     b.addEventListener('click', function () {
@@ -264,21 +353,55 @@
     });
   });
 
-  document.getElementById('fx-restore-ok').addEventListener('click', function () {
-    window.HC.closeSheet(document.getElementById('sheet-restore'));
-    window.HC.toast('账户已恢复，历史流水与余额已生效');
+  document.querySelectorAll('[data-sheet-open="sheet-archive"]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      selectedName = b.getAttribute('data-name');
+      selectedBalance = b.getAttribute('data-balance');
+      document.getElementById('fx-archive-name').textContent = selectedName;
+      document.getElementById('fx-archive-line-name').textContent = selectedName;
+      document.getElementById('fx-archive-balance').textContent = selectedBalance;
+      window.HC.openSheet('sheet-archive');
+    });
   });
 
-  document.getElementById('fx-archive-ok').addEventListener('click', function () {
-    window.HC.toast('「饭卡」已归档，可在上方恢复');
+  document.getElementById('fx-archive-confirm').addEventListener('click', function () {
+    window.HC.closeSheet(document.getElementById('sheet-archive'));
+    if (fxState === 'offline') {
+      window.HC.toast('当前离线，归档需联网确认');
+      return;
+    }
+    if (selectedBalance !== '¥0.00') {
+      var banner = document.querySelector('.fx-blocked-banner');
+      banner.querySelector('b').textContent = '归档被拒绝 · ' + selectedName + '余额 ' + selectedBalance + ' 不为 0';
+      document.body.setAttribute('data-state', 'balance-block');
+      window.HC.toast('余额不为 0，没有归档');
+      var scroller = document.querySelector('.content');
+      if (scroller) scroller.scrollTop = banner.offsetTop - 120;
+      return;
+    }
+    window.HC.toast('「' + selectedName + '」已归档，可在上方恢复');
+  });
+
+  document.getElementById('fx-restore-ok').addEventListener('click', function () {
+    window.HC.closeSheet(document.getElementById('sheet-restore'));
+    if (fxState === 'offline') {
+      window.HC.toast('当前离线，恢复需联网确认');
+      return;
+    }
+    window.HC.toast('账户已恢复，历史流水与余额已生效');
   });
 
   if (fxState === 'empty') {
     document.getElementById('fx-arch-count').textContent = '0 个';
   }
 
+  document.getElementById('fx-retry').addEventListener('click', function () {
+    location.href = location.pathname;
+  });
+
   document.addEventListener('DOMContentLoaded', function () {
     if (fxState === 'restore-confirm') window.HC.openSheet('sheet-restore');
+    if (fxState === 'archive-confirm') window.HC.openSheet('sheet-archive');
   });
 </script>
 </body>

@@ -34,12 +34,23 @@
   }
   .set-lock { display: none; flex: none; color: var(--text-3); }
   .set-lock svg { display: block; }
+  /* 管理员在本页能直接改日期格式，「需管理员」只在置灰的那两态出现 */
+  .set-flag:not(.is-locked) { display: none; }
   .set-admin-item .li-sub { padding-right: 4px; }
-  body[data-state="readonly"] .set-admin-item { pointer-events: none; }
-  body[data-state="readonly"] .set-admin-item .li-text { opacity: .72; }
-  body[data-state="readonly"] .set-admin-item .chevron { display: none; }
-  body[data-state="readonly"] .set-admin-item .set-lock { display: inline-flex; }
-  body[data-state="readonly"] .set-flag { background: var(--warning-soft); color: var(--warning); }
+  body[data-state="readonly"] .set-admin-item,
+  body[data-state="minor"] .set-admin-item { pointer-events: none; }
+  body[data-state="readonly"] .set-admin-item .li-text,
+  body[data-state="minor"] .set-admin-item .li-text { opacity: .72; }
+  body[data-state="readonly"] .set-admin-item .chevron,
+  body[data-state="minor"] .set-admin-item .chevron { display: none; }
+  body[data-state="readonly"] .set-admin-item .set-lock,
+  body[data-state="minor"] .set-admin-item .set-lock { display: inline-flex; }
+  body[data-state="readonly"] .set-flag,
+  body[data-state="minor"] .set-flag { background: var(--warning-soft); color: var(--warning); }
+  body[data-state="readonly"] .set-flag.is-locked,
+  body[data-state="minor"] .set-flag.is-locked { background: var(--surface-2); color: var(--text-3); }
+  body[data-state="readonly"] .set-flag:not(.is-locked),
+  body[data-state="minor"] .set-flag:not(.is-locked) { display: inline-block; }
   .set-ro-note {
     display: none; align-items: flex-start; gap: 8px;
     margin-top: 12px; padding: 12px 14px;
@@ -47,17 +58,50 @@
     background: var(--warning-soft); color: var(--warning);
     font-size: var(--fs-12); line-height: var(--lh-loose);
   }
-  body[data-state="readonly"] .set-ro-note { display: flex; }
+  body[data-state="readonly"] .set-ro-note,
+  body[data-state="minor"] .set-ro-note { display: flex; }
   .set-ro-note svg { flex: none; margin-top: 2px; }
   .set-dnd-value { flex: none; font-size: var(--fs-13); color: var(--text-2); font-family: var(--font-num); }
+  .set-family-note {
+    margin-top: 12px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2); color: var(--text-2);
+    font-size: var(--fs-12); line-height: var(--lh-loose);
+  }
+  #dnd-minor-note { display: none; }
+  .set-sub-minor { display: none; }
+  body[data-state="minor"] #dnd-set-family { display: none; }
+  body[data-state="minor"] .set-family-note { display: none; }
+  body[data-state="minor"] #dnd-minor-note { display: block; }
+  body[data-state="minor"] .set-sub-adult { display: none; }
+  body[data-state="minor"] .set-sub-minor { display: inline; }
   .set-foot { margin: 14px 2px 0; line-height: var(--lh-loose); }
   .set-sk { display: none; padding-top: 8px; }
   .set-sk .sk-block { height: 76px; }
   body[data-state="loading"] .set-body { display: none; }
   body[data-state="loading"] .set-sk { display: block; }
+  body[data-state="format"] #sheet-format { display: flex; }
+  body[data-state="dnd"] #sheet-dnd { display: flex; }
+  .set-fmt { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  .set-fmt button {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 14px; border-radius: var(--radius-md);
+    border: 1px solid var(--border); background: var(--surface);
+    font-size: var(--fs-14); color: var(--text-1); cursor: pointer;
+  }
+  .set-fmt button .tiny { color: var(--text-3); }
+  .set-fmt button[aria-checked="true"] { border-color: var(--brand); background: var(--brand-soft); color: var(--brand-text); font-weight: 600; }
+  .set-time-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+  .set-time-row label { flex: 1; font-size: var(--fs-13); color: var(--text-2); }
+  .set-time-row select {
+    width: 100%; margin-top: 4px; padding: 8px 10px;
+    border-radius: var(--radius-md); border: 1px solid var(--border);
+    background: var(--surface); color: var(--text-1); font-family: var(--font-num); font-size: var(--fs-14);
+  }
+  .set-sheet-note { margin-top: 12px; font-size: var(--fs-12); color: var(--text-3); line-height: var(--lh-loose); }
 </style>
 </head>
-<body data-screen="27 设置" data-tab="" data-states="default,dark,readonly,loading">
+<body data-screen="27 设置" data-tab="" data-states="default,dark,readonly,minor,format,dnd,loading">
 <div class="harness"></div>
 
 <div class="phone">
@@ -82,7 +126,7 @@
 
   <div class="content">
     <div class="set-body">
-      <div class="set-intro">外观、时区、语言与免打扰只影响你这一台设备；币种与日期格式属于家庭级设置，改动会对全家庭生效。</div>
+      <div class="set-intro">外观、语言与免打扰的本机时段只影响你这一台设备；时区与币种在创建家庭时确定，暂不可修改；日期格式属于家庭设置，仅家庭管理员可修改。</div>
 
       <div class="section-title">外观</div>
       <div class="card set-theme" data-hot="①" data-hot-name="主题三态" data-hot-pos="top-right" data-hot-label="跟随系统 / 亮 / 暗三态切换即时生效，写本机 hc-proto-theme，不随账号同步、不进导出范围">
@@ -99,32 +143,28 @@
 
       <div class="section-title">区域与格式</div>
       <div class="list">
-        <button class="list-item" type="button" data-toast="时区是本人偏好：只改本机时间显示，家庭账期与到期时间仍按家庭时区"
-          data-hot="②" data-hot-name="时区" data-hot-pos="top-right" data-hot-label="本人偏好可写；只影响本机显示，不改家庭账期">
+        <button class="list-item" type="button" data-toast="时区在创建家庭时确定，暂不支持修改；它划定「今天」的边界，到期与提醒时间都按它计算"
+          data-hot="②" data-hot-name="时区" data-hot-pos="top-right" data-hot-label="锁定值展示 + 说明文案；家庭创建时确定，P1 不可改，无编辑入口">
           <span class="li-icon">
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.2V10l2.6 1.6"/></svg>
           </span>
-          <span class="li-text">时区<span class="li-sub">本机显示 · Asia/Shanghai</span></span>
-          <span class="chevron">›</span>
+          <span class="li-text">时区<span class="li-sub">创建家庭时确定 · Asia/Shanghai</span></span>
+          <span class="set-flag is-locked">暂不可修改</span>
         </button>
-        <button class="list-item set-admin-item" type="button" data-toast="币种为家庭级设置，修改后全家庭生效；P1 仅支持 CNY ¥"
-          data-hot="③" data-hot-name="币种" data-hot-pos="top-right" data-hot-label="家庭级项，仅管理员可写；非管理员展示只读值与「需管理员」">
+        <button class="list-item" type="button" data-toast="币种在创建家庭时确定，暂不支持修改；历史金额一律按此币种展示"
+          data-hot="③" data-hot-name="币种" data-hot-pos="top-right" data-hot-label="锁定值展示 + 说明文案；家庭创建时确定，P1 不可改，全角色同形">
           <span class="li-icon">
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6v8M7.4 8.4h5.2M7.4 11.4h5.2"/></svg>
           </span>
-          <span class="li-text">币种<span class="li-sub">CNY ¥ · 全家庭统一</span></span>
-          <span class="set-flag">需管理员</span>
-          <span class="set-lock" aria-hidden="true">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3.5" y="7" width="9" height="6.5" rx="1.8"/><path d="M5.6 7V5.4a2.4 2.4 0 0 1 4.8 0V7"/></svg>
-          </span>
-          <span class="chevron">›</span>
+          <span class="li-text">币种<span class="li-sub">创建家庭时确定 · CNY ¥ · 全家庭统一</span></span>
+          <span class="set-flag is-locked">暂不可修改</span>
         </button>
-        <button class="list-item set-admin-item" type="button" data-toast="日期格式为家庭级设置，修改后列表、报表与导出表头统一"
-          data-hot="④" data-hot-name="日期格式" data-hot-pos="top-right" data-hot-label="家庭级项，仅管理员可写；只读态显示锁定说明">
+        <button class="list-item set-admin-item" type="button" data-sheet-open="sheet-format"
+          data-hot="④" data-hot-name="日期格式" data-hot-pos="top-right" data-hot-label="家庭级，仅管理员可写；打开本页格式选择层（三选一），保存即时生效；非管理员只读">
           <span class="li-icon">
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3.5" y="4.5" width="13" height="12" rx="2"/><path d="M3.5 8.5h13M7 3.5v2.4M13 3.5v2.4"/></svg>
           </span>
-          <span class="li-text">日期格式<span class="li-sub">2026-10-06 · 全家庭统一</span></span>
+          <span class="li-text">日期格式<span class="li-sub" id="format-sub">2026-10-06 · 全家庭统一</span></span>
           <span class="set-flag">需管理员</span>
           <span class="set-lock" aria-hidden="true">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3.5" y="7" width="9" height="6.5" rx="1.8"/><path d="M5.6 7V5.4a2.4 2.4 0 0 1 4.8 0V7"/></svg>
@@ -150,21 +190,21 @@
           <span class="li-text">免打扰<span class="li-sub">时段内不发声，红点照常显示</span></span>
           <label class="switch"><input type="checkbox" checked id="dnd-switch"><span class="track"></span><span class="thumb"></span></label>
         </div>
-        <button class="list-item" type="button" data-toast="免打扰时段 22:00–07:00；跨天时段按结束时间落在次日"
-          data-hot="⑦" data-hot-name="免打扰时段" data-hot-pos="top-right" data-hot-label="时段端点可改；跨天按结束时间次日计算，开启后立即生效">
+        <button class="list-item" type="button" data-sheet-open="sheet-dnd"
+          data-hot="⑦" data-hot-name="免打扰时段" data-hot-pos="top-right" data-hot-label="打开本页起止时间选择器：「保存」写这台设备（本机覆盖，跨天按结束时间落在次日，保存后立即生效）；成人成员与管理员另有「设为家庭默认」，写家庭级默认时段并记入家庭操作记录（3.4.8 第三级）；本机值优先于家庭默认">
           <span class="li-icon">
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 12.2A6.5 6.5 0 0 1 7.8 4.5a6.5 6.5 0 1 0 7.7 7.7z"/></svg>
           </span>
-          <span class="li-text">免打扰时段<span class="li-sub">每天 · 跨天</span></span>
-          <span class="set-dnd-value">22:00–07:00</span>
+          <span class="li-text">免打扰时段<span class="li-sub">家庭默认 <span id="dnd-family-value">22:00–07:00</span> · 跨天 · 本机可覆盖</span></span>
+          <span class="set-dnd-value" id="dnd-value">22:00–07:00</span>
           <span class="chevron">›</span>
         </button>
       </div>
-      <div class="tiny set-foot">免打扰只影响声音与横幅，站内信、未读红点与角标不受影响；系统通知权限关闭时，本页设置不生效。</div>
+      <div class="tiny set-foot">免打扰只影响本机的声音与横幅，站内信、未读红点与角标不受影响；系统通知权限关闭时，本页设置不生效。</div>
 
       <div class="set-ro-note" role="status">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3.6M8 10.8v.1"/></svg>
-        <span>币种与日期格式属于家庭级设置，仅管理员可修改。当前为只读视图，改动请联系家庭管理员。</span>
+        <span>日期格式属于家庭设置，仅家庭管理员可修改，当前为只读视图，改动请联系家庭管理员。时区与币种在创建家庭时确定，暂不支持修改。</span>
       </div>
     </div>
 
@@ -174,6 +214,46 @@
       <div class="skeleton sk-block"></div>
       <div class="skeleton sk-line" style="width:52%"></div>
       <div class="skeleton sk-block"></div>
+    </div>
+  </div>
+
+  <div class="sheet-mask" id="sheet-format" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>日期格式</h3>
+      <p class="sheet-sub">属于家庭设置，保存后全家庭统一；列表、报表与导出表头下次渲染即按新格式，无需退出重进。</p>
+      <div class="set-fmt" role="radiogroup" aria-label="日期格式">
+        <button type="button" role="radio" aria-checked="true" data-fmt="2026-10-06" data-fmt-label="年-月-日">2026-10-06<span class="tiny">年-月-日</span></button>
+        <button type="button" role="radio" aria-checked="false" data-fmt="2026/10/06" data-fmt-label="年/月/日">2026/10/06<span class="tiny">年/月/日</span></button>
+        <button type="button" role="radio" aria-checked="false" data-fmt="2026 年 10 月 6 日" data-fmt-label="中文格式">2026 年 10 月 6 日<span class="tiny">中文格式</span></button>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" id="format-save"
+          data-hot="⑧" data-hot-name="日期格式选择层" data-hot-pos="top-right" data-hot-label="三选一即时预览示例；保存后全家庭即时生效，取消不改值">保存</button>
+        <button class="btn btn-ghost btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet-mask" id="sheet-dnd" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>免打扰时段</h3>
+      <p class="sheet-sub"><span class="set-sub-adult">「保存」只改这台设备的提示音与横幅，时段内红点与未读数照常显示；「设为家庭默认」改的是全家的默认时段。</span><span class="set-sub-minor">「保存」只改这台设备的提示音与横幅，时段内红点与未读数照常显示。</span></p>
+      <div class="set-time-row">
+        <label>开始<select id="dnd-start" aria-label="开始时间"></select></label>
+        <label>结束<select id="dnd-end" aria-label="结束时间"></select></label>
+      </div>
+      <div class="set-sheet-note">结束时间早于开始时间时按跨天处理，落在次日；保存后立即生效，无需退出重进。</div>
+      <div class="set-family-note">这里的两个时间是全家的默认时段：新加入的人和没在自己手机上改过时段的家人，按它来；谁在自己手机上改过，就一直按他自己的。</div>
+      <div class="set-family-note" id="dnd-minor-note">家庭默认时段由家里的成人维护。你在这里改的时段只影响这台设备。</div>
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" id="dnd-save"
+          data-hot="⑨" data-hot-name="免打扰时段选择层" data-hot-pos="top-right" data-hot-label="起止半小时步进可选；保存后下一笔起按新窗口静默，取消不改值">保存</button>
+        <button class="btn btn-secondary btn-block" type="button" id="dnd-set-family"
+          data-hot="⑩" data-hot-name="设为家庭默认" data-hot-pos="bottom-right" data-hot-label="成人成员与管理员可见可点，把上面选好的起止写成家庭默认时段（写家庭级设置、记入家庭操作记录）；不影响已经在本机改过时段的家人；儿童与非成人不渲染本按钮；本机时段仍归 ⑨ 保存">设为家庭默认</button>
+        <button class="btn btn-ghost btn-block" type="button" data-sheet-close>取消</button>
+      </div>
     </div>
   </div>
 
@@ -212,12 +292,67 @@
     window.HC.toast(dnd.checked ? '免打扰已开启' : '免打扰已关闭');
   });
 
-  if (state === 'readonly') {
+  if (state === 'readonly' || state === 'minor') {
     document.querySelectorAll('.set-admin-item').forEach(function (b) {
       b.setAttribute('aria-disabled', 'true');
       b.tabIndex = -1;
     });
   }
+
+  var savedFmt = '2026-10-06';
+  var chosenFmt = savedFmt;
+  function paintFmtCurrent() {
+    document.querySelectorAll('.set-fmt button').forEach(function (b) {
+      var isSaved = b.getAttribute('data-fmt') === savedFmt;
+      b.setAttribute('aria-checked', String(isSaved));
+      b.querySelector('.tiny').textContent =
+        b.getAttribute('data-fmt-label') + (isSaved ? ' · 当前' : '');
+    });
+    chosenFmt = savedFmt;
+  }
+  paintFmtCurrent();
+  document.querySelector('[data-sheet-open="sheet-format"]').addEventListener('click', paintFmtCurrent);
+  document.querySelector('#sheet-format [data-sheet-close]').addEventListener('click', paintFmtCurrent);
+  document.querySelectorAll('.set-fmt button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('.set-fmt button').forEach(function (x) { x.setAttribute('aria-checked', 'false'); });
+      b.setAttribute('aria-checked', 'true');
+      chosenFmt = b.getAttribute('data-fmt');
+    });
+  });
+  document.getElementById('format-save').addEventListener('click', function () {
+    savedFmt = chosenFmt;
+    paintFmtCurrent();
+    document.getElementById('format-sub').textContent = savedFmt + ' · 全家庭统一';
+    window.HC.closeSheet(document.getElementById('sheet-format'));
+    window.HC.toast('日期格式已保存，全家庭即时生效');
+  });
+
+  function fillTime(sel, value) {
+    var html = '';
+    for (var h = 0; h < 24; h++) {
+      for (var m = 0; m < 60; m += 30) {
+        var v = (h < 10 ? '0' + h : h) + ':' + (m === 0 ? '00' : '30');
+        html += '<option value="' + v + '"' + (v === value ? ' selected' : '') + '>' + v + '</option>';
+      }
+    }
+    sel.innerHTML = html;
+  }
+  var dndStart = document.getElementById('dnd-start');
+  var dndEnd = document.getElementById('dnd-end');
+  fillTime(dndStart, '22:00');
+  fillTime(dndEnd, '07:00');
+  document.getElementById('dnd-save').addEventListener('click', function () {
+    document.getElementById('dnd-value').textContent = dndStart.value + '–' + dndEnd.value;
+    window.HC.closeSheet(document.getElementById('sheet-dnd'));
+    window.HC.toast('免打扰时段已更新，从下一笔提醒起按新时段静音');
+  });
+  document.getElementById('dnd-set-family').addEventListener('click', function () {
+    var t = dndStart.value + '–' + dndEnd.value;
+    document.getElementById('dnd-family-value').textContent = t;
+    window.HC.closeSheet(document.getElementById('sheet-dnd'));
+    window.HC.toast('已把 ' + t + ' 设为家庭默认时段，本机改过时段的家人不受影响');
+  });
 </script>
 </body>
 </html>

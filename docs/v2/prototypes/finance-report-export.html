@@ -11,6 +11,15 @@
   .fx-content { padding-bottom: 20px; }
   .fx-lead { margin: 4px 2px 14px; font-size: var(--fs-12); color: var(--text-3); line-height: var(--lh-normal); }
 
+  .fx-note {
+    display: flex; gap: 8px; align-items: flex-start;
+    margin: 0 0 14px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--info-soft); color: var(--info);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-note svg { flex: none; margin-top: 1px; }
+
   .fx-opt { display: flex; }
   .fx-opt .segmented { width: 100%; }
   .fx-opt .segmented button { flex: 1; padding: 8px 4px; }
@@ -59,7 +68,8 @@
   .fx-panel { display: none; }
   body[data-state="exporting"] .fx-panel-exporting { display: block; }
   body[data-state="done"] .fx-panel-done { display: block; }
-  body[data-state="error"] .fx-panel-error { display: block; }
+  body[data-state="empty"] .fx-panel-empty { display: block; }
+  body[data-state="failed"] .fx-panel-failed { display: block; }
 
   .fx-progress { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
   .fx-progress i { display: block; height: 100%; width: 62%; border-radius: 4px; background: var(--brand); transition: width var(--dur-2) linear; }
@@ -82,6 +92,11 @@
   .fx-file-ico { width: 32px; height: 32px; flex: none; border-radius: 9px; background: var(--surface); color: var(--text-2); display: flex; align-items: center; justify-content: center; }
   .fx-file-txt { flex: 1; min-width: 0; font-size: var(--fs-13); font-family: var(--font-num); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .fx-file-size { flex: none; font-size: var(--fs-11); color: var(--text-3); }
+  .fx-where {
+    display: flex; gap: 6px; align-items: flex-start;
+    margin-top: 8px; font-size: var(--fs-11); color: var(--text-3); line-height: var(--lh-normal);
+  }
+  .fx-where svg { flex: none; margin-top: 1px; }
 
   .fx-err {
     display: flex; gap: 10px; align-items: flex-start;
@@ -91,8 +106,22 @@
     font-size: var(--fs-12); line-height: var(--lh-normal);
   }
   .fx-err svg { flex: none; margin-top: 1px; }
+  .fx-err b { display: block; margin-bottom: 2px; }
 
   .fx-rule { margin-top: 14px; font-size: var(--fs-11); color: var(--text-3); line-height: var(--lh-normal); }
+
+  .fx-sk { display: none; padding-top: 8px; }
+  .fx-sk .sk-line:first-child { width: 44%; }
+  body[data-state="loading"] .fx-sk { display: block; }
+  body[data-state="loading"] .fx-real { display: none; }
+  body[data-state="loading"] .fx-footer { display: none; }
+
+  .fx-forbid { display: none; padding-top: 24px; }
+  body[data-state="forbidden"] .fx-forbid { display: flex; }
+  body[data-state="forbidden"] .fx-real { display: none; }
+  body[data-state="forbidden"] .fx-footer { display: none; }
+
+  body[data-state="offline"] .offline-bar { display: flex; }
 
   .fx-footer {
     flex: none;
@@ -102,7 +131,7 @@
   }
 </style>
 </head>
-<body data-screen="F18 导出" data-states="default,exporting,done,error">
+<body data-screen="F18 导出" data-states="default,exporting,done,empty,failed,forbidden,loading,offline">
 <div class="harness"></div>
 
 <div class="phone">
@@ -119,7 +148,7 @@
     <div class="nav-left">
       <a class="icon-btn" href="finance-report.html" aria-label="返回报表"
         data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
-        data-hot-label="回报表；参数改动不写回报表页的视图状态，下次进导出沿用上次的参数">
+        data-hot-label="回报表 finance/report/index；参数改动不回写报表页的视图状态，下次进导出沿用上次的范围、格式与类型">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
       </a>
     </div>
@@ -129,130 +158,175 @@
 
   <div class="offline-bar">
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
-    当前离线 · 导出需要联网，恢复后自动开始
+    当前离线 · 导出需要联网，恢复后再点导出即可
   </div>
 
   <div class="content bottom-space fx-content">
-    <p class="fx-lead">三个参数都参与筛选：范围、格式、类型。任一改动，下方行数随之重算。</p>
+    <div class="fx-real">
+      <p class="fx-lead">三个参数都参与筛选：范围、格式、类型。任一改动，下方「将导出 N 行」立即重算。</p>
 
-    <div class="field">
-      <span class="field-label">范围</span>
-      <div class="fx-opt"
-        data-hot="②" data-hot-name="范围" data-hot-pos="outer-top-right"
-        data-hot-label="本月 / 近 3 月 / 自定义三档，决定 days 参数；自定义可选起止日，跨度上限 2 年。切档后核对行行数立即重算">
-        <div class="segmented" role="tablist">
-          <button type="button" role="tab" aria-selected="true" data-range="month">本月</button>
-          <button type="button" role="tab" aria-selected="false" data-range="quarter">近 3 月</button>
-          <button type="button" role="tab" aria-selected="false" data-range="custom">自定义</button>
+      <div class="fx-note">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7.5"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
+        <span>导出范围由家庭统一开启：开启后成人成员可导出自己看得到的流水；管理员始终可以导出。私密流水按你的查看权限处理，看不到的不会导出。</span>
+      </div>
+
+      <div class="field">
+        <span class="field-label">范围</span>
+        <div class="fx-opt"
+          data-hot="②" data-hot-name="范围" data-hot-pos="outer-top-right"
+          data-hot-label="本月 / 近 3 月 / 自定义三档，决定导出的起止日；自定义跨度上限 2 年。切档后核对行立即重算，不允许沿用上一档行数">
+          <div class="segmented" role="tablist">
+            <button type="button" role="tab" aria-selected="true" data-range="month">本月</button>
+            <button type="button" role="tab" aria-selected="false" data-range="quarter">近 3 月</button>
+            <button type="button" role="tab" aria-selected="false" data-range="custom">自定义</button>
+          </div>
         </div>
-      </div>
-      <div class="fx-range">
-        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="13" height="11" rx="2"/><path d="M3.5 8.5h13M7 3.5v3M13 3.5v3"/></svg>
-        <span id="fx-range-text"><span class="num">2026-10-01</span> 至 <span class="num">2026-10-31</span></span>
-        <span class="tag" id="fx-range-days">31 天</span>
-      </div>
-      <div class="fx-custom" id="fx-custom">
-        <span class="fx-date"><span id="fx-from">2026-10-01</span>
-          <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="13" height="11" rx="2"/><path d="M3.5 8.5h13"/></svg>
-        </span>
-        <span class="fx-date"><span id="fx-to">2026-10-31</span>
-          <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="13" height="11" rx="2"/><path d="M3.5 8.5h13"/></svg>
-        </span>
-      </div>
-    </div>
-
-    <div class="field">
-      <span class="field-label">格式</span>
-      <div class="fx-opt"
-        data-hot="③" data-hot-name="格式" data-hot-pos="outer-top-right"
-        data-hot-label="CSV / Excel 二选一，即 format 参数；两种格式的列一致（日期、类型、金额、分类、账户、成员、备注、附件标记），行数完全相同">
-        <div class="segmented" role="tablist">
-          <button type="button" role="tab" aria-selected="true" data-format="csv">CSV</button>
-          <button type="button" role="tab" aria-selected="false" data-format="xlsx">Excel</button>
+        <div class="fx-range">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="13" height="11" rx="2"/><path d="M3.5 8.5h13M7 3.5v3M13 3.5v3"/></svg>
+          <span id="fx-range-text"><span class="num">2026-10-01</span> 至 <span class="num">2026-10-31</span></span>
+          <span class="tag" id="fx-range-days">31 天</span>
         </div>
-      </div>
-      <div class="fx-help">两种格式导出的行数与列完全一致，只有编码与文件后缀不同；CSV 带 BOM，Excel 直接打开不乱码。</div>
-    </div>
-
-    <div class="field">
-      <span class="field-label">类型</span>
-      <div class="fx-opt"
-        data-hot="④" data-hot-name="类型" data-hot-pos="outer-top-right"
-        data-hot-label="全部 / 支出 / 收入，即 type 参数；转账按两笔分列，不计入支出或收入合计。切换后行数即时变化">
-        <div class="segmented" role="tablist">
-          <button type="button" role="tab" aria-selected="true" data-type="all">全部</button>
-          <button type="button" role="tab" aria-selected="false" data-type="out">支出</button>
-          <button type="button" role="tab" aria-selected="false" data-type="in">收入</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="fx-check"
-      data-hot="⑤" data-hot-name="核对行" data-hot-pos="outer-top-right"
-      data-hot-label="导出行数必须等于页面同筛选结果的行数（19.3#7）；核对句同时把范围、格式、类型三个参数写出来，用户一眼看到三者都在生效">
-      <div class="fx-check-line">
-        将导出 <span class="fx-check-n" id="fx-count">186</span> 行，与当前筛选结果一致
-      </div>
-      <div class="fx-check-sub" id="fx-summary"><span class="num">2026-10-01 至 2026-10-31</span> · CSV · 全部类型</div>
-      <div class="fx-check-foot">
-        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg>
-        覆盖家庭全部成员，不只本人创建；含分类、账户、成员、附件标记四类必要列
-      </div>
-    </div>
-
-    <div class="fx-panel fx-panel-exporting">
-      <div class="card" style="margin-top:12px">
-        <div class="fx-export-line">
-          <span>正在生成 <span id="fx-export-format">CSV</span></span>
-          <span class="num" id="fx-export-progress-text">已写入 116 / 186 行</span>
-        </div>
-        <div class="fx-progress"><i id="fx-progress-bar"></i></div>
-        <div class="fx-help">生成期间参数锁定，离开页面会中断本次导出。</div>
-      </div>
-    </div>
-
-    <div class="fx-panel fx-panel-done">
-      <div class="card" style="margin-top:12px">
-        <div class="fx-done-head">
-          <span class="fx-done-ico">
-            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg>
+        <div class="fx-custom" id="fx-custom">
+          <span class="fx-date"><span id="fx-from">2026-08-01</span>
+            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="13" height="11" rx="2"/><path d="M3.5 8.5h13"/></svg>
           </span>
-          <span>
-            <span class="fx-done-title" id="fx-done-title">已生成，行数 186</span>
-            <span class="fx-done-sub" id="fx-done-sub">范围 2026-10-01 至 2026-10-31 · CSV · 全部类型</span>
+          <span class="fx-date"><span id="fx-to">2026-08-31</span>
+            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="13" height="11" rx="2"/><path d="M3.5 8.5h13"/></svg>
           </span>
         </div>
-        <div class="fx-file">
-          <span class="fx-file-ico">
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3.5h6l4 4V16a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M11 3.5v4h4"/></svg>
-          </span>
-          <span class="fx-file-txt" id="fx-file-name">finance-2026-10.csv</span>
-          <span class="fx-file-size">42 KB</span>
+        <div class="fx-help">自定义起止日在本机选，跨度超过 2 年会提示缩小范围；不按季度自动折算。</div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">格式</span>
+        <div class="fx-opt"
+          data-hot="③" data-hot-name="格式" data-hot-pos="outer-top-right"
+          data-hot-label="CSV / Excel 二选一；两种格式的列一致、行数完全相同，只有编码与后缀不同，切格式不重算行数">
+          <div class="segmented" role="tablist">
+            <button type="button" role="tab" aria-selected="true" data-format="csv">CSV</button>
+            <button type="button" role="tab" aria-selected="false" data-format="xlsx">Excel</button>
+          </div>
         </div>
-        <div style="display:flex;gap:10px;margin-top:12px">
-          <button class="btn btn-primary" type="button" style="flex:1" data-toast="已保存到「文件」，可分享给家人">保存文件</button>
-          <button class="btn btn-secondary" type="button" style="flex:1" data-toast="链接 24 小时内有效，仅本家庭成员可打开">分享给家人</button>
+        <div class="fx-help">两种格式导出的行数与列完全一致，只有编码与后缀不同；CSV 带 BOM，Excel 直接打开不乱码。</div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">类型</span>
+        <div class="fx-opt"
+          data-hot="④" data-hot-name="类型" data-hot-pos="outer-top-right"
+          data-hot-label="全部 / 支出 / 收入；本月 186 / 128 / 58 行，近 3 月 512 / 386 / 126 行；转账按两笔分列，不计入支出或收入合计">
+          <div class="segmented" role="tablist">
+            <button type="button" role="tab" aria-selected="true" data-type="all">全部</button>
+            <button type="button" role="tab" aria-selected="false" data-type="out">支出</button>
+            <button type="button" role="tab" aria-selected="false" data-type="in">收入</button>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div class="fx-panel fx-panel-error">
-      <div class="fx-err" style="margin-top:12px">
-        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7.5"/><path d="M10 6.2v4.8M10 13.6v.1"/></svg>
-        <span><b>该筛选条件下没有流水，无法导出。</b>换一个范围或类型再试；0 行不生成空文件，也不写一条「导出成功」的记录。</span>
+      <div class="fx-check"
+        data-hot="⑤" data-hot-name="核对行" data-hot-pos="outer-top-right"
+        data-hot-label="导出行数必须等于页面同筛选结果的行数；核对句同时写出范围、格式、类型三个参数，任一改动都立即重算">
+        <div class="fx-check-line">
+          将导出 <span class="fx-check-n" id="fx-count">186</span> 行，与当前筛选结果一致
+        </div>
+        <div class="fx-check-sub" id="fx-summary"><span class="num">2026-10-01 至 2026-10-31</span> · CSV · 全部类型</div>
+        <div class="fx-check-foot">
+          <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg>
+          覆盖家庭全部成员，不只本人创建；含日期、类型、金额、分类、账户、成员、备注、附件标记八列
+        </div>
       </div>
-      <div class="fx-help">建议：把类型切回「全部」，或把范围改成本月。</div>
+
+      <div class="fx-panel fx-panel-exporting">
+        <div class="card" style="margin-top:12px">
+          <div class="fx-export-line">
+            <span>正在生成 <span id="fx-export-format">CSV</span></span>
+            <span class="num" id="fx-export-progress-text">已写入 116 / 186 行</span>
+          </div>
+          <div class="fx-progress"><i id="fx-progress-bar"></i></div>
+          <div class="fx-help">生成期间三个参数锁定，离开页面会中断本次导出。</div>
+        </div>
+      </div>
+
+      <div class="fx-panel fx-panel-done">
+        <div class="card" style="margin-top:12px">
+          <div class="fx-done-head">
+            <span class="fx-done-ico">
+              <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg>
+            </span>
+            <span>
+              <span class="fx-done-title" id="fx-done-title">已生成，行数 186</span>
+              <span class="fx-done-sub" id="fx-done-sub">范围 2026-10-01 至 2026-10-31 · CSV · 全部类型</span>
+            </span>
+          </div>
+          <div class="fx-file">
+            <span class="fx-file-ico">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3.5h6l4 4V16a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M11 3.5v4h4"/></svg>
+            </span>
+            <span class="fx-file-txt" id="fx-file-name">finance-2026-10.csv</span>
+            <span class="fx-file-size">42 KB</span>
+          </div>
+          <div class="fx-where">
+            <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.5h13v9h-13z"/><path d="M3.5 6.5 10 3l6.5 3.5"/></svg>
+            <span>文件已存到「文件」App › 下载 › 家立方；同一次导出只提示一次，不会重复生成。</span>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:12px"
+            data-hot="⑦" data-hot-name="保存与分享" data-hot-pos="outer-top-right"
+            data-hot-label="「保存文件」把文件留到本机「文件」；「分享给家人」给 24 小时有效的家庭内链接。两者都只针对这一份文件，不改动导出参数">
+            <button class="btn btn-primary" type="button" style="flex:1" data-toast="已保存到「文件」App › 下载 › 家立方">保存文件</button>
+            <button class="btn btn-secondary" type="button" style="flex:1" data-toast="链接 24 小时内有效，仅本家庭成员可打开">分享给家人</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="fx-panel fx-panel-empty">
+        <div class="fx-err" style="margin-top:12px">
+          <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7.5"/><path d="M10 6.2v4.8M10 13.6v.1"/></svg>
+          <span><b>这个筛选下没有可导出的流水。</b>换一个范围或类型再试；0 行不生成空文件，也不会记一条「导出成功」。</span>
+        </div>
+        <div class="fx-help">现在选的是自定义 8 月 + 收入；可以把类型切回「全部」，或把范围改回本月。</div>
+        <button class="btn btn-secondary btn-block" type="button" id="fx-empty-reset" style="margin-top:10px"
+          data-hot="⑨" data-hot-name="换回本月" data-hot-pos="center"
+          data-hot-label="空结果下的主动作：把范围换回本月、类型换回全部，核对行立即变回 186 行；不提供「仍然导出空文件」">
+          换回本月 · 全部类型</button>
+      </div>
+
+      <div class="fx-panel fx-panel-failed">
+        <div class="fx-err" style="margin-top:12px">
+          <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7.5"/><path d="M10 6.2v4.8M10 13.6v.1"/></svg>
+          <span><b>导出没有完成。</b>文件生成到一半时网络断了，已写入的部分没有保存成文件。核对行仍是 186 行，参数没有丢，点下方按钮重试即可。</span>
+        </div>
+        <button class="btn btn-primary btn-block" type="button" id="fx-retry" style="margin-top:10px"
+          data-hot="⑧" data-hot-name="重试" data-hot-pos="center"
+          data-hot-label="失败后重试：按原来的范围、格式、类型重新生成一份；不会出现两份半成品文件，重试成功只提示一次">
+          重试导出</button>
+      </div>
+
+      <p class="fx-rule">导出与报表用同一套筛选口径：同条件导出行数 = 查询行数。看不到的私密流水不导出金额与分类；更高隐私级别的内容不进默认导出。</p>
     </div>
 
-    <p class="fx-rule">导出走后端同一个查询口径：同筛选条件导出行数 = 查询行数；不导出私密流水的金额与分类（他人视角），L3 内容不进默认导出。</p>
+    <div class="fx-sk" aria-hidden="true">
+      <div class="skeleton sk-line" style="width:44%"></div>
+      <div class="skeleton sk-block" style="height:40px"></div>
+      <div class="skeleton sk-block" style="height:40px"></div>
+      <div class="skeleton sk-line" style="width:30%"></div>
+      <div class="skeleton sk-block" style="height:92px"></div>
+    </div>
+
+    <div class="state fx-forbid">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="14" width="16" height="11" rx="2"/><path d="M11 14v-3a5 5 0 0 1 10 0v3"/></svg>
+      </div>
+      <div class="state-title">你暂时不能导出</div>
+      <div class="state-desc">家庭还没有开启「允许成员导出」，所以你看不到导出入口。需要这份数据时，请让管理员在「账户与设置 › 数据」里开启，或由管理员代你导出。</div>
+      <a class="btn btn-secondary" href="finance-report.html">回报表</a>
+    </div>
   </div>
 
   <div class="fx-footer">
     <button class="btn btn-primary btn-block" type="button" id="fx-export"
       data-hot="⑥" data-hot-name="导出" data-hot-pos="outer-top-right"
-      data-hot-label="点击后按钮转菊花、参数锁定，进度条按实际写入行数推进；完成给「已生成，行数 N」。0 行时按钮禁用并给原因">
-      导出
-    </button>
+      data-hot-label="点击后按钮转菊花、三个参数锁定，进度条按实际写入行数推进；完成只提示一次「已生成，行数 N」并给出文件位置；0 行时按钮禁用">
+      导出</button>
   </div>
 
   <div class="toast"></div>
@@ -267,9 +341,9 @@
       custom: { all: 74, out: 74, 'in': 0 }
     };
     var RANGE = {
-      month: { from: '2026-10-01', to: '2026-10-31', days: '31 天', label: '本月' },
-      quarter: { from: '2026-08-01', to: '2026-10-31', days: '92 天', label: '近 3 月' },
-      custom: { from: '2026-08-01', to: '2026-08-31', days: '31 天', label: '自定义' }
+      month: { from: '2026-10-01', to: '2026-10-31', days: '31 天' },
+      quarter: { from: '2026-08-01', to: '2026-10-31', days: '92 天' },
+      custom: { from: '2026-08-01', to: '2026-08-31', days: '31 天' }
     };
 
     var sel = { range: 'month', format: 'csv', type: 'all' };
@@ -279,7 +353,6 @@
     function fmtLabel(f) { return f === 'xlsx' ? 'Excel' : 'CSV'; }
     function typeLabel(t) { return t === 'out' ? '支出' : (t === 'in' ? '收入' : '全部类型'); }
     function ext() { return sel.format === 'xlsx' ? 'xlsx' : 'csv'; }
-
     function count() { return COUNT[sel.range][sel.type]; }
 
     function render() {
@@ -303,27 +376,28 @@
       document.getElementById('fx-file-name').textContent = 'finance-' + r.from.slice(0, 7)
         + (sel.range === 'quarter' ? '_' + r.to.slice(0, 7) : '') + '.' + ext();
       document.getElementById('fx-export-progress-text').textContent = '已写入 116 / ' + n + ' 行';
+      document.getElementById('fx-progress-bar').style.width = '62%';
 
-      var cur = document.body.getAttribute('data-state');
-      if (cur !== 'exporting') {
-        btn.disabled = n === 0;
-        if (n === 0) {
-          document.body.setAttribute('data-state', 'error');
-        } else if (cur === 'error') {
-          document.body.setAttribute('data-state', 'default');
-        }
+      btn.disabled = n === 0;
+      if (document.body.getAttribute('data-state') === 'default' && n === 0) {
+        document.body.setAttribute('data-state', 'empty');
       }
     }
 
     function pick(attr, key, val) {
+      if (document.body.getAttribute('data-state') === 'exporting') return;
       document.querySelectorAll('[' + attr + ']').forEach(function (b) {
         b.setAttribute('aria-selected', String(b.getAttribute(attr) === val));
       });
       sel[key] = val;
-      if (document.body.getAttribute('data-state') === 'done') {
+      var cur = document.body.getAttribute('data-state');
+      if (cur !== 'failed') {
         document.body.setAttribute('data-state', 'default');
       }
       render();
+      if (count() === 0) {
+        document.body.setAttribute('data-state', 'empty');
+      }
     }
 
     document.querySelectorAll('[data-range]').forEach(function (b) {
@@ -336,7 +410,11 @@
       b.addEventListener('click', function () { pick('data-type', 'type', b.getAttribute('data-type')); });
     });
 
-    btn.addEventListener('click', function () {
+    function startExport() {
+      if (st === 'offline') {
+        window.HC.toast('当前离线，联网后再导出');
+        return;
+      }
       if (btn.disabled || count() === 0) return;
       var total = count();
       var written = 0;
@@ -356,23 +434,42 @@
           btn.classList.remove('is-loading');
           btn.textContent = '导出';
           document.body.setAttribute('data-state', 'done');
-          window.HC.toast('已生成，行数 ' + total);
+          window.HC.toast('已生成，行数 ' + total + ' · 已存到「文件」');
         }
       }, 260);
+    }
+
+    btn.addEventListener('click', startExport);
+    document.getElementById('fx-retry').addEventListener('click', function () {
+      document.body.setAttribute('data-state', 'default');
+      startExport();
+    });
+    document.getElementById('fx-empty-reset').addEventListener('click', function () {
+      pick('data-range', 'range', 'month');
+      pick('data-type', 'type', 'all');
     });
 
     if (st === 'exporting') {
       btn.classList.add('is-loading');
       btn.textContent = '生成中';
       document.getElementById('fx-progress-bar').style.width = '62%';
-    }
-
-    if (st === 'error') {
-      pick('data-range', 'range', 'custom');
-      pick('data-type', 'type', 'in');
+      render();
+    } else if (st === 'empty') {
+      sel.range = 'custom';
+      sel.type = 'in';
+      document.querySelectorAll('[data-range]').forEach(function (b) {
+        b.setAttribute('aria-selected', String(b.getAttribute('data-range') === 'custom'));
+      });
+      document.querySelectorAll('[data-type]').forEach(function (b) {
+        b.setAttribute('aria-selected', String(b.getAttribute('data-type') === 'in'));
+      });
+      render();
+    } else if (st === 'failed') {
+      render();
     } else if (st === 'done') {
       render();
-      document.body.setAttribute('data-state', 'done');
+    } else if (st === 'forbidden' || st === 'loading' || st === 'offline') {
+      render();
     } else {
       render();
     }

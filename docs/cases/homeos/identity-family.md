@@ -18,7 +18,7 @@
   - 家庭创建成功，JWT claims 带 `family_id` 与角色快照（owner）
   - 必须至少启用 1 个面（如 finance），**不存在 0 面家庭**（18.8）
   - 跳过/取消选面 → 不允许完成创建
-- 实现现状（快照）：已实现(HTTP)（`server/services/svc-homeos/internal/handler/auth_test.go:689` 建家与未出生面；`repo/identity_events_test.go:135` 发 family/member.created）
+- 实现现状（快照）：已实现(HTTP)（`server/services/svc-homeos/internal/handler/auth_test.go:689` 建家与未出生面；`repo/identity_events_test.go:135` 发 family/member.created）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## HOM-FAM-002 · 创建家庭时区/币种双字段必填
@@ -40,7 +40,7 @@
   1. 以三态之一打开邀请
   2. 接受
 - 预期结果：成员写入目标家庭，会话上下文切到新家庭；三种形态共用同一入参口径
-- 实现现状（快照）：已实现(HTTP)（`server/services/svc-homeos/internal/handler/auth_test.go:821` 邀请 onboarding 接受全链路）
+- 实现现状（快照）：已实现(HTTP)（`server/services/svc-homeos/internal/handler/auth_test.go:821` 邀请 onboarding 接受全链路）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## HOM-FAM-004 · 多家庭切换（≤5 个）上下文重建
@@ -75,7 +75,7 @@
 - 预期结果：
   - 落审计、`pver+1`、发 `homeos.family.module.updated`
   - 开通**不创建该面任何业务数据**；各服务失效 module 缓存、客户端重建首页矩阵（≤2 秒，19.2#9）
-- 实现现状（快照）：已实现(HTTP)（`handler/faces_test.go:302` 管理员门禁与最后一面下限）
+- 实现现状（快照）：已实现(HTTP)（`handler/faces_test.go:302` 管理员门禁与最后一面下限）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## HOM-FAM-007 · 停用面：入口消失但数据保留并继续参与统计
@@ -88,7 +88,7 @@
 - 预期结果：
   - 五处**同时**消失该面入口
   - 其历史数据仍出现在统计与归集里（停用不删数据、不改变统计口径）
-- 实现现状（快照）：已实现(HTTP)（`handler/faces_test.go:166` `family/modules` 与已挂载面逐角色相等）
+- 实现现状（快照）：已实现(HTTP)（`handler/faces_test.go:166` `family/modules` 与已挂载面逐角色相等）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## HOM-FAM-008 · 停用最后一个已启用面被拒
@@ -97,7 +97,7 @@
 - 前置条件：家庭仅启用 1 个面
 - 步骤：尝试停用该唯一面
 - 预期结果：服务端拒绝（业务错误码），家庭始终至少保持 1 个面
-- 实现现状（快照）：已实现(HTTP)（`handler/faces_test.go:302` `LastFaceFloor`）
+- 实现现状（快照）：已实现(HTTP)（`handler/faces_test.go:302` `LastFaceFloor`）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## HOM-FAM-009 · 面配置与目录权威源一致（enabled∧visible）
@@ -108,7 +108,7 @@
   1. 调用 `GET /api/homeos/family/modules`
   2. 比对 `home/summary` 的 `faces[]` 与其余消费位
 - 预期结果：两接口集合逐项一致；owner 视角 `visible` 恒真；访客不出现无 `scope=module` 权限的面
-- 实现现状（快照）：已实现(HTTP)（`handler/faces_test.go:166`；另 `server/packages/registry/registry_prd_test.go` 目录一致性）
+- 实现现状（快照）：已实现(HTTP)（`handler/faces_test.go:166`；另 `server/packages/registry/registry_prd_test.go` 目录一致性）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## HOM-FAM-010 · 解散家庭（二次确认 + 30 天冷存）

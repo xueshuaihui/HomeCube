@@ -9,9 +9,11 @@
 <script src="shared/app.js" defer></script>
 <style>
   .fx-content { padding-bottom: 24px; }
+  .fx-required { margin-left: 4px; font-size: var(--fs-11); font-weight: 600; color: var(--text-3); }
 
   .fx-cancel {
     height: 36px; padding: 0 2px;
+    display: inline-flex; align-items: center;
     border: 0; background: none;
     font-family: inherit; font-size: var(--fs-15); font-weight: 500;
     color: var(--text-2); cursor: pointer;
@@ -20,7 +22,7 @@
 
   .fx-banner {
     display: none; align-items: flex-start; gap: 8px;
-    margin: 6px 0 12px; padding: 10px 12px;
+    margin: 4px 0 14px; padding: 10px 12px;
     border-radius: var(--radius-md);
     font-size: var(--fs-12); line-height: var(--lh-normal);
   }
@@ -53,14 +55,14 @@
 
   .fx-pick {
     display: flex; align-items: center; gap: 10px;
-    width: 100%; padding: 12px 14px;
+    width: 100%; padding: 12px 14px; min-height: 56px;
     border-radius: var(--radius-md);
     border: 1px solid var(--border);
     background: var(--surface);
     font-family: inherit; text-align: left; color: var(--text);
     cursor: pointer;
   }
-  .fx-pick:hover { background: var(--surface-2); }
+  .fx-pick:hover { border-color: var(--border-strong); }
   .fx-pick-ic {
     width: 30px; height: 30px; flex: none;
     display: inline-flex; align-items: center; justify-content: center;
@@ -85,17 +87,39 @@
   .fx-repeat-seg { width: 100%; }
   .fx-repeat-seg button { flex: 1; }
   .fx-repeat-body {
-    display: none;
+    display: block;
     margin-top: 8px; padding: 10px 12px;
     border-radius: var(--radius-md);
     background: var(--surface-2);
     font-size: var(--fs-12); color: var(--text-2); line-height: var(--lh-normal);
   }
-  body[data-state="repeat"] .fx-repeat-body,
-  .segmented.is-month + .fx-repeat-body { display: block; }
   .fx-repeat-body b { color: var(--text); }
+  .fx-repeat-once { display: none; }
+  .fx-repeat-month { display: block; }
+  body[data-state="once"] .fx-repeat-month { display: none; }
+  body[data-state="once"] .fx-repeat-once { display: block; }
 
   .fx-chip-row { padding: 2px 0 0; }
+  .fx-chip-help { margin-top: 6px; }
+
+  .fx-switch-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .fx-switch-text { flex: 1; min-width: 0; }
+  .fx-switch-k { display: block; font-size: var(--fs-15); font-weight: 600; }
+  .fx-switch-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); line-height: var(--lh-normal); }
+  .fx-autopay-note {
+    display: flex; align-items: flex-start; gap: 8px;
+    margin-top: 8px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2); color: var(--text-2);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-autopay-note svg { flex: none; margin-top: 1px; color: var(--text-3); }
 
   .fx-foot-note {
     margin-top: 4px; padding: 12px 14px;
@@ -113,9 +137,20 @@
     background: var(--surface);
     border-top: 1px solid var(--border);
   }
+  body[data-state="fail"] .fx-foot { display: none; }
+
+  .fx-save-busy { display: none; }
+  body[data-state="loading"] .fx-save-idle { display: none; }
+  body[data-state="loading"] .fx-save-busy { display: inline; }
+  body[data-state="loading"] #fx-save { opacity: .7; }
+
+  .fx-error { display: none; }
+  body[data-state="fail"] .fx-error { display: block; }
+  body[data-state="fail"] .fx-form,
+  body[data-state="fail"] .fx-foot-note { display: none; }
 </style>
 </head>
-<body data-screen="F27 新建账单" data-states="default,repeat,error">
+<body data-screen="F27 新建账单" data-states="default,once,error,fail,loading,offline">
 <div class="harness"></div>
 
 <div class="phone">
@@ -132,7 +167,7 @@
     <div class="nav-left">
       <button class="fx-cancel" type="button" data-go="finance-bill.html"
         data-hot="①" data-hot-name="取消" data-hot-pos="outer-top-left"
-        data-hot-label="回账单列表；未保存内容直接丢弃，不落草稿、不入离线队列，也不提交到期注册">取消</button>
+        data-hot-label="回账单列表；未保存内容直接丢弃，不落草稿、不入离线队列，也不会注册任何到期项">取消</button>
     </div>
     <div class="nav-title">新建账单</div>
     <div class="nav-right"></div>
@@ -140,132 +175,167 @@
 
   <div class="offline-bar">
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
-    当前离线 · 保存后先排队，联网再提交注册
+    当前离线 · 先存本机，联网后再提交到期注册
   </div>
 
   <div class="content bottom-space fx-content">
     <div class="fx-banner fx-banner-error">
       <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
       <div>
-        <b>还有 2 项需要补全</b>
-        账单名称与金额必填；金额需大于 0，到期日不能早于今天。
+        <b>还有 1 项需要补全</b>
+        名称与金额必填，金额要大于 0；到期日不能早于今天。
       </div>
     </div>
 
-    <div class="field">
-      <label class="field-label" for="fx-name">名称</label>
-      <input class="input fx-name-input" id="fx-name" type="text" maxlength="30"
-        placeholder="例如：物业费、房贷、车险续费" value="物业费" autocomplete="off"
-        data-hot="②" data-hot-name="名称" data-hot-pos="outer-top-right"
-        data-hot-label="必填、上限 30 字；同名账单允许存在（用账户与到期日区分），只做首尾空白裁剪；为空时红框 + 行内错误，不弹全局提示">
-      <div class="field-error fx-name-err" role="alert">
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
-        请填写账单名称
+    <div class="fx-form">
+      <div class="field">
+        <label class="field-label" for="fx-name">名称<span class="fx-required">必填</span></label>
+        <input class="input fx-name-input" id="fx-name" type="text" maxlength="30"
+          placeholder="例如：物业费、电费、车险续费" value="物业费" autocomplete="off"
+          data-hot="②" data-hot-name="名称" data-hot-pos="outer-top-right"
+          data-hot-label="必填、上限 30 字；同名账单允许存在（用到期日与账户区分），只做首尾空白裁剪；为空时红框 + 行内错误，不弹全局层">
+        <div class="field-error fx-name-err" role="alert">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
+          请填写账单名称
+        </div>
+        <div class="help">名称会出现在账单列表、详情，以及日历到期提醒的标题里。</div>
       </div>
-      <div class="help">名称会出现在账单列表、详情与日历提醒的标题里。</div>
+
+      <div class="field">
+        <label class="field-label" for="fx-amount">金额<span class="fx-required">必填</span></label>
+        <div class="fx-amt">
+          <span class="fx-amt-cur">¥</span>
+          <input class="input fx-amt-input" id="fx-amount" type="text" inputmode="decimal"
+            value="680.00" autocomplete="off"
+            data-hot="③" data-hot-name="金额" data-hot-pos="outer-top-right"
+            data-hot-label="按家庭币种展示、以「分」存储；账单按支出记账，列表与详情显示 -¥680.00；必须大于 0、两位小数以内，不做四舍五入">
+        </div>
+        <div class="field-error fx-amt-err" role="alert">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
+          请填写大于 0 的金额
+        </div>
+        <div class="help">标记已缴时按这个金额生成一笔支出流水，记进所选账户。</div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">到期日</span>
+        <button class="fx-pick" type="button" id="fx-due"
+          data-hot="④" data-hot-name="到期日" data-hot-pos="outer-top-right"
+          data-hot-label="只选自然日，不选钟点；保存时按这个日子提交到期注册。早于今天直接拒绝并说明原因，不静默改成明天">
+          <span class="fx-pick-ic">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="14" height="13" rx="2.5"/><path d="M3 8.5h14"/><path d="M7 3v3M13 3v3"/></svg>
+          </span>
+          <span class="fx-pick-body">
+            <span class="fx-pick-v num">2026 年 10 月 10 日 · 周六</span>
+            <span class="fx-pick-sub">只到天，不设钟点 · 保存后注册到到期中心</span>
+          </span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+        <div class="fx-review">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7.5"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
+          <span><b>保存后会把这天注册到家庭日历的到期中心，日历里可能稍晚出现。</b>账单先存到财务面，日历收到注册后才显示，本页不承诺立刻上日历。</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">来源账户</span>
+        <button class="fx-pick" type="button" data-sheet-open="sheet-acc"
+          data-hot="⑤" data-hot-name="来源账户" data-hot-pos="outer-top-right"
+          data-hot-label="只列未归档账户；默认取账户与设置里的默认账户；归档账户不出现在选择器里，它过去的流水仍计入报表">
+          <span class="fx-pick-ic">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="15" height="10" rx="2.5"/><path d="M2.5 9h15"/><path d="M6 13h3"/></svg>
+          </span>
+          <span class="fx-pick-body">
+            <span class="fx-pick-v" id="fx-acc-v">招商银行储蓄卡</span>
+            <span class="fx-pick-sub" id="fx-acc-sub">储蓄卡 · 当前余额 ¥32,480.00 · 默认账户</span>
+          </span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
+      </div>
+
+      <div class="field">
+        <span class="field-label">是否重复</span>
+        <div class="segmented fx-repeat-seg" id="fx-repeat" role="tablist"
+          data-hot="⑥" data-hot-name="重复" data-hot-pos="outer-top-right"
+          data-hot-label="一次性 / 每月二选一，默认每月；选每月就地展开周期说明：按同一天逐期生成待缴，每期各自注册到期，不是一条无限重复的提醒">
+          <button type="button" role="tab" aria-selected="false" data-repeat="once">一次性</button>
+          <button type="button" role="tab" aria-selected="true" data-repeat="month">每月</button>
+        </div>
+        <div class="fx-repeat-body">
+          <span class="fx-repeat-month"><b>每月 10 日到期 · 下一期 11 月 10 日</b><br>
+          每期缴完自动生成下一期待缴，每期各自注册到到期中心；不自动扣款，仍需手动标记已缴。</span>
+          <span class="fx-repeat-once"><b>一次性账单 · 到期 10 月 10 日</b><br>
+          缴完就结束，不再生成下一期；保存后同样注册到到期中心。</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">提醒</span>
+        <div class="chip-row fx-chip-row" id="fx-remind"
+          data-hot="⑦" data-hot-name="提醒提前量" data-hot-pos="outer-top-right"
+          data-hot-label="只有「当天」「提前 3 天」两档，可多选、默认都选；只按天，不设小时或分钟；触发与投递交给日历面与家庭消息，财务面不自建定时器">
+          <button class="chip" type="button" aria-pressed="true" data-days="0">当天</button>
+          <button class="chip" type="button" aria-pressed="true" data-days="3">提前 3 天</button>
+        </div>
+        <div class="help fx-chip-help">可多选，都选就各提醒一次；只按天提醒，不设具体钟点。</div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">自动扣款</span>
+        <div class="fx-switch-row"
+          data-hot="⑧" data-hot-name="自动扣款标记" data-hot-pos="outer-bottom-right"
+          data-hot-label="默认关；打开只在账单上留一个「自动扣款」标记，供自己和家人辨认，不接银行或支付通道、不会自动扣钱，到期仍要手动标记已缴">
+          <span class="fx-switch-text">
+            <span class="fx-switch-k">这笔是自动扣款</span>
+            <span class="fx-switch-sub">只是账单上的标记，家立方不会替你扣钱</span>
+          </span>
+          <label class="switch" aria-label="是否标记为自动扣款">
+            <input type="checkbox" id="fx-autopay">
+            <span class="track"></span><span class="thumb"></span>
+          </label>
+        </div>
+        <div class="fx-autopay-note" id="fx-autopay-note">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
+          <span>打开后只是提醒自己和家人「这笔钱银行会自己扣」；家立方不接任何支付通道，到期仍会提醒你手动标记已缴。</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="fx-note">备注</label>
+        <textarea class="textarea" id="fx-note" maxlength="120" rows="3"
+          placeholder="可选：扣款渠道、账单期或注意事项">线上缴到物业公众号，缴完把回执拍照存附件。</textarea>
+        <div class="help">备注只在本家庭成员内可见，也会显示在账单详情里。</div>
+      </div>
     </div>
 
-    <div class="field">
-      <label class="field-label" for="fx-amount">金额</label>
-      <div class="fx-amt">
-        <span class="fx-amt-cur">¥</span>
-        <input class="input fx-amt-input" id="fx-amount" type="text" inputmode="decimal"
-          value="380.00" autocomplete="off"
-          data-hot="③" data-hot-name="金额" data-hot-pos="outer-top-right"
-          data-hot-label="以「分」存储、按家庭币种展示；保存账单按支出记账，列表显示为 -¥380.00；必须大于 0，两位小数以内，不做四舍五入">
-      </div>
-      <div class="field-error fx-amt-err" role="alert">
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
-        请填写大于 0 的金额
-      </div>
-      <div class="help">缴纳时会按这个金额生成一笔支出流水，写进所选账户。</div>
+    <div class="fx-foot-note">
+      <b>保存后只承诺「已提交到期注册」</b>
+      日历里可能稍晚出现：账单先存到财务面，日历收到注册后才出现在到期中心。提醒只按天（当天 / 提前 3 天），不设钟点；超过 5 分钟没出现，可在账单详情里重新提交。
     </div>
 
-    <div class="field">
-      <span class="field-label">到期日</span>
-      <button class="fx-pick" type="button" id="fx-due"
-        data-hot="④" data-hot-name="到期日" data-hot-pos="outer-top-right"
-        data-hot-label="P1 只选自然日，时刻固定 20:00、按家庭时区；保存时写入 due_at 并提交 finance.due.registered。到期日早于今天直接拒绝并说明原因，不静默改成明天">
-        <span class="fx-pick-ic">
-          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="14" height="13" rx="2.5"/><path d="M3 8.5h14"/><path d="M7 3v3M13 3v3"/></svg>
-        </span>
-        <span class="fx-pick-body">
-          <span class="fx-pick-v num" id="fx-due-v">2026 年 10 月 31 日 · 周六</span>
-          <span class="fx-pick-sub" id="fx-due-sub">到期当天 20:00 · 保存后提交到期注册</span>
-        </span>
-        <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
-      </button>
-      <div class="fx-review">
-        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7.5"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
-        <span><b>保存后会提交到期注册，日历显示可能稍晚。</b>账单先落财务面，日历面消费注册后才出现在家庭日历，本页不承诺即时上日历。</span>
+    <div class="fx-error">
+      <div class="state" style="padding-top:26px">
+        <div class="state-icon">
+          <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="16" cy="16" r="12"/><path d="M11 16h10M16 11v10"/></svg>
+        </div>
+        <div class="state-title">没能保存这笔账单</div>
+        <div class="state-desc">网络或财务服务没响应。你填的内容都还在这一页，也没有生成任何流水或到期项；重试只重发这一次保存，不会建出两条账单。</div>
+        <div class="state-code">HC-5043</div>
+        <button class="btn btn-secondary" type="button" id="fx-retry"
+          data-hot="⑩" data-hot-name="失败重试" data-hot-pos="top-right"
+          data-hot-label="只重发这一次保存，不清空已填内容；成功回账单列表，再失败停留本页并保留原错误码；重试不会重复建账、不会重复注册到期">
+          重试保存</button>
+        <button class="btn btn-secondary btn-block" type="button" data-go="finance-bill.html" style="margin-top:8px">先回账单列表</button>
       </div>
-    </div>
-
-    <div class="field">
-      <span class="field-label">来源账户</span>
-      <button class="fx-pick" type="button" data-sheet-open="sheet-acc"
-        data-hot="⑤" data-hot-name="来源账户" data-hot-pos="outer-top-right"
-        data-hot-label="只列未归档账户；选定后缴纳时从该账户生成流水。默认值为记账默认账户；归档账户不出现在选择器里，历史流水不受影响">
-        <span class="fx-pick-ic">
-          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="15" height="10" rx="2.5"/><path d="M2.5 9h15"/><path d="M6 13h3"/></svg>
-        </span>
-        <span class="fx-pick-body">
-          <span class="fx-pick-v" id="fx-acc-v">招商银行储蓄卡</span>
-          <span class="fx-pick-sub" id="fx-acc-sub">储蓄卡 · 当前余额 ¥126,400.00</span>
-        </span>
-        <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
-      </button>
-    </div>
-
-    <div class="field">
-      <span class="field-label">是否重复</span>
-      <div class="segmented fx-repeat-seg" id="fx-repeat"
-        data-hot="⑥" data-hot-name="重复" data-hot-pos="outer-top-right"
-        data-hot-label="一次性 / 每月二选一；选每月展开周期说明：按同一到期日逐期生成待缴，每期各自注册到期，不是一条无限重复的提醒">
-        <button type="button" role="tab" aria-selected="true" data-repeat="once">一次性</button>
-        <button type="button" role="tab" aria-selected="false" data-repeat="month">每月</button>
-      </div>
-      <div class="fx-repeat-body" id="fx-repeat-body">
-        <b>每月 31 日到期 · 2 月按当月最后一天</b><br>
-        下一期 11 月 30 日；每期缴纳后自动生成后期待缴，每期单独注册到期。
-      </div>
-      <div class="help">一次性账单缴完即结束；每月账单不会自动扣款，仍需手动确认已缴。</div>
-    </div>
-
-    <div class="field">
-      <span class="field-label">提醒提前量</span>
-      <div class="chip-row fx-chip-row" id="fx-remind"
-        data-hot="⑦" data-hot-name="提醒提前量" data-hot-pos="outer-top-right"
-        data-hot-label="当天 / 提前 1 天 / 提前 3 天 / 提前 7 天四选一，默认提前 3 天；只决定日历提醒的时刻，触发与投递归日历面与家庭消息，本面不自建定时器">
-        <button class="chip" type="button" aria-pressed="false" data-days="0">当天</button>
-        <button class="chip" type="button" aria-pressed="false" data-days="1">提前 1 天</button>
-        <button class="chip" type="button" aria-pressed="true" data-days="3">提前 3 天</button>
-        <button class="chip" type="button" aria-pressed="false" data-days="7">提前 7 天</button>
-      </div>
-      <div class="help">到期当天固定 20:00 再提醒一次；提醒文案由日历面统一生成。</div>
-    </div>
-
-    <div class="field">
-      <label class="field-label" for="fx-note">备注</label>
-      <textarea class="textarea" id="fx-note" maxlength="120" rows="3"
-        placeholder="可选：扣款渠道、账单期或注意事项">10 月起物业费上调 20 元，线上缴到物业公众号。</textarea>
-      <div class="help">备注只在本家庭成员内可见，也会显示在账单详情里。</div>
-    </div>
-
-    <div class="fx-foot-note"
-      data-hot="⑨" data-hot-name="到期注册说明" data-hot-pos="bottom-right"
-      data-hot-label="页面只承诺「已提交到期注册」，不承诺即时上日历；保存成功回账单列表，该条先在待缴分组、注册状态为「已注册 / 尚未注册」以服务端结果为准">
-      <b>保存后会提交到期注册，日历显示可能稍晚</b>
-      账单先保存到财务面；日历面消费注册后才会出现在家庭日历与到期中心。<b>本页不承诺即时上日历</b>
-      超过 5 分钟仍未出现，可在账单详情里重新提交。
     </div>
   </div>
 
   <div class="fx-foot">
     <button class="btn btn-primary btn-block" type="button" id="fx-save"
-      data-hot="⑧" data-hot-name="保存" data-hot-pos="outer-bottom-right"
-      data-hot-label="名称或金额不合法时只标红对应字段并给行内错误，不弹全局层；保存成功回账单列表，并提示「已提交到期注册，日历可能稍晚」">
-      保存账单
+      data-hot="⑨" data-hot-name="保存" data-hot-pos="outer-bottom-right"
+      data-hot-label="先校验名称与金额，不合法只标红对应字段并给行内错误，不弹全局层；通过后按钮转「保存中…」防连点；成功回账单列表并提示「已提交到期注册，日历可能稍晚」">
+      <span class="fx-save-idle">保存账单</span>
+      <span class="fx-save-busy">保存中…</span>
     </button>
   </div>
 
@@ -274,10 +344,10 @@
     <div class="sheet">
       <div class="sheet-grabber"></div>
       <h3>选择来源账户</h3>
-      <p class="sheet-sub">只列未归档账户；归档账户不出现在这里，但它过去的流水仍计入报表与净资产。</p>
+      <p class="sheet-sub">只列未归档账户；归档账户不在这里，但它过去的流水仍计入报表与净资产。</p>
       <div class="list" style="margin-top:16px">
-        <button class="list-item" type="button" data-acc="招商银行储蓄卡" data-acc-sub="储蓄卡 · 当前余额 ¥126,400.00" data-sheet-close>
-          <span class="li-text">招商银行储蓄卡<span class="li-sub">记账默认账户 · 余额 ¥126,400.00</span></span>
+        <button class="list-item" type="button" data-acc="招商银行储蓄卡" data-acc-sub="储蓄卡 · 当前余额 ¥32,480.00 · 默认账户" data-sheet-close>
+          <span class="li-text">招商银行储蓄卡<span class="li-sub">默认账户 · 余额 ¥32,480.00</span></span>
         </button>
         <button class="list-item" type="button" data-acc="支付宝" data-acc-sub="其他 · 当前余额 ¥8,900.00" data-sheet-close>
           <span class="li-text">支付宝<span class="li-sub">其他 · 余额 ¥8,900.00</span></span>
@@ -298,14 +368,12 @@
 <script>
   var fxState = new URLSearchParams(location.search).get('state') || 'default';
   var repeatBtns = Array.prototype.slice.call(document.querySelectorAll('[data-repeat]'));
-  var repeatBody = document.getElementById('fx-repeat-body');
 
   function syncRepeat(mode) {
     repeatBtns.forEach(function (b) {
       b.setAttribute('aria-selected', String(b.getAttribute('data-repeat') === mode));
     });
-    document.getElementById('fx-repeat').classList.toggle('is-month', mode === 'month');
-    repeatBody.style.display = mode === 'month' ? 'block' : 'none';
+    document.body.setAttribute('data-state', mode === 'once' ? 'once' : 'default');
   }
 
   repeatBtns.forEach(function (b) {
@@ -313,12 +381,16 @@
       var mode = b.getAttribute('data-repeat');
       syncRepeat(mode);
       window.HC.toast(mode === 'month'
-        ? '已改为每月：每期单独生成待缴与到期注册'
+        ? '已改为每月：每期单独生成待缴并各自注册到期'
         : '已改为一次性：只生成这一期待缴');
     });
   });
 
-  syncRepeat(fxState === 'repeat' ? 'month' : 'once');
+  if (fxState === 'once') {
+    repeatBtns.forEach(function (b) {
+      b.setAttribute('aria-selected', String(b.getAttribute('data-repeat') === 'once'));
+    });
+  }
 
   if (fxState === 'error') {
     document.getElementById('fx-name').value = '';
@@ -338,19 +410,31 @@
   var chips = Array.prototype.slice.call(document.querySelectorAll('#fx-remind .chip'));
   chips.forEach(function (c) {
     c.addEventListener('click', function () {
-      chips.forEach(function (x) { x.setAttribute('aria-pressed', String(x === c)); });
-      window.HC.toast(c.getAttribute('data-days') === '0'
-        ? '只在到期当天 20:00 提醒'
-        : '提前 ' + c.getAttribute('data-days') + ' 天与当天各提醒一次');
+      var next = c.getAttribute('aria-pressed') !== 'true';
+      c.setAttribute('aria-pressed', String(next));
+      var picked = chips.filter(function (x) { return x.getAttribute('aria-pressed') === 'true'; });
+      if (!picked.length) {
+        c.setAttribute('aria-pressed', 'true');
+        window.HC.toast('至少留一档提醒：当天或提前 3 天');
+        return;
+      }
+      window.HC.toast(picked.length === 2
+        ? '当天与提前 3 天各提醒一次'
+        : (picked[0].getAttribute('data-days') === '0' ? '只在到期当天提醒' : '只在提前 3 天提醒一次'));
     });
   });
 
   document.getElementById('fx-due').addEventListener('click', function () {
-    window.HC.toast('日期选择用系统日历面板；P1 只选自然日，时刻固定 20:00');
+    window.HC.toast('到期日只选到天；系统日期面板按天选择，不设钟点');
   });
 
   document.getElementById('fx-name').addEventListener('input', function () {
     if (this.value.trim()) this.classList.remove('is-error');
+  });
+
+  document.getElementById('fx-retry').addEventListener('click', function () {
+    document.body.setAttribute('data-state', 'default');
+    window.HC.toast('正在重新提交这次保存（演示）');
   });
 
   document.getElementById('fx-save').addEventListener('click', function () {
@@ -358,11 +442,12 @@
     var amount = document.getElementById('fx-amount');
     if (!name.value.trim() || !amount.value.trim() || Number(amount.value) <= 0) {
       name.classList.toggle('is-error', !name.value.trim());
-      amount.classList.add('is-error');
+      amount.classList.toggle('is-error', !amount.value.trim() || Number(amount.value) <= 0);
       document.body.setAttribute('data-state', 'error');
-      name.focus();
+      (name.value.trim() ? amount : name).focus();
       return;
     }
+    document.body.setAttribute('data-state', 'loading');
     window.HC.toast('账单已保存，已提交到期注册；日历可能稍晚');
     setTimeout(function () { location.href = 'finance-bill.html'; }, 1100);
   });

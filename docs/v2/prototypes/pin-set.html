@@ -31,9 +31,22 @@
   .only-locked { display: none; }
   body[data-state="locked"] .only-locked { display: block; }
   body[data-state="locked"] .pin-illust { display: none; }
+  /* 忘记口令：手机号重验（本机可达的重置入口）与重验不可用的说明态 */
+  .pin-flow { display: flex; flex-direction: column; flex: 1; }
+  body[data-state="reset"] .pin-flow, body[data-state="reset_offline"] .pin-flow { display: none; }
+  .reset-box { display: none; flex-direction: column; padding: 0 20px 24px; }
+  .reset-offline { display: none; flex-direction: column; padding: 0 20px 24px; }
+  body[data-state="reset"] .reset-box { display: flex; }
+  body[data-state="reset_offline"] .reset-offline { display: flex; }
+  .reset-box h2, .reset-offline h2 { font-size: var(--fs-20); font-weight: 700; text-align: center; margin-top: 12px; }
+  .reset-box p.lead-p, .reset-offline p.lead-p { margin: 10px 0 18px; font-size: var(--fs-13); color: var(--text-2); line-height: var(--lh-normal); text-align: center; }
+  .reset-warn { padding: 12px 14px; border-radius: var(--radius-md); background: var(--surface-2);
+    border: 1px solid var(--border); font-size: var(--fs-12); color: var(--text-2); line-height: 1.7; }
+  .reset-warn b { color: var(--text); }
+  .reset-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
 </style>
 </head>
-<body data-screen="04 设备锁 PIN" data-tab="" data-states="set,confirm,mismatch,locked">
+<body data-screen="04 设备锁 PIN" data-tab="" data-states="set,confirm,mismatch,locked,reset,reset_offline">
 <div class="harness"></div>
 
 <div class="phone">
@@ -57,6 +70,7 @@
   </div>
 
   <div class="content">
+    <div class="pin-flow">
     <div class="pin-head">
       <h2 class="only-set">设置 6 位设备锁</h2>
       <h2 class="only-confirm">再次输入确认</h2>
@@ -104,7 +118,47 @@
     </div>
 
     <div class="pin-foot">
-      <button type="button" data-hot="④" data-hot-name="忘记口令" data-hot-pos="top-right" data-hot-label="走手机号重新验证后重置 PIN；校验通过前不解除本机锁定" data-toast="忘记口令：需手机号验证码重新验证后重置">忘记口令？</button>
+      <button type="button" data-hot="④" data-hot-name="忘记口令" data-hot-pos="top-right" data-hot-label="点击进入本页的手机号重验重置流程；锁定态下该入口仍可点、不受退避计时限制；重验接口未就绪时落说明态并给管理员协助兜底" data-go="pin-set.html?state=reset">忘记口令？</button>
+    </div>
+    </div>
+
+    <!-- 忘记口令 · 手机号重验 -->
+    <div class="reset-box" data-hot="⑤" data-hot-name="手机号重验" data-hot-pos="top-right" data-hot-label="只向本账号已验证手机号（掩码显示、不可改）发验证码；校验通过即清除本机 PIN 散列与加密缓存、未提交草稿并明示，然后进入「重设 6 位设备锁」；连续 3 次失败转说明态">
+      <h2>重设设备锁</h2>
+      <p class="lead-p">口令只存在这台手机上，只能重置到你自己的手机号。</p>
+      <div class="field">
+        <span class="field-label">重置到</span>
+        <input class="input num" type="text" value="138****8000" readonly aria-readonly="true">
+        <div class="help">这个号码是你登录用的手机号，不能改成别人的号码</div>
+      </div>
+      <div class="field">
+        <label class="field-label" for="reset-code">验证码</label>
+        <div class="input-group">
+          <input class="input num" id="reset-code" type="text" inputmode="numeric" maxlength="6" placeholder="6 位数字">
+          <button class="btn btn-secondary code-btn" type="button" data-countdown="60">获取验证码</button>
+        </div>
+      </div>
+      <div class="reset-warn"><b>重设会清除这台手机上没来得及保存的内容</b><br>已同步到家庭的内容不受影响。</div>
+      <div class="reset-actions">
+        <button class="btn btn-primary btn-block" type="button" data-go="pin-set.html">验证并重设</button>
+        <button class="btn btn-secondary btn-block" type="button" data-go="pin-set.html?state=locked">先返回，稍后再试</button>
+      </div>
+    </div>
+
+    <!-- 重验暂不可用 · 说明态 -->
+    <div class="reset-offline">
+      <div class="state is-inline" style="padding-top:24px">
+        <div class="state-icon">
+          <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="16" cy="16" r="12"/><path d="M16 9v8M16 21.5v.1"/></svg>
+        </div>
+        <div class="state-title">这台手机暂时不能重设口令</div>
+        <div class="state-desc">验证码服务当前不可用。这台手机上的私密内容会保持不可读，家里的其他数据不受影响。</div>
+        <div class="state-code">HC-4308</div>
+        <div class="reset-actions" style="width:100%">
+          <button class="btn btn-primary btn-block" type="button" data-go="pin-set.html?state=reset">稍后再试</button>
+          <button class="btn btn-secondary btn-block" type="button" data-hot="⑥" data-hot-name="找家庭管理员协助" data-hot-pos="top-right" data-hot-label="PIN 不出端：任何人都不掌握他人口令，也不存在远程解锁；管理员只能在这台手机上协助完成上面的重置" data-toast="管理员不能远程替你重置。可以请家庭管理员在这台手机上帮你完成上面的重置步骤。">找家庭管理员协助</button>
+        </div>
+      </div>
     </div>
   </div>
 

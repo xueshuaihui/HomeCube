@@ -105,8 +105,8 @@
       <div class="mark">
         <svg width="24" height="24" viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M17 4 29 11v13l-12 7-12-7V11z"/><path d="M17 4v13l12 7" opacity=".55"/><path d="M17 17 5 11" opacity=".55"/></svg>
       </div>
-      <h1>P1 原型 · 全量 73 屏</h1>
-      <div class="sub">HomeOS 主包 22 屏 + 日历面 9 屏 + 财务面 42 屏（M1 29 / M2 13）。点开任意一屏可真实点击跳转、切换状态与查看交互热区；每屏配一张屏卡说明交互与异常。</div>
+      <h1>P1 原型 · 全量 75 屏</h1>
+      <div class="sub">HomeOS 主包 22 屏 + 日历面 11 屏 + 财务面 42 屏（M1 29 / M2 13）。点开任意一屏可真实点击跳转、切换状态与查看交互热区；每屏配一张屏卡说明交互与异常。</div>
     </div>
     <div class="actions">
       <div class="theme-switch" data-theme-switch>
@@ -394,6 +394,9 @@
           <a href="../screens/homeos/27-settings.md">屏卡</a>
           <a href="settings.html?state=dark">dark</a>
           <a href="settings.html?state=readonly">readonly</a>
+          <a href="settings.html?state=minor">minor</a>
+          <a href="settings.html?state=format">format</a>
+          <a href="settings.html?state=dnd">dnd</a>
           <a href="settings.html?state=loading">加载</a></div>
       </div>
     </div>
@@ -456,7 +459,7 @@
     </div>
   </div>
 
-  <h2 class="block-title">日历面 9 屏 <span class="hint">定版 ㉚：日历与财务同级的业务面 · 路由域 calendar/* · 到期中心 2 + 待办 4 + 提醒 3</span></h2>
+  <h2 class="block-title">日历面 11 屏 <span class="hint">定版 ㉚ + ㉛ 补页：日历与财务同级的业务面 · 路由域 calendar/* · 到期中心 2 + 日程新建/编辑 2 + 待办 4 + 提醒 3</span></h2>
   <div class="grid">
     <div class="screen-card">
       <div class="thumb"><iframe src="calendar.html?embed=1" title="到期中心预览" loading="lazy"></iframe></div>
@@ -582,6 +585,40 @@
           <a href="reminder-edit.html?state=paused">paused</a>
           <a href="reminder-edit.html?state=conflict">冲突</a>
           <a href="reminder-edit.html?state=deleted">deleted</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="calendar-create.html?embed=1" title="新建日程预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">19</div>
+        <div class="name">新建日程</div>
+        <div class="route">calendar/calendar/create</div>
+        <div class="links"><a href="calendar-create.html">打开原型</a>
+          <a href="../screens/calendar/19-calendar-create.md">屏卡</a>
+          <a href="calendar-create.html?state=submitting">提交中</a>
+          <a href="calendar-create.html?state=invalid">校验失败</a>
+          <a href="calendar-create.html?state=fail">失败</a>
+          <a href="calendar-create.html?state=offline">离线</a>
+          <a href="calendar-create.html?state=denied">无权限</a></div>
+      </div>
+    </div>
+
+    <div class="screen-card">
+      <div class="thumb"><iframe src="calendar-edit.html?embed=1" title="编辑日程预览" loading="lazy"></iframe></div>
+      <div class="meta">
+        <div class="no">20</div>
+        <div class="name">编辑日程</div>
+        <div class="route">calendar/calendar/edit</div>
+        <div class="links"><a href="calendar-edit.html">打开原型</a>
+          <a href="../screens/calendar/20-calendar-edit.md">屏卡</a>
+          <a href="calendar-edit.html?state=loading">加载</a>
+          <a href="calendar-edit.html?state=conflict">冲突</a>
+          <a href="calendar-edit.html?state=readonly">注册型只读</a>
+          <a href="calendar-edit.html?state=fail">失败</a>
+          <a href="calendar-edit.html?state=offline">离线</a>
+          <a href="calendar-edit.html?state=deleted">已删除</a>
+          <a href="calendar-edit.html?state=denied">无权限</a></div>
       </div>
     </div>
   </div>

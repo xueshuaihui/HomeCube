@@ -33,9 +33,20 @@
   .link-btn { border: 0; background: transparent; color: var(--text-2); font-family: inherit; font-size: var(--fs-12); cursor: pointer; }
   .foot { margin-top: auto; padding-top: 28px; text-align: center; font-size: var(--fs-11); color: var(--text-3); line-height: 1.7; }
   .help-voice { border: 0; background: none; padding: 0; font: inherit; color: var(--brand-text); font-weight: 600; cursor: pointer; }
+  /* 未登录深链挂起的邀请上下文（登录后回跳 03） */
+  .hang { margin: 0 0 16px; padding: 12px 14px; border-radius: var(--radius-md);
+    background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-1);
+    display: flex; align-items: center; gap: 10px; }
+  .hang .hang-icon { width: 28px; height: 28px; border-radius: 9px; flex: none;
+    background: var(--brand-soft); color: var(--brand-text); display: flex; align-items: center; justify-content: center; }
+  .hang .hang-title { font-size: var(--fs-13); font-weight: 700; }
+  .hang .hang-sub { margin-top: 2px; font-size: var(--fs-11); color: var(--text-2); }
+  .lbl-join { display: none; }
+  body[data-state="invite"] .lbl-join { display: inline; }
+  body[data-state="invite"] .lbl-normal { display: none; }
 </style>
 </head>
-<body data-screen="01 登录" data-tab="" data-states="default,loading,error">
+<body data-screen="01 登录" data-tab="" data-states="default,loading,error,invite">
 <div class="harness"></div>
 
 <div class="phone">
@@ -65,6 +76,17 @@
       </div>
 
       <form onsubmit="return false">
+        <div class="hang" data-state-block="invite" data-hot="⑥" data-hot-name="邀请待回跳提示条" data-hot-pos="top-right"
+          data-hot-label="未登录时经邀请链接进来：本机挂起 {邀请码, 家庭名, 邀请过期时间, 来源深链}，有效期同邀请自身 7 天、只消费一次；登录成功后回跳 family-join.html?state=deeplink，回跳失败一律落加入家庭页，不落创建家庭页">
+          <span class="hang-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 6.5h14v9H3z"/><path d="M3 7l7 5 7-5"/></svg>
+          </span>
+          <div>
+            <div class="hang-title">家人邀请你加入 · 登录后继续</div>
+            <div class="hang-sub">三口之家 · 邀请剩余 6 天</div>
+          </div>
+        </div>
+
         <div class="field" data-hot="①" data-hot-name="手机号" data-hot-pos="top-right" data-hot-label="输入 11 位手机号；连续输错或频繁获取验证码时，服务端按限流返回 429，页内提示稍后再试">
           <label class="field-label" for="phone">手机号</label>
           <input class="input num" id="phone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="请输入手机号" value="138 0013 8000">
@@ -83,7 +105,7 @@
           <div class="help">未注册的手机号将自动创建账号；60 秒内未收到短信可 <button class="help-voice" type="button" data-hot="⑤" data-hot-name="语音验证码" data-hot-pos="top-right" data-hot-label="60 秒内未收到短信时可切换为语音播报；防刷口径与短信一致，失败页内提示">改用语音验证码</button></div>
         </div>
 
-        <button class="btn btn-primary btn-block js-login" type="button" data-hot="③" data-hot-name="登录" data-hot-pos="top-right" data-hot-label="点击进入加载态，成功后跳首页；失败停留在本页并给出可读原因，不跳转">登录</button>
+        <button class="btn btn-primary btn-block js-login" type="button" data-hot="③" data-hot-name="登录" data-hot-pos="top-right" data-hot-label="点击进入加载态；存在未消费的邀请上下文时优先回跳加入家庭页，否则按服务端返回的家庭列表分流：有家庭 → 首页、无家庭 → 创建家庭；失败停留在本页并给出可读原因，不跳转"><span class="lbl-normal">登录</span><span class="lbl-join">登录并继续加入</span></button>
 
         <div class="agree">
           <label class="checkbox" data-hot="④" data-hot-name="协议勾选" data-hot-pos="top-right" data-hot-label="未勾选时点击登录被拦截并提示；勾选状态在本次启动内保留">
@@ -112,7 +134,10 @@
       window.HC.toast('请先阅读并同意用户协议与隐私政策');
       return;
     }
-    location.href = 'home.html';
+    // 存在未消费的邀请上下文时优先回跳加入家庭页，不按「有没有家庭」二分
+    location.href = window.HC.state === 'invite'
+      ? 'family-join.html?state=deeplink&code=K7M2Q9'
+      : 'home.html';
   });
 </script>
 </body>

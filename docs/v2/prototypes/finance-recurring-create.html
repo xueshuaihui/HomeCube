@@ -51,6 +51,14 @@
   .fx-amt-err { display: none; }
   body[data-state="error"] .fx-amt-err { display: flex; }
   body[data-state="error"] .fx-amt-input.is-error { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
+  body[data-state="offline"] .offline-bar { display: flex; }
+
+  .fx-amt-preview {
+    margin-top: 6px; font-size: var(--fs-12); color: var(--text-2);
+  }
+  .fx-amt-preview .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-weight: 600; }
+  .fx-amt-preview .is-in { color: var(--success); }
+  .fx-amt-preview .is-out { color: var(--danger); }
 
   .fx-pick {
     display: flex; align-items: center; gap: 12px; width: 100%;
@@ -133,7 +141,7 @@
   .fx-sheet-line span { flex: 1; min-width: 0; font-size: var(--fs-14); font-weight: 600; }
 </style>
 </head>
-<body data-screen="F07 新建周期规则" data-states="default,advanced,error,saving">
+<body data-screen="F07 新建周期规则" data-states="default,advanced,error,saving,offline">
 <div class="harness"></div>
 
 <div class="phone">
@@ -174,7 +182,7 @@
       <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.2v4.2l2.6 1.6"/></svg>
       <div>
         <b>正在保存规则</b>
-        规则落库后，到点由财务服务自动入账并计入预算；自动入账带幂等键，重试不会重复记账。
+        规则落库后，到点由财务服务自动入账并计入预算；自动入账只记一笔，重试也不会重复记账。
       </div>
     </div>
 
@@ -191,7 +199,8 @@
           <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
           请填写金额
         </div>
-        <div class="help">金额按家庭币种（CNY）录入；自动入账的流水类型由此处决定。</div>
+        <div class="help">金额按家庭币种（CNY）录入绝对数；支出记为负、收入带「+」，方向由分类决定。</div>
+        <div class="fx-amt-preview">将记为 <span class="num is-out" id="fx-amt-preview">-¥4,200.00</span></div>
       </div>
 
       <div class="field">
@@ -219,8 +228,8 @@
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="15" height="10" rx="2.5"/><path d="M2.5 9h15"/></svg>
           </span>
           <span class="fx-pick-body">
-            <span class="fx-pick-v" id="fx-acc-v">招商银行储蓄卡</span>
-            <span class="fx-pick-sub" id="fx-acc-sub">储蓄卡 · 当前余额 <span class="num">¥126,400.00</span></span>
+            <span class="fx-pick-v" id="fx-acc-v">招商银行</span>
+            <span class="fx-pick-sub" id="fx-acc-sub">储蓄卡 · 当前余额 <span class="num">¥32,480.00</span></span>
           </span>
           <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
         </button>
@@ -235,10 +244,10 @@
           <button type="button" role="tab" aria-selected="true" data-period="month">每月</button>
           <button type="button" role="tab" aria-selected="false" data-period="year">每年</button>
         </div>
-        <button class="fx-day-row" type="button" data-toast="具体日选择随系统日期组件接入；P1 支持每月 1-28 日、每周一至周日、每年固定月日">
+        <button class="fx-day-row" type="button" data-toast="具体日选择随系统日期组件接入；P1 支持每月 1-31 日、每周一至周日、每年固定月日">
           <span>
             <span class="fx-day-v" id="fx-day-v">每月 5 日</span>
-            <span class="fx-pick-sub" id="fx-day-sub">避开 29-31 日，免得小月缺日漏记</span>
+            <span class="fx-pick-sub" id="fx-day-sub">该月没有这一天时，当月不生成，下次到有这一天的月份</span>
           </span>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
         </button>
@@ -340,17 +349,17 @@
       <h3>选择账户</h3>
       <p class="sheet-sub">只列未归档账户；归档账户不出现在这里，它的历史流水仍计入报表与净资产。</p>
       <div class="list" style="margin-top:16px">
-        <button class="list-item" type="button" data-acc="招商银行储蓄卡" data-acc-sub="储蓄卡 · 当前余额 ¥126,400.00" data-sheet-close>
-          <span class="li-text">招商银行储蓄卡<span class="li-sub">默认记账账户</span></span>
+        <button class="list-item" type="button" data-acc="招商银行" data-acc-sub="储蓄卡 · 当前余额 ¥32,480.00" data-sheet-close>
+          <span class="li-text">招商银行<span class="li-sub">默认记账账户</span></span>
         </button>
-        <button class="list-item" type="button" data-acc="支付宝" data-acc-sub="其他 · 当前余额 ¥8,900.00" data-sheet-close>
-          <span class="li-text">支付宝<span class="li-sub">其他 · 当前余额 ¥8,900.00</span></span>
+        <button class="list-item" type="button" data-acc="支付宝" data-acc-sub="其他 · 当前余额 ¥4,210.00" data-sheet-close>
+          <span class="li-text">支付宝<span class="li-sub">其他 · 当前余额 ¥4,210.00</span></span>
         </button>
-        <button class="list-item" type="button" data-acc="微信零钱" data-acc-sub="其他 · 当前余额 ¥2,140.00" data-sheet-close>
-          <span class="li-text">微信零钱<span class="li-sub">其他 · 当前余额 ¥2,140.00</span></span>
+        <button class="list-item" type="button" data-acc="微信" data-acc-sub="其他 · 当前余额 ¥1,268.40" data-sheet-close>
+          <span class="li-text">微信<span class="li-sub">其他 · 当前余额 ¥1,268.40</span></span>
         </button>
-        <button class="list-item" type="button" data-acc="招商银行信用卡" data-acc-sub="信用卡 · 负债账户，已用 ¥3,250.00" data-sheet-close>
-          <span class="li-text">招商银行信用卡<span class="li-sub">信用卡 · 负债账户</span></span>
+        <button class="list-item" type="button" data-acc="现金" data-acc-sub="现金 · 当前余额 ¥860.00" data-sheet-close>
+          <span class="li-text">现金<span class="li-sub">现金 · 当前余额 ¥860.00</span></span>
         </button>
       </div>
       <div class="sheet-actions">
@@ -388,10 +397,38 @@
 <script>
   var fxState = new URLSearchParams(location.search).get('state') || 'default';
   var save = document.getElementById('fx-save');
+  var catValue = document.getElementById('fx-cat-v');
+  var amountInput = document.getElementById('fx-amount');
+  var amountPreview = document.getElementById('fx-amt-preview');
+
+  function trimAmount(v) {
+    var n = String(v || '').replace(/[^0-9.]/g, '');
+    if (!n) return '0.00';
+    var parts = n.split('.');
+    var whole = parts.shift() || '0';
+    var dec = parts.join('').slice(0, 2);
+    whole = whole.replace(/^0+(?=\d)/, '');
+    var grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return grouped + '.' + (dec || '00').padEnd(2, '0');
+  }
+
+  function syncAmountPreview() {
+    var income = catValue.textContent.indexOf('收入') === 0;
+    if (!amountInput.value.trim()) {
+      amountPreview.textContent = '待填写金额';
+      amountPreview.classList.remove('is-in', 'is-out');
+      return;
+    }
+    var value = trimAmount(amountInput.value);
+    amountPreview.textContent = (income ? '+' : '-') + '¥' + value;
+    amountPreview.classList.toggle('is-in', income);
+    amountPreview.classList.toggle('is-out', !income);
+  }
 
   document.querySelectorAll('[data-cat]').forEach(function (b) {
     b.addEventListener('click', function () {
-      document.getElementById('fx-cat-v').textContent = b.getAttribute('data-cat');
+      catValue.textContent = b.getAttribute('data-cat');
+      syncAmountPreview();
       window.HC.toast('分类已改为「' + b.getAttribute('data-cat') + '」');
     });
   });
@@ -416,8 +453,8 @@
 
   var periodMap = {
     week: { v: '每周一', sub: '每周一自动入账，遇节假日不跳' },
-    month: { v: '每月 5 日', sub: '避开 29-31 日，免得小月缺日漏记' },
-    year: { v: '每年 4 月 1 日', sub: '每年同一月日入账，2 月 29 日按 28 日处理' }
+    month: { v: '每月 5 日', sub: '该月没有这一天时，当月不生成，下次到有这一天的月份' },
+    year: { v: '每年 4 月 1 日', sub: '每年同一月日入账；该年没有 2 月 29 日时，当年不生成' }
   };
 
   document.querySelectorAll('[data-period]').forEach(function (b) {
@@ -447,20 +484,23 @@
   }
 
   if (fxState === 'error') {
-    var amt = document.getElementById('fx-amount');
+    var amt = amountInput;
     amt.value = '';
     amt.classList.add('is-error');
     document.getElementById('fx-date-v').textContent = '未选择';
     document.getElementById('fx-date-sub').textContent = '必选：首笔入账日期';
     document.getElementById('fx-date-pick').classList.add('is-error');
     document.getElementById('fx-date-err').classList.add('is-on');
+    amountPreview.textContent = '待填写金额';
+    amountPreview.classList.remove('is-in', 'is-out');
   } else {
     document.getElementById('fx-date-err').classList.remove('is-on');
   }
 
   if (fxState === 'saving') save.classList.add('is-loading');
 
-  document.getElementById('fx-amount').addEventListener('input', function () {
+  amountInput.addEventListener('input', function () {
+    syncAmountPreview();
     if (this.value.trim()) {
       this.classList.remove('is-error');
       if (document.body.getAttribute('data-state') === 'error' && document.getElementById('fx-date-v').textContent !== '未选择') {
@@ -468,6 +508,12 @@
       }
     }
   });
+
+  syncAmountPreview();
+  if (fxState === 'error') {
+    amountPreview.textContent = '待填写金额';
+    amountPreview.classList.remove('is-in', 'is-out');
+  }
 
   save.addEventListener('click', function () {
     if (fxState === 'saving') return;
@@ -479,6 +525,10 @@
       document.body.setAttribute('data-state', 'error');
       document.getElementById('fx-date-err').classList.toggle('is-on', dateMissing);
       amount.focus();
+      return;
+    }
+    if (fxState === 'offline') {
+      window.HC.toast('当前离线，保存已排队（等待联网），联网后再生效');
       return;
     }
     window.HC.toast('规则已保存，下次生效 11 月 5 日');

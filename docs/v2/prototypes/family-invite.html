@@ -95,9 +95,38 @@
   .inv-guard { display: none; }
   body[data-state="noperm"] .inv-real { display: none; }
   body[data-state="noperm"] .inv-guard { display: block; }
+
+  .inv-terminal { display: none; }
+  body[data-state="expired"] .inv-stage,
+  body[data-state="expired"] .inv-live,
+  body[data-state="expired"] .inv-revoke,
+  body[data-state="expired"] .inv-revoke-note,
+  .inv-real.is-terminal .inv-stage,
+  .inv-real.is-terminal .inv-live,
+  .inv-real.is-terminal .inv-revoke,
+  .inv-real.is-terminal .inv-revoke-note { display: none; }
+  body[data-state="expired"] .inv-terminal,
+  .inv-real.is-terminal .inv-terminal { display: block; }
+  .inv-term-badge {
+    display: inline-flex; align-items: center;
+    padding: 3px 10px; border-radius: var(--radius-pill);
+    background: var(--surface-2); color: var(--text-3);
+    font-size: var(--fs-12); font-weight: 700;
+  }
+  .inv-term-desc { margin-top: 10px; font-size: var(--fs-13); color: var(--text-2); line-height: var(--lh-normal); }
+  .inv-term-old {
+    margin-top: 14px; padding: 12px 14px;
+    border-radius: var(--radius-lg);
+    background: var(--surface-2);
+    font-family: var(--font-num); font-size: var(--fs-13); color: var(--text-3);
+    line-height: var(--lh-normal);
+  }
+  .inv-term-old b { letter-spacing: .12em; }
+  .inv-term-when { margin-top: 8px; font-size: var(--fs-11); color: var(--text-3); }
+  .inv-regen { margin-top: 16px; }
 </style>
 </head>
-<body data-screen="22 邀请成员" data-tab="" data-states="default,link,qr,revoke,noperm">
+<body data-screen="22 邀请成员" data-tab="" data-states="default,link,qr,revoke,expired,noperm">
 <div class="harness"></div>
 
 <div class="phone">
@@ -158,7 +187,7 @@
 
           <div class="inv-panel" data-inv-panel="link" hidden>
             <div class="inv-link">
-              <span class="inv-link-v">homecube.app/j/K7M2Q9</span>
+              <span class="inv-link-v" id="link-value">homecube.app/j/K7M2Q9</span>
               <button class="inv-copy" type="button" id="copy-link">
                 <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="9" height="9" rx="2"/><path d="M4 13V5.5A1.5 1.5 0 0 1 5.5 4H13"/></svg>
                 复制
@@ -175,7 +204,7 @@
           </div>
         </div>
 
-        <div class="inv-meta"
+        <div class="inv-meta inv-live"
           data-hot="⑤" data-hot-name="有效期" data-hot-pos="bottom-right"
           data-hot-label="固定 7 天，按家庭时区显示；到期自动失效且不可续期，需要时重新生成一条。过期与撤销都不影响已加入的成员">
           <div class="inv-meta-row">
@@ -194,6 +223,23 @@
             <span class="v">待接受 · 已加入 0 人</span>
           </div>
         </div>
+
+        <!-- 终态块：已过期 / 已撤销共用一块，徽章按原因二选一；复制与撤销整块不渲染 -->
+        <div class="inv-terminal"
+          data-hot="⑧" data-hot-name="终态详情" data-hot-pos="top-right"
+          data-hot-label="终态只有两种：已过期与已撤销，共用同一块终态；徽章按原因二选一，不得把撤销写成过期。旧凭证以不可复制的灰字留档，方便核对家人手里的旧码为什么不能用；有效期行换成失效时间">
+          <span class="inv-term-badge" id="term-badge">已过期</span>
+          <p class="inv-term-desc" id="term-desc">这条邀请已超过 7 天，家人无法再用它加入。</p>
+          <div class="inv-term-old">
+            旧邀请码 <b id="term-oldcode">K7M2Q9</b> · 已失效，不可复制
+            <div class="inv-term-when">生成于 10 月 28 日 09:41 · 失效于 11 月 4 日 09:41</div>
+          </div>
+          <button class="btn btn-primary btn-block inv-regen" type="button" id="inv-regen"
+            data-hot="⑨" data-hot-name="重新生成" data-hot-pos="outer-top-right"
+            data-hot-label="点击产生一条全新邀请：新 6 位码 + 从生成时刻重算的 7 天有效期；旧码永久失效、不复用。它是新增不是破坏动作，无二次确认；成功后凭证区回到邀请码态并显示新码">
+            重新生成
+          </button>
+        </div>
       </div>
 
       <button class="btn btn-danger btn-block inv-revoke" type="button" id="inv-revoke"
@@ -206,10 +252,11 @@
       <div class="inv-rules">
         <h3>邀请口径</h3>
         <ul>
-          <li>邀请仅家庭管理员可发起；成人成员、儿童与访客都没有邀请入口。</li>
-          <li>有效期 7 天，到期需重新生成；邀请码、链接与二维码共用一个有效期。</li>
+          <li>邀请只有家庭管理员能发起；其他角色都没有邀请入口。</li>
+          <li>有效期 7 天，到期自动失效、不可续期；邀请码、链接与二维码共用同一个有效期，到期或撤销时同时失效。</li>
+          <li>过期或被撤销后只能重新生成一条全新的邀请：新码、重新计的 7 天；旧码永久失效，不会被复用。</li>
           <li>无账号被记录成员不走邀请：由代管人在成员建档时创建，不可登录。</li>
-          <li>邀请与撤销都会写审计；撤销后已发出的链接打不开加入页。</li>
+          <li>邀请与撤销都会留下操作记录；撤销后已发出的链接打不开加入页。</li>
         </ul>
       </div>
     </div>
@@ -220,7 +267,7 @@
           <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="14" width="16" height="12" rx="3"/><path d="M12 14v-3.5a4 4 0 0 1 8 0V14"/></svg>
         </div>
         <div class="state-title">只有管理员可以邀请成员</div>
-        <div class="state-desc">当前角色是成人成员。邀请会写入成员与权限，不在你的可写范围；如需邀请家人，请联系家庭管理员。</div>
+        <div class="state-desc">你当前不是家庭管理员。邀请会改变家里的成员构成，不在你的可写范围；如需邀请家人，请联系家庭管理员。</div>
         <div class="state-code">HC-4030</div>
         <button class="btn btn-secondary" type="button" style="margin-top:8px" data-go="family.html">返回家庭成员</button>
       </div>
@@ -237,7 +284,7 @@
       <p class="sheet-sub">撤销后邀请码、链接与二维码同时失效，尚未接受的家人无法再加入；已经加入的成员与家庭数据不受影响。需要时可以重新生成一条。</p>
 
       <div class="inv-link" style="margin-top:14px;background:var(--surface-2)">
-        <span class="inv-link-v" style="font-size:var(--fs-15);font-weight:600;letter-spacing:.12em">K7M2Q9</span>
+        <span class="inv-link-v" id="revoke-code" style="font-size:var(--fs-15);font-weight:600;letter-spacing:.12em">K7M2Q9</span>
         <span class="tiny">剩余 6 天 12 小时</span>
       </div>
 
@@ -272,6 +319,16 @@
     sheet.classList.add('is-open');
     sheet.setAttribute('aria-hidden', 'false');
   }
+
+  /* 终态：?state=expired 加载即终态；撤销确认后也转入同一块（徽章按原因二选一） */
+  function showTerminal(reason) {
+    document.querySelector('.inv-real').classList.add('is-terminal');
+    document.getElementById('term-badge').textContent = reason === 'revoke' ? '已撤销' : '已过期';
+    document.getElementById('term-desc').textContent = reason === 'revoke'
+      ? '这条邀请已被撤销，家人无法再用它加入。'
+      : '这条邀请已超过 7 天，家人无法再用它加入。';
+  }
+  if (invState === 'expired') showTerminal('expire');
 
   /* 二维码：21×21，含三个定位角；只做静态示意，不是可扫描的真码 */
   (function buildQr() {
@@ -319,11 +376,21 @@
     }
   }
 
+  /* 重新生成的演示落点：新码经 #regen= 参数带走，页面按新码呈现邀请码态 */
+  function applyCode(code) {
+    document.getElementById('code-value').textContent = code;
+    document.getElementById('link-value').textContent = 'homecube.app/j/' + code;
+    document.getElementById('revoke-code').textContent = code;
+    document.getElementById('term-oldcode').textContent = code;
+  }
+  var regenMatch = location.hash.match(/^#regen=([A-Z2-9]{6})$/);
+  if (regenMatch) applyCode(regenMatch[1]);
+
   document.getElementById('copy-code').addEventListener('click', function () {
-    copyText('K7M2Q9', '邀请码已复制，发给家人即可');
+    copyText(document.getElementById('code-value').textContent, '邀请码已复制，发给家人即可');
   });
   document.getElementById('copy-link').addEventListener('click', function () {
-    copyText('https://homecube.app/j/K7M2Q9', '邀请链接已复制');
+    copyText('https://' + document.getElementById('link-value').textContent, '邀请链接已复制');
   });
 
   document.getElementById('inv-revoke').addEventListener('click', function () {
@@ -332,7 +399,16 @@
 
   document.getElementById('inv-revoke-confirm').addEventListener('click', function () {
     window.HC.closeSheet(document.getElementById('sheet-revoke'));
+    showTerminal('revoke');
     window.HC.toast('邀请已撤销，邀请码、链接与二维码同时失效');
+  });
+
+  document.getElementById('inv-regen').addEventListener('click', function () {
+    var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    var code = '';
+    for (var i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    window.HC.toast('新邀请已生成，7 天内有效');
+    setTimeout(function () { location.href = 'family-invite.html#regen=' + code; }, 900);
   });
 </script>
 </body>

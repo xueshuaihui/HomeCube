@@ -176,7 +176,7 @@ def main():
     out.append("| `BACKLOG.md` | 反向开发清单：L1 需求缺口 / L2 实现缺口 / L3 验证缺口 | 每轮审核后回填 |")
     out.append("| `DEVIATIONS.md` | **契约偏差登记**（代码在、HTTP 面与 PRD 不符）+ 边界规则与关闭流程 | 发现偏差时登记并派卡 |")
     out.append("| `audit_baseline.py` | 证据体检：路由级交叉验证 `已实现/未实现/契约偏差` 是否还成立（STALE/DRIFT/WEAK） | 每轮 W0 与每周跑一次 |")
-    out.append("| `SPEC-GAP-PROPOSAL.md` | 需求缺口补齐提案（8 项 + 建议值 + 影响 case + 可判判据） | 需求方确认后写进 PRD |")
+    out.append("| `SPEC-GAP-PROPOSAL.md` | 需求缺口补齐提案（在册 7 项待确认 + 1 项已闭合（`SPEC-GAP-08`，随 PRD 4.8:711-712 登记闭合）+ 建议值 + 影响 case + 可判判据） | 需求方确认后写进 PRD |")
     out.append("| `AUDIT-REPORT.md` | 多轮审核记录（发现 → 修复 → 结余） | 每轮追加 |")
     out.append(f"| `crosscutting/acceptance-19.2-19.3.md` | PRD 十九章验收口径逐条映射（19.2 / 19.3 / 19.4，实测 {cc_rows} 条） | 验收口径变更时改 |")
     out.append("")
@@ -205,7 +205,7 @@ def main():
     l2 = len(re.findall(r"^\| IMPL-\d+", bl_txt, re.M))
     dev_txt = (ROOT / "DEVIATIONS.md").read_text(encoding="utf-8") if (ROOT / "DEVIATIONS.md").exists() else ""
     dev_open = len(re.findall(r"^\|\s*DEV-\d{2}\s*\|.*\|\s*开\s*\|\s*$", dev_txt, re.M))
-    out.append(f"| **L1 · 需求缺口**（SPEC-GAP） | PRD 未写清，判据无法确定 | {l1} 项 | `BACKLOG.md` §一 |")
+    out.append(f"| **L1 · 需求缺口**（SPEC-GAP） | PRD 未写清，判据无法确定 | {l1} 项 | `BACKLOG.md` §一（原 8 项；`SPEC-GAP-08` 已随 PRD 4.8:711-712 登记四条 tag 接口闭合，行数由 `gen_index.py` 从 `BACKLOG.md` 实测得出） |")
     out.append(f"| **L2 · 实现缺口**（IMPL-GAP） | 需求与判据都清楚，代码没做 | {l2} 项，阻塞 {auto_c['未实现']} 条 case | `BACKLOG.md` §二 |")
     out.append(f"| **L2.5 · 契约偏差**（DEV） | 代码在、HTTP 面与 PRD 不符（既非「已实现」也非「未实现」） | {auto_c['契约偏差']} 条 case · {dev_open} 项待关 | `DEVIATIONS.md` |")
     out.append(f"| **L3 · 验证缺口**（TEST-GAP） | 有实现，但测试证明不了验收口径 | {auto_c['待自动化']} 条待自动化 + 3 项特别提示 | `BACKLOG.md` §三 |")

@@ -31,9 +31,22 @@
   }
   .qr-box .tiny { max-width: 240px; line-height: var(--lh-normal); }
   .seg-row { display: flex; justify-content: center; margin-bottom: 20px; }
+  .hang { display: none; margin: 0 0 16px; padding: 11px 13px; border-radius: var(--radius-md);
+    background: var(--brand-soft); border: 1px solid var(--brand-soft-border);
+    font-size: var(--fs-13); font-weight: 600; color: var(--text); }
+  .hang .hang-sub { margin-top: 2px; font-size: var(--fs-11); font-weight: 400; color: var(--text-2); }
+  body[data-state="deeplink"] .hang { display: block; }
+  .link-box { display: none; }
+  body.join-link .code-box { display: none; }
+  body.join-link .link-box { display: block; }
+  .blk { display: none; }
+  body[data-state="default"] .blk-input,
+  body[data-state="deeplink"] .blk-input { display: block; }
+  body[data-state="preview"] .blk-preview { display: block; }
+  body[data-state="invalid"] .blk-invalid { display: block; }
 </style>
 </head>
-<body data-screen="03 加入家庭" data-tab="" data-states="default,preview,invalid">
+<body data-screen="03 加入家庭" data-tab="" data-states="default,deeplink,preview,invalid">
 <div class="harness"></div>
 
 <div class="phone">
@@ -57,26 +70,41 @@
   </div>
 
   <div class="content">
-    <!-- 输入态 -->
-    <div class="wrap" data-state-block="default">
+    <!-- 输入态（含深链回跳落点） -->
+    <div class="wrap blk blk-input">
+      <div class="hang" data-hot="⑦" data-hot-name="深链回跳提示条" data-hot-pos="top-right"
+        data-hot-label="本页是未登录深链的登录后回跳落点：邀请码由 01 挂起的上下文预填，仍照常走识别与确认两步（识别 ≠ 加入）；挂起期间失效则落 invalid 态，不回首页、不落创建家庭页">
+        来自家人的邀请 · 已为你填好邀请码
+        <div class="hang-sub">三口之家 · 邀请剩余 6 天 12 小时</div>
+      </div>
+
       <div class="lead">
         <h2>输入邀请码</h2>
         <p>收到家人分享的邀请码或链接后，在这里加入。邀请码有效期 7 天，过期需重新生成。</p>
       </div>
 
-      <div class="seg-row" data-hot="①" data-hot-name="三态切换" data-hot-pos="top-right" data-hot-label="邀请码 / 链接 / 二维码三态在同一页切换，不新增路由；链接与二维码都落到同一个邀请码">
+      <div class="seg-row" data-hot="①" data-hot-name="两态切换" data-hot-pos="top-right" data-hot-label="P1 只有邀请码 / 链接两档，不渲染扫码档（一期无相机，不留置灰位）；链接就是二维码与截图场景的唯一兜底，两档解析到同一个邀请码">
         <div class="segmented" role="tablist">
-          <button type="button" role="tab" aria-selected="true">邀请码</button>
-          <button type="button" role="tab" aria-selected="false" data-toast="切换到链接：粘贴家人发来的链接即可，自动解析出邀请码">链接</button>
-          <button type="button" role="tab" aria-selected="false" data-toast="切换到二维码：P1 以粘贴链接兜底，扫码相机在后续期次">扫码</button>
+          <button type="button" role="tab" aria-selected="true" data-mode="code">邀请码</button>
+          <button type="button" role="tab" aria-selected="false" data-mode="link">链接</button>
         </div>
       </div>
 
-      <div class="field" data-hot="②" data-hot-name="邀请码输入" data-hot-pos="top-right" data-hot-label="6 位字母数字，自动转大写，输入满 6 位自动触发识别">
-        <input class="input code-input" id="invite-code" type="text" maxlength="6" placeholder="A1B2C3" value="K7M2Q9">
+      <div class="code-box">
+        <div class="field" data-hot="②" data-hot-name="邀请码输入" data-hot-pos="top-right" data-hot-label="6 位字母数字，自动转大写，输入满 6 位自动触发识别">
+          <input class="input code-input" id="invite-code" type="text" maxlength="6" placeholder="A1B2C3" value="K7M2Q9">
+        </div>
+        <button class="btn btn-primary btn-block" type="button" data-hot="③" data-hot-name="识别邀请" data-hot-pos="top-right" data-hot-label="校验通过后展示邀请信息卡（家庭名 / 邀请人 / 剩余有效期），不直接入家">识别邀请</button>
       </div>
 
-      <button class="btn btn-primary btn-block" type="button" data-hot="③" data-hot-name="识别邀请" data-hot-pos="top-right" data-hot-label="校验通过后展示邀请信息卡（家庭名 / 邀请人 / 剩余有效期），不直接入家">识别邀请</button>
+      <div class="link-box">
+        <div class="field">
+          <label class="field-label" for="invite-link">邀请链接</label>
+          <input class="input" id="invite-link" type="url" placeholder="粘贴家人发来的链接">
+          <div class="help">链接里带着邀请码，解析后与手输走同一个校验</div>
+        </div>
+        <button class="btn btn-primary btn-block" type="button" data-resolve-link>解析并识别</button>
+      </div>
 
       <div class="card" style="margin-top:20px;background:var(--surface-2);border-color:transparent">
         <div class="tiny" style="line-height:1.7">加入后你将以「成人成员」身份进入，管理员可在成员管理里调整角色。家庭内数据按角色与可见性规则展示。</div>
@@ -84,7 +112,7 @@
     </div>
 
     <!-- 识别成功态 -->
-    <div class="wrap" data-state-block="preview">
+    <div class="wrap blk blk-preview">
       <div class="lead">
         <h2>确认加入</h2>
         <p>确认家庭信息无误后再加入。加入后可在顶栏切换家庭。</p>
@@ -112,7 +140,7 @@
     </div>
 
     <!-- 失效态 -->
-    <div class="wrap" data-state-block="invalid">
+    <div class="wrap blk blk-invalid">
       <div class="state" style="padding-top:56px">
         <div class="state-icon">
           <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="16" cy="16" r="12"/><path d="M16 9v8M16 21.5v.1"/></svg>
@@ -129,12 +157,31 @@
 </div>
 
 <script>
-  document.querySelector('[data-state-block="default"] .btn-primary').addEventListener('click', function () {
+  // 两档切换：邀请码 / 链接（P1 无扫码档）
+  document.querySelectorAll('.segmented [data-mode]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('.segmented [data-mode]').forEach(function (x) { x.setAttribute('aria-selected', 'false'); });
+      b.setAttribute('aria-selected', 'true');
+      document.body.classList.toggle('join-link', b.getAttribute('data-mode') === 'link');
+    });
+  });
+
+  var codeBtn = document.querySelector('.code-box .btn-primary');
+  if (codeBtn) codeBtn.addEventListener('click', function () {
     var code = document.getElementById('invite-code').value.trim();
     if (code.length < 6) { window.HC.toast('请输入 6 位邀请码'); return; }
     location.href = 'family-join.html?state=preview';
   });
-  document.querySelector('[data-state-block="preview"] .btn-secondary').addEventListener('click', function () {
+
+  var linkBtn = document.querySelector('[data-resolve-link]');
+  if (linkBtn) linkBtn.addEventListener('click', function () {
+    var url = document.getElementById('invite-link').value.trim();
+    if (!url) { window.HC.toast('链接不完整，请让家人重新分享'); return; }
+    location.href = 'family-join.html?state=preview';
+  });
+
+  var backBtn = document.querySelector('.blk-preview .btn-secondary');
+  if (backBtn) backBtn.addEventListener('click', function () {
     location.href = 'family-join.html';
   });
 </script>

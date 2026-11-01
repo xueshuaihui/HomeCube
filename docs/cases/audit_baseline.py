@@ -474,12 +474,18 @@ def audit(cases):
             check_scripts(c, f)
             check_loc(c, f)
         verdict, fs = classify(f)
+        # 2026-11-01：证据显式标注「待重基线」的条目单列 LAG。
+        # 这类条目不是「声明失效」，而是「本仓无法复核」——代码仓未纳入工作区，
+        # 把它算进 STALE 会让体检报告永远红着，反而掩盖真正的失效。
+        if "证据待重基线" in (c.evidence or ""):
+            verdict = "LAG"
+            fs = [("LAG", "证据待重基线", "代码仓未纳入本工作区，待重基线复核；不作为已实现结论使用")]
         results.append((c, verdict, fs))
     return results
 
 
 def report(results, stamp):
-    counts = {"OK": 0, "STALE": 0, "DRIFT": 0, "WEAK": 0}
+    counts = {"OK": 0, "STALE": 0, "DRIFT": 0, "WEAK": 0, "LAG": 0}
     for _, v, _ in results:
         counts[v] = counts.get(v, 0) + 1
     out = []
@@ -495,12 +501,14 @@ def report(results, stamp):
     out.append(f"| **STALE** | **声明已失效，必修**（文件/脚本不存在、零命中断言为假） | **{counts['STALE']}** |")
     out.append(f"| DRIFT | 需人看（行号存活但内容不相关、行数偏差 >20%） | {counts['DRIFT']} |")
     out.append(f"| WEAK | 断言方式不可靠（零命中为真，但检索词形态可疑） | {counts['WEAK']} |")
+    out.append(f"| LAG | 证据待重基线（代码仓未纳入工作区，本仓不可复核；**不计入 STALE**） | {counts['LAG']} |")
     out.append("")
 
     for verdict, title, note in (
         ("STALE", "一、STALE · 声明已失效（必修）", "这些条目的证据所指向的东西已不存在，或「零命中」的断言已被事实推翻。"),
         ("DRIFT", "二、DRIFT · 需人看", "位置还在，但内容对不上；多见于代码被重构后行号漂移。"),
         ("WEAK", "三、WEAK · 断言方式不可靠", "断言本身为真，但检索词可能是拼接字符串的片段，容易把「已实现」误判成「未实现」。"),
+        ("LAG", "四、LAG · 证据待重基线", "条目已显式标注「证据待重基线」——代码仓未纳入本工作区，证据在本仓不可解析。**重基线（`docs/cases/BACKLOG.md` §7.1，原 §6.1）后本列表必须清零**，否则等同于未重基线。"),
     ):
         rows = [(c, fs) for c, v, fs in results if v == verdict]
         if not rows:
@@ -556,7 +564,7 @@ def main():
         text, counts = report(results, stamp)
         print(text)
         print()
-        print(f"合计：OK {counts['OK']} / STALE {counts['STALE']} / DRIFT {counts['DRIFT']} / WEAK {counts['WEAK']}")
+        print(f"合计：OK {counts['OK']} / LAG {counts['LAG']}（证据待重基线，不计入 STALE） / STALE {counts['STALE']} / DRIFT {counts['DRIFT']} / WEAK {counts['WEAK']}")
         if args.audit:
             rd = CASES / "reports"
             rd.mkdir(parents=True, exist_ok=True)

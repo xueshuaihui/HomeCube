@@ -34,15 +34,9 @@
   .fx-hero-note { margin-top: 8px; font-size: var(--fs-11); color: var(--text-3); line-height: var(--lh-normal); }
   .fx-hero-sub .is-late { color: var(--danger); font-weight: 700; }
 
-  .fx-sum-b { display: none; }
   .fx-sub-b { display: none; }
-  .fx-pend-b { display: none; }
-  body[data-state="overdue"] .fx-sum-a,
-  body[data-state="overdue"] .fx-sub-a,
-  body[data-state="overdue"] .fx-pend-a { display: none; }
-  body[data-state="overdue"] .fx-sum-b { display: inline; }
+  body[data-state="overdue"] .fx-sub-a { display: none; }
   body[data-state="overdue"] .fx-sub-b { display: block; }
-  body[data-state="overdue"] .fx-pend-b { display: inline; }
 
   .fx-ghead {
     display: flex; align-items: baseline; justify-content: space-between;
@@ -129,11 +123,22 @@
   body[data-state="empty"] .fx-empty { display: flex; }
   body[data-state="empty"] .fx-real { display: none; }
 
+  /* 首屏失败：整页态，失败期间不渲染旧数据 */
+  .fx-error { display: none; }
+  body[data-state="error"] .fx-error { display: block; }
+  body[data-state="error"] .fx-real,
+  body[data-state="error"] .fx-sk { display: none; }
+
   .fx-od-only { display: none; }
   body[data-state="overdue"] .fx-od-only { display: block; }
+  body[data-state="overdue"] .fx-pend-od { display: none; }
+
+  body[data-state="offline"] .offline-bar { display: flex; }
+  .fx-cache { display: none; align-items: center; gap: 6px; margin: 0 2px 8px; font-size: var(--fs-11); color: var(--text-2); }
+  body[data-state="offline"] .fx-cache { display: flex; }
 </style>
 </head>
-<body data-screen="F25 账单" data-states="default,overdue,empty,loading">
+<body data-screen="F25 账单" data-states="default,overdue,loading,error,empty,offline">
 <div class="harness"></div>
 
 <div class="phone">
@@ -164,67 +169,53 @@
 
   <div class="offline-bar">
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
-    当前离线 · 缴纳状态显示本机缓存
+    当前离线 · 缴纳状态显示本机缓存，标记已缴联网后再提交
   </div>
 
   <div class="content bottom-space fx-content">
     <div class="fx-real">
       <section class="fx-hero"
         data-hot="③" data-hot-name="本月待缴汇总" data-hot-pos="bottom-right"
-        data-hot-label="只统计本月到期且未缴的账单，已逾期计入、11 月到期的不计入；数字由服务端按家庭币种汇总，前端不二次累加，逾期笔数单独列出">
+        data-hot-label="只统计本月到期且未缴的账单，已逾期计入、下月到期的不计入；数字由服务端按家庭币种汇总，前端不二次累加，逾期笔数单独列出">
         <div class="fx-hero-k">本月待缴</div>
-        <div class="amount fx-hero-v">
-          <span class="fx-sum-a">¥380.00</span>
-          <span class="fx-sum-b">¥2,780.00</span>
-        </div>
-        <div class="fx-hero-sub fx-sub-a">本月 1 笔 · 另有 3 笔 11 月到期 ¥5,018.00 · 没有逾期</div>
-        <div class="fx-hero-sub fx-sub-b">本月 2 笔 · 其中<span class="is-late">逾期 2 笔 ¥2,780.00</span> · 另有 3 笔 11 月到期 ¥5,018.00</div>
+        <div class="amount fx-hero-v">¥920.00</div>
+        <div class="fx-hero-sub fx-sub-a">本月 2 笔 · 没有逾期 · 最近一笔 10 月 10 日到期</div>
+        <div class="fx-hero-sub fx-sub-b">本月 2 笔 · 其中<span class="is-late">逾期 1 笔 ¥680.00</span> · 最近一笔 10 月 20 日到期</div>
         <div class="fx-hero-note">口径：本月（2026 年 10 月）到期且未缴；逾期计入本月待缴。</div>
       </section>
 
       <div class="fx-note">
         <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="14" height="13" rx="2.5"/><path d="M3 8.5h14"/><path d="M7 3v3M13 3v3"/></svg>
-        <span><b>到期已注册到家庭日历。</b>到期前 3 天与当天各提醒一次；触发与推送由日历面与家庭消息负责，财务面不自建定时器。</span>
+        <span><b>这两笔的到期日已注册到家庭日历。</b>物业费注册到 10 月 10 日、电费注册到 10 月 20 日；按各自提前量（当天 / 提前 3 天）提醒一次。触发与推送由日历面与家庭消息负责，财务面不自建定时器。</span>
+      </div>
+
+      <div class="fx-cache">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="5.5"/><path d="M8 4.8V8l2.2 1.3"/></svg>
+        以下为上次打开时缓存的内容 · 截至 10 月 8 日 09:20
       </div>
 
       <!-- 逾期（仅含逾期态） -->
       <div class="fx-od-only">
         <div class="fx-ghead">
           <span class="fx-gtitle is-danger">逾期</span>
-          <span class="fx-gcount">2 笔 · ¥2,780.00</span>
+          <span class="fx-gcount">1 笔 · ¥680.00</span>
         </div>
         <div class="fx-list">
           <div class="fx-bill is-late">
-            <a class="fx-bill-body" href="finance-bill-detail.html">
+            <a class="fx-bill-body" href="finance-bill-detail.html?state=unregistered">
               <span class="fx-bill-top">
                 <span class="fx-bill-name">物业费</span>
-                <span class="amount fx-bill-amt">-¥380.00</span>
+                <span class="amount fx-bill-amt">-¥680.00</span>
               </span>
               <span class="fx-bill-meta">
                 <span class="is-late">逾期 3 天</span>
                 <span class="fx-sep">·</span>
-                <span class="num">10 月 26 日到期</span>
+                <span class="num">10 月 10 日到期</span>
                 <span class="fx-sep">·</span>
                 <span>招商银行储蓄卡</span>
               </span>
             </a>
             <button class="fx-mark" type="button" data-title="物业费" aria-label="标记 物业费 已缴">标记已缴</button>
-          </div>
-          <div class="fx-bill is-late">
-            <a class="fx-bill-body" href="finance-bill-detail.html">
-              <span class="fx-bill-top">
-                <span class="fx-bill-name">车险续费</span>
-                <span class="amount fx-bill-amt">-¥2,400.00</span>
-              </span>
-              <span class="fx-bill-meta">
-                <span class="is-late">逾期 1 天</span>
-                <span class="fx-sep">·</span>
-                <span class="num">10 月 28 日到期</span>
-                <span class="fx-sep">·</span>
-                <span>招商银行信用卡</span>
-              </span>
-            </a>
-            <button class="fx-mark" type="button" data-title="车险续费" aria-label="标记 车险续费 已缴">标记已缴</button>
           </div>
         </div>
       </div>
@@ -232,18 +223,18 @@
       <!-- 待缴 -->
       <div class="fx-ghead">
         <span class="fx-gtitle">待缴</span>
-        <span class="fx-gcount fx-pend-a">4 笔 · ¥5,398.00</span>
-        <span class="fx-gcount fx-pend-b">3 笔 · ¥5,018.00</span>
+        <span class="fx-gcount fx-pend-a">2 笔 · ¥920.00</span>
+        <span class="fx-gcount fx-pend-b" style="display:none">1 笔 · ¥240.00</span>
       </div>
       <div class="fx-list">
         <div class="fx-bill fx-pend-a">
           <a class="fx-bill-body" href="finance-bill-detail.html">
             <span class="fx-bill-top">
               <span class="fx-bill-name">物业费</span>
-              <span class="amount fx-bill-amt">-¥380.00</span>
+              <span class="amount fx-bill-amt">-¥680.00</span>
             </span>
             <span class="fx-bill-meta">
-              <span class="num is-soon">10 月 31 日到期</span>
+              <span class="num is-soon">10 月 10 日到期</span>
               <span class="fx-sep">·</span>
               <span>招商银行储蓄卡</span>
             </span>
@@ -255,82 +246,54 @@
             data-hot="⑤" data-hot-name="账单行" data-hot-pos="bottom-left"
             data-hot-label="整行进账单详情；行内四件套：账单名、金额（负号在 ¥ 前）、到期日、来源账户。逾期行补「逾期 N 天」并走 danger；已缴行不带操作按钮，点行仍可看详情">
             <span class="fx-bill-top">
-              <span class="fx-bill-name">房贷</span>
-              <span class="amount fx-bill-amt">-¥4,200.00</span>
+              <span class="fx-bill-name">电费</span>
+              <span class="amount fx-bill-amt">-¥240.00</span>
             </span>
             <span class="fx-bill-meta">
-              <span class="num">11 月 1 日到期</span>
+              <span class="num">10 月 20 日到期</span>
               <span class="fx-sep">·</span>
               <span>招商银行储蓄卡</span>
             </span>
           </a>
-          <button class="fx-mark" type="button" data-title="房贷" aria-label="标记 房贷 已缴"
+          <button class="fx-mark" type="button" data-title="电费" aria-label="标记 电费 已缴"
             data-hot="④" data-hot-name="行内标记已缴" data-hot-pos="bottom-right"
-            data-hot-label="点某行的「标记已缴」：写入缴纳状态并生成一笔支出流水，同时提交 finance.bill.paid 回写；toast 只承诺「回写已提交」，不承诺日历即时消失，金额汇总在下次进入时按服务端刷新">标记已缴</button>
-        </div>
-        <div class="fx-bill fx-pend-a">
-          <a class="fx-bill-body" href="finance-bill-detail.html">
-            <span class="fx-bill-top">
-              <span class="fx-bill-name">水电燃气</span>
-              <span class="amount fx-bill-amt">-¥218.00</span>
-            </span>
-            <span class="fx-bill-meta">
-              <span class="num">11 月 5 日到期</span>
-              <span class="fx-sep">·</span>
-              <span>支付宝</span>
-            </span>
-          </a>
-          <button class="fx-mark" type="button" data-title="水电燃气" aria-label="标记 水电燃气 已缴">标记已缴</button>
-        </div>
-        <div class="fx-bill fx-pend-a">
-          <a class="fx-bill-body" href="finance-bill-detail.html">
-            <span class="fx-bill-top">
-              <span class="fx-bill-name">女儿钢琴课</span>
-              <span class="amount fx-bill-amt">-¥600.00</span>
-            </span>
-            <span class="fx-bill-meta">
-              <span class="num">11 月 8 日到期</span>
-              <span class="fx-sep">·</span>
-              <span>微信零钱</span>
-            </span>
-          </a>
-          <button class="fx-mark" type="button" data-title="女儿钢琴课" aria-label="标记 女儿钢琴课 已缴">标记已缴</button>
+            data-hot-label="点某行的「标记已缴」：财务服务写入缴纳状态并生成一笔支出流水，同时向日历侧提交完成回写、由日历侧撤销这条注册项；toast 只承诺「回写已提交」，不承诺日历即时消失">标记已缴</button>
         </div>
       </div>
 
       <!-- 已缴 -->
       <div class="fx-ghead">
         <span class="fx-gtitle">已缴</span>
-        <span class="fx-gcount">2 笔 · ¥429.00</span>
+        <span class="fx-gcount">2 笔 · ¥920.00</span>
       </div>
       <div class="fx-list">
         <div class="fx-bill is-done">
           <a class="fx-bill-body" href="finance-bill-detail.html?state=paid">
             <span class="fx-bill-top">
-              <span class="fx-bill-name">宽带续费</span>
-              <span class="amount fx-bill-amt">-¥129.00</span>
+              <span class="fx-bill-name">物业费</span>
+              <span class="amount fx-bill-amt">-¥680.00</span>
             </span>
             <span class="fx-bill-meta">
-              <span class="tag">已缴 · 10 月 20 日</span>
-              <span>支付宝</span>
+              <span class="tag">已缴 · 9 月 10 日</span>
+              <span>招商银行储蓄卡</span>
             </span>
           </a>
         </div>
         <div class="fx-bill is-done">
           <a class="fx-bill-body" href="finance-bill-detail.html?state=paid">
             <span class="fx-bill-top">
-              <span class="fx-bill-name">家庭保洁</span>
-              <span class="amount fx-bill-amt">-¥300.00</span>
+              <span class="fx-bill-name">电费</span>
+              <span class="amount fx-bill-amt">-¥240.00</span>
             </span>
             <span class="fx-bill-meta">
-              <span class="tag">已缴 · 10 月 15 日</span>
-              <span>现金钱包</span>
+              <span class="tag">已缴 · 9 月 20 日</span>
+              <span>招商银行储蓄卡</span>
             </span>
           </a>
         </div>
       </div>
 
-      <p class="fx-foot-note tiny">标记已缴会写入一笔支出流水并向日历面提交完成回写；<b>日历与到期中心可能稍晚同步</b>，超过 5 秒未收敛只显示时效提示，不当作失败。「自动扣款」标记仅人工确认，不接任何银行或支付账单导入。</p>
+      <p class="fx-foot-note tiny">标记已缴会生成一笔支出流水，并由日历侧把这条到期项置为完成、撤销注册；<b>日历与到期中心可能稍晚同步</b>，超过 5 秒未收敛只显示时效提示，不当作失败。「自动扣款」只是账单上的一个标记，不接任何银行或支付通道、不会自动扣钱。</p>
     </div>
 
     <div class="fx-sk" aria-hidden="true">
@@ -347,19 +310,39 @@
         <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="6" width="22" height="21" rx="4"/><path d="M10 6V4M22 6V4"/><path d="M10 13h12M10 18h7"/><path d="M5 10h22"/></svg>
       </div>
       <div class="state-title">还没有账单</div>
-      <div class="state-desc">固定要交的钱记成账单：填到期日，保存后提交到期注册，到期由家庭日历提醒你。</div>
+      <div class="state-desc">固定要交的钱记成账单：填到期日，保存后注册到家庭日历的到期中心，到点由日历提醒你；缴了再回来标记已缴。</div>
       <button class="btn btn-secondary" type="button" data-go="finance-bill-create.html"
         data-hot="⑥" data-hot-name="空态行动" data-hot-pos="top-right"
         data-hot-label="零条时给可执行动作「新建账单」，直接进新建页；不只放一句空话，也不提示去别的面">新建账单</button>
     </div>
+
+    <div class="fx-error">
+      <div class="state" style="padding-top:56px">
+        <div class="state-icon">
+          <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="16" cy="16" r="12"/><path d="M11 16h10M16 11v10"/></svg>
+        </div>
+        <div class="state-title">没能加载账单</div>
+        <div class="state-desc">网络或财务服务没响应。账单与已缴生成的流水都还在，重试只重新拉取这一页，不会重复生成流水、也不会改动日历里的到期项。</div>
+        <div class="state-code">HC-5041</div>
+        <button class="btn btn-secondary" type="button" id="fx-retry"
+          data-hot="⑦" data-hot-name="失败重试" data-hot-pos="top-right"
+          data-hot-label="只重发账单列表请求；成功回默认态，失败停留整页失败态与原错误码；失败期间不展示旧数据，也不显示半成品分组">
+          重试</button>
+      </div>
+    </div>
   </div>
 
-  <!-- 行内标记已缴：热区挂在首个按钮上，其余各行同一动作 -->
   <div class="toast"></div>
 </div>
 
 <script>
   var billState = new URLSearchParams(location.search).get('state') || 'default';
+  var pendB = document.querySelector('.fx-pend-b');
+
+  if (billState === 'overdue') {
+    document.querySelector('.fx-pend-a').style.display = 'none';
+    if (pendB) pendB.style.display = 'inline';
+  }
 
   document.querySelectorAll('.fx-mark').forEach(function (btn) {
     btn.addEventListener('click', function () {
@@ -371,10 +354,17 @@
       done.innerHTML = '<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>已标记 · 同步中';
       btn.replaceWith(done);
       window.HC.toast(billState === 'offline'
-        ? '已记为已缴，联网后提交回写'
-        : '已标记已缴，回写已提交；日历可能稍后同步');
+        ? '已记为已缴，联网后提交并生成流水'
+        : '已标记已缴，流水已生成；日历与到期中心会撤销这条到期项，可能稍后同步');
     });
   });
+
+  var retry = document.getElementById('fx-retry');
+  if (retry) {
+    retry.addEventListener('click', function () {
+      window.HC.toast('正在重新拉取账单（演示）');
+    });
+  }
 </script>
 </body>
 </html>

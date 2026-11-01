@@ -47,6 +47,9 @@
   .rem-sep { color: var(--border-strong); }
   .rem-next { font-size: var(--fs-11); color: var(--text-3); }
   .rem-next b { font-weight: 600; }
+  .rem-who { font-size: var(--fs-11); color: var(--text-3); }
+  .rem-who.is-other { color: var(--accent); font-weight: 600; }
+  .rem-chan { font-size: var(--fs-11); color: var(--text-2); }
 
   .rem-tag {
     display: inline-flex; align-items: center; gap: 4px;
@@ -55,10 +58,14 @@
   }
   .rem-tag-geo { background: var(--info-soft); color: var(--info); }
   .rem-tag-off { background: var(--surface-2); color: var(--text-3); }
+  .rem-tag-skip { background: var(--warning-soft); color: var(--warning); }
 
   .rem-item.is-off .rem-title { color: var(--text-3); }
   .rem-item.is-off .rem-meta { opacity: .75; }
   .rem-item.is-off:hover { background: var(--surface); }
+  .rem-item.is-other { background: var(--surface); }
+  .switch input:disabled { cursor: not-allowed; }
+  .switch.is-locked { opacity: .45; }
 
   .rem-content .face-tabs { margin-top: 2px; }
   .rem-foot-note { margin-top: 14px; line-height: var(--lh-normal); }
@@ -76,6 +83,13 @@
   body[data-state="empty"] .rem-sum,
   body[data-state="empty"] .rem-foot-note { display: none; }
 
+  .rem-error { display: none; }
+  body[data-state="error"] .rem-error { display: flex; }
+  body[data-state="error"] .rem-list,
+  body[data-state="error"] .rem-sum,
+  body[data-state="error"] .rem-cache,
+  body[data-state="error"] .rem-foot-note { display: none; }
+
   .rem-cache {
     display: none; align-items: center; gap: 6px;
     margin: 8px 0 0; padding: 7px 10px;
@@ -87,7 +101,7 @@
   body[data-state="offline"] .offline-bar { display: flex; }
 </style>
 </head>
-<body data-screen="16 提醒 · 日历面" data-tab="home" data-states="default,empty,loading,offline">
+<body data-screen="16 提醒 · 日历面" data-tab="home" data-states="default,empty,loading,offline,error">
 <div class="harness"></div>
 
 <div class="phone">
@@ -104,7 +118,7 @@
     <div class="nav-left">
       <button class="icon-btn" type="button" data-go="calendar.html"
         data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
-        data-hot-label="回到到期中心 calendar/calendar/index（本面一级页）；「我的 → 时间与提醒」与首页 B 区「日历 ›」都是指向 calendar/calendar/index 的定向深链（§1.3#13），不渲染面切换器；返回不重置列表滚动与已展开条目" aria-label="返回">
+        data-hot-label="回到到期中心 calendar/calendar/index（本面一级页）；「我的 → 时间与提醒」与首页 B 区「日历 ›」都是指向 calendar/calendar/index 的定向深链（§1.3#13），不渲染面切换器；返回不重置列表滚动位置">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
       </button>
     </div>
@@ -112,7 +126,7 @@
     <div class="nav-right">
       <button class="rem-new" type="button" data-go="reminder-create.html"
         data-hot="②" data-hot-name="新建" data-hot-pos="outer-top-right"
-        data-hot-label="进新建提醒页；新建是本页唯一的写入口，编辑与删除在条目内完成">新建</button>
+        data-hot-label="进新建提醒页；新建是本页唯一的写入口，改规则与删除在整行进编辑页后完成">新建</button>
     </div>
   </div>
 
@@ -132,9 +146,9 @@
     </nav>
     <div class="rem-note"
       data-hot="⑤" data-hot-name="位置提醒说明" data-hot-pos="bottom-right"
-      data-hot-label="P6 前位置提醒只有手动地点：不接地图与地理围栏，只按用户填的地点文字提示，失败不回落、也不计入到达率；本行常驻，不随列表状态消失">
+      data-hot-label="㉛ 定版：每条提醒必须有一个时间档，位置只是附加上下文（P6 前只收手动文字，不接地图与地理围栏、不做到达判定）；没有时间的提醒在保存时被拦，见 calendar/reminder/create；本行常驻，不随列表状态消失">
       <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17s5.5-4.4 5.5-8.5a5.5 5.5 0 1 0-11 0C4.5 12.6 10 17 10 17z"/><circle cx="10" cy="8.4" r="1.8"/></svg>
-      <span><b>位置提醒在 P6 前只有手动地点</b>，不保证触达；到达率口径不含位置类提醒。</span>
+      <span><b>提醒都是到点就响的</b>，位置只是写给你看的一句补充——这一版只按时间响，不会因为到了某个地方就提前响或另外响一次。</span>
     </div>
 
     <div class="rem-cache">
@@ -142,40 +156,52 @@
       显示本机缓存 · 截至 10 月 29 日 08:10
     </div>
 
-    <div class="rem-sum" id="rem-sum">共 5 条 · 4 条启用 · 1 条已暂停</div>
+    <div class="rem-sum" id="rem-sum">共 6 条 · 5 条启用 · 1 条已暂停 · 1 条家人创建 · 1 条本次已跳过</div>
 
     <div class="rem-list">
       <div class="rem-item"
         data-hot="④" data-hot-name="条目" data-hot-pos="bottom-right"
-        data-hot-label="整行点进编辑提醒：标题、周期、下次触发三件套常驻；位置提醒带「位置 · 手动地点」标记并在次行说明不保证触达">
+        data-hot-label="整行点进编辑提醒；标题 / 周期 / 下次触发（含提前量）/ 创建人 / 渠道常驻，缺一即缺陷；位置提醒带「位置 · 手动地点」标记，但仍带一个时间档（没有时间的提醒在新建页就存不进来）">
         <a class="rem-body" href="reminder-edit.html">
-          <span class="rem-title">吃药</span>
+          <span class="rem-title">妈妈体检</span>
           <span class="rem-meta">
-            <span class="rem-cycle num">每天 08:00</span>
+            <span class="rem-cycle num">11 月 12 日 09:30</span>
             <span class="rem-sep">·</span>
-            <span class="rem-next">下次 <b class="num">明天 08:00</b></span>
+            <span class="rem-next">下次 <b class="num">11 月 12 日 09:30</b> · 提前 1 天</span>
+          </span>
+          <span class="rem-meta">
+            <span class="rem-who">我创建</span>
+            <span class="rem-sep">·</span>
+            <span class="rem-chan">推送 + 站内信</span>
           </span>
         </a>
         <label class="switch"
           data-hot="③" data-hot-name="启用开关" data-hot-pos="outer-top-right"
-          data-hot-label="开关只改启用状态，不进编辑页、不弹确认；关掉后该条不再触发但规则保留，列表内该行转灰并计为已暂停">
-          <input type="checkbox" checked aria-label="启用 吃药" data-switch="吃药">
+          data-hot-label="开关即时生效：切换即发写请求，不进编辑页、不弹确认；关掉后该行转灰并标「已暂停」、下次触发改「暂停中，不触发」；失败回滚整行并 toast「没有改成功，这条提醒还是原来的样子」（本帧由「吃药」行演示）">
+          <input type="checkbox" checked aria-label="启用 妈妈体检" data-switch="妈妈体检">
           <span class="track"></span>
           <span class="thumb"></span>
         </label>
       </div>
 
-      <div class="rem-item">
+      <div class="rem-item is-other"
+        data-hot="⑦" data-hot-name="家人创建的提醒" data-hot-pos="outer-top-right"
+        data-hot-label="提醒归属创建人、不可指派他人；他人提醒对非管理员可见、开关置灰，判据三条 = 可见、置灰、带创建人（16.3 日历行：他人对象的写权只在创建人与管理员）">
         <a class="rem-body" href="reminder-edit.html">
-          <span class="rem-title">接女儿放学</span>
+          <span class="rem-title">小满家长会</span>
           <span class="rem-meta">
-            <span class="rem-cycle num">每周一至周五 16:00</span>
+            <span class="rem-cycle num">每周三 15:00</span>
             <span class="rem-sep">·</span>
-            <span class="rem-next">下次 <b class="num">今天 16:00</b></span>
+            <span class="rem-next">下次 <b class="num">11 月 4 日 周三 15:00</b> · 提前 1 小时</span>
+          </span>
+          <span class="rem-meta">
+            <span class="rem-who is-other">由妈妈创建</span>
+            <span class="rem-sep">·</span>
+            <span class="rem-chan">站内信</span>
           </span>
         </a>
-        <label class="switch">
-          <input type="checkbox" checked aria-label="启用 接女儿放学" data-switch="接女儿放学">
+        <label class="switch is-locked">
+          <input type="checkbox" checked disabled data-lock-toast="这条是妈妈创建的，只有 TA 或管理员能改" aria-label="启用 小满家长会（由妈妈创建，不可修改）">
           <span class="track"></span>
           <span class="thumb"></span>
         </label>
@@ -190,7 +216,14 @@
               位置 · 手动地点
             </span>
             <span class="rem-sep">·</span>
-            <span class="rem-cycle">不重复</span>
+            <span class="rem-cycle num">11 月 2 日 09:00</span>
+            <span class="rem-sep">·</span>
+            <span class="rem-next">下次 <b class="num">11 月 2 日 09:00</b> · 提前 10 分钟</span>
+          </span>
+          <span class="rem-meta">
+            <span class="rem-who">我创建</span>
+            <span class="rem-sep">·</span>
+            <span class="rem-chan">推送</span>
             <span class="rem-sep">·</span>
             <span class="rem-next">地点 <b>永辉超市（公司楼下）</b></span>
           </span>
@@ -202,17 +235,44 @@
         </label>
       </div>
 
-      <div class="rem-item">
+      <div class="rem-item" data-switch-fail="1">
         <a class="rem-body" href="reminder-edit.html">
-          <span class="rem-title">交房租</span>
+          <span class="rem-title">吃药</span>
           <span class="rem-meta">
-            <span class="rem-cycle num">每月 1 日 09:00</span>
+            <span class="rem-cycle num">每天 08:00</span>
             <span class="rem-sep">·</span>
-            <span class="rem-next">下次 <b class="num">11 月 1 日 09:00</b></span>
+            <span class="rem-next">下次 <b class="num">明天 08:00</b> · 准时</span>
+          </span>
+          <span class="rem-meta">
+            <span class="rem-who">我创建</span>
+            <span class="rem-sep">·</span>
+            <span class="rem-chan">推送 + 站内信</span>
           </span>
         </a>
         <label class="switch">
-          <input type="checkbox" checked aria-label="启用 交房租" data-switch="交房租">
+          <input type="checkbox" checked aria-label="启用 吃药" data-switch="吃药">
+          <span class="track"></span>
+          <span class="thumb"></span>
+        </label>
+      </div>
+
+      <div class="rem-item is-skip">
+        <a class="rem-body" href="reminder-edit.html">
+          <span class="rem-title">给绿植浇水</span>
+          <span class="rem-meta">
+            <span class="rem-tag rem-tag-skip">本次已跳过</span>
+            <span class="rem-cycle num">每周一 08:00</span>
+            <span class="rem-sep">·</span>
+            <span class="rem-next">下次 <b class="num">11 月 3 日 08:00</b> · 提前 10 分钟</span>
+          </span>
+          <span class="rem-meta">
+            <span class="rem-who">我创建</span>
+            <span class="rem-sep">·</span>
+            <span class="rem-chan">站内信</span>
+          </span>
+        </a>
+        <label class="switch">
+          <input type="checkbox" checked aria-label="启用 给绿植浇水" data-switch="给绿植浇水">
           <span class="track"></span>
           <span class="thumb"></span>
         </label>
@@ -225,7 +285,12 @@
             <span class="rem-tag rem-tag-off">已暂停</span>
             <span class="rem-cycle num">每月 5 日 10:00</span>
             <span class="rem-sep">·</span>
-            <span class="rem-next" data-resume="下次 11 月 5 日 10:00">暂停中，不触发</span>
+            <span class="rem-next" data-resume="下次 11 月 5 日 10:00 · 准时">暂停中，不触发</span>
+          </span>
+          <span class="rem-meta">
+            <span class="rem-who">我创建</span>
+            <span class="rem-sep">·</span>
+            <span class="rem-chan">站内信</span>
           </span>
         </a>
         <label class="switch">
@@ -250,11 +315,22 @@
         <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 5a7 7 0 0 1 7 7v5l2 3H7l2-3v-5a7 7 0 0 1 7-7z"/><path d="M13.5 23a2.5 2.5 0 0 0 5 0"/></svg>
       </div>
       <div class="state-title">还没有提醒</div>
-      <div class="state-desc">提醒到点通过站内信与推送下发；可以先建一条每天、每周或每月的提醒。</div>
+      <div class="state-desc">提醒到点会通过推送与站内信发出；可以先建一条每天、每周、每月、每年或自定义周期的提醒。</div>
       <button class="btn btn-secondary" type="button" data-go="reminder-create.html">新建提醒</button>
     </div>
 
-    <div class="rem-foot-note tiny">开关与删除直写本面对象并级联失效其到期项（原生对象不发 {code}.due.revoked）；到点后由 <code>calendar.reminder.fired</code> 交底座投递，本面不直连任何推送通道；暂停只停触发，不改周期规则。</div>
+    <div class="state rem-error">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="16" cy="16" r="12"/><path d="M16 10v7M16 21.5v.1"/></svg>
+      </div>
+      <div class="state-title">没能加载提醒</div>
+      <div class="state-desc">网络或服务没响应。你已有的提醒都还在，这里先不把旧内容拿出来给你看。</div>
+      <button class="btn btn-primary" type="button" id="rem-retry"
+        data-hot="⑧" data-hot-name="首屏失败的重试" data-hot-pos="top-right"
+        data-hot-label="重试只重发本列表请求；成功回默认态，失败保持整页失败态与原说明，不弹局部提示了事、不清缓存、不回落到旧缓存">重试</button>
+    </div>
+
+    <div class="rem-foot-note tiny">开关与删除都会立刻生效；到点的提醒由日历按家里的时间安排好、再发出去，日历自己不发通知；暂停只是不再响，规则原样留着，打开就按原来的节奏继续。</div>
   </div>
 
   <div class="toast"></div>
@@ -265,15 +341,26 @@
   var sum = document.getElementById('rem-sum');
 
   function refreshSum() {
-    var inputs = document.querySelectorAll('[data-switch]');
+    var inputs = document.querySelectorAll('.rem-list [data-switch]');
     var on = 0;
     inputs.forEach(function (i) { if (i.checked) on += 1; });
-    sum.textContent = '共 ' + inputs.length + ' 条 · ' + on + ' 条启用 · ' + (inputs.length - on) + ' 条已暂停';
+    var other = document.querySelectorAll('.rem-item.is-other').length;
+    var skipped = document.querySelectorAll('.rem-item.is-skip').length;
+    sum.textContent = '共 ' + inputs.length + ' 条 · ' + on + ' 条启用 · ' + (inputs.length - on) + ' 条已暂停'
+      + (other ? ' · ' + other + ' 条家人创建' : '')
+      + (skipped ? ' · ' + skipped + ' 条本次已跳过' : '');
   }
 
   document.querySelectorAll('[data-switch]').forEach(function (input) {
     input.addEventListener('change', function () {
       var row = input.closest('.rem-item');
+      var willFail = row.hasAttribute('data-switch-fail') && remState !== 'offline';
+
+      if (willFail) {
+        input.checked = !input.checked;
+        window.HC.toast('没有改成功，这条提醒还是原来的样子');
+        return;
+      }
       row.classList.toggle('is-off', !input.checked);
       var next = row.querySelector('.rem-next');
       var tag = row.querySelector('.rem-tag-off');
@@ -296,6 +383,18 @@
         ? '开关改动已记下，联网后同步'
         : (input.checked ? '已启用，按周期继续触发' : '已暂停，规则保留'));
     });
+  });
+
+  document.querySelectorAll('.switch.is-locked').forEach(function (sw) {
+    sw.addEventListener('click', function (e) {
+      e.preventDefault();
+      window.HC.toast(sw.querySelector('input').getAttribute('data-lock-toast'));
+    });
+  });
+
+  document.getElementById('rem-retry').addEventListener('click', function () {
+    window.HC.toast('正在重新加载提醒（演示）');
+    setTimeout(function () { location.href = 'reminder.html'; }, 900);
   });
 </script>
 </body>

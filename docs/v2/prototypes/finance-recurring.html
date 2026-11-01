@@ -81,6 +81,32 @@
 
   .fx-foot-note { margin-top: 14px; line-height: var(--lh-normal); }
 
+  .fx-undo {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 10px; padding: 10px 12px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--brand-soft-border);
+    background: var(--brand-soft);
+    font-size: var(--fs-12); color: var(--text-2);
+  }
+  .fx-undo[hidden] { display: none; }
+  .fx-undo > svg { flex: none; color: var(--brand-text); }
+  .fx-undo-text { flex: 1; min-width: 0; }
+  .fx-undo-btn {
+    flex: none; height: 28px; padding: 0 12px;
+    border-radius: 999px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--brand-text);
+    font-family: inherit; font-size: var(--fs-12); font-weight: 600; cursor: pointer;
+  }
+  .fx-undo-btn:hover { background: var(--surface-2); }
+
+  .fx-rule-sub .fx-owner { color: var(--text-3); }
+  .fx-rule-meta .num.is-skip { color: var(--warning); }
+  .fx-rule.is-plain .fx-rule-body { cursor: default; }
+  .fx-rule.is-plain .fx-rule-body:hover { background: none; }
+
+  body[data-state="offline"] .offline-bar { display: flex; }
+
   .fx-sk { display: none; padding-top: 10px; }
   .fx-sk .sk-block { height: 72px; }
   body[data-state="loading"] .fx-sk { display: block; }
@@ -91,9 +117,14 @@
   body[data-state="empty"] .fx-empty { display: flex; }
   body[data-state="empty"] .fx-data,
   body[data-state="empty"] .fx-sum { display: none; }
+
+  .fx-error { display: none; }
+  body[data-state="error"] .fx-error { display: flex; }
+  body[data-state="error"] .fx-data,
+  body[data-state="error"] .fx-sum { display: none; }
 </style>
 </head>
-<body data-screen="F06 周期记账" data-states="default,paused,empty,loading">
+<body data-screen="F06 周期记账" data-states="default,paused,skipped,member-readonly,empty,loading,error,offline,write-failed">
 <div class="harness"></div>
 
 <div class="phone">
@@ -124,7 +155,7 @@
 
   <div class="offline-bar">
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
-    当前离线 · 显示本机缓存，暂停操作排队
+    当前离线 · 显示 10 月 29 日 09:20 的本机缓存，暂停操作排队
   </div>
 
   <div class="content bottom-space fx-content">
@@ -145,74 +176,7 @@
 
     <div class="fx-data" id="fx-data">
       <div class="fx-list">
-        <div class="fx-rule">
-          <span class="fx-rule-ic">
-            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5 10 3l7 4.5v7L10 19l-7-4.5z"/><path d="M3 7.5 10 12l7-4.5M10 12v7"/></svg>
-          </span>
-          <a class="fx-rule-body" href="finance-recurring-edit.html"
-            data-hot="④" data-hot-name="规则行" data-hot-pos="bottom-right"
-            data-hot-label="整行进编辑页并带 version；行内四件套：规则名、金额（负数在符号前）、周期与下次生效时间、所属分类与账户；行尾开关是独立热区，点开关不进编辑">
-            <span class="fx-rule-top">
-              <span class="fx-rule-name">房租</span>
-              <span class="amount fx-rule-amt">-¥4,200.00</span>
-            </span>
-            <span class="fx-rule-meta">
-              <span>每月 5 日</span><span class="fx-dot">·</span><span class="num">下次 11 月 5 日</span>
-              <span class="tag fx-paused-tag">已暂停</span>
-            </span>
-            <span class="fx-rule-sub">居住 · 招商银行储蓄卡</span>
-          </a>
-          <label class="switch fx-rule-sw" aria-label="启用或暂停房租"
-            data-hot="⑤" data-hot-name="启用开关" data-hot-pos="outer-bottom-right"
-            data-hot-label="点开关即时改启停，不进编辑页、不弹确认；暂停后该行置灰、下次生效时间改显「暂停中，不触发」，恢复后从下一个周期继续">
-            <input type="checkbox" checked data-rule="房租">
-            <span class="track"></span><span class="thumb"></span>
-          </label>
-        </div>
-
-        <div class="fx-rule">
-          <span class="fx-rule-ic is-income">
-            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15.5 8 10l3 3 6-7"/><path d="M13.5 6H17v3.5"/></svg>
-          </span>
-          <a class="fx-rule-body" href="finance-recurring-edit.html">
-            <span class="fx-rule-top">
-              <span class="fx-rule-name">工资</span>
-              <span class="amount fx-rule-amt is-in">+¥18,000.00</span>
-            </span>
-            <span class="fx-rule-meta">
-              <span>每月 10 日</span><span class="fx-dot">·</span><span class="num">下次 11 月 10 日</span>
-              <span class="tag fx-paused-tag">已暂停</span>
-            </span>
-            <span class="fx-rule-sub">收入 · 招商银行储蓄卡</span>
-          </a>
-          <label class="switch fx-rule-sw" aria-label="启用或暂停工资">
-            <input type="checkbox" checked data-rule="工资">
-            <span class="track"></span><span class="thumb"></span>
-          </label>
-        </div>
-
-        <div class="fx-rule">
-          <span class="fx-rule-ic">
-            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="15" height="10" rx="2.5"/><path d="M2.5 9h15"/><path d="M6 13h3"/></svg>
-          </span>
-          <a class="fx-rule-body" href="finance-recurring-edit.html">
-            <span class="fx-rule-top">
-              <span class="fx-rule-name">宽带续费</span>
-              <span class="amount fx-rule-amt">-¥129.00</span>
-            </span>
-            <span class="fx-rule-meta">
-              <span>每月 12 日</span><span class="fx-dot">·</span><span class="num">下次 11 月 12 日</span>
-              <span class="tag fx-paused-tag">已暂停</span>
-            </span>
-            <span class="fx-rule-sub">居住 · 支付宝</span>
-          </a>
-          <label class="switch fx-rule-sw" aria-label="启用或暂停宽带续费">
-            <input type="checkbox" checked data-rule="宽带续费">
-            <span class="track"></span><span class="thumb"></span>
-          </label>
-        </div>
-
-        <div class="fx-rule">
+        <div class="fx-rule" data-owner="me" data-name="家政保洁">
           <span class="fx-rule-ic">
             <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v3.5M10 13.5V17M3 10h3.5M13.5 10H17"/><circle cx="10" cy="10" r="3.4"/></svg>
           </span>
@@ -225,16 +189,93 @@
               <span>每周一</span><span class="fx-dot">·</span><span class="num">下次 11 月 2 日</span>
               <span class="tag fx-paused-tag">已暂停</span>
             </span>
-            <span class="fx-rule-sub">家务 · 微信零钱</span>
+            <span class="fx-rule-sub">家务 · 微信<span class="fx-owner"> · 我的</span></span>
           </a>
           <label class="switch fx-rule-sw" aria-label="启用或暂停家政保洁">
             <input type="checkbox" checked data-rule="家政保洁">
             <span class="track"></span><span class="thumb"></span>
           </label>
         </div>
+
+        <div class="fx-rule" data-owner="me" data-name="房租">
+          <span class="fx-rule-ic">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5 10 3l7 4.5v7L10 19l-7-4.5z"/><path d="M3 7.5 10 12l7-4.5M10 12v7"/></svg>
+          </span>
+          <a class="fx-rule-body" href="finance-recurring-edit.html"
+            data-hot="④" data-hot-name="规则行" data-hot-pos="bottom-right"
+            data-hot-label="整行进编辑页并携带页首更新时间；行内五件套：规则名、金额（负号在货币符号之前）、周期与下次生效时间、所属分类与账户、归属位；行尾开关是独立热区，点开关不进编辑">
+            <span class="fx-rule-top">
+              <span class="fx-rule-name">房租</span>
+              <span class="amount fx-rule-amt">-¥4,200.00</span>
+            </span>
+            <span class="fx-rule-meta">
+              <span>每月 5 日</span><span class="fx-dot">·</span><span class="num">下次 11 月 5 日</span>
+              <span class="tag fx-paused-tag">已暂停</span>
+            </span>
+            <span class="fx-rule-sub">居住 · 招商银行<span class="fx-owner"> · 我的</span></span>
+          </a>
+          <label class="switch fx-rule-sw" aria-label="启用或暂停房租"
+            data-hot="⑤" data-hot-name="启用开关（即时 + 撤销）" data-hot-pos="outer-bottom-right"
+            data-hot-label="点开关即时改启停，不进编辑页、不弹确认；写成功后浮出 10 秒撤销条；暂停后该行转灰、下次生效时间改显「暂停中，不触发」，恢复后从下一个周期继续；写失败整行还原且不出现撤销条">
+            <input type="checkbox" checked data-rule="房租">
+            <span class="track"></span><span class="thumb"></span>
+          </label>
+        </div>
+
+        <div class="fx-rule" data-owner="me" data-name="工资">
+          <span class="fx-rule-ic is-income">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15.5 8 10l3 3 6-7"/><path d="M13.5 6H17v3.5"/></svg>
+          </span>
+          <a class="fx-rule-body" href="finance-recurring-edit.html">
+            <span class="fx-rule-top">
+              <span class="fx-rule-name">工资</span>
+              <span class="amount fx-rule-amt is-in">+¥18,000.00</span>
+            </span>
+            <span class="fx-rule-meta">
+              <span>每月 10 日</span><span class="fx-dot">·</span><span class="num">下次 11 月 10 日</span>
+              <span class="tag fx-paused-tag">已暂停</span>
+            </span>
+            <span class="fx-rule-sub">收入 · 招商银行<span class="fx-owner"> · 我的</span></span>
+          </a>
+          <label class="switch fx-rule-sw" aria-label="启用或暂停工资">
+            <input type="checkbox" checked data-rule="工资">
+            <span class="track"></span><span class="thumb"></span>
+          </label>
+        </div>
+
+        <div class="fx-rule" data-owner="妈妈" data-name="宽带续费">
+          <span class="fx-rule-ic">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="15" height="10" rx="2.5"/><path d="M2.5 9h15"/><path d="M6 13h3"/></svg>
+          </span>
+          <a class="fx-rule-body" href="finance-recurring-edit.html"
+            data-hot="⑦" data-hot-name="他人创建的规则" data-hot-pos="bottom-right"
+            data-hot-label="归属位写明「由妈妈创建」；成人成员视角下这一行的开关与编辑入口**不渲染**（切到 member-readonly 帧可见），不是置灰、不是加锁、点了不报错，行内四件套仍可读；管理员视角全部可改">
+            <span class="fx-rule-top">
+              <span class="fx-rule-name">宽带续费</span>
+              <span class="amount fx-rule-amt">-¥129.00</span>
+            </span>
+            <span class="fx-rule-meta">
+              <span>每月 31 日</span><span class="fx-dot">·</span><span class="num">下次 12 月 31 日</span>
+              <span class="tag fx-paused-tag">已暂停</span>
+            </span>
+            <span class="fx-rule-sub">居住 · 支付宝 · <span class="fx-owner">由妈妈创建</span></span>
+          </a>
+          <label class="switch fx-rule-sw" aria-label="启用或暂停宽带续费">
+            <input type="checkbox" checked data-rule="宽带续费">
+            <span class="track"></span><span class="thumb"></span>
+          </label>
+        </div>
       </div>
 
-      <p class="fx-foot-note tiny">暂停后规则保留、下次生效时间停止推进，恢复后从下一个周期继续；到点自动入账带幂等键，重复提交不会重复入账。</p>
+      <div class="fx-undo" id="fx-undo" hidden>
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h8.5a3.5 3.5 0 1 1 0 7H9"/><path d="M7 6.5 3.5 10 7 13.5"/></svg>
+        <span class="fx-undo-text" id="fx-undo-text">已暂停「房租」，不再自动入账</span>
+        <button class="fx-undo-btn" type="button" id="fx-undo-btn"
+          data-hot="⑥" data-hot-name="撤销条" data-hot-pos="top-right"
+          data-hot-label="只在启停写成功之后出现，带可见倒计时、窗口 10 秒；点「撤销」按原值回写（同一写路径、带最新更新时间），整行与「N 条启用」同步还原；不点则收起，写失败时不出现">撤销 <span class="num" id="fx-undo-left">10</span></button>
+      </div>
+
+      <p class="fx-foot-note tiny">暂停后规则保留、下次生效时间停止推进，恢复后从下一个周期继续；关掉开关后的 10 秒里可以随时撤销，误触不必进编辑页改回来。到点只会记一笔，重复提交也不会多记一笔。</p>
     </div>
 
     <div class="fx-sk" aria-hidden="true">
@@ -252,8 +293,19 @@
       <div class="state-title">还没有周期记账规则</div>
       <div class="state-desc">房租、工资、订阅这类固定收支设成规则后到点自动入账；入账同样计入预算，不会漏提醒。</div>
       <button class="btn btn-secondary" type="button" data-go="finance-recurring-create.html"
-        data-hot="⑥" data-hot-name="空态行动" data-hot-pos="top-right"
+        data-hot="⑧" data-hot-name="空态行动" data-hot-pos="top-right"
         data-hot-label="零条时给可执行动作「新建规则」，直接进新建页；不给「去别处看看」这类空话">新建规则</button>
+    </div>
+
+    <div class="state fx-error">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 6 3 28h26L16 6Z"/><path d="M16 13v6"/><circle cx="16" cy="23.2" r="1"/></svg>
+      </div>
+      <div class="state-title">没能加载周期记账规则</div>
+      <div class="state-desc">网络或服务暂时没响应，本页不展示旧数据与半截列表；「新建」不受影响。</div>
+      <button class="btn btn-secondary" type="button" id="fx-retry"
+        data-hot="⑨" data-hot-name="首屏失败的重试" data-hot-pos="top-center"
+        data-hot-label="只重发本列表请求；成功回默认态，失败保持整页失败态与原说明，不弹局部提示了事、不清缓存">重试</button>
     </div>
   </div>
 
@@ -262,13 +314,51 @@
 
 <script>
   var fxState = new URLSearchParams(location.search).get('state') || 'default';
+  var undoBar = document.getElementById('fx-undo');
+  var undoText = document.getElementById('fx-undo-text');
+  var undoBtn = document.getElementById('fx-undo-btn');
+  var undoLeft = document.getElementById('fx-undo-left');
+  var undoTimer = null;
+  var undoSeconds = 10;
+  var undoRow = null;
+  var undoWasPaused = false;
+  var simulateFail = fxState === 'write-failed';
 
-  function setPaused(row, on) {
-    row.classList.toggle('is-paused', on);
+  function isPaused(row) { return row.classList.contains('is-paused'); }
+
+  function renderRow(row, paused) {
+    row.classList.toggle('is-paused', paused);
     var box = row.querySelector('input[type="checkbox"]');
-    if (box) box.checked = !on;
+    if (box) box.checked = !paused;
     var next = row.querySelector('.fx-rule-meta .num');
-    if (next) next.textContent = on ? '暂停中，不触发' : row.getAttribute('data-next');
+    if (next) next.textContent = paused ? '暂停中，不触发' : row.getAttribute('data-next');
+  }
+
+  function syncSum() {
+    var on = rows.filter(function (r) { return !r.classList.contains('is-paused'); }).length;
+    var sum = document.getElementById('fx-sum');
+    if (sum) sum.innerHTML = '<b>' + rows.length + '</b> 条规则 · ' + on + ' 条启用';
+  }
+
+  function closeUndo() {
+    if (undoTimer) { clearInterval(undoTimer); undoTimer = null; }
+    undoBar.hidden = true;
+    undoRow = null;
+  }
+
+  function startUndo(row, wasPaused) {
+    closeUndo();
+    undoRow = row;
+    undoWasPaused = wasPaused;
+    undoSeconds = 10;
+    undoText.textContent = (wasPaused ? '已启用' : '已暂停') + '「' + row.getAttribute('data-name') + '」· 10 秒内可撤销';
+    undoLeft.textContent = '10';
+    undoBar.hidden = false;
+    undoTimer = setInterval(function () {
+      undoSeconds -= 1;
+      undoLeft.textContent = String(Math.max(undoSeconds, 0));
+      if (undoSeconds <= 0) closeUndo();
+    }, 1000);
   }
 
   var rows = Array.prototype.slice.call(document.querySelectorAll('.fx-rule'));
@@ -277,27 +367,76 @@
     if (next) row.setAttribute('data-next', next.textContent);
   });
 
-  function syncSum() {
-    var on = rows.filter(function (r) { return !r.classList.contains('is-paused'); }).length;
-    var sum = document.getElementById('fx-sum');
-    if (sum) sum.innerHTML = '<b>' + rows.length + '</b> 条规则 · ' + on + ' 条启用';
-  }
-
   rows.forEach(function (row) {
     var box = row.querySelector('input[type="checkbox"]');
     if (!box) return;
     box.addEventListener('change', function () {
-      setPaused(row, !box.checked);
+      var wasPaused = isPaused(row);
+      if (fxState === 'offline') {
+        renderRow(row, wasPaused);
+        syncSum();
+        window.HC.toast('当前离线，操作已排队（等待联网），联网后再生效');
+        return;
+      }
+      renderRow(row, !box.checked);
       syncSum();
-      window.HC.toast(box.checked
-        ? '已启用「' + box.getAttribute('data-rule') + '」，下次生效时间恢复推进'
-        : '已暂停「' + box.getAttribute('data-rule') + '」，不再自动入账');
+      if (simulateFail) {
+        renderRow(row, wasPaused);
+        syncSum();
+        window.HC.toast('没有改成功，这条规则还是原来的样子');
+        return;
+      }
+      startUndo(row, wasPaused);
     });
   });
 
+  if (undoBtn) {
+    undoBtn.addEventListener('click', function (event) {
+      event.preventDefault();
+      if (!undoRow) return;
+      var row = undoRow;
+      var name = row.getAttribute('data-name');
+      renderRow(row, undoWasPaused);
+      syncSum();
+      closeUndo();
+      window.HC.toast(undoWasPaused
+        ? '已恢复「' + name + '」，继续暂停'
+        : '已恢复「' + name + '」，仍按原周期入账');
+    });
+  }
+
   if (fxState === 'paused') {
-    setPaused(rows[0], true);
+    var pausedRow = rows[1];
+    renderRow(pausedRow, true);
     syncSum();
+    startUndo(pausedRow, false);
+  }
+
+  if (fxState === 'skipped') {
+    var skippedRow = rows[1];
+    var skippedNext = skippedRow.querySelector('.fx-rule-meta .num');
+    skippedNext.textContent = '本次已跳过 · 下次 12 月 5 日';
+    skippedNext.classList.add('is-skip');
+  }
+
+  if (fxState === 'member-readonly') {
+    rows.forEach(function (row) {
+      if (row.getAttribute('data-owner') === 'me') return;
+      row.classList.add('is-plain');
+      var sw = row.querySelector('.fx-rule-sw');
+      if (sw) sw.style.display = 'none';
+      var body = row.querySelector('.fx-rule-body');
+      if (body) {
+        body.removeAttribute('href');
+        body.style.cursor = 'default';
+      }
+    });
+  }
+
+  if (simulateFail) {
+    window.setTimeout(function () {
+      window.HC.toast('没有改成功，这条规则还是原来的样子');
+    }, 250);
   }
 </script>
 </body>

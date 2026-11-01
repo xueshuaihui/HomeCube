@@ -83,6 +83,23 @@
   .fx-liab-note.is-on { display: flex; }
   .fx-liab-note svg { flex: none; margin-top: 1px; }
 
+  .fx-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .fx-date-cell {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px; border-radius: var(--radius-md);
+    border: 1px solid var(--border); background: var(--surface);
+  }
+  .fx-date-cell span { flex: none; font-size: var(--fs-13); color: var(--text-2); }
+  .fx-date-cell select {
+    flex: 1; min-width: 0; border: 0; background: none;
+    font-family: inherit; font-size: var(--fs-14); font-weight: 600;
+    color: var(--text); text-align: right;
+  }
+  #fx-credit-dates { display: none; }
+  #fx-credit-dates.is-on { display: block; }
+
+  body[data-state="offline"] .offline-bar { display: flex; }
+
   .fx-foot-note {
     margin-top: 4px; padding: 12px 14px;
     border-radius: var(--radius-md);
@@ -99,7 +116,7 @@
   }
 </style>
 </head>
-<body data-screen="F10 新建账户" data-states="default,liability,error">
+<body data-screen="F10 新建账户" data-states="default,liability,error,offline">
 <div class="harness"></div>
 
 <div class="phone">
@@ -139,7 +156,7 @@
     <div class="field">
       <label class="field-label" for="fx-name">名称<span class="fx-required" style="margin-left:4px;font-size:var(--fs-11);font-weight:600;color:var(--text-3)">必填</span></label>
       <input class="input fx-name-input" id="fx-name" type="text" maxlength="24"
-        placeholder="例如：招商银行储蓄卡" value="招商银行储蓄卡" autocomplete="off"
+        placeholder="例如：招商银行" value="招商银行" autocomplete="off"
         data-hot="②" data-hot-name="名称" data-hot-pos="outer-top-right"
         data-hot-label="必填、上限 24 字；同名账户允许存在（用类型与尾号区分），只做首尾空白裁剪；为空时红框 + 行内错误，不弹全局错误">
       <div class="field-error fx-name-err" role="alert">
@@ -187,8 +204,27 @@
       </div>
       <div class="fx-liab-note" id="fx-liab-note">
         <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
-        <span>信用卡的余额按「待还」计入总负债；账单日与还款日 ②（M2）开放，P1 先在资料里记录额度。</span>
+        <span>信用卡的余额按「待还」计入总负债；账单日与还款日在下方填写，用于到期与还款提醒。</span>
       </div>
+    </div>
+
+    <div class="field" id="fx-credit-dates">
+      <span class="field-label">账单与还款</span>
+      <div class="fx-dates">
+        <label class="fx-date-cell">
+          <span>账单日</span>
+          <select id="fx-bill-day" aria-label="账单日">
+            <option>1</option><option>2</option><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option><option>13</option><option>14</option><option>15</option><option>16</option><option>17</option><option>18</option><option>19</option><option>20</option><option>21</option><option>22</option><option>23</option><option>24</option><option>25</option><option>26</option><option>27</option><option>28</option>
+          </select>
+        </label>
+        <label class="fx-date-cell">
+          <span>还款日</span>
+          <select id="fx-repay-day" aria-label="还款日">
+            <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option><option>13</option><option>14</option><option>15</option><option>16</option><option>17</option><option>18</option><option>19</option><option>20</option><option>21</option><option>22</option><option selected>23</option><option>24</option><option>25</option><option>26</option><option>27</option><option>28</option>
+          </select>
+        </label>
+      </div>
+      <div class="help">只对信用卡 / 负债账户出现；该月没有这一天时，当月不提醒也不自动顺延。</div>
     </div>
 
     <div class="field">
@@ -214,7 +250,7 @@
     </div>
 
     <div class="fx-foot-note">
-      <b>保存后</b>：账户立即出现在账户列表与记账选择器里；不会生成流水，净资产按初始余额计入。前三个账户可随时改默认标记。
+      <b>保存后</b>：账户立即出现在账户列表与记账选择器里；不会生成流水，净资产按初始余额计入。家里的第一个账户会自动成为默认账户；之后要换默认账户，只有管理员能改。
     </div>
   </div>
 
@@ -239,11 +275,12 @@
     cash: '现金账户默认是资产账户，适合记录钱包与备用金。',
     debit: '储蓄卡与现金默认是资产账户。',
     credit: '信用卡默认是负债账户，余额按待还金额展示。',
-    other: '支付宝、微信零钱等第三方账户按资产账户处理；也可手动改为负债。'
+    other: '支付宝、微信等第三方账户按资产账户处理；也可手动改为负债。'
   };
 
   function syncLiab() {
     liabNote.classList.toggle('is-on', liab.checked);
+    document.getElementById('fx-credit-dates').classList.toggle('is-on', liab.checked);
     document.getElementById('fx-balance-label').innerHTML = (liab.checked ? '初始待还' : '初始余额') +
       '<span style="margin-left:4px;font-size:var(--fs-11);font-weight:600;color:var(--text-3)">必填</span>';
     document.getElementById('fx-balance-help').textContent = liab.checked
@@ -274,7 +311,7 @@
     document.getElementById('fx-type-help').textContent = typeHelp.credit;
     liab.checked = true;
     document.getElementById('fx-name').value = '招商银行信用卡';
-    document.getElementById('fx-balance').value = '3250.00';
+    document.getElementById('fx-balance').value = '0.00';
   }
 
   if (fxState === 'error') {
@@ -303,6 +340,10 @@
       bal.classList.add('is-error');
       document.body.setAttribute('data-state', 'error');
       name.focus();
+      return;
+    }
+    if (fxState === 'offline') {
+      window.HC.toast('当前离线，保存已排队（等待联网），联网后再生效');
       return;
     }
     window.HC.toast('账户已创建，余额由流水累计');

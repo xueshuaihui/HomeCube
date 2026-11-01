@@ -35,7 +35,7 @@
     background: var(--brand-soft); color: var(--brand-text);
     border-color: var(--brand-soft-border);
   }
-  .fx-field-help { margin-top: 6px; font-size: var(--fs-11); color: var(--text-3); }
+  .fx-field-help { margin-top: 6px; font-size: var(--fs-11); color: var(--text-3); line-height: var(--lh-normal); }
 
   .fx-swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
   .fx-swatch {
@@ -76,12 +76,21 @@
 
   .fx-danger-row { display: flex; align-items: center; gap: 10px; padding: 14px var(--sp-4); }
   .fx-danger-txt { flex: 1; min-width: 0; }
-  .fx-danger-title { font-size: var(--fs-14); font-weight: 600; color: var(--text-3); }
-  .fx-danger-sub { margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
-  .fx-danger-row .btn[disabled] { height: 34px; }
+  .fx-danger-title { font-size: var(--fs-14); font-weight: 600; }
+  .fx-danger-sub { margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); line-height: var(--lh-normal); }
+  .fx-danger-row .btn { flex: none; }
+  .fx-danger-row + .fx-danger-row { border-top: 1px solid var(--border); }
 
-  .fx-name-error { display: none; }
-  body[data-state="error"] .fx-name-error { display: flex; }
+  .fx-member-note {
+    display: none; gap: 8px; align-items: flex-start;
+    margin-top: 12px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2); color: var(--text-2);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .fx-member-note svg { flex: none; margin-top: 1px; }
+  body[data-state="member-view"] .fx-member-note { display: flex; }
+  body[data-state="member-view"] .fx-admin-only { display: none; }
 
   .fx-sheet-row {
     display: flex; align-items: center; gap: 10px;
@@ -97,6 +106,54 @@
   .fx-sheet-name { flex: 1; min-width: 0; font-size: var(--fs-14); font-weight: 600; }
   .fx-sheet-amt { font-size: var(--fs-12); color: var(--text-3); }
 
+  .fx-impact {
+    margin-top: 12px; padding: 12px 14px;
+    border: 1px solid var(--danger-soft-border, var(--border));
+    border-radius: var(--radius-md);
+    background: var(--danger-soft); color: var(--danger);
+    font-size: var(--fs-13); line-height: var(--lh-normal);
+  }
+  .fx-impact b { font-size: var(--fs-15); }
+
+  .fx-merge-list { margin-top: 6px; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+  .fx-merge-opt {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; padding: 12px 14px;
+    border: 0; background: var(--surface); color: var(--text);
+    font-family: inherit; font-size: var(--fs-14); text-align: left;
+    cursor: pointer;
+  }
+  .fx-merge-opt + .fx-merge-opt { border-top: 1px solid var(--border); }
+  .fx-merge-opt[aria-pressed="true"] { background: var(--brand-soft); color: var(--brand-text); }
+  .fx-merge-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .fx-merge-name { flex: 1; min-width: 0; }
+  .fx-merge-amt { font-size: var(--fs-12); color: var(--text-3); }
+  .fx-merge-check { width: 18px; height: 18px; flex: none; color: var(--brand-text); visibility: hidden; }
+  .fx-merge-opt[aria-pressed="true"] .fx-merge-check { visibility: visible; }
+
+  .fx-diff { margin-top: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+  .fx-diff-row { display: flex; gap: 10px; padding: 9px 12px; font-size: var(--fs-12); }
+  .fx-diff-row + .fx-diff-row { border-top: 1px solid var(--border); }
+  .fx-diff-k { width: 52px; flex: none; color: var(--text-3); }
+  .fx-diff-v { flex: 1; min-width: 0; color: var(--text-2); }
+  .fx-diff-v b { color: var(--text); }
+
+  .fx-sk { display: none; padding-top: 12px; }
+  .fx-sk .sk-line:first-child { width: 40%; }
+  body[data-state="loading"] .fx-sk { display: block; }
+  body[data-state="loading"] .fx-real { display: none; }
+  body[data-state="loading"] .fx-footer { display: none; }
+
+  .fx-fail, .fx-empty { display: none; padding-top: 24px; }
+  body[data-state="failed"] .fx-fail { display: flex; }
+  body[data-state="empty"] .fx-empty { display: flex; }
+  body[data-state="failed"] .fx-real,
+  body[data-state="failed"] .fx-footer,
+  body[data-state="empty"] .fx-real,
+  body[data-state="empty"] .fx-footer { display: none; }
+
+  body[data-state="offline"] .offline-bar { display: flex; }
+
   .fx-footer {
     flex: none;
     padding: 10px 16px 16px;
@@ -105,7 +162,7 @@
   }
 </style>
 </head>
-<body data-screen="F15 编辑分类" data-states="default,disable-confirm,error">
+<body data-screen="F15 编辑分类" data-states="default,disable-confirm,delete-impact,merge,conflict,member-view,empty,loading,failed,offline">
 <div class="harness"></div>
 
 <div class="phone">
@@ -122,7 +179,7 @@
     <div class="nav-left">
       <a class="icon-btn" href="finance-category.html" aria-label="返回分类管理"
         data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
-        data-hot-label="回分类管理 finance/category/index，并重新展开「餐饮」；未保存的改动直接丢弃">
+        data-hot-label="回分类管理 finance/category/index，并重新展开原父级；未保存的改动直接丢弃">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
       </a>
     </div>
@@ -132,154 +189,275 @@
 
   <div class="offline-bar">
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
-    当前离线 · 改动排队，联网自动提交
+    当前离线 · 改动先排队，联网自动保存
   </div>
 
   <div class="content bottom-space fx-content">
-    <div class="fx-note">
-      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7.5"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
-      <span>这是<b>预置分类</b>：可改名、换图标、换颜色、停用，但<b>不可删除</b>。</span>
-    </div>
+    <div class="fx-real">
+      <div class="fx-note">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7.5"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
+        <span>这是<b>自定义分类</b>：成人成员可改名、换图标、换颜色、停用；<b>删除与合并只有管理员能做</b>。</span>
+      </div>
 
-    <div class="field">
-      <label class="field-label" for="fx-name">名称</label>
-      <input class="input" id="fx-name" value="餐饮"
-        data-hot="②" data-hot-name="名称" data-hot-pos="outer-top-right"
-        data-hot-label="1-10 个字符；与同级分类重名时停在 error 态。改名不改历史流水——历史记录跟着分类 id 走，旧名字只在日志里">
-      <div class="field-error fx-name-error">
-        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7.5"/><path d="M10 6.4v4.6M10 13.6v.1"/></svg>
-        本家庭已有同名一级分类「交通」，换个名字
+      <div class="field">
+        <label class="field-label" for="fx-name">名称</label>
+        <input class="input" id="fx-name" value="医疗"
+          data-hot="②" data-hot-name="名称" data-hot-pos="outer-top-right"
+          data-hot-label="1-10 个字符，与同一父级下的分类重名时报错；改名不改历史流水——历史跟着分类走，旧名字只留在操作记录里">
+        <div class="field-error" id="fx-name-error" hidden>
+          <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7.5"/><path d="M10 6.4v4.6M10 13.6v.1"/></svg>
+          支出下已有同名分类「餐饮」，换个名字
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">父级</span>
+        <div class="fx-readonly">
+          <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="12" height="12" rx="3"/><path d="M8 12l4-4M8 8h4v4"/></svg>
+          <span class="fx-ro-val">无（一级分类）· 2 个二级</span>
+          <span class="tag">不可改</span>
+        </div>
+        <div class="fx-field-help">已有二级的一级不能再挂到别的父级下；要调整层级，请停用后另建一个新分类。</div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">图标</span>
+        <div class="fx-icon-grid-inner" role="group" aria-label="统一图标集"
+          data-hot="③" data-hot-name="图标" data-hot-pos="outer-top-right"
+          data-hot-label="从统一图标集换图标（12 枚常用），禁用 emoji；换图标只影响展示，不改分类与历史流水">
+          <button class="fx-icon-cell" type="button" aria-pressed="false" aria-label="餐具">
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5h13"/><path d="M4.5 10.5a5.5 5.5 0 0 1 11 0"/><path d="M8 7.5 6.5 4.5M12 7.5l1.5-3"/></svg>
+          </button>
+          <button class="fx-icon-cell" type="button" aria-pressed="false" aria-label="汽车">
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12.5h13l-1.2 3.2a1.5 1.5 0 0 1-1.4 1H6.1a1.5 1.5 0 0 1-1.4-1z"/><path d="M5.5 12.5l1.6-5.2A2 2 0 0 1 9 6h2a2 2 0 0 1 1.9 1.3l1.6 5.2"/></svg>
+          </button>
+          <button class="fx-icon-cell" type="button" aria-pressed="false" aria-label="住房">
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5 10 4l6.5 5.5V16a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z"/><path d="M8 17v-4.5h4V17"/></svg>
+          </button>
+          <button class="fx-icon-cell" type="button" aria-pressed="false" aria-label="购物袋">
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h10l1 9H4z"/><path d="M7.5 7V6a2.5 2.5 0 0 1 5 0v1"/></svg>
+          </button>
+          <button class="fx-icon-cell" type="button" aria-pressed="false" aria-label="咖啡">
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h10v5a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z"/><path d="M14 9h1.5a2 2 0 0 1 0 4H14"/><path d="M6.5 4v2M10 4v2"/></svg>
+          </button>
+          <button class="fx-icon-cell" type="button" aria-pressed="false" aria-label="心形">
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 16s-6-3.6-6-7.6A3.4 3.4 0 0 1 10 6.3 3.4 3.4 0 0 1 16 8.4c0 4-6 7.6-6 7.6z"/></svg>
+          </button>
+          <button class="fx-icon-cell" type="button" aria-pressed="false" aria-label="书本">
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h5.5A2.5 2.5 0 0 1 12 7v9a2 2 0 0 0-2-2H4z"/><path d="M16 4.5h-5.5A2.5 2.5 0 0 0 8 7v9a2 2 0 0 1 2-2h6z"/></svg>
+          </button>
+          <button class="fx-icon-cell" type="button" aria-pressed="true" aria-label="医疗">
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="12" height="12" rx="3"/><path d="M10 7.5v5M7.5 10h5"/></svg>
+          </button>
+          <button class="fx-icon-cell" type="button" aria-pressed="false" aria-label="汽车票">
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="13" height="10" rx="2"/><path d="M3.5 9h13"/><circle cx="7" cy="12" r="1"/><circle cx="13" cy="12" r="1"/></svg>
+          </button>
+          <button class="fx-icon-cell" type="button" aria-pressed="false" aria-label="礼物">
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="13" height="8.5" rx="1.5"/><path d="M3.5 10.5h13"/><path d="M10 3.5v3.5"/><path d="M7 3.5h6"/></svg>
+          </button>
+          <button class="fx-icon-cell" type="button" aria-pressed="false" aria-label="钱包">
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="14" height="10" rx="2"/><path d="M3 9h14"/><path d="M6.5 13h3"/></svg>
+          </button>
+          <button class="fx-icon-cell" type="button" aria-pressed="false" aria-label="星标">
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5l2 4.2 4.5.6-3.3 3.2.8 4.5L10 14l-4 2 .8-4.5L3.5 8.3l4.5-.6z"/></svg>
+          </button>
+        </div>
+        <div class="fx-field-help">图标只从统一图标集里选，禁用 emoji。</div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">颜色</span>
+        <div class="fx-swatches"
+          data-hot="④" data-hot-name="颜色" data-hot-pos="outer-top-right"
+          data-hot-label="只能从令牌色板里换（8 枚），不提供色值输入；换色同步到记账选择器、报表图例与筛选 chips 的图标底色">
+          <button class="fx-swatch" type="button" aria-pressed="false"><span class="fx-dot" style="background:var(--brand-500)"></span>暖橙</button>
+          <button class="fx-swatch" type="button" aria-pressed="false"><span class="fx-dot" style="background:var(--accent-500)"></span>橄榄</button>
+          <button class="fx-swatch" type="button" aria-pressed="false"><span class="fx-dot" style="background:var(--info)"></span>靛蓝</button>
+          <button class="fx-swatch" type="button" aria-pressed="false"><span class="fx-dot" style="background:var(--face-calendar)"></span>青绿</button>
+          <button class="fx-swatch" type="button" aria-pressed="false"><span class="fx-dot" style="background:var(--warning)"></span>琥珀</button>
+          <button class="fx-swatch" type="button" aria-pressed="false"><span class="fx-dot" style="background:var(--success)"></span>松绿</button>
+          <button class="fx-swatch" type="button" aria-pressed="true"><span class="fx-dot" style="background:var(--danger)"></span>砖红</button>
+          <button class="fx-swatch" type="button" aria-pressed="false"><span class="fx-dot" style="background:var(--av-3)"></span>藤紫</button>
+        </div>
+      </div>
+
+      <div class="section-title" style="margin-top:18px"><span>状态</span><span class="tiny">停用可逆</span></div>
+      <div class="fx-state-card">
+        <div class="fx-state-row">
+          <span class="fx-icon-hold">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M9 7h2M10 9.2V13"/></svg>
+          </span>
+          <span class="fx-state-txt">
+            <span class="fx-state-title">启用中</span>
+            <span class="fx-state-sub">记账选择器、报表图例、筛选里都会出现</span>
+          </span>
+          <label class="switch"
+            data-hot="⑤" data-hot-name="停用开关" data-hot-pos="outer-top-right"
+            data-hot-label="拨到停用先弹确认层，写明「已用该分类的 7 笔流水不受影响、随时可恢复」；确认后分类不再出现在记账选择器，历史统计照常">
+            <input type="checkbox" checked aria-label="停用分类">
+            <span class="track"></span>
+            <span class="thumb"></span>
+          </label>
+        </div>
+        <div class="fx-danger-row fx-admin-only">
+          <span class="fx-danger-txt">
+            <span class="fx-danger-title">删除此分类</span>
+            <span class="fx-danger-sub">已有 7 笔流水用了它，按规则不能删除；会引导改用停用。预置分类即使没有流水也不能删。</span>
+          </span>
+          <button class="btn btn-danger btn-sm" type="button"
+            data-hot="⑥" data-hot-name="删除" data-hot-pos="outer-top-right"
+            data-hot-label="点开先看影响面：预置分类恒不可删；自定义分类被流水引用时，弹层显示「将影响 7 笔流水」，不给「仍然删除」，只给「改为停用」">
+            删除</button>
+        </div>
+        <div class="fx-danger-row fx-admin-only">
+          <span class="fx-danger-txt">
+            <span class="fx-danger-title">合并到其他分类</span>
+            <span class="fx-danger-sub">把这 7 笔流水移到目标分类，本分类随即停用；操作只有管理员能做。</span>
+          </span>
+          <button class="btn btn-secondary btn-sm" type="button"
+            data-hot="⑦" data-hot-name="合并" data-hot-pos="outer-top-right"
+            data-hot-label="仅管理员可见；弹层里选一个同类型、未停用的目标分类，确认后流水改挂到目标、本分类自动停用；不删除任何流水">
+            合并</button>
+        </div>
+      </div>
+
+      <div class="fx-member-note">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7.5"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
+        <span>你可以改名、换图标、换颜色与停用；<b>删除与合并只有管理员能做</b>。需要删掉这个分类时，请找家里的管理员。</span>
+      </div>
+
+      <div class="fx-note" style="margin-top:16px">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3.5 17 16H3z"/><path d="M10 8v3.4M10 13.6v.1"/></svg>
+        <span>停用不会改写任何历史流水：本月这个分类的 <span class="num">-¥600.00</span>（7 笔）仍计入支出合计与报表。</span>
       </div>
     </div>
 
-    <div class="field">
-      <span class="field-label">父级</span>
-      <div class="fx-readonly">
-        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="12" height="12" rx="3"/><path d="M8 12l4-4M8 8h4v4"/></svg>
-        <span class="fx-ro-val">无（一级分类）</span>
-        <span class="tag">不可改</span>
-      </div>
-      <div class="fx-field-help">已有二级分类的一级不能再挂到别的父级下；需要调整层级时先停用它，再建一个新分类。</div>
+    <div class="fx-sk" aria-hidden="true">
+      <div class="skeleton sk-line" style="width:36%"></div>
+      <div class="skeleton sk-block" style="height:44px"></div>
+      <div class="skeleton sk-line" style="width:28%"></div>
+      <div class="skeleton sk-block" style="height:44px"></div>
+      <div class="skeleton sk-block" style="height:64px"></div>
+      <div class="skeleton sk-block" style="height:96px"></div>
     </div>
 
-    <div class="field">
-      <span class="field-label">图标</span>
-      <div class="fx-icon-grid-inner" role="group" aria-label="统一图标集"
-        data-hot="③" data-hot-name="图标" data-hot-pos="outer-top-right"
-        data-hot-label="从统一图标集换图标（12 枚常用），禁用 emoji；换图标只影响展示，不改分类 id 与历史流水">
-        <button class="fx-icon-cell" type="button" aria-pressed="true" aria-label="餐具">
-          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5h13"/><path d="M4.5 10.5a5.5 5.5 0 0 1 11 0"/><path d="M8 7.5 6.5 4.5M12 7.5l1.5-3"/></svg>
-        </button>
-        <button class="fx-icon-cell" type="button" aria-pressed="false" aria-label="汽车">
-          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12.5h13l-1.2 3.2a1.5 1.5 0 0 1-1.4 1H6.1a1.5 1.5 0 0 1-1.4-1z"/><path d="M5.5 12.5l1.6-5.2A2 2 0 0 1 9 6h2a2 2 0 0 1 1.9 1.3l1.6 5.2"/></svg>
-        </button>
-        <button class="fx-icon-cell" type="button" aria-pressed="false" aria-label="住房">
-          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5 10 4l6.5 5.5V16a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z"/><path d="M8 17v-4.5h4V17"/></svg>
-        </button>
-        <button class="fx-icon-cell" type="button" aria-pressed="false" aria-label="购物袋">
-          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h10l1 9H4z"/><path d="M7.5 7V6a2.5 2.5 0 0 1 5 0v1"/></svg>
-        </button>
-        <button class="fx-icon-cell" type="button" aria-pressed="false" aria-label="咖啡">
-          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h10v5a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z"/><path d="M14 9h1.5a2 2 0 0 1 0 4H14"/><path d="M6.5 4v2M10 4v2"/></svg>
-        </button>
-        <button class="fx-icon-cell" type="button" aria-pressed="false" aria-label="心形">
-          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 16s-6-3.6-6-7.6A3.4 3.4 0 0 1 10 6.3 3.4 3.4 0 0 1 16 8.4c0 4-6 7.6-6 7.6z"/></svg>
-        </button>
-        <button class="fx-icon-cell" type="button" aria-pressed="false" aria-label="书本">
-          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h5.5A2.5 2.5 0 0 1 12 7v9a2 2 0 0 0-2-2H4z"/><path d="M16 4.5h-5.5A2.5 2.5 0 0 0 8 7v9a2 2 0 0 1 2-2h6z"/></svg>
-        </button>
-        <button class="fx-icon-cell" type="button" aria-pressed="false" aria-label="礼物">
-          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="13" height="8.5" rx="1.5"/><path d="M3.5 10.5h13"/><path d="M10 3.5v3.5"/><path d="M7 3.5h6"/></svg>
-        </button>
-        <button class="fx-icon-cell" type="button" aria-pressed="false" aria-label="汽车票">
-          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="13" height="10" rx="2"/><path d="M3.5 9h13"/><circle cx="7" cy="12" r="1"/><circle cx="13" cy="12" r="1"/></svg>
-        </button>
-        <button class="fx-icon-cell" type="button" aria-pressed="false" aria-label="医疗">
-          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="12" height="12" rx="3"/><path d="M10 7.5v5M7.5 10h5"/></svg>
-        </button>
-        <button class="fx-icon-cell" type="button" aria-pressed="false" aria-label="钱包">
-          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="14" height="10" rx="2"/><path d="M3 9h14"/><path d="M6.5 13h3"/></svg>
-        </button>
-        <button class="fx-icon-cell" type="button" aria-pressed="false" aria-label="星标">
-          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5l2 4.2 4.5.6-3.3 3.2.8 4.5L10 14l-4 2 .8-4.5L3.5 8.3l4.5-.6z"/></svg>
-        </button>
+    <div class="state fx-empty">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9h9v9H6zM17 9h9v9h-9z"/><path d="M9 24h14"/></svg>
       </div>
-      <div class="fx-field-help">图标只从统一图标集里选，禁用 emoji。</div>
+      <div class="state-title">这个分类已经不在了</div>
+      <div class="state-desc">可能刚被家里的管理员删除，或这条链接已经过期。回分类管理可以查看现在的分类。</div>
+      <a class="btn btn-secondary" href="finance-category.html">回分类管理</a>
     </div>
 
-    <div class="field">
-      <span class="field-label">颜色</span>
-      <div class="fx-swatches"
-        data-hot="④" data-hot-name="颜色" data-hot-pos="outer-top-right"
-        data-hot-label="只能从令牌色板里换（8 枚），不提供色值输入；换色同步到记账选择器、报表图例与筛选 chips 的图标底色">
-        <button class="fx-swatch" type="button" aria-pressed="true"><span class="fx-dot" style="background:var(--brand-500)"></span>暖橙</button>
-        <button class="fx-swatch" type="button" aria-pressed="false"><span class="fx-dot" style="background:var(--accent-500)"></span>橄榄</button>
-        <button class="fx-swatch" type="button" aria-pressed="false"><span class="fx-dot" style="background:var(--info)"></span>靛蓝</button>
-        <button class="fx-swatch" type="button" aria-pressed="false"><span class="fx-dot" style="background:var(--face-calendar)"></span>青绿</button>
-        <button class="fx-swatch" type="button" aria-pressed="false"><span class="fx-dot" style="background:var(--warning)"></span>琥珀</button>
-        <button class="fx-swatch" type="button" aria-pressed="false"><span class="fx-dot" style="background:var(--success)"></span>松绿</button>
-        <button class="fx-swatch" type="button" aria-pressed="false"><span class="fx-dot" style="background:var(--danger)"></span>砖红</button>
-        <button class="fx-swatch" type="button" aria-pressed="false"><span class="fx-dot" style="background:var(--av-3)"></span>藤紫</button>
+    <div class="state fx-fail">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="16" r="11"/><path d="M16 9.5v8M16 21.5v.1"/></svg>
       </div>
-    </div>
-
-    <div class="section-title" style="margin-top:18px"><span>状态</span><span class="tiny">停用可逆</span></div>
-    <div class="fx-state-card">
-      <div class="fx-state-row">
-        <span class="fx-icon-hold">
-          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M9 7h2M10 9.2V13"/></svg>
-        </span>
-        <span class="fx-state-txt">
-          <span class="fx-state-title">启用中</span>
-          <span class="fx-state-sub">记账选择器、报表图例、筛选 chips 里都会出现</span>
-        </span>
-        <label class="switch"
-          data-hot="⑤" data-hot-name="停用开关" data-hot-pos="outer-top-right"
-          data-hot-label="拨到停用不直接生效，先弹确认层说明「已用该分类的历史流水不受影响」；确认后 is_active=false，可随时恢复">
-          <input type="checkbox" checked aria-label="停用分类">
-          <span class="track"></span>
-          <span class="thumb"></span>
-        </label>
-      </div>
-      <div class="fx-danger-row">
-        <span class="fx-danger-txt">
-          <span class="fx-danger-title">删除此分类</span>
-          <span class="fx-danger-sub">预置分类不可删除；自定义分类被流水引用时也只能停用。</span>
-        </span>
-        <button class="btn btn-danger btn-sm" type="button" disabled
-          data-hot="⑥" data-hot-name="删除" data-hot-pos="outer-top-right"
-          data-hot-label="预置分类的删除恒为禁用（19.3#10）；不放「申请删除」之类的假出口。自定义分类被流水引用时同样禁用">删除</button>
-      </div>
-    </div>
-
-    <div class="fx-note" style="margin-top:16px">
-      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3.5 17 16H3z"/><path d="M10 8v3.4M10 13.6v.1"/></svg>
-      <span>停用不会改写任何历史流水：本月该分类的 <span class="num">-¥2,486.40</span> 仍计入支出合计与报表。</span>
+      <div class="state-title">分类没有加载出来</div>
+      <div class="state-desc">网络或服务暂时没有响应。重试只重新读取这个分类，不会改动任何设置，也不影响历史流水。</div>
+      <button class="btn btn-secondary" type="button"
+        data-hot="⑩" data-hot-name="重试" data-hot-pos="center"
+        data-hot-label="整页失败态下的重试：重新读取分类与它的本月笔数；仍失败保持失败态，不拿上次缓存冒充最新">
+        重试</button>
     </div>
   </div>
 
   <div class="fx-footer">
     <button class="btn btn-primary btn-block" type="button"
-      data-hot="⑦" data-hot-name="保存" data-hot-pos="outer-top-right"
-      data-hot-label="保存带 version 的乐观锁；409 弹「这条记录已被修改」并给「查看最新 / 用我的」两条出路。成功后回分类管理">
+      data-hot="⑧" data-hot-name="保存" data-hot-pos="outer-top-right"
+      data-hot-label="保存前带上打开页面时的那份记录；若期间被家人改过，弹「这条记录刚被家人改过」层，给「保留对方 / 用我的」两条出路，不静默改写">
       保存</button>
   </div>
 
   <div class="sheet-mask" id="sheet-disable" aria-hidden="true">
     <div class="sheet">
       <div class="sheet-grabber"></div>
-      <h3>停用「餐饮」？</h3>
-      <p class="sheet-sub">停用后不再出现在记账选择器里；<b>已用该分类的历史流水不受影响</b>，报表、筛选与统计照常计入。随时可以重新启用。</p>
+      <h3>停用「医疗」？</h3>
+      <p class="sheet-sub">停用后不再出现在记账选择器里；<b>已用该分类的 7 笔流水不受影响</b>，报表与筛选照常计入。随时可以重新启用。</p>
       <div class="fx-sheet-row">
         <span class="fx-sheet-ico">
-          <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5h13"/><path d="M4.5 10.5a5.5 5.5 0 0 1 11 0"/><path d="M8 7.5 6.5 4.5M12 7.5l1.5-3"/></svg>
+          <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="12" height="12" rx="3"/><path d="M10 7.5v5M7.5 10h5"/></svg>
         </span>
-        <span class="fx-sheet-name">餐饮</span>
-        <span class="fx-sheet-amt num">本月 36 笔 · -¥2,486.40</span>
+        <span class="fx-sheet-name">医疗 · 2 个二级</span>
+        <span class="fx-sheet-amt num">本月 7 笔 · -¥600.00</span>
       </div>
       <div class="sheet-actions">
         <button class="btn btn-danger btn-block" type="button" id="fx-disable-ok">确认停用</button>
-        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+        <button class="btn btn-secondary btn-block" type="button" id="fx-disable-cancel">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet-mask" id="sheet-delete" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>删除「医疗」？</h3>
+      <p class="sheet-sub">已有流水用了这个分类，按规则<b>不能删除</b>。删掉会让这些流水失去分类，历史报表也对不上。建议改用停用：记账时不再出现，历史照常保留。</p>
+      <div class="fx-impact">
+        将影响 <b class="num">7 笔流水</b> · 本月 <span class="num">-¥600.00</span>
+      </div>
+      <p class="fx-field-help" style="margin-top:10px">预置分类即使没有流水也不能删除。</p>
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" id="fx-delete-to-disable">改为停用</button>
+        <button class="btn btn-secondary btn-block" type="button" id="fx-delete-cancel">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet-mask" id="sheet-merge" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>把「医疗」合并到别的分类</h3>
+      <p class="sheet-sub">合并后，这 7 笔流水会移到目标分类，医疗随即停用。目标分类的统计会随之变大；这个动作只有管理员能做。</p>
+      <div class="fx-merge-list" role="group" aria-label="选择合并目标">
+        <button class="fx-merge-opt" type="button" aria-pressed="false" data-merge-target="餐饮">
+          <span class="fx-merge-dot" style="background:var(--brand-500)"></span>
+          <span class="fx-merge-name">餐饮</span>
+          <span class="fx-merge-amt num">本月 -¥3,240.00</span>
+          <svg class="fx-merge-check" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 10.5 8 14l7.5-8"/></svg>
+        </button>
+        <button class="fx-merge-opt" type="button" aria-pressed="false" data-merge-target="居住">
+          <span class="fx-merge-dot" style="background:var(--info)"></span>
+          <span class="fx-merge-name">居住</span>
+          <span class="fx-merge-amt num">本月 -¥4,200.00</span>
+          <svg class="fx-merge-check" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 10.5 8 14l7.5-8"/></svg>
+        </button>
+        <button class="fx-merge-opt" type="button" aria-pressed="false" data-merge-target="交通">
+          <span class="fx-merge-dot" style="background:var(--accent-500)"></span>
+          <span class="fx-merge-name">交通</span>
+          <span class="fx-merge-amt num">本月 -¥860.00</span>
+          <svg class="fx-merge-check" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 10.5 8 14l7.5-8"/></svg>
+        </button>
+        <button class="fx-merge-opt" type="button" aria-pressed="false" data-merge-target="购物">
+          <span class="fx-merge-dot" style="background:var(--warning)"></span>
+          <span class="fx-merge-name">购物</span>
+          <span class="fx-merge-amt num">本月 -¥1,480.00</span>
+          <svg class="fx-merge-check" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 10.5 8 14l7.5-8"/></svg>
+        </button>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" id="fx-merge-ok" disabled>合并</button>
+        <button class="btn btn-secondary btn-block" type="button" id="fx-merge-cancel">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet-mask" id="sheet-conflict" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>这条记录刚被家人改过</h3>
+      <p class="sheet-sub">你打开这一页之后，家里另一位管理员也改过「医疗」。你的改动还没保存，先看看最新内容再决定用哪一份。</p>
+      <div class="fx-diff">
+        <div class="fx-diff-row"><span class="fx-diff-k">名称</span><span class="fx-diff-v">对方改为 <b>医疗健康</b></span></div>
+        <div class="fx-diff-row"><span class="fx-diff-k">颜色</span><span class="fx-diff-v">对方改为 <b>松绿</b></span></div>
+        <div class="fx-diff-row"><span class="fx-diff-k">状态</span><span class="fx-diff-v">对方保持 <b>启用中</b></span></div>
+      </div>
+      <div class="sheet-actions"
+        data-hot="⑨" data-hot-name="冲突处理" data-hot-pos="center"
+        data-hot-label="「保留对方」= 放弃本页未保存的改动并重新载入对方的内容；「用我的」= 以本页内容为准再保存一次。两个都写清后果，不用「覆盖」这个词">
+        <button class="btn btn-primary btn-block" type="button" id="fx-conflict-mine">用我的</button>
+        <button class="btn btn-secondary btn-block" type="button" id="fx-conflict-theirs">保留对方</button>
       </div>
     </div>
   </div>
@@ -292,6 +470,20 @@
     var st = new URLSearchParams(location.search).get('state') || 'default';
     var input = document.getElementById('fx-name');
     var sw = document.querySelector('.switch input');
+    var deleteSheet = document.getElementById('sheet-delete');
+    var disableSheet = document.getElementById('sheet-disable');
+    var mergeSheet = document.getElementById('sheet-merge');
+    var conflictSheet = document.getElementById('sheet-conflict');
+    var mergeOk = document.getElementById('fx-merge-ok');
+    var pickedTarget = null;
+
+    function open(id) {
+      var el = document.getElementById(id);
+      if (el && window.HC) window.HC.openSheet(id);
+    }
+    function close(el) {
+      if (el && window.HC) window.HC.closeSheet(el);
+    }
 
     document.querySelectorAll('.fx-icon-cell').forEach(function (c) {
       c.addEventListener('click', function () {
@@ -311,30 +503,92 @@
 
     sw.addEventListener('change', function () {
       if (!sw.checked) {
-        window.HC.openSheet('sheet-disable');
+        open('sheet-disable');
         return;
       }
-      window.HC.toast('已重新启用「餐饮」，记账选择器立即恢复');
+      window.HC.toast('已重新启用「医疗」，记账选择器立即恢复');
     });
 
     document.getElementById('fx-disable-ok').addEventListener('click', function () {
-      window.HC.closeSheet(document.getElementById('sheet-disable'));
+      close(disableSheet);
       sw.checked = false;
-      window.HC.toast('已停用「餐饮」，历史流水不受影响');
+      window.HC.toast('已停用「医疗」，7 笔历史流水不受影响');
     });
 
-    document.querySelectorAll('#sheet-disable [data-sheet-close]').forEach(function (b) {
-      b.addEventListener('click', function () { sw.checked = true; });
+    document.getElementById('fx-disable-cancel').addEventListener('click', function () {
+      sw.checked = true;
+      close(disableSheet);
     });
 
-    if (st === 'disable-confirm') {
-      window.HC.openSheet('sheet-disable');
+    document.querySelector('[data-hot="⑥"]').addEventListener('click', function () {
+      open('sheet-delete');
+    });
+
+    document.getElementById('fx-delete-to-disable').addEventListener('click', function () {
+      close(deleteSheet);
+      open('sheet-disable');
+    });
+
+    document.getElementById('fx-delete-cancel').addEventListener('click', function () {
+      close(deleteSheet);
+    });
+
+    document.querySelector('[data-hot="⑦"]').addEventListener('click', function () {
+      open('sheet-merge');
+    });
+
+    document.querySelectorAll('[data-merge-target]').forEach(function (o) {
+      o.addEventListener('click', function () {
+        document.querySelectorAll('[data-merge-target]').forEach(function (x) {
+          x.setAttribute('aria-pressed', String(x === o));
+        });
+        pickedTarget = o.getAttribute('data-merge-target');
+        mergeOk.disabled = false;
+      });
+    });
+
+    mergeOk.addEventListener('click', function () {
+      close(mergeSheet);
+      window.HC.toast('已合并到「' + pickedTarget + '」，7 笔流水已移过去');
+    });
+
+    document.getElementById('fx-merge-cancel').addEventListener('click', function () {
+      close(mergeSheet);
+    });
+
+    document.querySelector('[data-hot="⑧"]').addEventListener('click', function () {
+      if (st === 'conflict') {
+        open('sheet-conflict');
+        return;
+      }
+      window.HC.toast('已保存');
+    });
+
+    document.getElementById('fx-conflict-mine').addEventListener('click', function () {
+      close(conflictSheet);
+      window.HC.toast('已保存你的改动');
+    });
+
+    document.getElementById('fx-conflict-theirs').addEventListener('click', function () {
+      close(conflictSheet);
+      input.value = '医疗健康';
+      window.HC.toast('已保留家人的改动');
+    });
+
+    if (st === 'disable-confirm') open('sheet-disable');
+    if (st === 'delete-impact') open('sheet-delete');
+    if (st === 'merge') open('sheet-merge');
+    if (st === 'conflict') open('sheet-conflict');
+
+    if (st === 'member-view') {
+      document.querySelector('[data-hot="⑤"] input').checked = true;
     }
 
-    if (st === 'error') {
-      input.value = '交通';
-      input.classList.add('is-error');
-    }
+    input.addEventListener('input', function () {
+      var dup = input.value.trim() === '餐饮';
+      document.getElementById('fx-name-error').hidden = !dup;
+      input.classList.toggle('is-error', dup);
+    });
   })();
 </script>
 </body>

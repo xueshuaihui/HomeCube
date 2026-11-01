@@ -73,6 +73,19 @@
   .data-move-title { font-size: var(--fs-14); font-weight: 700; }
 
   body[data-state="restore"] #sheet-restore { display: flex; }
+  .data-check {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 14px; font-size: var(--fs-13); color: var(--text-1);
+  }
+  .data-check input { width: 16px; height: 16px; accent-color: var(--brand); }
+  .data-private-note {
+    display: none; margin-top: 8px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--warning-soft); color: var(--warning);
+    font-size: var(--fs-12); line-height: var(--lh-loose);
+  }
+  body[data-state="private"] .data-private-note { display: block; }
+  body[data-state="readonly"] .data-restore-block { display: none; }
   .data-sheet-warn {
     display: flex; gap: 8px; align-items: flex-start;
     margin-top: 14px; padding: 12px 14px;
@@ -85,7 +98,7 @@
   .data-sheet-meta .k { color: var(--text-3); }
 </style>
 </head>
-<body data-screen="30 数据" data-tab="" data-states="default,exporting,exported,restore,failed">
+<body data-screen="30 数据" data-tab="" data-states="default,exporting,exported,restore,failed,private,readonly">
 <div class="harness"></div>
 
 <div class="phone">
@@ -113,7 +126,7 @@
       <div class="section-title" style="margin-top:12px">导出数据</div>
       <div class="card data-export">
         <div class="data-card-title">导出范围</div>
-        <div class="segmented data-seg" role="tablist" data-hot="①" data-hot-name="导出范围" data-hot-pos="top-right" data-hot-label="全部数据 / 财务流水 / 日历与待办三选一；导出的是该范围的全量，不是当前页">
+        <div class="segmented data-seg" role="tablist" data-hot="①" data-hot-name="导出范围" data-hot-pos="top-right" data-hot-label="全部数据 / 财务流水 / 日历与待办三选一；导出的是该范围的全量、不带筛选——按条件与时间窗的财务流水导出去导出报表页">
           <button type="button" role="tab" aria-selected="true">全部数据</button>
           <button type="button" role="tab" aria-selected="false">财务流水</button>
           <button type="button" role="tab" aria-selected="false">日历与待办</button>
@@ -127,9 +140,15 @@
           <button type="button" role="tab" aria-selected="false">图片</button>
         </div>
 
+        <label class="data-check" data-hot="③" data-hot-name="包含私密流水勾选" data-hot-pos="top-right" data-hot-label="默认不勾，私密行不进文件；勾选后随文件走并出现后果说明；取消即恢复排除">
+          <input type="checkbox" id="private-check">
+          <span>包含私密流水</span>
+        </label>
+        <div class="data-private-note">文件将包含被标记为私密的流水金额，转发文件前请确认接收人。</div>
+
         <div class="data-export-actions data-only-default">
           <button class="btn btn-primary btn-block" type="button" id="export-btn"
-            data-hot="③" data-hot-name="导出" data-hot-pos="top-right" data-hot-label="按所选范围与格式导出全量结果；导出行为记审计，L3 内容默认排除">导出</button>
+            data-hot="④" data-hot-name="导出" data-hot-pos="top-right" data-hot-label="按所选范围与格式导出全量结果；导出行为记审计，L3 内容默认排除；离开本页不中断">导出</button>
         </div>
 
         <div class="data-progress" role="status">
@@ -161,14 +180,14 @@
             </span>
             <div>
               <div class="data-fail-title">导出失败</div>
-              <div class="tiny" style="margin-top:3px">打包服务暂不可达，本次筛选条件已保留。</div>
+              <div class="tiny" style="margin-top:3px">打包服务暂不可达；所选范围、格式与私密勾选已保留，可直接重试。离开本页也不会中断。</div>
             </div>
           </div>
           <div class="data-fail-code">HC-5001</div>
           <button class="btn btn-secondary btn-sm" type="button" id="retry-btn">重试</button>
         </div>
 
-        <div class="tiny data-tip">导出的是所选范围内的全量结果，不是当前页；家庭全部成员的记录都会覆盖，私密流水与 L3 内容默认排除。</div>
+        <div class="tiny data-tip">导出的是所选范围内的全量结果，不是当前页，也不带筛选与时间窗；要按月或按分类导财务流水，请到「导出报表」页发起。家庭全部成员的记录都会覆盖；私密流水默认排除，勾选后才会包含。</div>
       </div>
 
       <div class="section-title">备份状态</div>
@@ -179,14 +198,16 @@
             <div class="tiny">最近备份 今天 03:00 · 每日全量 + 连续归档</div>
           </div>
           <button class="data-badge" type="button" id="backup-refresh"
-            data-hot="④" data-hot-name="备份状态" data-hot-pos="top-right" data-hot-label="点击刷新备份状态；徽章只表达状态，不提供手动备份入口">正常</button>
+            data-hot="⑤" data-hot-name="备份状态" data-hot-pos="top-right" data-hot-label="点击刷新备份状态；徽章只表达状态，不提供手动备份入口">正常</button>
         </div>
-        <div class="data-kv" style="margin-top:12px"><span class="k">恢复点目标 RPO</span><span class="v num">≤ 15 分钟</span></div>
-        <div class="data-kv"><span class="k">恢复耗时目标 RTO</span><span class="v num">≤ 30 分钟</span></div>
+        <div class="data-kv" style="margin-top:12px"><span class="k">最多可能丢失</span><span class="v">15 分钟内的改动</span></div>
+        <div class="data-kv"><span class="k">恢复所需时间</span><span class="v">预计 30 分钟内</span></div>
         <div class="data-kv"><span class="k">下次自动备份</span><span class="v">明天 03:00</span></div>
-        <button class="btn btn-danger btn-block" type="button" data-sheet-open="sheet-restore"
-          data-hot="⑤" data-hot-name="恢复入口" data-hot-pos="top-right" data-hot-label="危险操作：弹层确认备份时间与覆盖范围，仅管理员与运维口可执行">从备份恢复…</button>
-        <div class="tiny">整集群恢复会覆盖当前全部数据，不可撤销；备份范围含全部 schema 与事件流快照，不允许只恢复单个面。</div>
+        <div class="data-restore-block">
+          <button class="btn btn-danger btn-block" type="button" data-sheet-open="sheet-restore"
+            data-hot="⑥" data-hot-name="恢复入口" data-hot-pos="top-right" data-hot-label="危险操作：弹层确认备份时间与覆盖范围，仅管理员与运维口可达；非管理员整块不渲染">从备份恢复…</button>
+          <div class="tiny">恢复会用最近备份整体覆盖当前数据，不可撤销；恢复范围含全部数据与事件流，不允许只恢复单个部分。</div>
+        </div>
       </div>
 
       <div class="section-title">跨设备迁移</div>
@@ -216,7 +237,7 @@
       <div class="data-sheet-meta"><span class="k">预计耗时</span><span class="num">≤ 30 分钟</span></div>
       <div class="data-sheet-warn">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 2.6 14 13H2z"/><path d="M8 6.6v3M8 11.4v.1"/></svg>
-        <span>恢复不可撤销，备份点之后的改动会丢失。仅管理员可执行，操作会写入审计日志。</span>
+        <span>恢复不可撤销，备份点之后的改动会丢失。仅家庭管理员可执行，这次操作会留下记录。</span>
       </div>
       <div class="sheet-actions">
         <button class="btn btn-danger btn-block" type="button" id="confirm-restore">确认恢复</button>
@@ -229,6 +250,14 @@
 </div>
 
 <script>
+  var st = new URLSearchParams(location.search).get('state') || 'default';
+
+  var privateCheck = document.getElementById('private-check');
+  if (st === 'private') privateCheck.checked = true;
+  privateCheck.addEventListener('change', function () {
+    document.querySelector('.data-private-note').style.display = privateCheck.checked ? 'block' : 'none';
+  });
+
   document.querySelectorAll('.data-seg').forEach(function (group) {
     group.querySelectorAll('button').forEach(function (b) {
       b.addEventListener('click', function () {

@@ -97,6 +97,13 @@
   body[data-state="empty"] .fx-data,
   body[data-state="empty"] .fx-sum { display: none; }
 
+  .fx-fail { display: none; }
+  body[data-state="failed"] .fx-fail { display: flex; }
+  body[data-state="failed"] .fx-data,
+  body[data-state="failed"] .fx-sum { display: none; }
+
+  body[data-state="offline"] .offline-bar { display: flex; }
+
   .fx-sheet-line {
     display: flex; align-items: center; gap: 10px;
     margin-top: 14px; padding: 12px 14px;
@@ -107,7 +114,7 @@
   .fx-sheet-amt { flex: none; font-size: var(--fs-14); }
 </style>
 </head>
-<body data-screen="F05 回收站" data-states="default,restore-confirm,empty,loading">
+<body data-screen="F05 回收站" data-states="default,restore-confirm,empty,loading,failed,offline">
 <div class="harness"></div>
 
 <div class="phone">
@@ -134,19 +141,32 @@
 
   <div class="offline-bar">
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
-    当前离线 · 回收站内容为最近一次同步
+    当前离线 · 回收站为 10 月 30 日 14:32 的本机缓存，联网后自动更新
   </div>
 
   <div class="content bottom-space fx-content">
     <div class="fx-note"
       data-hot="②" data-hot-name="口径说明" data-hot-pos="bottom-right"
-      data-hot-label="常驻说明、不随列表状态消失：删除是软删，30 天后自动清除；只有作者与管理员能打开这一页；恢复后回到删除前的日期分组，金额与分类原样">
+      data-hot-label="常驻说明、不随列表状态消失：删除是软删，30 天后自动清除；只有作者与管理员能打开这一页；恢复后重新计入对应时间窗的预算与统计，并回到删除前的日期分组">
       <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.2v4.2l2.6 1.6"/></svg>
       <span>
         <b>删除后 30 天自动清除</b>
         <span class="fx-note-sub">删掉的流水只在这里保留 30 天，到期自动清除，之后不再出现在任何统计与报表里。</span>
+        <span class="fx-note-sub">恢复后会重新计入对应时间窗的预算与统计，那段时间的报表数字会跟着变。</span>
         <span class="fx-note-sub">仅作者与管理员可进：其他成员在流水页看不到入口，深链进来显示无权限；回收站里的流水只读，恢复后才能改。</span>
       </span>
+    </div>
+
+    <div class="fx-fail state">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="16" r="11"/><path d="M16 9.5v7M16 21v.1"/></svg>
+      </div>
+      <div class="state-title">回收站没加载出来</div>
+      <div class="state-desc">网络不稳或服务暂时没响应；已删的流水仍在回收站里，不会因为这次没加载出来而提前清除。</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" type="button" data-toast="正在重新加载回收站">重新加载</button>
+        <button class="btn btn-secondary" type="button" data-go="finance-flow.html">回流水列表</button>
+      </div>
     </div>
 
     <div class="fx-sum">
@@ -158,7 +178,7 @@
       <div class="fx-list">
         <div class="fx-item" data-toast="回收站里的流水只读：不能编辑，也不能再次删除；恢复后回到流水里才能改"
           data-hot="③" data-hot-name="回收行" data-hot-pos="bottom-right"
-          data-hot-label="一行四件套：分类与备注摘要、金额、删除时间与剩余天数、删除人；剩余天数按 30 天倒计时，到期由服务端清除，客户端不自行推算">
+          data-hot-label="一行四件套：分类与备注摘要、金额、删除时间与剩余天数、删除人；剩余天数从删除时间往后数 30 天，到期自动清除">
           <span class="fx-ico">
             <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11h14"/><path d="M4 11a6 6 0 0 1 12 0"/><path d="M7.5 7.6 6 4.4M12.5 7.6 14 4.4"/></svg>
           </span>
@@ -198,7 +218,7 @@
           </span>
           <span class="fx-item-body">
             <span class="fx-item-top">
-              <span class="fx-item-name">转账 <span class="tag">成对</span></span>
+              <span class="fx-item-name">转账 <span class="tag">两笔一组</span></span>
               <span class="fx-item-amt num">¥500.00</span>
             </span>
             <span class="fx-item-meta">删除于 10 月 31 日 08:05 · <b>剩 25 天</b></span>
@@ -223,7 +243,7 @@
         </div>
       </div>
 
-      <div class="fx-foot-note tiny">剩余天数按删除时间 + 30 天由服务端算，客户端不自行推算；到期清除后不可恢复，导出与备份里也不再出现。</div>
+      <div class="fx-foot-note tiny">剩余天数从删除时间往后数 30 天；到期自动清除后不可恢复，导出与备份里也不再出现。</div>
     </div>
 
     <div class="fx-sk" aria-hidden="true">
@@ -250,7 +270,7 @@
     <div class="sheet">
       <div class="sheet-grabber"></div>
       <h3>恢复这笔流水？</h3>
-      <p class="sheet-sub">恢复后回到删除前的日期分组，金额、分类、标签与附件原样；由周期规则自动入账的流水恢复后仍是那一笔，不会与规则重复入账。</p>
+      <p class="sheet-sub">恢复后回到删除前的日期分组，金额、分类、标签与附件原样；它会重新计入对应时间窗的预算与统计，已经看过的月报、季报数字也会跟着更新。由周期规则自动入账的流水恢复后仍是那一笔，不会与规则重复入账。</p>
       <div class="fx-sheet-line">
         <span class="fx-sheet-title">餐饮 · 早餐<br><span class="tiny">删除于 11 月 2 日 09:12 · 剩 27 天</span></span>
         <span class="fx-sheet-amt num">-¥28.00</span>

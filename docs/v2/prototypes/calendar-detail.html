@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>事件详情 · 家立方原型</title>
+<title>日程详情 · 家立方原型</title>
 <link rel="stylesheet" href="shared/tokens.css">
 <link rel="stylesheet" href="shared/base.css">
 <script src="shared/app.js" defer></script>
@@ -50,6 +50,7 @@
   }
   .cal-st-wait { background: var(--warning-soft); color: var(--warning); }
   .cal-st-todo { background: var(--info-soft); color: var(--info); }
+  .cal-st-soon { background: var(--surface-2); color: var(--text-2); }
 
   .cal-sec-title {
     margin: 20px 2px 8px;
@@ -106,9 +107,56 @@
     background: var(--surface-2); color: var(--text-3); pointer-events: none;
   }
   .cal-foot-note { margin-top: 8px; text-align: center; line-height: var(--lh-normal); }
+
+  /* 右上「编辑」：仅日历原生日程、仅创建人与管理员渲染（演示帧在 ?state=schedule 展示） */
+  .cal-edit {
+    display: none; align-items: center; padding: 5px 12px;
+    border-radius: var(--radius-pill);
+    background: var(--brand-soft); color: var(--brand-text);
+    font-size: var(--fs-12); font-weight: 700; text-decoration: none;
+  }
+  body[data-state="schedule"] .cal-edit { display: inline-flex; }
+
+  /* 注册型只读引导卡：进页即给，不是报错（口径与 20 卡逐字一致） */
+  .cal-guide {
+    display: flex; align-items: flex-start; gap: 6px;
+    margin-top: 12px; padding: 9px 12px;
+    border-radius: var(--radius-md);
+    background: var(--info-soft); color: var(--text-2);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .cal-guide svg { flex: none; margin-top: 1px; }
+  body[data-state="calendar"] .cal-guide,
+  body[data-state="schedule"] .cal-guide,
+  body[data-state="deleted"] .cal-guide { display: none; }
+
+  .cal-sched-note { display: none; margin-top: 12px; font-size: var(--fs-11); color: var(--text-3); line-height: var(--lh-normal); }
+  body[data-state="schedule"] .cal-sched-note { display: block; }
+
+  /* 时间重叠只做柔性提示：不阻塞、不弹确认、不出现冲突判定词 */
+  .cal-overlap {
+    display: none; align-items: flex-start; gap: 6px;
+    margin-top: 10px; padding: 9px 12px;
+    border-radius: var(--radius-md);
+    background: var(--warning-soft); color: var(--warning);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .cal-overlap svg { flex: none; margin-top: 1px; }
+  body[data-state="schedule"] .cal-overlap { display: flex; }
+
+  /* 条目已不存在：旧通知打开悬空条目的整页态，不渲染悬空摘要 */
+  .cal-deleted { display: none; }
+  body[data-state="deleted"] .cal-deleted { display: block; }
+  body[data-state="deleted"] .cal-main,
+  body[data-state="deleted"] .cal-foot,
+  body[data-state="deleted"] .cal-cache { display: none; }
+  body[data-state="deleted"] .offline-bar { display: none; }
+
+  /* 原生对象不占源对象动作位：日程帧页底只有摘要 */
+  body[data-state="schedule"] .cal-foot { display: none; }
 </style>
 </head>
-<body data-screen="11 事件详情 · 日历面" data-tab="" data-states="default,calendar,sourceUnavailable,offline">
+<body data-screen="11 日程详情 · 日历面" data-tab="" data-states="default,calendar,schedule,sourceUnavailable,offline,deleted">
 <div class="harness"></div>
 
 <div class="phone">
@@ -125,12 +173,16 @@
     <div class="nav-left">
       <button class="icon-btn" type="button" data-go="calendar.html"
         data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
-        data-hot-label="回到到期中心并保持进入前的视图与日期；详情不做页内返回栈" aria-label="返回">
+        data-hot-label="回到「日历」列表（calendar/calendar/index）并保持进入前的视图与日期；「条目已不存在」态下返回照常；详情不做页内返回栈" aria-label="返回">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
       </button>
     </div>
-    <div class="nav-title">事件详情</div>
-    <div class="nav-right"></div>
+    <div class="nav-title">日程详情</div>
+    <div class="nav-right">
+      <a class="cal-edit" href="calendar-edit.html"
+        data-hot="②" data-hot-name="编辑（右上）" data-hot-pos="outer-bottom-right"
+        data-hot-label="仅日历原生日程、仅创建人与管理员渲染（16.3 日历行 M / A 格）→ calendar/calendar/edit；注册型条目、非创建人、参与人、儿童与访客根本不渲染入口、不置灰；本页不渲染删除动作；编辑页保存后回本页详情（与 20 卡逐字对齐）；演示在 ?state=schedule 帧">编辑</a>
+    </div>
   </div>
 
   <div class="offline-bar">
@@ -144,21 +196,36 @@
       显示本机缓存 · 截至 10 月 29 日 08:10
     </div>
 
+    <div class="cal-main">
     <section class="cal-hero">
       <div class="cal-hero-when"
-        data-hot="④" data-hot-name="时间" data-hot-pos="outer-top-right"
-        data-hot-label="按家庭时区格式化；重复事件这里只描述当前这一次，周期规则在提醒设置里只读展示">
-        <div class="cal-hero-date num">2026 年 10 月 29 日 · 周四</div>
-        <div class="cal-hero-time num">20:00</div>
+        data-hot="⑥" data-hot-name="时间" data-hot-pos="outer-top-right"
+        data-hot-label="按家庭时区取服务端回显格式化；重复条目这里只描述当前这一次；异常兜底同 19 / 20 卡：已是过去的时间在新建 / 编辑页给提示但允许补录，本页按原值展示、不给「下次」预告；每月 31 日这类日号当月不存在时不出现、不自动顺延、不报错；节假日不判、不顺延；客户端不自行推算">
+        <div class="cal-hero-date num" id="hero-date">2026 年 11 月 12 日 · 周四</div>
+        <div class="cal-hero-time num" id="hero-time">09:30</div>
       </div>
-      <h2 class="cal-hero-title">交物业费</h2>
+      <h2 class="cal-hero-title" id="hero-title">妈妈体检</h2>
       <div class="cal-hero-meta">
         <span class="cal-src cal-src-fin cal-hero-src"
-          data-hot="③" data-hot-name="来源标注" data-hot-pos="outer-bottom-right"
-          data-hot-label="来源系统由注册时的 source_system 决定，不按标题猜；P1 只可能是 日历 或 财务">财务<span class="cal-src-suffix"> · 暂不可用</span></span>
+          data-hot="⑤" data-hot-name="来源标注" data-hot-pos="outer-bottom-right"
+          data-hot-label="来源由注册时确定，不按标题猜；P1 只可能是 日历 或 财务">财务<span class="cal-src-suffix"> · 暂不可用</span></span>
         <span class="cal-st cal-st-wait cal-hero-status">待缴</span>
       </div>
     </section>
+
+    <div class="cal-guide"
+      data-hot="④" data-hot-name="只读引导卡（注册型）" data-hot-pos="outer-top-left"
+      data-hot-label="口径与 20-calendar-edit.md「注册型只读」态逐字一致：进页给只读引导卡 + 页底前往源对象，是只读态、不是报错；原生对象（?state=calendar / schedule）不出现这张卡">
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.5V10M10 13v.1"/></svg>
+      <span>这条日程来自账单，由账单页维护时间；这里只能看摘要。</span>
+    </div>
+
+    <div class="cal-sched-note">这条日程是在日历里创建的；创建人和管理员可以点右上角「编辑」修改。</div>
+
+    <div class="cal-overlap">
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.2v4.6M10 13.4v.1"/></svg>
+      <span><b>与「妈妈体检」时间重叠</b> · 只是提醒你，不影响查看或编辑；两条日程都会保留。</span>
+    </div>
 
     <div class="cal-sec-title">关联对象</div>
     <div class="cal-related">
@@ -167,33 +234,48 @@
         <svg class="cal-rel-os" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="13" rx="2.5"/><path d="M7 8.5h6M7 12h4"/></svg>
       </span>
       <div class="cal-rel-body">
-        <div class="cal-rel-title" id="rel-title">账单 · 物业费</div>
-        <div class="cal-rel-sub" id="rel-sub">2026 年 10 月 · 每月 29 日到期</div>
+        <div class="cal-rel-title" id="rel-title">账单 · 体检套餐</div>
+        <div class="cal-rel-sub" id="rel-sub">2026 年 11 月 12 日 · 09:30 到期</div>
       </div>
-      <span class="amount cal-rel-amount" id="rel-amount">-¥380.00</span>
+      <span class="amount cal-rel-amount" id="rel-amount">-¥680.00</span>
     </div>
 
     <div class="cal-sec-title">事件信息</div>
     <div class="cal-rows">
       <div class="cal-row">
-        <span class="cal-k">来源系统</span>
+        <span class="cal-k">来源</span>
         <span class="cal-v" id="row-source">财务 · 账单</span>
       </div>
       <div class="cal-row">
         <span class="cal-k">提醒设置</span>
         <span class="cal-v">
-          <span id="row-remind">提前 3 天 · 当天 20:00 · 站内信</span>
-          <span class="cal-v-sub">提醒由 HomeOS 统一下发，源面不自建推送；在本页只读。</span>
+          <span id="row-remind">到期前 3 天 · 当天 09:30 · 站内信</span>
+          <span class="cal-v-sub">提醒都由日历按时发出；这里只能查看，想改请到提醒页。</span>
         </span>
       </div>
       <div class="cal-row"
-        data-hot="⑤" data-hot-name="参与人" data-hot-pos="top-right"
+        data-hot="⑦" data-hot-name="参与人" data-hot-pos="top-right"
         data-hot-label="取注册时携带的 participants[]，只读；无账号成员与有账号成员呈现一致">
         <span class="cal-k">参与人</span>
-        <span class="cal-v cal-people">
+        <span class="cal-v cal-people" id="people">
           <span class="cal-person"><span class="avatar">我</span>我<span class="tiny">负责人</span></span>
           <span class="cal-person"><span class="avatar">妈</span>妈妈</span>
         </span>
+      </div>
+    </div>
+    </div>
+
+    <!-- 条目已不存在：旧通知打开已删除 / 已撤销条目时的整页态 -->
+    <div class="cal-deleted">
+      <div class="state" style="padding-top:56px">
+        <div class="state-icon">
+          <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="6" y="8" width="20" height="18" rx="4"/><path d="M11 15.5h10M11 20h6M13 5v4M19 5v4"/></svg>
+        </div>
+        <div class="state-title">该日程已不存在</div>
+        <div class="state-desc">它可能被创建人删除了，或完成后被清理。日历里的其他安排都不受影响。</div>
+        <a class="btn btn-secondary" href="calendar.html"
+          data-hot="⑧" data-hot-name="返回日历（日程已不存在）" data-hot-pos="top-right"
+          data-hot-label="该态唯一动作；判定只认服务端（对象缺失 / 已删除 / 注册已撤销），不渲染悬空摘要、不弹错误层、不拿旧缓存冒充现状；回到日历列表照常">返回日历</a>
       </div>
     </div>
   </div>
@@ -201,15 +283,15 @@
   <div class="cal-foot">
     <div class="cal-unavail">
       <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.2v4.6M10 13.4v.1"/></svg>
-      <span>该面暂不可用，先看摘要；源面恢复后可从这里前往。</span>
+      <span>该来源暂时不可用，先看摘要；恢复后可从这里前往。</span>
     </div>
     <a class="btn btn-primary btn-block cal-go" id="go" href="finance-bill-detail.html"
-      data-hot="②" data-hot-name="前往源对象" data-hot-pos="bottom-right"
-      data-hot-label="source_system / source_id 决定深链：财务账单进财务账单详情；日历自带对象回本面内页（待办 → calendar/todo/detail，日程 → 本页）；源面不可用时禁用">
-      前往源对象
+      data-hot="③" data-hot-name="前往源对象" data-hot-pos="bottom-right"
+      data-hot-label="页底对象动作按来源分层：注册型条目（来源面不是日历，如财务账单）渲染「前往源对象」，由来源面 + 对象定位，源不可用时禁用、摘要照给；日历原生待办渲染「查看这条待办」回本面对象页；日历原生日程不占这个动作位（走右上「编辑」②）；注册型只读，不渲染编辑与删除">
+      <span id="go-label">前往源对象</span>
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h8M8.8 4.8 12 8l-3.2 3.2"/></svg>
     </a>
-    <div class="tiny cal-foot-note" id="footnote">在源对象里完成后，到期中心与首页今日区会同步更新</div>
+    <div class="tiny cal-foot-note" id="footnote">完成后，日历与首页今日区会同步更新</div>
   </div>
 
   <div class="toast"></div>
@@ -224,8 +306,9 @@
   }
 
   if (state === 'calendar') {
-    document.querySelector('.cal-hero-time').textContent = '16:30';
-    document.querySelector('.cal-hero-title').textContent = '接女儿放学';
+    document.getElementById('hero-date').textContent = '2026 年 10 月 29 日 · 周四';
+    document.getElementById('hero-time').textContent = '16:30';
+    document.getElementById('hero-title').textContent = '接女儿放学';
 
     var src = document.querySelector('.cal-hero-src');
     src.className = 'cal-src cal-src-os cal-hero-src';
@@ -239,10 +322,33 @@
     document.getElementById('rel-sub').textContent = '家庭待办 · 负责人 我';
     document.getElementById('rel-amount').style.display = 'none';
     document.getElementById('row-source').textContent = '日历 · 待办';
-    document.getElementById('row-remind').textContent = '当天 16:15 · 提前 15 分钟 · 站内信';
-    document.getElementById('footnote').textContent = '回到到期中心即可继续处理这条待办';
+    document.getElementById('row-remind').textContent = '当天 16:15 · 提前 10 分钟 · 站内信';
+    document.getElementById('people').innerHTML = '<span class="cal-person"><span class="avatar">我</span>我<span class="tiny">负责人</span></span>';
+    document.getElementById('footnote').textContent = '回到日历即可继续处理这条待办';
+    document.getElementById('go-label').textContent = '查看这条待办';
 
     go.setAttribute('href', 'todo-detail.html');
+  }
+
+  if (state === 'schedule') {
+    document.getElementById('hero-date').textContent = '2026 年 10 月 28 日 · 周三';
+    document.getElementById('hero-time').textContent = '15:00–16:00';
+    document.getElementById('hero-title').textContent = '小满家长会';
+
+    var ssrc = document.querySelector('.cal-hero-src');
+    ssrc.className = 'cal-src cal-src-os cal-hero-src';
+    ssrc.textContent = '日历';
+
+    var sst = document.querySelector('.cal-hero-status');
+    sst.className = 'cal-st cal-st-soon cal-hero-status';
+    sst.textContent = '待提醒';
+
+    document.getElementById('rel-title').textContent = '日程 · 小满家长会';
+    document.getElementById('rel-sub').textContent = '每周三 15:00–16:00 · 参与人 妈妈、小满';
+    document.getElementById('rel-amount').style.display = 'none';
+    document.getElementById('row-source').textContent = '日历 · 日程';
+    document.getElementById('row-remind').textContent = '当天 14:50 · 提前 10 分钟 · 站内信';
+    document.getElementById('people').innerHTML = '<span class="cal-person"><span class="avatar">妈</span>妈妈</span><span class="cal-person"><span class="avatar">满</span>小满</span>';
   }
 </script>
 </body>

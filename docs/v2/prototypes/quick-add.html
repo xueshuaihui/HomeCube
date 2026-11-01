@@ -27,6 +27,7 @@
   }
   body[data-state="default"] .qa-seg button[data-mode="text"],
   body[data-state="offline"] .qa-seg button[data-mode="text"],
+  body[data-state="discard"] .qa-seg button[data-mode="text"],
   body[data-state="recording"] .qa-seg button[data-mode="voice"],
   body[data-state="ocr"] .qa-seg button[data-mode="photo"],
   body[data-state="error"] .qa-seg button[data-mode="photo"] {
@@ -119,103 +120,65 @@
   .qa-block { margin-top: 16px; }
   .qa-block-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
   .qa-label { font-size: var(--fs-13); font-weight: 600; color: var(--text-2); }
-  .qa-target-hint { font-size: var(--fs-11); color: var(--text-3); }
+  .qa-block-hint { font-size: var(--fs-11); color: var(--text-3); }
 
+  .qa-textline { position: relative; }
+  .qa-text-input {
+    width: 100%; height: 48px; padding: 0 14px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--text); font-family: inherit; font-size: var(--fs-15);
+    outline: none;
+  }
+  .qa-text-input::placeholder { color: var(--text-3); }
+  .qa-text-input:focus { border-color: var(--brand-text); box-shadow: 0 0 0 3px var(--brand-soft); }
+
+  .qa-recog-tag {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 10px; font-weight: 600;
+    padding: 2px 6px; border-radius: var(--radius-pill);
+    background: var(--success-soft); color: var(--success);
+  }
+  .qa-preview {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 8px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2); border: 1px dashed var(--border-strong);
+    font-size: var(--fs-12); color: var(--text-2);
+  }
+  .qa-preview b { color: var(--text); font-weight: 700; }
+  .qa-preview .amount { margin-left: auto; color: var(--text); font-weight: 700; }
+  body[data-state="recording"] .qa-preview,
+  body[data-state="ocr"] .qa-preview,
+  body[data-state="error"] .qa-preview { display: none; }
+
+  .qa-targets { display: flex; flex-direction: column; gap: 8px; }
   .qa-target {
     display: flex; align-items: center; gap: 12px; width: 100%;
     padding: 12px 14px; border-radius: var(--radius-lg);
     background: var(--surface); border: 1px solid var(--border);
     color: var(--text); font-family: inherit; text-align: left; cursor: pointer;
+    text-decoration: none;
   }
   .qa-target-icon {
     width: 36px; height: 36px; border-radius: 11px; flex: none;
     display: flex; align-items: center; justify-content: center;
     background: var(--brand-soft); color: var(--brand-text);
   }
+  .qa-target-icon-cal { background: var(--face-calendar-soft); color: var(--face-calendar); }
+  .qa-target-icon-os { background: var(--accent-soft); color: var(--accent); }
   .qa-target-body { flex: 1; min-width: 0; }
   .qa-target-name { display: block; font-size: var(--fs-14); font-weight: 700; }
   .qa-target-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
-  .qa-target-badge {
-    flex: none; font-size: 10px; font-weight: 600;
-    padding: 3px 7px; border-radius: var(--radius-pill);
-    background: var(--brand-soft); color: var(--brand-text);
-  }
+  .qa-target .chevron { flex: none; }
 
-  .qa-amount-card { margin-top: 16px; padding: 16px; border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--border); }
-  .qa-amount-head { display: flex; align-items: center; gap: 8px; }
-  .qa-amount-type {
-    margin-left: auto; font-size: var(--fs-11); font-weight: 600;
-    color: var(--text-3); padding: 3px 8px;
-    border-radius: var(--radius-pill); background: var(--surface-2);
-  }
-  .qa-amount-row { display: flex; align-items: baseline; gap: 6px; margin-top: 8px; }
-  .qa-currency { font-size: var(--fs-24); font-weight: 700; color: var(--text-2); }
-  .qa-amount-input {
-    flex: 1; min-width: 0; width: 100%;
-    border: 0; outline: none; background: none;
-    font-family: var(--font-num); font-size: 38px; font-weight: 700;
-    line-height: 1.1; color: var(--text); padding: 0;
-  }
-  .qa-amount-input::placeholder { color: var(--border-strong); }
-  .qa-amount-help { margin-top: 6px; font-size: var(--fs-11); color: var(--text-3); }
-
-  .qa-field { margin-top: 16px; }
-  .qa-field-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-  .qa-recog-tag {
-    display: none; align-items: center; gap: 3px;
-    font-size: 10px; font-weight: 600;
-    padding: 2px 6px; border-radius: var(--radius-pill);
-    background: var(--success-soft); color: var(--success);
-  }
-  body[data-state="ocr"] .qa-recog-tag { display: inline-flex; }
-
-  .qa-cats { display: flex; flex-wrap: wrap; gap: 8px; }
-  .qa-cat {
-    padding: 7px 13px; border-radius: var(--radius-pill);
-    border: 1px solid var(--border); background: var(--surface);
-    color: var(--text-2); font-family: inherit;
-    font-size: var(--fs-13); font-weight: 600; cursor: pointer;
-  }
-  .qa-cat.is-on {
-    background: var(--brand-soft); border-color: var(--brand-soft-border);
-    color: var(--brand-text);
-  }
-
-  .qa-row {
-    display: flex; align-items: center; gap: 10px; width: 100%;
-    margin-top: 10px; padding: 13px 14px;
-    border-radius: var(--radius-md);
-    background: var(--surface); border: 1px solid var(--border);
-    color: var(--text); font-family: inherit; text-align: left; cursor: pointer;
-  }
-  .qa-row-static { cursor: default; }
-  .qa-row-k { flex: none; font-size: var(--fs-13); color: var(--text-2); }
-  .qa-row-main { flex: 1; min-width: 0; }
-  .qa-row-v { display: block; font-size: var(--fs-14); font-weight: 600; }
-  .qa-row-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
-
-  .qa-note-field { margin-top: 16px; }
-  .qa-note-input {
-    width: 100%; height: 44px; padding: 0 14px;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border); background: var(--surface);
-    color: var(--text); font-family: inherit; font-size: var(--fs-14);
-    outline: none;
-  }
-  .qa-note-input::placeholder { color: var(--text-3); }
-  .qa-note-input:focus { border-color: var(--brand-text); box-shadow: 0 0 0 3px var(--brand-soft); }
-
-  .qa-footer { margin-top: 22px; }
-  .qa-save-offline { display: none; }
-  body[data-state="offline"] .qa-save-online { display: none; }
-  body[data-state="offline"] .qa-save-offline { display: inline; }
   .qa-foot-hint {
-    margin-top: 8px; text-align: center;
+    margin-top: 14px; text-align: center;
     font-size: var(--fs-11); color: var(--text-3); line-height: var(--lh-normal);
   }
 </style>
 </head>
-<body data-screen="20 全局＋" data-tab="plus" data-states="default,recording,ocr,error,offline">
+<body data-screen="20 全局＋" data-tab="plus" data-states="default,recording,ocr,error,offline,discard">
 <div class="harness"></div>
 
 <div class="phone">
@@ -230,27 +193,27 @@
 
   <div class="navbar qa-navbar">
     <div class="nav-left">
-      <button class="qa-cancel" type="button" data-go="home.html"
+      <button class="qa-cancel" type="button" data-sheet-open="sheet-discard"
         data-hot="①" data-hot-name="取消" data-hot-pos="top-right"
-        data-hot-label="回到进入前页面（示例首页）；未保存内容直接丢弃，不落草稿、不入离线队列、不产生动态">取消</button>
+        data-hot-label="内容为空直接回进入前页面；有内容必弹一层「放弃？」：继续编辑（焦点回速记线）/ 存为待办（草稿唯一落对象路径）/ 放弃（回进入前页面，焦点落底栏「＋」位）。本页（示例已有内容）以弹层演示">取消</button>
     </div>
-    <div class="nav-title">记一笔</div>
+    <div class="nav-title">快速记</div>
     <div class="nav-right"></div>
   </div>
 
   <div class="offline-bar qa-offline">
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
-    当前离线 · 保存后先排队
+    当前离线 · 可以打字，语音和拍照要等网络
   </div>
 
   <div class="content qa-content">
     <div class="qa-seg" role="tablist"
       data-hot="②" data-hot-name="输入方式" data-hot-pos="top-right"
-      data-hot-label="文字 / 语音 / 拍照 / 模板四态同页切换，不新增路由；语音显示波形与「正在识别」，拍照进入小票识别预览并逐字段可改；OCR / 语音识别失败回同一张表单回手输，不增加确认页、不阻塞记账主流程">
+      data-hot-label="文字 / 语音 / 拍照 / 模板四态同页切换，不新增路由；语音显示波形与「正在识别」，拍照进入小票识别预览；OCR / 语音识别失败回同一页速记线手输，不增加确认步骤">
       <button type="button" role="tab" aria-selected="true" data-mode="text" data-go="quick-add.html">文字</button>
       <button type="button" role="tab" aria-selected="false" data-mode="voice" data-go="quick-add.html?state=recording">语音</button>
       <button type="button" role="tab" aria-selected="false" data-mode="photo" data-go="quick-add.html?state=ocr">拍照</button>
-      <button type="button" role="tab" aria-selected="false" data-mode="template" data-toast="模板记账：选择常用模板后带入金额与分类；模板管理在财务面设置">模板</button>
+      <button type="button" role="tab" aria-selected="false" data-mode="template" data-toast="模板记账：选择常用模板后带入一句话速记；模板的增删改在财务的设置里">模板</button>
     </div>
 
     <div class="qa-voice">
@@ -270,7 +233,7 @@
           <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
         </div>
         <div class="qa-voice-foot">
-          <span>松开结束 · 识别结果自动填入下方，仍可改</span>
+          <span>松开结束 · 识别到的短句自动填入速记线，仍可改</span>
           <button class="qa-voice-stop" type="button" data-toast="已停止录音（演示）">停止</button>
         </div>
       </div>
@@ -282,8 +245,8 @@
       </span>
       <div class="qa-receipt-copy">
         <div class="qa-receipt-title">小票已识别 <span class="qa-receipt-ok">6/6 项</span></div>
-        <div class="qa-receipt-sub">晚风餐厅 · 10 月 27 日 19:32</div>
-        <div class="qa-receipt-sub">金额、分类、账户、日期、商家、备注逐项可改</div>
+        <div class="qa-receipt-sub">晚风餐厅 · 10 月 27 日 19:32 · 合计 ¥128.00</div>
+        <div class="qa-receipt-sub">金额与商家并入速记线；逐项确认在目标页里做</div>
       </div>
       <button class="qa-retake" type="button" data-go="quick-add.html?state=ocr">重拍</button>
     </div>
@@ -292,7 +255,7 @@
       <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6v5M10 14v.1"/></svg>
       <div class="qa-banner-copy">
         <b>没识别清楚，已切回手动输入</b>
-        <span>金额、分类与账户仍可手动填写，不会多出确认步骤。</span>
+        <span>直接在下面打字就行，不会多出确认步骤。</span>
       </div>
       <button class="qa-banner-act" type="button" data-go="quick-add.html?state=ocr">重拍</button>
     </div>
@@ -301,99 +264,108 @@
       <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 10a7 7 0 0 1 11.5-5.4M17 10a7 7 0 0 1-11.5 5.4"/><path d="M7 12.5a4.4 4.4 0 0 1 6 0"/><path d="M4 3l12 14"/></svg>
       <div class="qa-banner-copy">
         <b>当前离线</b>
-        <span>保存后先存本机，联网自动同步；重试不会重复记账。</span>
+        <span>可以打字、可以选目标；保存与排队在目标页里进行。</span>
+      </div>
+    </div>
+
+    <div class="qa-block"
+      data-hot="③" data-hot-name="一句话速记" data-hot-pos="outer-top-right"
+      data-hot-label="本页唯一的输入位：打字、语音转写、小票识别都落在这条线上并可改；识别到的金额只做预览（-¥128.00，符号在货币符号之前），正式填写与校验在目标建页完成">
+      <div class="qa-block-head">
+        <span class="qa-label">先记一句</span>
+        <span class="qa-block-hint">写多少算多少，也可以直接选下面的目标</span>
+      </div>
+      <div class="qa-textline">
+        <input class="qa-text-input" id="qa-text" type="text"
+          placeholder="例：晚饭 晚风餐厅 128" aria-label="一句话速记">
+      </div>
+      <div class="qa-preview">
+        <span class="qa-recog-tag">已识别 · 可改</span>
+        <span>晚饭 · 晚风餐厅</span>
+        <span class="amount">-¥128.00</span>
       </div>
     </div>
 
     <div class="qa-block">
       <div class="qa-block-head">
-        <span class="qa-label">记到</span>
-        <span class="qa-target-hint">只列已启用且已出生的面</span>
+        <span class="qa-label">记成</span>
+        <span class="qa-block-hint">选一个，下一页再填细</span>
       </div>
-      <button class="qa-target" type="button"
-        data-hot="③" data-hot-name="目标对象" data-hot-pos="top-right"
-        data-hot-label="只列本家庭已启用且服务已出生的面；P1 五项 = 财务 · 记账 + 日历面三类（待办 / 提醒 / 日程）+ 底座留言，未出生面（采购 / 饮食 / 出行 / 家人 / 成长）不出现也不占位；财务 · 记账留在本页填表，日历 · 待办 → calendar/todo/create，日历 · 提醒 → calendar/reminder/create，日历 · 日程 → 到期中心日格，留言 → homeos/message/board"
-        data-toast="P1 五项目标对象 = 财务 · 记账 + 日历面三类（待办 / 提醒 / 日程）+ 底座留言；未出生面出生后自动出现在这里">
-        <span class="qa-target-icon">
-          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/></svg>
-        </span>
-        <span class="qa-target-body">
-          <span class="qa-target-name">财务 · 记账</span>
-          <span class="qa-target-sub">本家庭已启用</span>
-        </span>
-        <span class="qa-target-badge">当前所选</span>
-        <span class="chevron">›</span>
-      </button>
+      <div class="qa-targets"
+        data-hot="④" data-hot-name="目标对象" data-hot-pos="top-right"
+        data-hot-label="五项真实可点、点了就进对应建页：财务 · 记一笔 → finance/tx/create；日历 · 日程 → calendar/calendar/create；日历 · 待办 → calendar/todo/create；日历 · 提醒 → calendar/reminder/create；留言 → homeos/message/board。没有「先选一面」的中间层，也不渲染只有一个选项的选择器；每项下一行人话">
+        <a class="qa-target" href="finance-tx-create.html">
+          <span class="qa-target-icon">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/></svg>
+          </span>
+          <span class="qa-target-body">
+            <span class="qa-target-name">财务 · 记一笔</span>
+            <span class="qa-target-sub">花了多少、买了什么</span>
+          </span>
+          <span class="chevron">›</span>
+        </a>
+        <button class="qa-target" type="button"
+          data-toast="进「日历 · 日程」新建页 calendar/calendar/create（该页随日历面批次交付）">
+          <span class="qa-target-icon qa-target-icon-cal">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="4.5" width="14" height="12" rx="2"/><path d="M3 8.5h14M6.5 3v3M13.5 3v3"/></svg>
+          </span>
+          <span class="qa-target-body">
+            <span class="qa-target-name">日历 · 日程</span>
+            <span class="qa-target-sub">哪天要发生的事</span>
+          </span>
+          <span class="chevron">›</span>
+        </button>
+        <a class="qa-target" href="todo-create.html">
+          <span class="qa-target-icon qa-target-icon-cal">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14l8-8"/><path d="M3 17h14"/></svg>
+          </span>
+          <span class="qa-target-body">
+            <span class="qa-target-name">日历 · 待办</span>
+            <span class="qa-target-sub">谁要做、做完打勾</span>
+          </span>
+          <span class="chevron">›</span>
+        </a>
+        <a class="qa-target" href="reminder-create.html">
+          <span class="qa-target-icon qa-target-icon-cal">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="6.5"/><path d="M10 6.5v4l2.5 1.5"/></svg>
+          </span>
+          <span class="qa-target-body">
+            <span class="qa-target-name">日历 · 提醒</span>
+            <span class="qa-target-sub">到点提示你一下</span>
+          </span>
+          <span class="chevron">›</span>
+        </a>
+        <a class="qa-target" href="board.html">
+          <span class="qa-target-icon qa-target-icon-os">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 5h12M4 10h9M4 15h11"/></svg>
+          </span>
+          <span class="qa-target-body">
+            <span class="qa-target-name">留言板</span>
+            <span class="qa-target-sub">跟家人说一声</span>
+          </span>
+          <span class="chevron">›</span>
+        </a>
+      </div>
     </div>
 
-    <div class="qa-amount-card"
-      data-hot="④" data-hot-name="金额" data-hot-pos="top-right"
-      data-hot-label="大号数字键盘输入，最多两位小数；默认记为支出；金额为空时保存置灰，不弹校验弹层">
-      <div class="qa-amount-head">
-        <span class="qa-label">金额</span>
-        <span class="qa-recog-tag">已识别 · 可改</span>
-        <span class="qa-amount-type">支出</span>
-      </div>
-      <div class="qa-amount-row">
-        <span class="qa-currency">¥</span>
-        <input class="qa-amount-input num" id="qa-amount" type="text" inputmode="decimal"
-          placeholder="0.00" aria-label="金额">
-      </div>
-      <div class="qa-amount-help">支持两位小数，默认记为支出；符号在 ¥ 之前。</div>
+    <div class="qa-foot-hint"
+      data-hot="⑤" data-hot-name="带走说明" data-hot-pos="top-right"
+      data-hot-label="选好目标后，本页写好的内容与识别到的金额预填进目标建页、逐项仍可改；保存成功后 redirectTo 该对象详情页；在建页点取消回本页，内容还在、焦点回速记线">
+      选好上面的目标，这里写的内容会带过去；填完保存，直接进入这条的详情。
     </div>
+  </div>
 
-    <div class="qa-field"
-      data-hot="⑤" data-hot-name="分类" data-hot-pos="top-right"
-      data-hot-label="单选分类 chips，默认上次使用；识别结果带入后仍可改；分类与账户必填，不出现无权限项">
-      <div class="qa-field-head">
-        <span class="qa-label">分类</span>
-        <span class="qa-recog-tag">已识别 · 可改</span>
+  <!-- 有内容时取消的「放弃？」确认 -->
+  <div class="sheet-mask" id="sheet-discard" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>放弃？</h3>
+      <p class="sheet-sub">这里写的内容还没落到任何地方。放弃后就清空；想留住它，可以存为一条待办。</p>
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" data-go="quick-add.html">继续编辑</button>
+        <button class="btn btn-secondary btn-block" type="button" data-go="todo-create.html">存为待办</button>
+        <button class="btn btn-secondary btn-block" type="button" data-go="home.html">放弃</button>
       </div>
-      <div class="qa-cats">
-        <button class="qa-cat is-on" type="button" data-cat="餐饮">餐饮</button>
-        <button class="qa-cat" type="button" data-cat="交通">交通</button>
-        <button class="qa-cat" type="button" data-cat="购物">购物</button>
-        <button class="qa-cat" type="button" data-cat="居家">居家</button>
-        <button class="qa-cat" type="button" data-cat="医疗">医疗</button>
-        <button class="qa-cat" type="button" data-toast="分类管理在财务面「账户与设置」中维护">更多</button>
-      </div>
-    </div>
-
-    <button class="qa-row" type="button"
-      data-hot="⑥" data-hot-name="账户" data-hot-pos="top-right"
-      data-hot-label="默认最近使用的账户；切换账户不改变已填金额；无可用账户时保存置灰并提示去财务面新建"
-      data-toast="P1 默认最近使用的账户；账户切换随财务面交付后接入">
-      <span class="qa-row-k">账户</span>
-      <span class="qa-row-main">
-        <span class="qa-row-v">招商银行 · 储蓄卡</span>
-        <span class="qa-row-sub num">余额 ¥12,480.00</span>
-      </span>
-      <span class="qa-recog-tag">已识别</span>
-      <span class="chevron">›</span>
-    </button>
-
-    <div class="qa-row qa-row-static">
-      <span class="qa-row-k">日期</span>
-      <span class="qa-row-main"><span class="qa-row-v num">10 月 29 日 · 今天</span></span>
-      <span class="qa-recog-tag">已识别</span>
-    </div>
-
-    <div class="qa-note-field">
-      <div class="qa-field-head">
-        <span class="qa-label">备注</span>
-        <span class="qa-recog-tag">已识别 · 可改</span>
-      </div>
-      <input class="qa-note-input" id="qa-note" type="text" placeholder="加一句备注（可选）" aria-label="备注">
-    </div>
-
-    <div class="qa-footer">
-      <button class="btn btn-primary btn-block" type="button" data-go="home.html" id="qa-save"
-        data-hot="⑦" data-hot-name="保存" data-hot-pos="top-right"
-        data-hot-label="校验金额 > 0、分类与账户必填；成功后回首页并刷新动态；离线时入队并提示，重试幂等不重复记账">
-        <span class="qa-save-online">保存</span>
-        <span class="qa-save-offline">保存并排队</span>
-      </button>
-      <div class="qa-foot-hint">保存后回到首页并出现在家庭动态；取消不保留草稿。</div>
     </div>
   </div>
 
@@ -406,29 +378,17 @@
   document.querySelectorAll('.qa-seg button').forEach(function (b) {
     b.setAttribute('aria-selected', String(b.getAttribute('data-mode') === activeMode));
   });
-  var amount = document.getElementById('qa-amount');
-  var note = document.getElementById('qa-note');
-  var save = document.getElementById('qa-save');
 
-  if (qaState === 'ocr') {
-    amount.value = '128.00';
-    note.value = '晚风餐厅';
-  } else if (qaState !== 'recording' && qaState !== 'error') {
-    amount.value = '128.00';
+  var text = document.getElementById('qa-text');
+  if (qaState !== 'error') {
+    text.value = '晚饭 晚风餐厅 128';
   }
 
-  function syncSave() {
-    save.disabled = !(parseFloat(amount.value) > 0);
-  }
-  amount.addEventListener('input', syncSave);
-  syncSave();
-
-  document.querySelectorAll('.qa-cat[data-cat]').forEach(function (b) {
-    b.addEventListener('click', function () {
-      document.querySelectorAll('.qa-cat[data-cat]').forEach(function (x) { x.classList.remove('is-on'); });
-      b.classList.add('is-on');
+  if (qaState === 'discard') {
+    document.addEventListener('DOMContentLoaded', function () {
+      window.HC.openSheet('sheet-discard');
     });
-  });
+  }
 </script>
 </body>
 </html>

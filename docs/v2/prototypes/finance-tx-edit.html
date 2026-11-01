@@ -18,14 +18,13 @@
   }
   .fx-del:hover { opacity: .8; }
 
-  .fx-ver {
+  .fx-meta {
     display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
     margin: 2px 0 10px; padding: 8px 11px;
     border-radius: var(--radius-md);
     background: var(--surface-2);
     font-size: var(--fs-12); color: var(--text-2);
   }
-  .fx-ver b { font-weight: 700; color: var(--text); }
 
   .fx-banner {
     display: none; align-items: flex-start; gap: 8px;
@@ -35,17 +34,39 @@
   }
   .fx-banner svg { flex: none; margin-top: 1px; }
   .fx-banner b { display: block; font-size: var(--fs-13); margin-bottom: 2px; }
-  .fx-banner-saved { background: var(--success-soft); color: var(--success); }
-  .fx-banner-409 { background: var(--warning-soft); color: var(--warning); }
-  body[data-state="saved-toast"] .fx-banner-saved { display: flex; }
-  body[data-state="conflict"] .fx-banner-409 { display: flex; }
+  .fx-banner-conflict { background: var(--warning-soft); color: var(--warning); }
+  .fx-banner-failed { background: var(--danger-soft); color: var(--danger); }
+  body[data-state="conflict"] .fx-banner-conflict { display: flex; }
+  body[data-state="failed"] .fx-banner-failed { display: flex; }
   body[data-state="conflict"] .fx-form { opacity: .7; }
 
   .fx-type { display: flex; width: 100%; margin: 2px 0 6px; }
   .fx-type button { flex: 1; padding: 8px 6px; }
-  .fx-type button[disabled] { cursor: not-allowed; }
-  .fx-type button[aria-selected="false"][disabled] { opacity: .45; }
   .fx-type-hint { margin: 0 2px 12px; font-size: var(--fs-11); line-height: var(--lh-normal); color: var(--text-3); }
+
+  .fx-amt-out, .fx-amt-income, .fx-amt-transfer { display: none; }
+  body[data-tx-type="out"] .fx-amt-out { display: inline; }
+  body[data-tx-type="income"] .fx-amt-income { display: inline; color: var(--success); }
+  body[data-tx-type="transfer"] .fx-amt-transfer { display: inline; }
+
+  .fx-only-transfer { display: none; }
+  body[data-tx-type="transfer"] .fx-only-out { display: none; }
+  body[data-tx-type="transfer"] .fx-only-transfer { display: block; }
+
+  .fx-acc {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-family: inherit; text-align: left; color: var(--text);
+    cursor: pointer;
+  }
+  .fx-acc:hover { border-color: var(--border-strong); }
+  .fx-acc + .fx-acc { margin-top: 8px; }
+  .fx-acc-k { flex: none; font-size: var(--fs-12); color: var(--text-3); }
+  .fx-acc-v { flex: 1; min-width: 0; font-size: var(--fs-15); font-weight: 600; }
+  .fx-acc-sub { display: block; margin-top: 2px; font-size: var(--fs-11); color: var(--text-3); font-weight: 500; }
 
   .fx-amount-box {
     padding: 16px 18px 14px;
@@ -106,6 +127,48 @@
   .fx-avatar { width: 22px; height: 22px; font-size: var(--fs-11); }
   .fx-tags { display: inline-flex; flex-wrap: wrap; gap: 4px; }
 
+  .fx-impact {
+    margin-top: 12px; padding: 11px 14px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .fx-impact-k {
+    display: flex; align-items: baseline; justify-content: space-between;
+    font-size: var(--fs-12); font-weight: 700; color: var(--text-2);
+  }
+  .fx-impact-k .tiny { font-weight: 500; }
+  .fx-impact-row {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    margin-top: 7px; font-size: var(--fs-12); color: var(--text-2);
+  }
+  .fx-impact-row .num { font-family: var(--font-num); }
+  .fx-impact-row b { color: var(--text); }
+  .fx-impact-note { margin-top: 7px; font-size: var(--fs-11); color: var(--text-3); line-height: var(--lh-normal); }
+
+  .fx-private-switch {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 12px 14px;
+    border-top: 1px solid var(--border);
+  }
+  .fx-private-switch-body { flex: 1; min-width: 0; }
+  .fx-private-switch-k { display: flex; align-items: center; gap: 6px; font-size: var(--fs-14); font-weight: 600; }
+  .fx-private-switch-desc { margin-top: 3px; font-size: var(--fs-11); color: var(--text-3); line-height: var(--lh-normal); }
+
+  .fx-tag-create {
+    display: none; align-items: center; gap: 6px;
+    margin: 4px 2px 0; padding: 8px 0;
+    border-top: 1px dashed var(--border);
+  }
+  .fx-tag-create.is-open { display: flex; }
+  .fx-tag-input {
+    flex: 1; min-width: 0; height: 32px; padding: 0 9px;
+    border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    background: var(--surface); color: var(--text);
+    font-family: inherit; font-size: var(--fs-13);
+  }
+  .fx-tag-help { margin: 4px 2px 0; font-size: var(--fs-11); color: var(--text-3); line-height: var(--lh-normal); }
+
   .fx-note-area { margin-top: 4px; }
 
   .fx-attach {
@@ -152,19 +215,33 @@
   }
   .fx-foot-note { margin-bottom: 8px; text-align: center; line-height: var(--lh-normal); }
 
-  .fx-ver-pair { display: flex; gap: 8px; margin-top: 14px; }
-  .fx-ver-card {
+  .fx-sk { display: none; padding-top: 14px; }
+  .fx-sk .sk-line:first-child { width: 42%; }
+  body[data-state="loading"] .fx-sk { display: block; }
+  body[data-state="loading"] .fx-form,
+  body[data-state="loading"] .fx-edit-foot,
+  body[data-state="loading"] .fx-meta { display: none; }
+
+  .fx-empty { display: none; }
+  body[data-state="empty"] .fx-empty { display: flex; }
+  body[data-state="empty"] .fx-form,
+  body[data-state="empty"] .fx-edit-foot,
+  body[data-state="empty"] .fx-meta { display: none; }
+  body[data-state="offline"] .offline-bar { display: flex; }
+
+  .fx-conflict-pair { display: flex; gap: 8px; margin-top: 14px; }
+  .fx-conflict-card {
     flex: 1; min-width: 0;
     padding: 10px 12px;
     border-radius: var(--radius-md);
     border: 1px solid var(--border);
     background: var(--surface);
   }
-  .fx-ver-card.is-mine { border-color: var(--brand-soft-border); background: var(--brand-soft); }
-  .fx-ver-card-k { font-size: var(--fs-11); font-weight: 700; color: var(--text-3); }
-  .fx-ver-card.is-mine .fx-ver-card-k { color: var(--brand-text); }
-  .fx-ver-card-v { margin-top: 4px; font-size: var(--fs-14); font-weight: 700; }
-  .fx-ver-card-line { margin-top: 4px; font-size: var(--fs-11); color: var(--text-2); line-height: var(--lh-normal); }
+  .fx-conflict-card.is-mine { border-color: var(--brand-soft-border); background: var(--brand-soft); }
+  .fx-conflict-k { font-size: var(--fs-11); font-weight: 700; color: var(--text-3); }
+  .fx-conflict-card.is-mine .fx-conflict-k { color: var(--brand-text); }
+  .fx-conflict-v { margin-top: 4px; font-size: var(--fs-14); font-weight: 700; }
+  .fx-conflict-line { margin-top: 4px; font-size: var(--fs-11); color: var(--text-2); line-height: var(--lh-normal); }
   .fx-conflict-note { margin-top: 10px; font-size: var(--fs-11); color: var(--text-3); line-height: var(--lh-normal); }
 
   .fx-sheet-line {
@@ -177,7 +254,7 @@
   .fx-sheet-amt { flex: none; font-size: var(--fs-14); }
 </style>
 </head>
-<body data-screen="F03 编辑流水" data-states="default,conflict,delete-confirm,saved-toast">
+<body data-screen="F03 编辑流水" data-states="default,conflict,delete-confirm,loading,failed,empty,offline">
 <div class="harness"></div>
 
 <div class="phone">
@@ -194,7 +271,7 @@
     <div class="nav-left">
       <a class="icon-btn" href="finance-tx-detail.html" aria-label="返回详情"
         data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
-        data-hot-label="回这笔流水的详情；未保存的改动直接丢弃，不落草稿。保存成功也回详情页并显示新值，不返回列表">
+        data-hot-label="回这笔流水的详情；没保存的改动直接丢弃，不落草稿。保存成功回流水列表，并在列表里只提示一次「已保存」">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
       </a>
     </div>
@@ -210,119 +287,185 @@
 
   <div class="offline-bar">
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
-    当前离线 · 保存后先入待同步队列
+    当前离线 · 保存后先存在本机，联网后自动补记 · 原流水缓存截至 10 月 30 日 14:32
   </div>
 
   <div class="content bottom-space fx-content">
-    <div class="fx-ver">
+    <div class="fx-meta">
       <span class="tag is-brand">编辑中</span>
-      <span>版本 <b class="num">3</b> · 爸爸 10 月 28 日 19:26 最后修改</span>
+      <span>爸爸 10 月 28 日 19:26 最后改过</span>
     </div>
 
-    <div class="fx-banner fx-banner-saved">
-      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M6.4 10.3l2.4 2.4 4.8-4.9"/></svg>
-      <div>
-        <b>已保存 · 版本 4</b>
-        家人端 5 秒内看到新金额；周期规则本身不变，下月仍按规则自动入账。
-      </div>
-    </div>
-
-    <div class="fx-banner fx-banner-409">
+    <div class="fx-banner fx-banner-conflict">
       <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6v4.4M10 13.4v.1"/></svg>
       <div>
-        <b>这条记录已被修改</b>
-        你在编辑时，爸爸在另一台设备把它改成了版本 4。金额型数据不静默合并，先在冲突层里选一条出路。
+        <b>这笔刚被家人改过</b>
+        你在改的时候，爸爸在另一台设备上也改了这笔。金额不自动合并，先在弹层里选用哪一版。
       </div>
+    </div>
+
+    <div class="fx-banner fx-banner-failed">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6v4.4M10 13.4v.1"/></svg>
+      <div>
+        <b>这次没保存成功，草稿已保留</b>
+        你改的金额、分类、账户、日期、标签和备注都还在，网络恢复后点「重试保存」即可；不会假装成功，也不会丢输入。
+        <div style="margin-top:6px">
+          <button class="btn btn-sm btn-secondary" type="button" data-toast="正在重试保存；还是这一笔，不会记成两笔">重试保存</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="fx-empty state">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="7" width="22" height="18" rx="3"/><path d="M11 12h10M11 16h6"/><path d="M11 24l10-8"/></svg>
+      </div>
+      <div class="state-title">这笔流水已不存在</div>
+      <div class="state-desc">可能已被删除，或者链接里的编号不对。删除的流水 30 天内还能在回收站里找回。</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" type="button" data-go="finance-flow.html">回流水列表</button>
+        <button class="btn btn-primary" type="button" data-go="finance-tx-trash.html">去回收站看看</button>
+      </div>
+    </div>
+
+    <div class="fx-sk" aria-hidden="true">
+      <div class="skeleton sk-line"></div>
+      <div class="skeleton sk-block" style="height:130px"></div>
+      <div class="skeleton sk-block" style="height:240px"></div>
+      <div class="skeleton sk-block" style="height:150px"></div>
     </div>
 
     <div class="fx-form">
-      <div class="segmented fx-type" role="group" aria-label="流水类型（不可修改）">
-        <button type="button" aria-selected="true" disabled>支出</button>
-        <button type="button" aria-selected="false" disabled>收入</button>
-        <button type="button" aria-selected="false" disabled>转账</button>
+      <div class="segmented fx-type" role="tablist"
+        data-hot="③" data-hot-name="类型切换" data-hot-pos="bottom-right"
+        data-hot-label="支出 / 收入 / 转账三选一，同页切换不换页；改类型后先在右下方看余额影响，再保存。切到转账换成「从 / 到」两个账户；借入 / 借出 / 报销由对应对象联动生成，这里不能选">
+        <button type="button" role="tab" aria-selected="true" data-type="out">支出</button>
+        <button type="button" role="tab" aria-selected="false" data-type="income">收入</button>
+        <button type="button" role="tab" aria-selected="false" data-type="transfer">转账</button>
       </div>
-      <div class="fx-type-hint">类型不在这里改：支出 / 收入 / 转账的成对与预算口径不同，要换类型请删除这笔后重记。</div>
+      <div class="fx-type-hint">支出 / 收入 / 转账可互改，改前先看余额影响；借入 / 借出 / 报销由借贷与报销对象联动生成，这里不能改。</div>
 
       <div class="fx-amount-box"
-        data-hot="③" data-hot-name="金额" data-hot-pos="top-right"
-        data-hot-label="预填原值 -¥128.00，负数在货币符号之前；以「分」整数存储、按家庭币种显示。改金额同时改这笔的收支与预算占用，保存时带 version=3 提交">
+        data-hot="④" data-hot-name="金额" data-hot-pos="top-right"
+        data-hot-label="预填 -¥138.00，负数在货币符号之前；改金额会同时改这笔的收支与预算占用，右下方余额预览同步更新。保存后回流水列表，只提示一次「已保存」">
         <div class="fx-amount-k">
           <span>金额（元）</span>
           <span class="num">人民币</span>
         </div>
         <div class="fx-amount-line">
-          <span class="fx-amount-val num">-¥128.00</span>
+          <span class="fx-amount-val fx-amt-out num">-¥138.00</span>
+          <span class="fx-amount-val fx-amt-income num">+¥138.00</span>
+          <span class="fx-amount-val fx-amt-transfer num">¥138.00</span>
         </div>
         <div class="fx-amount-help">以「分」存储 · 显示按家庭币种 · 最多两位小数</div>
       </div>
 
-      <div class="fx-sec">
-        <span>分类</span>
-        <span class="tiny">顺序与报表图例一致</span>
-      </div>
-      <div class="fx-grid"
-        data-hot="④" data-hot-name="分类九宫格" data-hot-pos="top-right"
-        data-hot-label="预选当前分类「餐饮」；改分类只改这一笔的报表归集与预算归属，不连带改历史流水。停用分类不再出现在这里，历史流水照常显示">
-        <button class="fx-cat is-on" type="button" data-cat="餐饮">
-          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11h14"/><path d="M4 11a6 6 0 0 1 12 0"/><path d="M7.5 7.6 6 4.4M12.5 7.6 14 4.4"/></svg>
-          餐饮
-        </button>
-        <button class="fx-cat" type="button" data-cat="交通">
-          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13.5h12l-1.2 2.6a1.5 1.5 0 0 1-1.3.9H6.5a1.5 1.5 0 0 1-1.3-.9z"/><path d="M5.6 13.5 7 8.6A2.4 2.4 0 0 1 9.3 7h1.4A2.4 2.4 0 0 1 13 8.6l1.4 4.9"/><circle cx="7" cy="16" r="1"/><circle cx="13" cy="16" r="1"/></svg>
-          交通
-        </button>
-        <button class="fx-cat" type="button" data-cat="购物">
-          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6.5h14l-1.1 9.2a1.6 1.6 0 0 1-1.6 1.4H5.7a1.6 1.6 0 0 1-1.6-1.4z"/><path d="M7.2 8V5.6a2.8 2.8 0 0 1 5.6 0V8"/></svg>
-          购物
-        </button>
-        <button class="fx-cat" type="button" data-cat="日用">
-          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5h6v4H7z"/><path d="M8 7.5v9h4v-9"/><path d="M6.5 16.5h7"/></svg>
-          日用
-        </button>
-        <button class="fx-cat" type="button" data-cat="居住">
-          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5 10 4l6.5 5.5"/><path d="M5.5 9v7h9V9"/><path d="M8.5 16v-3.5h3V16"/></svg>
-          居住
-        </button>
-        <button class="fx-cat" type="button" data-cat="娱乐">
-          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5.5" width="14" height="9" rx="4"/><path d="M7 10h2.5M8.2 8.7v2.6"/><circle cx="12.6" cy="9.3" r=".8"/><circle cx="14.2" cy="11" r=".8"/></svg>
-          娱乐
-        </button>
-        <button class="fx-cat" type="button" data-cat="医疗">
-          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="12" height="12" rx="3"/><path d="M10 7v6M7 10h6"/></svg>
-          医疗
-        </button>
-        <button class="fx-cat" type="button" data-cat="学习">
-          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5h6.5a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 0-1.5-1.5H3z"/><path d="M17 5.5h-6.5A1.5 1.5 0 0 0 9 7v9a1.5 1.5 0 0 1 1.5-1.5H17z"/></svg>
-          学习
-        </button>
-        <button class="fx-cat" type="button" data-toast="更多分类：二级分类与停用项在完整选择器里；停用分类不再出现，历史流水照常显示">
-          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="5" cy="10" r="1.2"/><circle cx="10" cy="10" r="1.2"/><circle cx="15" cy="10" r="1.2"/></svg>
-          更多
-        </button>
+      <div class="fx-only-out">
+        <div class="fx-sec">
+          <span>分类</span>
+          <span class="tiny">顺序与报表图例一致</span>
+        </div>
+        <div class="fx-grid"
+          data-hot="⑤" data-hot-name="分类九宫格" data-hot-pos="top-right"
+          data-hot-label="预选当前分类「餐饮」；改分类只改这一笔的报表归集与预算归属，不连带改历史流水。停用分类不再出现在这里，历史流水照常显示">
+          <button class="fx-cat is-on" type="button" data-cat="餐饮">
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11h14"/><path d="M4 11a6 6 0 0 1 12 0"/><path d="M7.5 7.6 6 4.4M12.5 7.6 14 4.4"/></svg>
+            餐饮
+          </button>
+          <button class="fx-cat" type="button" data-cat="交通">
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13.5h12l-1.2 2.6a1.5 1.5 0 0 1-1.3.9H6.5a1.5 1.5 0 0 1-1.3-.9z"/><path d="M5.6 13.5 7 8.6A2.4 2.4 0 0 1 9.3 7h1.4A2.4 2.4 0 0 1 13 8.6l1.4 4.9"/><circle cx="7" cy="16" r="1"/><circle cx="13" cy="16" r="1"/></svg>
+            交通
+          </button>
+          <button class="fx-cat" type="button" data-cat="购物">
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6.5h14l-1.1 9.2a1.6 1.6 0 0 1-1.6 1.4H5.7a1.6 1.6 0 0 1-1.6-1.4z"/><path d="M7.2 8V5.6a2.8 2.8 0 0 1 5.6 0V8"/></svg>
+            购物
+          </button>
+          <button class="fx-cat" type="button" data-cat="日用">
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5h6v4H7z"/><path d="M8 7.5v9h4v-9"/><path d="M6.5 16.5h7"/></svg>
+            日用
+          </button>
+          <button class="fx-cat" type="button" data-cat="居住">
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5 10 4l6.5 5.5"/><path d="M5.5 9v7h9V9"/><path d="M8.5 16v-3.5h3V16"/></svg>
+            居住
+          </button>
+          <button class="fx-cat" type="button" data-cat="娱乐">
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5.5" width="14" height="9" rx="4"/><path d="M7 10h2.5M8.2 8.7v2.6"/><circle cx="12.6" cy="9.3" r=".8"/><circle cx="14.2" cy="11" r=".8"/></svg>
+            娱乐
+          </button>
+          <button class="fx-cat" type="button" data-cat="医疗">
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="12" height="12" rx="3"/><path d="M10 7v6M7 10h6"/></svg>
+            医疗
+          </button>
+          <button class="fx-cat" type="button" data-cat="教育">
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5h6.5a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 0-1.5-1.5H3z"/><path d="M17 5.5h-6.5A1.5 1.5 0 0 0 9 7v9a1.5 1.5 0 0 1 1.5-1.5H17z"/></svg>
+            教育
+          </button>
+          <button class="fx-cat" type="button" data-toast="更多分类：二级分类与停用项在完整选择器里；停用分类不再出现，历史流水照常显示">
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="5" cy="10" r="1.2"/><circle cx="10" cy="10" r="1.2"/><circle cx="15" cy="10" r="1.2"/></svg>
+            更多
+          </button>
+        </div>
       </div>
 
-      <div class="fx-sec"><span>账户</span><span class="tiny">只列未归档账户</span></div>
-      <div class="list"
-        data-hot="⑤" data-hot-name="账户" data-hot-pos="top-right"
-        data-hot-label="预填原账户「招行信用卡」；只能换成未归档账户。换账户会同时改两侧余额，历史统计按新账户重算，保存带 version">
-        <button class="fx-field" type="button" data-toast="换账户：只列未归档账户，换后这笔在新旧账户的余额与净资产里同时重算">
-          <span class="fx-field-k">账户</span>
-          <span class="fx-field-v">招行信用卡 <span class="tiny num">尾号 3941 · 待还 ¥2,860.00</span></span>
-          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
-        </button>
+      <div class="fx-account-zone"
+        data-hot="⑥" data-hot-name="账户（转账时双账户）" data-hot-pos="top-right"
+        data-hot-label="支出 / 收入只有一个账户，现在是招商银行；转账换成「从 / 到」两个账户，可一键互换，两个账户不能相同。换账户会同时改两侧余额与净资产">
+        <div class="fx-only-out">
+          <div class="fx-sec"><span>账户</span><span class="tiny">只列未归档账户</span></div>
+          <div class="list">
+            <button class="fx-field" type="button" id="fx-acc-btn">
+              <span class="fx-field-k">账户</span>
+              <span class="fx-field-v"><span id="fx-acc-label">招商银行</span> <span class="tiny num">余额 <span id="fx-acc-bal">¥32,480.00</span></span></span>
+              <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="fx-only-transfer">
+          <div class="fx-sec">
+            <span>从 / 到</span>
+            <span class="tiny">转账不计入收支</span>
+          </div>
+          <div class="list">
+            <button class="fx-acc" type="button" data-toast="选择转出账户：只列未归档账户；归档账户的历史流水仍在，但不能再作为新的转出方">
+              <span class="fx-acc-k">从</span>
+              <span class="fx-acc-v"><span id="fx-from-label">招商银行</span><span class="fx-acc-sub num" id="fx-from-sub">储蓄卡 · 尾号 6882 · 余额 ¥32,480.00</span></span>
+              <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+            </button>
+            <button class="fx-acc" type="button" id="fx-swap" data-toast="互换转出与转入账户；两笔配对流水的方向一起翻转">
+              <span class="fx-acc-k">互换</span>
+              <span class="fx-acc-v" style="font-weight:500">把两个账户对调</span>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h9"/><path d="M9.5 3.5 12 6l-2.5 2.5"/><path d="M13 10H4"/><path d="M6.5 7.5 4 10l2.5 2.5"/></svg>
+            </button>
+            <button class="fx-acc" type="button" data-toast="选择转入账户：同币种直接入账；跨币种需要汇率口径，先提示暂不支持自动换算">
+              <span class="fx-acc-k">到</span>
+              <span class="fx-acc-v"><span id="fx-to-label">微信</span><span class="fx-acc-sub num" id="fx-to-sub">零钱 · 余额 ¥1,268.40</span></span>
+              <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="fx-impact"
+        data-hot="⑫" data-hot-name="余额影响预览" data-hot-pos="top-right"
+        data-hot-label="改金额、换账户、改类型时同步更新：支出与收入显示一个账户保存后的余额，转账显示转出与转入两个账户；这里只是预览，保存成功后才真正变动">
+        <div class="fx-impact-k"><span>余额影响预览</span><span class="tiny">保存后</span></div>
+        <div id="fx-impact-rows">
+          <div class="fx-impact-row"><span>招商银行</span><span class="num"><span>¥32,480.00</span> → <b>¥32,470.00</b></span></div>
+        </div>
+        <div class="fx-impact-note" id="fx-impact-note">先退回原来的 ¥128.00，再按新金额扣一次；保存成功后余额才真正变化。</div>
       </div>
 
       <div class="fx-sec"><span>这笔的归属</span><span class="tiny">改后重算报表</span></div>
       <div class="list fx-fields">
-        <button class="fx-field" type="button" data-toast="改日期只改这笔的归属日与所属期间；时间窗 period 不变，列表仍按日分组"
-          data-hot="⑥" data-hot-name="日期" data-hot-pos="outer-top-right"
+        <button class="fx-field" type="button" data-toast="改日期只改这笔的归属日与所属期间；时间窗不变，列表仍按日分组"
+          data-hot="⑦" data-hot-name="日期" data-hot-pos="outer-top-right"
           data-hot-label="预填原时间 10 月 28 日 19:20；改时间按家庭时区归日，补记与改期都只影响这一笔的归属期间，不改时间窗档位">
           <span class="fx-field-k">日期</span>
           <span class="fx-field-v num">10 月 28 日 19:20 <span class="tiny">周三 · 家庭时区</span></span>
           <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
         </button>
         <button class="fx-field" type="button" data-toast="改成员只改「谁记的这笔」与报表的成员维度，不改变谁能看这笔流水"
-          data-hot="⑦" data-hot-name="成员" data-hot-pos="outer-top-right"
+          data-hot="⑧" data-hot-name="成员" data-hot-pos="outer-top-right"
           data-hot-label="预填原作者「爸爸」；成员决定记账归属与报表维度，不决定可见性。改成员不转移编辑权，作者仍是原录入人">
           <span class="fx-field-k">成员</span>
           <span class="fx-field-v">
@@ -331,31 +474,53 @@
           <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
         </button>
         <button class="fx-field" type="button" data-toast="账本是报表与归集的分组，不是隔离域：换账本不会改变谁能看到这笔流水"
-          data-hot="⑧" data-hot-name="账本与标签" data-hot-pos="outer-top-right"
-          data-hot-label="预填账本「日常」与标签「家庭 / 聚餐」；账本只改报表归集、不是权限边界；标签可多选，用于筛选与报表归集，两者都不影响可见性">
+          data-hot="⑨" data-hot-name="账本" data-hot-pos="outer-top-right"
+          data-hot-label="预填账本「日常」；账本只改报表归集、不是权限边界，也不提供多账本切换器。换账本不改变可见性">
           <span class="fx-field-k">账本</span>
           <span class="fx-field-v">日常</span>
           <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
         </button>
         <div class="fx-field">
           <span class="fx-field-k">标签</span>
-          <span class="fx-field-v fx-tags">
+          <span class="fx-field-v fx-tags" id="fx-tag-list">
             <span class="tag is-brand">家庭</span>
             <span class="tag">聚餐</span>
-            <button class="tag" type="button" data-toast="添加标签：项目 / 地点 / 商家，多个标签取交集用于筛选" style="border:0;cursor:pointer;font-family:inherit">+ 添加</button>
+            <button class="tag" type="button" id="fx-tag-open"
+              data-hot="⑩" data-hot-name="新建标签" data-hot-pos="top-right"
+              data-hot-label="标签选择器内的「＋ 新建标签」：原地展开输入框内联创建，建完即选中；标签是家庭共享字典，成年人可建。删除标签不删流水，受影响的流水显示「未分类」"
+              style="border:0;cursor:pointer;font-family:inherit">+ 新建标签</button>
           </span>
         </div>
+        <div class="fx-private-switch"
+          data-hot="⑪" data-hot-name="私密开关" data-hot-pos="top-right"
+          data-hot-label="行级可见性：打开后只有你与管理员能读这笔流水，仍计入家庭本月收入、支出、结余与统计总量；只从 AA 分摊与跨面归集里排除。管理员视图不显示合计位注记">
+          <span class="fx-private-switch-body">
+            <span class="fx-private-switch-k">私密 <span class="tag">仅你与管理员可读</span></span>
+            <span class="fx-private-switch-desc">打开后只有你与管理员能读这笔；仍计入家庭合计，只从 AA 分摊与跨面归集里排除。</span>
+          </span>
+          <label class="switch">
+            <input type="checkbox" id="fx-private-toggle" aria-label="标记为私密">
+            <span class="track"></span><span class="thumb"></span>
+          </label>
+        </div>
       </div>
+
+      <div class="fx-tag-create" id="fx-tag-create">
+        <input class="fx-tag-input" id="fx-tag-input" maxlength="12" placeholder="标签名，如 装修" aria-label="新标签名称">
+        <button class="btn btn-sm btn-primary" type="button" id="fx-tag-submit">创建并选中</button>
+        <button class="btn btn-sm btn-secondary" type="button" id="fx-tag-cancel">取消</button>
+      </div>
+      <div class="fx-tag-help">标签家庭共享，建完即选；删除标签不会删掉流水，受影响的流水显示「未分类」。</div>
 
       <div class="field fx-note-area" style="margin-top:16px">
         <label class="field-label" for="fx-note">备注</label>
         <textarea class="textarea" id="fx-note" maxlength="200" rows="2" placeholder="可选：写清商家、同行人或者用途">家庭聚餐，三家一起。</textarea>
-        <div class="help">备注全家可见；这笔若被标记为私密，只有作者与管理员能读到。</div>
+        <div class="help">备注全家可见；标记为私密后，只有作者与管理员能读到。</div>
       </div>
 
       <div class="fx-sec"><span>附件</span><span class="tiny">最多 3 张</span></div>
       <div class="fx-attach"
-        data-hot="⑨" data-hot-name="附件" data-hot-pos="top-right"
+        data-hot="⑬" data-hot-name="附件" data-hot-pos="top-right"
         data-hot-label="已有 2 张小票，可再加 1 张；单张 ≤5MB、只收 jpg / png / webp，超出在添加处直接说明原因。删附件只删引用，原图保留在家庭文件里">
         <div class="fx-thumbs">
           <button class="fx-thumb" type="button" data-toast="预览这张小票；详情页可以放大与下载">
@@ -380,10 +545,10 @@
   </div>
 
   <div class="fx-edit-foot">
-    <div class="fx-foot-note tiny">保存会带上版本 3；家人同时在改会弹冲突层，两条出路都由你选，不会静默覆盖。</div>
+    <div class="fx-foot-note tiny">保存后回流水列表，只提示一次「已保存」；家人同时在改会先让你选，不会悄悄覆盖。</div>
     <button class="btn btn-primary btn-block" type="button" id="fx-save"
-      data-hot="⑩" data-hot-name="保存修改" data-hot-pos="outer-bottom-right"
-      data-hot-label="带 version=3 提交；成功回详情并显示新值。返回 409 时弹「这条记录已被修改」，给「查看最新 / 用我的」两条出路，同一冲突最多连弹 2 次">
+      data-hot="⑭" data-hot-name="保存修改" data-hot-pos="outer-bottom-right"
+      data-hot-label="保存成功回流水列表，并在列表里只提示一次「已保存」，不停在编辑页；失败时保留草稿并给重试。家人同时改过时先弹层让你选「看家里的最新」或「保存我这一版」">
       保存修改
     </button>
   </div>
@@ -396,7 +561,7 @@
       <p class="sheet-sub">删除是软删：这笔会进回收站，30 天内可由作者或管理员恢复。由周期规则自动入账的这笔只删这一笔，规则不受影响，下月照常入账。</p>
       <div class="fx-sheet-line">
         <span class="fx-sheet-title">餐饮 · 晚餐<br><span class="tiny">10 月 28 日 19:20 · 爸爸</span></span>
-        <span class="fx-sheet-amt num">-¥128.00</span>
+        <span class="fx-sheet-amt num">-¥138.00</span>
       </div>
       <div class="sheet-actions">
         <button class="btn btn-danger btn-block" type="button" data-go="finance-tx-trash.html">删除，进回收站</button>
@@ -405,30 +570,30 @@
     </div>
   </div>
 
-  <!-- 409 冲突层 -->
+  <!-- 家人同时修改的冲突层 -->
   <div class="sheet-mask" id="sheet-conflict" aria-hidden="true">
     <div class="sheet">
       <div class="sheet-grabber"></div>
-      <h3>这条记录已被修改</h3>
-      <p class="sheet-sub">你在编辑时，爸爸把它改成了版本 4。金额型数据不静默合并，下面两条出路选一条。</p>
-      <div class="fx-ver-pair">
-        <div class="fx-ver-card is-mine">
-          <div class="fx-ver-card-k">我的修改</div>
-          <div class="fx-ver-card-v num">-¥138.00</div>
-          <div class="fx-ver-card-line">备注：家庭聚餐，三家一起。</div>
-          <div class="fx-ver-card-line tiny">基于版本 3</div>
+      <h3>这笔刚被家人改过</h3>
+      <p class="sheet-sub">你在改的时候，爸爸在另一台设备也改了这笔。金额不会自动合并，下面两条出路选一条。</p>
+      <div class="fx-conflict-pair">
+        <div class="fx-conflict-card is-mine">
+          <div class="fx-conflict-k">我这一版</div>
+          <div class="fx-conflict-v num">-¥138.00</div>
+          <div class="fx-conflict-line">备注：家庭聚餐，三家一起。</div>
+          <div class="fx-conflict-line tiny">刚刚改的</div>
         </div>
-        <div class="fx-ver-card">
-          <div class="fx-ver-card-k">服务端最新</div>
-          <div class="fx-ver-card-v num">-¥128.00</div>
-          <div class="fx-ver-card-line">备注：家庭聚餐，加了两个菜。</div>
-          <div class="fx-ver-card-line tiny">版本 4 · 爸爸 19:26</div>
+        <div class="fx-conflict-card">
+          <div class="fx-conflict-k">家里最新</div>
+          <div class="fx-conflict-v num">-¥128.00</div>
+          <div class="fx-conflict-line">备注：家庭聚餐，加了两个菜。</div>
+          <div class="fx-conflict-line tiny">爸爸 19:26 改的</div>
         </div>
       </div>
-      <div class="fx-conflict-note">「查看最新」丢弃我的改动并重拉版本 4；「用我的」以版本 4 为底写成版本 5，我的金额优先。同一冲突最多连弹 2 次，仍冲突则提示稍后再试。</div>
+      <div class="fx-conflict-note">「看家里的最新」会丢掉我这一版并重新打开；「保存我这一版」以家里最新为底、把我的金额写上去。同一笔最多提示 2 次，还冲突就稍后再试。</div>
       <div class="sheet-actions">
-        <button class="btn btn-primary btn-block" type="button" data-go="finance-tx-edit.html">查看最新</button>
-        <button class="btn btn-secondary btn-block" type="button" data-go="finance-tx-edit.html?state=saved-toast">用我的</button>
+        <button class="btn btn-primary btn-block" type="button" data-go="finance-tx-edit.html">看家里的最新</button>
+        <button class="btn btn-secondary btn-block" type="button" data-go="finance-flow.html?state=saved">保存我这一版</button>
       </div>
     </div>
   </div>
@@ -438,7 +603,82 @@
 
 <script>
   var editState = new URLSearchParams(location.search).get('state') || 'default';
+  var typeBtns = Array.prototype.slice.call(document.querySelectorAll('[data-type]'));
   var saveBtn = document.getElementById('fx-save');
+  var accounts = [
+    { name: '招商银行', sub: '储蓄卡 · 尾号 6882', bal: 32480.00 },
+    { name: '微信', sub: '零钱', bal: 1268.40 },
+    { name: '支付宝', sub: '余额', bal: 4210.00 },
+    { name: '现金', sub: '钱包', bal: 860.00 }
+  ];
+  var accIndex = 0;
+  var swapped = false;
+  var amount = 138;
+  var original = 128;
+
+  function money(n) {
+    return '¥' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  function currentType() {
+    return document.body.getAttribute('data-tx-type') || 'out';
+  }
+
+  function renderImpact() {
+    var rows = document.getElementById('fx-impact-rows');
+    var note = document.getElementById('fx-impact-note');
+    var t = currentType();
+    var base = accounts[accIndex].bal + original;
+    if (t === 'transfer') {
+      var from = swapped ? accounts[1] : accounts[0];
+      var to = swapped ? accounts[0] : accounts[1];
+      rows.innerHTML =
+        '<div class="fx-impact-row"><span>' + from.name + '</span><span class="num">' + money(from.bal) + ' → <b>' + money(from.bal + original - amount) + '</b></span></div>' +
+        '<div class="fx-impact-row"><span>' + to.name + '</span><span class="num">' + money(to.bal) + ' → <b>' + money(to.bal + amount) + '</b></span></div>';
+      note.textContent = '转账会同时改变两个账户，不计入收支与预算；两笔成对保存。';
+      return;
+    }
+    var acc = accounts[accIndex];
+    var after = t === 'income' ? base + amount : base - amount;
+    rows.innerHTML = '<div class="fx-impact-row"><span>' + acc.name + '</span><span class="num">' + money(acc.bal) + ' → <b>' + money(after) + '</b></span></div>';
+    note.textContent = '先退回原来的 ' + money(original) + '，再按新金额记一次；保存成功后余额才真正变化。';
+  }
+
+  function setType(name, silent) {
+    document.body.setAttribute('data-tx-type', name);
+    typeBtns.forEach(function (b) {
+      b.setAttribute('aria-selected', String(b.getAttribute('data-type') === name));
+    });
+    renderImpact();
+    if (!silent) window.HC.toast(name === 'transfer' ? '已改为转账：先看两个账户的余额影响，再保存' : (name === 'income' ? '已改为收入：金额按正数记，余额预览已更新' : '已改为支出：金额按负数显示，余额预览已更新'));
+  }
+
+  typeBtns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      setType(b.getAttribute('data-type'));
+    });
+  });
+  setType('out', true);
+
+  document.getElementById('fx-acc-btn').addEventListener('click', function () {
+    accIndex = (accIndex + 1) % accounts.length;
+    var acc = accounts[accIndex];
+    document.getElementById('fx-acc-label').textContent = acc.name;
+    document.getElementById('fx-acc-bal').textContent = money(acc.bal);
+    renderImpact();
+    window.HC.toast('已换到「' + acc.name + '」：余额影响预览已同步更新');
+  });
+
+  document.getElementById('fx-swap').addEventListener('click', function () {
+    swapped = !swapped;
+    var from = swapped ? accounts[1] : accounts[0];
+    var to = swapped ? accounts[0] : accounts[1];
+    document.getElementById('fx-from-label').textContent = from.name;
+    document.getElementById('fx-from-sub').textContent = from.sub + ' · 余额 ' + money(from.bal);
+    document.getElementById('fx-to-label').textContent = to.name;
+    document.getElementById('fx-to-sub').textContent = to.sub + ' · 余额 ' + money(to.bal);
+    renderImpact();
+  });
 
   document.querySelectorAll('[data-cat]').forEach(function (b) {
     b.addEventListener('click', function () {
@@ -449,25 +689,62 @@
     });
   });
 
+  document.getElementById('fx-private-toggle').addEventListener('change', function (e) {
+    window.HC.toast(e.target.checked
+      ? '已标记为私密：仅你与管理员可读，仍计入家庭合计'
+      : '已取消私密：这笔恢复为家庭流水全员可见');
+  });
+
+  var tagCreate = document.getElementById('fx-tag-create');
+  var tagInput = document.getElementById('fx-tag-input');
+  document.getElementById('fx-tag-open').addEventListener('click', function () {
+    tagCreate.classList.add('is-open');
+    tagInput.focus();
+  });
+  document.getElementById('fx-tag-cancel').addEventListener('click', function () {
+    tagCreate.classList.remove('is-open');
+    tagInput.value = '';
+  });
+  document.getElementById('fx-tag-submit').addEventListener('click', function () {
+    var name = tagInput.value.trim();
+    if (!name) {
+      window.HC.toast('先给标签起个名字，比如「装修」');
+      return;
+    }
+    var chip = document.createElement('span');
+    chip.className = 'tag is-brand';
+    chip.textContent = name;
+    document.getElementById('fx-tag-list').insertBefore(chip, document.getElementById('fx-tag-open'));
+    tagCreate.classList.remove('is-open');
+    tagInput.value = '';
+    window.HC.toast('「' + name + '」已创建并选中；标签家庭共享，删除它不会删流水');
+  });
+
   saveBtn.addEventListener('click', function () {
     if (editState === 'conflict') {
-      window.HC.toast('请先在冲突层里选一条出路：查看最新，或用我的');
+      window.HC.toast('请先在弹层里选一条出路：看家里的最新，或保存我这一版');
       return;
     }
-    if (editState === 'saved-toast') {
-      location.href = 'finance-tx-detail.html';
+    if (editState === 'failed') {
+      window.HC.toast('重试保存成功：还是这一笔，没有记成两笔');
+      setTimeout(function () { location.href = 'finance-flow.html?state=saved'; }, 1100);
       return;
     }
-    location.href = 'finance-tx-edit.html?state=saved-toast';
+    if (editState === 'offline') {
+      window.HC.toast('当前离线：改动已存在本机，联网后自动补记');
+      setTimeout(function () { location.href = 'finance-flow.html?state=offline'; }, 1100);
+      return;
+    }
+    window.HC.toast('已保存，列表里已是新金额');
+    setTimeout(function () { location.href = 'finance-flow.html?state=saved'; }, 1100);
   });
 
   setTimeout(function () {
     if (editState === 'conflict') {
       window.HC.openSheet('sheet-conflict');
-      window.HC.toast('保存被拒（409）：这条记录已被修改');
+      window.HC.toast('这笔刚被家人改过，先选一条出路');
     }
     if (editState === 'delete-confirm') window.HC.openSheet('sheet-delete');
-    if (editState === 'saved-toast') window.HC.toast('已保存 · 版本 4，家人端 5 秒内看到新金额');
   }, 0);
 </script>
 </body>

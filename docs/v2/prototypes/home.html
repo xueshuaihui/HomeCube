@@ -72,9 +72,16 @@
   .tl-card.is-cal { border-color: var(--face-calendar-border); }
   .tl-card.is-cal .tl-meta { color: var(--face-calendar); }
   body[data-state="nofaces"] .zone-matrix { display: none; }
+  /* 首屏聚合请求失败：整页失败态，重试只重发首页聚合请求 */
+  body[data-state="error"] .home-real { display: none; }
+  .home-error { display: none; }
+  body[data-state="error"] .home-error { display: block; }
+  /* 受限角色的中性引导：只在 A 区出现，不写「无权限」「未启用」 */
+  .restricted { display: none; margin-top: 4px; font-size: var(--fs-12); color: var(--text-2); }
+  body[data-state="nofaces"] .restricted { display: block; }
 </style>
 </head>
-<body data-screen="05 首页" data-tab="home" data-states="default,loading,empty,offline,unavailable,nofaces">
+<body data-screen="05 首页" data-tab="home" data-states="default,loading,error,empty,offline,unavailable,nofaces">
 <div class="harness"></div>
 
 <div class="phone">
@@ -128,6 +135,21 @@
       <div class="skeleton sk-line" style="width:64%"></div>
     </div>
 
+    <!-- 首屏失败态：home/summary 非 2xx 或超时 -->
+    <div class="home-error">
+      <div class="state" style="padding-top:56px">
+        <div class="state-icon">
+          <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="16" cy="16" r="12"/><path d="M11 16h10M16 11v10"/></svg>
+        </div>
+        <div class="state-title">没能加载首页</div>
+        <div class="state-desc">网络或服务没响应。你家已经开通的功能和数据都还在。</div>
+        <div class="state-code">HC-5001</div>
+        <a class="btn btn-primary" style="margin-top:12px" href="home.html"
+          data-hot="⑪" data-hot-name="首屏失败的重试" data-hot-pos="top-right"
+          data-hot-label="只重发一次首页聚合请求；成功回默认态，失败保持整页失败态与原错误码，不弹局部提示了事、不清缓存">重试</a>
+      </div>
+    </div>
+
     <div class="home-real">
       <!-- 时间窗条 -->
       <div class="period-bar" data-hot="④" data-hot-name="时间窗条" data-hot-pos="bottom-right"
@@ -159,11 +181,7 @@
             <span class="avatar-more">+2</span>
           </a>
         </div>
-        <div class="stats">
-          <div class="stat"><span class="v num">5</span><span class="k">今日到期</span></div>
-          <div class="stat"><span class="v num">2</span><span class="k">待办</span></div>
-          <div class="stat"><span class="v num">4</span><span class="k">未读</span></div>
-        </div>
+        <div class="restricted">这里显示你们家可用的功能</div>
       </section>
 
       <!-- B 今日区 -->
@@ -175,7 +193,7 @@
         <div class="tl-scroll">
         <div class="timeline"
           data-hot="⑥" data-hot-name="今日区" data-hot-pos="bottom-right"
-          data-hot-label="横向时间轴最多 3 张；标题「今日 N 项」是当日全量，与 3 张不等不是缺陷；数据源是 svc-calendar 的当日投影（17.3 方式一），点「日历 ›」进日历面到期中心，点小卡进日历面详情">
+          data-hot-label="横向时间轴最多 3 张；标题「今日 N 项」是当日全量，也是全首页唯一呈现这个数的位置（A 区与 C 区都不得复述）；数据源是 svc-calendar 的当日投影（17.3 方式一），点「日历 ›」进日历面到期中心，点小卡进日历面详情">
           <a class="tl-card is-first" href="calendar-detail.html">
             <div class="tl-time">09:00</div>
             <div class="tl-title">房贷还款</div>
@@ -224,12 +242,12 @@
           </a>
 
           <a class="face is-avail is-cal is-calendar" href="calendar.html">
-            <span class="face-badge num">5</span>
+            <span class="face-badge num">3</span>
             <span class="face-icon">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="14" height="12" rx="2.5"/><path d="M3 8.5h14M7 2.5v4M13 2.5v4"/><path d="M7 12.5h2.5"/></svg>
             </span>
             <span>日历</span>
-            <span class="face-headline">今日 5 项到期</span>
+            <span class="face-headline">待办逾期 1 条</span>
           </a>
 
           <a class="face is-unavail is-cal" href="calendar.html?state=unavailable"
@@ -239,7 +257,7 @@
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="14" height="12" rx="2.5"/><path d="M3 8.5h14M7 2.5v4M13 2.5v4"/></svg>
             </span>
             <span>日历</span>
-            <span class="face-headline">上次 今日 5 项</span>
+            <span class="face-headline">上次 待办逾期 1 条</span>
             <span class="face-retry">08:10 · 重试</span>
           </a>
         </div>

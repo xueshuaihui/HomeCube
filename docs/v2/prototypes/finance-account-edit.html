@@ -76,9 +76,31 @@
   .fx-conflict-row + .fx-conflict-row { border-top: 1px solid var(--border); }
   .fx-conflict-row .num { color: var(--text-2); }
   .fx-conflict-row.is-new .num { color: var(--brand-text); font-weight: 700; }
+
+  #fx-credit-section { display: none; }
+  #fx-credit-section.is-on { display: block; }
+  .fx-date-select {
+    border: 0; background: none; font-family: inherit;
+    font-size: var(--fs-14); font-weight: 600; color: var(--text);
+    text-align: right; direction: rtl;
+  }
+
+  body[data-state="offline"] .offline-bar { display: flex; }
+
+  .fx-sk, .fx-error { display: none; }
+  .fx-sk { padding-top: 6px; }
+  body[data-state="loading"] .fx-content > :not(.fx-sk):not(.fx-error),
+  body[data-state="error"] .fx-content > :not(.fx-sk):not(.fx-error) { display: none; }
+  body[data-state="loading"] .fx-foot,
+  body[data-state="error"] .fx-foot { display: none; }
+  body[data-state="loading"] .fx-sk { display: block; }
+  body[data-state="error"] .fx-error { display: flex; }
+  .fx-sk-row { display: flex; align-items: center; gap: 10px; padding: 12px 0; }
+  .fx-sk-ic { width: 32px; height: 32px; border-radius: 10px; flex: none; }
+  .fx-sk-lines { flex: 1; }
 </style>
 </head>
-<body data-screen="F11 编辑账户" data-states="default,conflict,archive-blocked">
+<body data-screen="F11 编辑账户" data-states="default,conflict,archive-blocked,loading,error,offline">
 <div class="harness"></div>
 
 <div class="phone">
@@ -110,8 +132,8 @@
 
   <div class="content bottom-space fx-content">
     <div class="fx-meta">
-      <span class="tag">版本 7</span>
-      <span class="tiny">上次由妈妈修改 · 10 月 12 日</span>
+      <span class="tag">招商银行 · 储蓄卡</span>
+      <span class="tiny">更新于 10 月 12 日 10:32 · 由妈妈修改</span>
     </div>
 
     <section class="fx-bal"
@@ -121,7 +143,7 @@
         当前余额
         <span class="tag is-brand">默认账户</span>
       </div>
-      <span class="amount fx-bal-v">¥126,400.00</span>
+      <span class="amount fx-bal-v">¥32,480.00</span>
       <span class="fx-bal-sub">余额由流水决定，不能直接改；需要调整请记一笔调整流水。</span>
       <button class="btn btn-secondary btn-sm" type="button" data-toast="调整流水在记一笔里选类型「调整」；转账会同时生成转出与转入两条配对流水">
         记一笔调整流水
@@ -130,7 +152,7 @@
 
     <div class="field" style="margin-top:16px">
       <label class="field-label" for="fx-name">名称</label>
-      <input class="input" id="fx-name" type="text" maxlength="24" value="招商银行储蓄卡" autocomplete="off">
+      <input class="input" id="fx-name" type="text" maxlength="24" value="招商银行" autocomplete="off">
       <div class="help">改名不影响流水与报表，历史流水按账户 id 归属，不按名称。</div>
     </div>
 
@@ -152,7 +174,7 @@
         data-hot-label="每家庭至多一个默认账户；在这里打开会把原默认账户自动取消。关掉后记账默认账户留空，记一笔时需手选，不影响已有流水">
         <span class="fx-switch-text">
           <span class="fx-switch-k">设为记账默认账户</span>
-          <span class="fx-switch-sub">同一家庭只能有一个，开启后原默认账户自动取消</span>
+          <span class="fx-switch-sub">同一家庭只能有一个；默认账户只有管理员能改</span>
         </span>
         <label class="switch" aria-label="设为默认账户">
           <input type="checkbox" id="fx-default" checked>
@@ -166,23 +188,31 @@
       <textarea class="textarea" id="fx-note" maxlength="120" rows="2">工资代发行，尾号 4021。</textarea>
     </div>
 
-    <div class="section-title">
-      <span>信用卡</span>
-      <span class="tiny">②（M2）</span>
-    </div>
-    <div class="list fx-sub">
-      <div class="fx-sub-row">
-        <span class="fx-sub-k">账单日</span>
-        <span class="num">每月 5 日</span>
-        <span class="tag is-warn">②（M2）</span>
+    <div id="fx-credit-section">
+      <div class="section-title">
+        <span>账单与还款</span>
+        <span class="tiny">信用卡 / 负债账户</span>
       </div>
-      <div class="fx-sub-row">
-        <span class="fx-sub-k">还款日</span>
-        <span class="num">每月 23 日</span>
-        <span class="tag is-warn">②（M2）</span>
+      <div class="list fx-sub">
+        <label class="fx-sub-row">
+          <span class="fx-sub-k">账单日</span>
+          <span class="num">每月</span>
+          <select class="fx-date-select" id="fx-bill-day" aria-label="账单日">
+            <option>1</option><option>2</option><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option><option>13</option><option>14</option><option>15</option><option>16</option><option>17</option><option>18</option><option>19</option><option>20</option><option>21</option><option>22</option><option>23</option><option>24</option><option>25</option><option>26</option><option>27</option><option>28</option>
+          </select>
+          <span class="num">日</span>
+        </label>
+        <label class="fx-sub-row">
+          <span class="fx-sub-k">还款日</span>
+          <span class="num">每月</span>
+          <select class="fx-date-select" id="fx-repay-day" aria-label="还款日">
+            <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option><option>13</option><option>14</option><option>15</option><option>16</option><option>17</option><option>18</option><option>19</option><option>20</option><option>21</option><option>22</option><option selected>23</option><option>24</option><option>25</option><option>26</option><option>27</option><option>28</option>
+          </select>
+          <span class="num">日</span>
+        </label>
       </div>
+      <p class="tiny fx-sub-note">只对信用卡 / 负债账户出现；该月没有这一天时，当月不提醒也不自动顺延。</p>
     </div>
-    <p class="tiny fx-sub-note">账单日与还款日 ②（M2）开放编辑；P1 只读展示，用于列表里的到期提示。</p>
 
     <div class="section-title"><span>归档</span></div>
     <div class="list">
@@ -197,19 +227,42 @@
     <div class="fx-blocked" role="alert">
       <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
       <span>
-        <b>无法归档：账户余额 ¥126,400.00 不为 0</b>
+        <b>无法归档：账户余额 ¥32,480.00 不为 0</b>
         请先把余额转到其他账户，或记一笔调整流水把余额调为 0。归档后账户不再出现在记账选择器与账户汇总，但历史流水仍计入报表与净资产。
         <button class="btn btn-secondary btn-sm" type="button" data-toast="转账在记一笔里选「转账」，会生成转出与转入两条配对流水；调整流水选类型「调整」">去转账</button>
       </span>
     </div>
 
     <p class="tiny" style="margin-top:14px;line-height:var(--lh-normal)">归档可逆：恢复后账户重新出现在记账选择器里，历史流水与余额立即生效，不会重复累计。</p>
+
+    <div class="fx-sk" aria-hidden="true">
+      <div class="skeleton" style="height:112px;border-radius:var(--radius-xl);margin-bottom:18px"></div>
+      <div class="skeleton sk-line" style="width:26%"></div>
+      <div class="fx-sk-row"><div class="skeleton fx-sk-lines" style="height:44px;border-radius:10px"></div></div>
+      <div class="skeleton sk-line" style="width:22%"></div>
+      <div class="fx-sk-row"><div class="skeleton fx-sk-lines" style="height:42px;border-radius:10px"></div></div>
+      <div class="skeleton sk-line" style="width:30%"></div>
+      <div class="fx-sk-row"><div class="skeleton fx-sk-lines" style="height:46px;border-radius:10px"></div></div>
+    </div>
+
+    <div class="state fx-error">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 5 3 27h26L16 5Z"/><path d="M16 13v6"/><circle cx="16" cy="23" r="1" fill="currentColor" stroke="none"/></svg>
+      </div>
+      <div class="state-title">账户没加载出来</div>
+      <div class="state-desc">可能是网络不稳。账户和流水都没有被改动，重新加载一次就好。</div>
+      <button class="btn btn-secondary" type="button" id="fx-retry"
+        data-hot="⑦" data-hot-name="重新加载" data-hot-pos="outer-bottom-right"
+        data-hot-label="首屏加载失败整页报错，只留重新加载；点击重试当前请求，成功回到默认态，失败仍停在本页">
+        重新加载
+      </button>
+    </div>
   </div>
 
   <div class="fx-foot">
     <button class="btn btn-primary btn-block" type="button" id="fx-save"
       data-hot="④" data-hot-name="保存修改" data-hot-pos="outer-bottom-right"
-      data-hot-label="保存带 version=7 提交；服务端返回 409 时弹冲突层，给「查看最新 / 用我的」两条出路，不静默覆盖家人的修改">
+      data-hot-label="保存时以服务端最新内容为准；若家人刚改过，会弹出「这条记录已被修改」，给「查看最新 / 用我的」两条出路，不静默覆盖家人的修改">
       保存修改
     </button>
   </div>
@@ -222,18 +275,18 @@
       <p class="sheet-sub">家人刚刚改过这个账户，你的修改还没提交。可以查看最新内容，或直接保存你的修改。</p>
       <div class="fx-conflict-kv">
         <div class="fx-conflict-row">
-          <span>你编辑的版本</span>
-          <span class="num">版本 7 · 名称「招商银行储蓄卡」</span>
+          <span>你编辑的内容 · 10:32</span>
+          <span class="num">名称「招商银行」</span>
         </div>
         <div class="fx-conflict-row is-new">
-          <span>服务端最新</span>
-          <span class="num">版本 8 · 名称「招行工资卡」</span>
+          <span>家里最新 · 10:38</span>
+          <span class="num">名称「招行工资卡」</span>
         </div>
       </div>
       <div class="sheet-actions">
         <button class="btn btn-primary btn-block" type="button" data-go="finance-account-edit.html"
           data-hot="⑥" data-hot-name="冲突处理" data-hot-pos="outer-bottom-right"
-          data-hot-label="两条出路：查看最新会载入版本 8 并丢弃你的草稿；用我的会以你的内容写成版本 9。余额不在冲突比较范围内，它只由流水决定">
+          data-hot-label="两条出路：查看最新会载入家人的内容并丢弃你的草稿；用我的会以你的内容保存。余额不在冲突比较范围内，它只由流水决定">
           查看最新
         </button>
         <button class="btn btn-secondary btn-block" type="button" id="fx-overwrite">用我的</button>
@@ -248,11 +301,19 @@
   var fxState = new URLSearchParams(location.search).get('state') || 'default';
   var typeBtns = Array.prototype.slice.call(document.querySelectorAll('[data-type]'));
 
+  var creditSection = document.getElementById('fx-credit-section');
+
+  function syncCredit(type) {
+    creditSection.classList.toggle('is-on', type === 'credit');
+  }
+
   typeBtns.forEach(function (b) {
     b.addEventListener('click', function () {
       typeBtns.forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
-      window.HC.toast(b.getAttribute('data-type') === 'credit'
-        ? '改为信用卡后余额按待还展示，账单日 ②（M2）开放'
+      var type = b.getAttribute('data-type');
+      syncCredit(type);
+      window.HC.toast(type === 'credit'
+        ? '改为信用卡后余额按待还展示，账单日与还款日可在下方填写'
         : '类型已改为「' + b.textContent + '」，历史流水归属不变');
     });
   });
@@ -270,7 +331,11 @@
 
   document.getElementById('fx-overwrite').addEventListener('click', function () {
     window.HC.closeSheet(document.getElementById('sheet-conflict'));
-    window.HC.toast('已按你的修改保存，生成版本 9');
+    if (fxState === 'offline') {
+      window.HC.toast('当前离线，保存已排队（等待联网），联网后再生效');
+      return;
+    }
+    window.HC.toast('已按你的修改保存');
     setTimeout(function () { location.href = 'finance-account.html'; }, 1000);
   });
 
@@ -285,9 +350,17 @@
     }
   });
 
+  document.getElementById('fx-retry').addEventListener('click', function () {
+    location.href = location.pathname;
+  });
+
   document.getElementById('fx-save').addEventListener('click', function () {
     if (fxState === 'conflict') {
       window.HC.openSheet('sheet-conflict');
+      return;
+    }
+    if (fxState === 'offline') {
+      window.HC.toast('当前离线，保存已排队（等待联网），联网后再生效');
       return;
     }
     window.HC.toast('账户信息已保存');

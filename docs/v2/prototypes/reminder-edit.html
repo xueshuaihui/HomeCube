@@ -17,20 +17,22 @@
     color: var(--brand-text); cursor: pointer;
   }
   .rem-save:hover { color: var(--brand-hover); }
-  body[data-state="conflict"] .rem-save { color: var(--text-3); pointer-events: none; }
+  body[data-state="conflict"] .rem-save,
+  body[data-state="other"] .rem-save { color: var(--text-3); pointer-events: none; }
 
   .rem-ver {
     display: flex; align-items: center; gap: 8px;
     margin: 6px 2px 14px;
     font-size: var(--fs-12); color: var(--text-3);
   }
-  .rem-ver-tag {
+  .rem-chip {
     flex: none; padding: 1px 7px;
     border-radius: var(--radius-pill);
     background: var(--surface-2); color: var(--text-2);
-    font-family: var(--font-num); font-size: var(--fs-11); font-weight: 600;
+    font-size: var(--fs-11); font-weight: 600;
   }
-  .rem-ver-tag.is-paused { background: var(--warning-soft); color: var(--warning); }
+  .rem-chip.is-paused { background: var(--warning-soft); color: var(--warning); }
+  .rem-chip.is-owner { background: var(--accent-soft); color: var(--accent); }
   .rem-ver-note { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   .rem-banner {
@@ -42,23 +44,39 @@
   .rem-banner svg { flex: none; margin-top: 1px; }
   .rem-banner b { display: block; font-size: var(--fs-13); margin-bottom: 2px; }
   .rem-banner-paused { background: var(--warning-soft); color: var(--warning); }
+  .rem-banner-owner { background: var(--surface-2); color: var(--text-2); }
+  .rem-banner-offline { background: var(--warning-soft); color: var(--warning); }
   body[data-state="paused"] .rem-banner-paused { display: flex; }
+  body[data-state="other"] .rem-banner-owner { display: flex; }
+  body[data-state="offline"] .rem-banner-offline { display: flex; }
+  body[data-state="offline"] .offline-bar { display: flex; }
 
-  .rem-pause {
+  .rem-pause, .rem-skip {
     display: flex; align-items: center; gap: 12px;
     padding: 12px 14px; margin-bottom: var(--sp-4);
     border-radius: var(--radius-md);
     border: 1px solid var(--border);
     background: var(--surface);
   }
-  .rem-pause-body { flex: 1; min-width: 0; }
-  .rem-pause-k { display: block; font-size: var(--fs-14); font-weight: 600; }
-  .rem-pause-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
+  .rem-pause-body, .rem-skip-body { flex: 1; min-width: 0; }
+  .rem-pause-k, .rem-skip-k { display: block; font-size: var(--fs-14); font-weight: 600; }
+  .rem-pause-sub, .rem-skip-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
+  .rem-skip-act { flex: none; }
+  .rem-skip-act.is-undo { display: none; }
+  body[data-state="skipped"] .rem-skip-act.is-skip { display: none; }
+  body[data-state="skipped"] .rem-skip-act.is-undo { display: block; }
 
   .rem-form { padding-top: 2px; }
   body[data-state="conflict"] .rem-form,
   body[data-state="conflict"] .rem-pause,
-  body[data-state="conflict"] .rem-ver { opacity: .55; pointer-events: none; }
+  body[data-state="conflict"] .rem-skip,
+  body[data-state="conflict"] .rem-ver,
+  body[data-state="scope"] .rem-form,
+  body[data-state="scope"] .rem-pause,
+  body[data-state="scope"] .rem-skip,
+  body[data-state="other"] .rem-form,
+  body[data-state="other"] .rem-pause,
+  body[data-state="other"] .rem-skip { opacity: .55; pointer-events: none; }
 
   .rem-required { margin-left: 4px; font-size: var(--fs-11); font-weight: 600; color: var(--text-3); }
   .rem-title-err { display: none; }
@@ -83,18 +101,39 @@
   }
   .rem-pick-body { flex: 1; min-width: 0; }
   .rem-pick-v { display: block; font-size: var(--fs-15); font-weight: 600; }
+  .rem-pick-v.is-empty { color: var(--text-3); font-weight: 500; }
   .rem-pick-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
+  .rem-pick.is-error { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
+
+  .rem-field-err { display: none; align-items: center; gap: 6px; margin-top: 6px; font-size: var(--fs-12); color: var(--danger); }
+  .rem-field-err.is-on { display: flex; }
+  .rem-field-err svg { flex: none; }
+  .rem-subfield { margin-bottom: 10px; }
 
   .rem-seg { width: 100%; }
   .rem-seg .segmented { display: flex; width: 100%; }
   .rem-seg .segmented button { flex: 1; padding: 7px 4px; font-size: var(--fs-12); }
 
-  .rem-del {
-    margin-top: 18px;
-    display: flex; flex-direction: column; gap: 6px;
+  .rem-pick-more { display: none; margin-top: 10px; }
+  .rem-pick-more.is-on { display: block; }
+  .rem-more-k { display: block; margin-bottom: 6px; font-size: var(--fs-12); color: var(--text-2); font-weight: 600; }
+  .rem-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .rem-chips button {
+    min-width: 34px; height: 30px; padding: 0 8px;
+    border: 1px solid var(--border); border-radius: var(--radius-pill);
+    background: var(--surface); color: var(--text-2);
+    font-family: inherit; font-size: var(--fs-12); font-weight: 600; cursor: pointer;
   }
+  .rem-chips button:hover { border-color: var(--border-strong); }
+  .rem-chips button[aria-pressed="true"] {
+    background: var(--brand-soft); border-color: var(--brand-text); color: var(--brand-text);
+  }
+  .rem-days button { min-width: 34px; font-family: var(--font-num); }
+
+  .rem-del { margin-top: 18px; display: flex; flex-direction: column; gap: 6px; }
   .rem-del .btn { width: 100%; }
   .rem-del-note { text-align: center; line-height: var(--lh-normal); }
+  body[data-state="other"] .rem-del { opacity: .55; pointer-events: none; }
 
   .rem-foot-note {
     margin-top: 12px; padding: 12px 14px;
@@ -139,9 +178,55 @@
     margin-top: 12px; font-size: var(--fs-12); color: var(--danger); line-height: var(--lh-normal);
   }
   .rem-cal-warn svg { flex: none; margin-top: 1px; }
+  .rem-sheet-seg { margin-top: 14px; }
+  .rem-sheet-seg .segmented { display: flex; width: 100%; }
+  .rem-sheet-seg .segmented button { flex: 1; padding: 8px 4px; font-size: var(--fs-12); }
+
+  /* 六档周期：两行三列；工作日只是「自定义」里的快捷，不单独占档 */
+  .rem-seg-6 .segmented { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .rem-seg-6 .segmented button { padding: 8px 4px; }
+  .rem-interval { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: var(--fs-14); color: var(--text-2); }
+  .rem-inline-num {
+    width: 64px; height: 36px; padding: 0 8px;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--surface); color: var(--text);
+    font-family: var(--font-num); font-size: var(--fs-14); text-align: center;
+  }
+  .rem-inline-num.is-error { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
+  .rem-quick {
+    display: inline-flex; align-items: center; gap: 4px;
+    height: 30px; padding: 0 10px;
+    border: 1px dashed var(--border-strong); border-radius: var(--radius-pill);
+    background: var(--surface); color: var(--text-2);
+    font-family: inherit; font-size: var(--fs-12); font-weight: 600; cursor: pointer;
+  }
+  .rem-quick[aria-pressed="true"] { border-style: solid; border-color: var(--brand-text); background: var(--brand-soft); color: var(--brand-text); }
+  .rem-unit-seg { flex: none; }
+  .rem-unit-seg button { padding: 7px 12px; }
+  .rem-custom-end { margin-top: 10px; }
+  .rem-custom-end .rem-pick { min-height: 48px; }
+  .rem-end-count { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: var(--fs-13); color: var(--text-2); }
+
+  .rem-cache {
+    display: none; align-items: center; gap: 6px;
+    margin: 0 0 12px; padding: 7px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--warning-soft); color: var(--warning);
+    font-size: var(--fs-12);
+  }
+  body[data-state="offline"] .rem-cache { display: flex; }
+
+  /* 首屏加载与失败：整块替换内容，骨架不遮内容 */
+  body[data-state="loading"] .rem-main,
+  body[data-state="error"] .rem-main { display: none; }
+  .rem-sk { display: none; padding-top: 12px; }
+  body[data-state="loading"] .rem-sk { display: block; }
+  .rem-sk .sk-line:first-child { width: 42%; }
+  .rem-error { display: none; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 56px 12px 0; }
+  body[data-state="error"] .rem-error { display: flex; }
 </style>
 </head>
-<body data-screen="18 编辑提醒 · 日历面" data-tab="" data-states="default,paused,conflict,deleted">
+<body data-screen="18 编辑提醒 · 日历面" data-tab="" data-states="default,loading,error,paused,skipped,scope,conflict,deleted,other,offline">
 <div class="harness"></div>
 
 <div class="phone">
@@ -156,17 +241,17 @@
 
   <div class="navbar">
     <div class="nav-left">
-      <button class="icon-btn" type="button" data-go="reminder.html"
+      <button class="icon-btn" type="button" id="rem-back"
         data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
-        data-hot-label="回提醒列表；未保存的改动直接丢弃，不做草稿；暂停状态改动在离开时即时生效，不等保存" aria-label="返回">
+        data-hot-label="有未保存内容时先弹「放弃？」确认；放弃后改动丢弃、不做草稿；暂停与跳过是即时写路径，不因返回回滚" aria-label="返回">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
       </button>
     </div>
     <div class="nav-title">编辑提醒</div>
     <div class="nav-right">
       <button class="rem-save" type="button" id="rem-save"
-        data-hot="④" data-hot-name="保存" data-hot-pos="outer-top-right"
-        data-hot-label="带 version 提交；版本不一致不静默覆盖，弹三选一冲突层；保存成功后整条更新本面到期项，旧项随对象失效（原生对象不发 {code}.due.revoked）">
+        data-hot="⑦" data-hot-name="保存" data-hot-pos="outer-top-right"
+        data-hot-label="带 version 提交；标题为空或时间不齐只标红字段、不发请求；重复提醒改了时间类字段先走改动范围层；409 走冲突弹层；成功回提醒列表并高亮这条（提醒无详情页）">
         保存
       </button>
     </div>
@@ -178,56 +263,111 @@
   </div>
 
   <div class="content rem-content">
+    <div class="rem-main">
     <div class="rem-banner rem-banner-paused">
       <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="6" y="4.5" width="3" height="11" rx="1"/><rect x="11" y="4.5" width="3" height="11" rx="1"/></svg>
       <div>
         <b>已暂停</b>
-        这条提醒不再触发，但时间与周期规则保留；打开开关即按原规则继续，无需重建。
+        这条提醒不再响，但时间与周期都留着；打开开关就按原来的节奏继续，不用重建。
       </div>
     </div>
 
+    <div class="rem-banner rem-banner-owner">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="7" r="3.2"/><path d="M4.5 16.5a5.5 5.5 0 0 1 11 0"/></svg>
+      <div>
+        <b>这条是妈妈创建的</b>
+        这里只能看内容；要改时间或停掉它，请让妈妈自己或家里的管理员来改。
+      </div>
+    </div>
+
+    <div class="rem-banner rem-banner-offline">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 10a7 7 0 0 1 11.5-5.4M17 10a7 7 0 0 1-11.5 5.4"/><path d="M4 3l12 14"/></svg>
+      <div>
+        <b>当前离线</b>
+        改动先存在你手机上，联网后自动提交；这期间这条提醒不会到点响。联网后如果家人已经改过，仍会让你选保留哪一份，不会丢掉你填的。
+      </div>
+    </div>
+
+    <div class="rem-cache">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="5.5"/><path d="M8 4.8V8l2.2 1.3"/></svg>
+      显示本机缓存 · 截至 10 月 29 日 08:10
+    </div>
+
     <div class="rem-ver">
-      <span class="rem-ver-tag" id="ver-tag">版本 3</span>
-      <span class="rem-ver-note" id="ver-note">上次修改：我 · 今天 08:12（提前量）</span>
+      <span class="rem-chip" id="ver-flag">我创建</span>
+      <span class="rem-ver-note" id="ver-note">上次修改 · 我 · 今天 08:12（提前量）</span>
     </div>
 
     <div class="rem-pause">
       <span class="rem-pause-body">
-        <span class="rem-pause-k">暂停提醒</span>
-        <span class="rem-pause-sub">暂停后不触发、保留规则；开关即时生效，不等保存</span>
+        <span class="rem-pause-k">暂停这条提醒</span>
+        <span class="rem-pause-sub">暂停后不再响、规则原样保留；只影响整条，不想响一次请用下面的「跳过这一次」</span>
       </span>
       <label class="switch"
         data-hot="②" data-hot-name="暂停" data-hot-pos="outer-top-right"
-        data-hot-label="暂停即时生效：关掉后不再触发，周期、时间与渠道规则原样保留；恢复时按原规则算下一次触发，不改版本">
+        data-hot-label="暂停即时生效、独立写路径：关掉后不再触发，周期、时间、提前量与渠道原样保留；恢复时按原规则由服务端算下一次触发；不产生新版本号">
         <input type="checkbox" id="pause-switch" checked aria-label="启用提醒">
         <span class="track"></span>
         <span class="thumb"></span>
       </label>
     </div>
 
+    <div class="rem-skip">
+      <span class="rem-skip-body">
+        <span class="rem-skip-k">跳过这一次</span>
+        <span class="rem-skip-sub" id="skip-sub">下一次 11 月 4 日 周三 15:00 不响，以后每次照常</span>
+      </span>
+      <button class="btn btn-secondary btn-sm rem-skip-act is-skip" type="button" id="rem-skip"
+        data-hot="⑤" data-hot-name="跳过这一次" data-hot-pos="outer-top-right"
+        data-hot-label="实例动作、即时生效、不产生新版本：只作用在下一次未触发的实例，规则行不变；顺延到的下一次取服务端按原规则算出的回显（每天 08:00 → 10 月 31 日 08:00），客户端不推算；与「删掉这一次」的区别是跳过留痕且可撤销">
+        跳过这一次
+      </button>
+      <button class="btn btn-ghost btn-sm rem-skip-act is-undo" type="button" id="rem-undo-skip"
+        data-hot="⑥" data-hot-name="撤销跳过" data-hot-pos="outer-top-right"
+        data-hot-label="只在被跳过的那一次尚未到点时出现：撤销后该次恢复触发、下一次回到跳过前的值；已到点则入口消失、不追溯历史跳过">
+        撤销跳过
+      </button>
+    </div>
+
     <div class="rem-form"
       data-hot="③" data-hot-name="字段" data-hot-pos="outer-top-right"
-      data-hot-label="标题、时间、周期、提前量、渠道五项与新建同构；改动只在本页，保存才提交，并整条更新本面到期项">
+      data-hot-label="标题（≤60 字）、时间（日期 + 时刻）、周期（六档 + 星期多选 / 日号 / 每年 / 自定义）、提前量（恰四档）、渠道五项与新建同构同校验；周期里的工作日只是自定义快捷，不单独占档；改动只在本页，保存才提交">
       <div class="field">
         <label class="field-label" for="rem-title">标题<span class="rem-required">必填</span></label>
-        <input class="input rem-title-input" id="rem-title" type="text" maxlength="40"
-          placeholder="例如：吃药" value="吃药" autocomplete="off">
+        <input class="input rem-title-input" id="rem-title" type="text" maxlength="60"
+          placeholder="例如：小满家长会" value="小满家长会" autocomplete="off">
         <div class="field-error rem-title-err" role="alert">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
           请填写标题
         </div>
-        <div class="help">标题会出现在站内信、推送与到期中心。</div>
+        <div class="help">标题会出现在站内信与推送里。</div>
       </div>
 
       <div class="field">
-        <span class="field-label">时间</span>
+        <span class="field-label">提醒时间<span class="rem-required">必选</span></span>
+        <div class="rem-subfield" id="date-field" hidden>
+          <button class="rem-pick" type="button" id="date-btn" data-sheet-open="sheet-date">
+            <span class="rem-pick-icon">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="13" height="11.5" rx="2"/><path d="M3.5 8.5h13M7 3.5V6M13 3.5V6"/></svg>
+            </span>
+            <span class="rem-pick-body">
+              <span class="rem-pick-v is-empty" id="date-value">请选择日期</span>
+              <span class="rem-pick-sub">只提醒一次要先选哪一天</span>
+            </span>
+            <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+          </button>
+          <div class="rem-field-err" id="date-err" role="alert">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
+            请先选好提醒的日期
+          </div>
+        </div>
         <button class="rem-pick" type="button" data-sheet-open="sheet-time">
           <span class="rem-pick-icon">
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.2v4.2l2.6 1.6"/></svg>
           </span>
           <span class="rem-pick-body">
-            <span class="rem-pick-v num" id="time-value">08:00</span>
-            <span class="rem-pick-sub" id="time-sub">周期提醒只取时分 · 家庭时区 Asia/Shanghai</span>
+            <span class="rem-pick-v num" id="time-value">15:00</span>
+            <span class="rem-pick-sub">按家里的时间；下一次什么时候响，以列表里显示的为准</span>
           </span>
           <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
         </button>
@@ -235,27 +375,125 @@
 
       <div class="field">
         <span class="field-label">周期</span>
-        <div class="rem-seg">
+        <div class="rem-seg rem-seg-6">
           <div class="segmented" role="group" aria-label="周期">
             <button type="button" aria-selected="false" data-cycle="不重复">不重复</button>
-            <button type="button" aria-selected="true" data-cycle="每天">每天</button>
-            <button type="button" aria-selected="false" data-cycle="每周">每周</button>
+            <button type="button" aria-selected="false" data-cycle="每天">每天</button>
+            <button type="button" aria-selected="true" data-cycle="每周">每周</button>
             <button type="button" aria-selected="false" data-cycle="每月">每月</button>
+            <button type="button" aria-selected="false" data-cycle="每年">每年</button>
+            <button type="button" aria-selected="false" data-cycle="自定义">自定义</button>
           </div>
         </div>
-        <div class="help">改周期会整条更新本面到期项，旧项随对象失效（原生对象不发 {code}.due.revoked）。</div>
+        <div class="help" id="cycle-help">每周：在下面挑星期几，可以连着挑（如周一到周五）。</div>
+
+        <div class="rem-pick-more is-on" id="week-block">
+          <span class="rem-more-k">星期几（可多选）</span>
+          <div class="rem-chips" id="week-chips">
+            <button type="button" aria-pressed="false" data-week="一">一</button>
+            <button type="button" aria-pressed="false" data-week="二">二</button>
+            <button type="button" aria-pressed="true" data-week="三">三</button>
+            <button type="button" aria-pressed="false" data-week="四">四</button>
+            <button type="button" aria-pressed="false" data-week="五">五</button>
+            <button type="button" aria-pressed="false" data-week="六">六</button>
+            <button type="button" aria-pressed="false" data-week="日">日</button>
+          </div>
+          <div class="rem-field-err" id="week-err" role="alert">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
+            请至少选一天
+          </div>
+        </div>
+
+        <div class="rem-pick-more" id="month-block">
+          <span class="rem-more-k">每月几号</span>
+          <div class="rem-chips rem-days" id="day-chips"></div>
+          <div class="rem-field-err" id="day-err" role="alert">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
+            请至少选一个日号
+          </div>
+          <div class="help">这个月没有你选的那一天时，那个月就不提醒。</div>
+        </div>
+
+        <div class="rem-pick-more" id="year-block">
+          <span class="rem-more-k">每年哪一天</span>
+          <div class="rem-interval">
+            <span>每年</span>
+            <input class="rem-inline-num" id="year-month" type="number" inputmode="numeric" min="1" max="12" placeholder="月" aria-label="每年的月份">
+            <span>月</span>
+            <input class="rem-inline-num" id="year-day" type="number" inputmode="numeric" min="1" max="31" placeholder="日" aria-label="每年的日号">
+            <span>日</span>
+          </div>
+          <div class="rem-field-err" id="year-err" role="alert">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
+            请把每年的月份和日号都填好
+          </div>
+          <div class="help">只按月和日重复，不看星期；2 月 29 日这类日子遇到没有它的年份就不提醒。</div>
+        </div>
+
+        <div class="rem-pick-more" id="custom-block">
+          <span class="rem-more-k">隔多久提醒一次</span>
+          <div class="rem-interval">
+            <span>每</span>
+            <input class="rem-inline-num" id="custom-n" type="number" inputmode="numeric" min="1" max="99" value="1" aria-label="自定义间隔数量">
+            <span>个</span>
+            <div class="segmented rem-unit-seg" id="custom-unit" role="group" aria-label="自定义间隔单位">
+              <button type="button" data-unit="天" aria-selected="true">天</button>
+              <button type="button" data-unit="周" aria-selected="false">周</button>
+              <button type="button" data-unit="月" aria-selected="false">月</button>
+            </div>
+          </div>
+          <div class="rem-interval" style="margin-top:8px">
+            <button class="rem-quick" id="workday-preset" type="button" aria-pressed="false">快捷：工作日（周一至周五）</button>
+          </div>
+          <div class="help" id="custom-help">每 1 天提醒一次，从保存后的第一个整天开始。</div>
+          <div class="rem-field-err" id="custom-n-err" role="alert">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
+            间隔要填 1 或更大的整数
+          </div>
+
+          <span class="rem-more-k" style="margin-top:12px">什么时候结束</span>
+          <div class="rem-seg">
+            <div class="segmented" id="custom-end" role="group" aria-label="结束条件">
+              <button type="button" data-end="never" aria-selected="true">永不结束</button>
+              <button type="button" data-end="date" aria-selected="false">到某日</button>
+              <button type="button" data-end="count" aria-selected="false">共 N 次</button>
+            </div>
+          </div>
+          <div class="rem-custom-end" id="end-date" hidden>
+            <button class="rem-pick" type="button" data-sheet-open="sheet-end-date">
+              <span class="rem-pick-icon">
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="13" height="11.5" rx="2"/><path d="M3.5 8.5h13M7 3.5V6M13 3.5V6"/></svg>
+              </span>
+              <span class="rem-pick-body">
+                <span class="rem-pick-v is-empty" id="end-date-value">请选择结束日期</span>
+                <span class="rem-pick-sub">过了这一天就不再提醒</span>
+              </span>
+              <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+            </button>
+          </div>
+          <div class="rem-end-count" id="end-count" hidden>
+            <span>共</span>
+            <input class="rem-inline-num" id="custom-count" type="number" inputmode="numeric" min="1" max="999" value="10" aria-label="自定义提醒总次数">
+            <span>次后结束</span>
+          </div>
+          <div class="rem-field-err" id="custom-end-err" role="alert">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
+            请把结束日期或次数填好
+          </div>
+        </div>
       </div>
 
       <div class="field">
         <span class="field-label">提前量</span>
         <div class="rem-seg">
           <div class="segmented" role="group" aria-label="提前量">
-            <button type="button" aria-selected="true" data-lead="准时">准时</button>
+            <button type="button" aria-selected="false" data-lead="准时">准时</button>
             <button type="button" aria-selected="false" data-lead="提前 10 分钟">提前 10 分钟</button>
-            <button type="button" aria-selected="false" data-lead="提前 1 小时">提前 1 小时</button>
+            <button type="button" aria-selected="true" data-lead="提前 1 小时">提前 1 小时</button>
             <button type="button" aria-selected="false" data-lead="提前 1 天">提前 1 天</button>
           </div>
         </div>
+        <div class="help">只改「提前多久响」，不改多久响一次；四个选项就是全部可选项。</div>
       </div>
 
       <div class="field">
@@ -267,42 +505,90 @@
             <button type="button" aria-selected="true" data-channel="两者">两者</button>
           </div>
         </div>
-        <div class="help">推送不可用时保存会自动改为站内信，行内提示降级，不阻断保存。</div>
+        <div class="help">本机通知没开启时会自动改用站内信，照常保存、照常会提醒。</div>
       </div>
 
       <div class="field"
-        data-hot="⑦" data-hot-name="位置" data-hot-pos="outer-bottom-right"
-        data-hot-label="P6 前只有手动地点：只存用户填的地点文字，不接地图与地理围栏、不做到达判定、不保证触达；留空即普通时间提醒">
+        data-hot="⑩" data-hot-name="位置" data-hot-pos="outer-bottom-right"
+        data-hot-label="可选 ≤30 字，只收手动地点文字（P6 前不接地图与地理围栏、不做到达判定）；位置不顶替时间档、不改变触发条件，与新建页同字段同校验">
         <label class="field-label" for="rem-place">位置<span class="rem-required">可选</span></label>
         <input class="input rem-title-input" id="rem-place" type="text" maxlength="30"
           placeholder="例如：永辉超市（公司楼下）" value="" autocomplete="off">
-        <div class="help">P6 前只有手动地点：按填写的地址给文字提示，不接地理围栏、不做到达判定，也不计入到达率。</div>
+        <div class="help">只写给你自己看的一句补充；这一版只按时间响，不接地图定位，也不判到达。填不填都不影响什么时候响。</div>
       </div>
     </div>
 
     <div class="rem-del">
       <button class="btn btn-danger" type="button" id="rem-delete"
-        data-hot="⑤" data-hot-name="删除" data-hot-pos="outer-top-right"
-        data-hot-label="删除不即时生效，先弹确认层；确认后直写删除并由服务端级联失效其到期项，日历上不再出现、不可恢复">
+        data-hot="⑧" data-hot-name="删除" data-hot-pos="outer-top-right"
+        data-hot-label="删除要二次确认：第一层说明已排期的触发会一并取消，第二层再确认；只想让某一次不响请用「跳过这一次」；默认焦点在「取消」，危险钮不作默认焦点">
         <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h12M8 6.5V5a1.5 1.5 0 0 1 1.5-1.5h1A1.5 1.5 0 0 1 12 5v1.5"/><path d="M5.5 6.5l.8 9a1.5 1.5 0 0 0 1.5 1.4h4.4a1.5 1.5 0 0 0 1.5-1.4l.8-9"/></svg>
         删除提醒
       </button>
-      <div class="rem-del-note tiny">删除只在确认后执行；暂停请用上方开关。</div>
+      <div class="rem-del-note tiny">删除要二次确认；只想停一段请用上方「暂停这条提醒」，只想让某一次不响请用「跳过这一次」。</div>
     </div>
 
     <div class="rem-foot-note">
-      <b>保存口径</b>：对象级 version 乐观锁，版本不一致返回冲突；本页不静默覆盖，也不自动合并字段。
+      <b>保存后</b>：回提醒列表并停在改过的这一条。如果家人已经先改过，会让你选保留哪一份，不会悄悄改掉对方的设置。
+    </div>
+    </div>
+
+    <div class="rem-sk" aria-hidden="true">
+      <div class="skeleton sk-line"></div>
+      <div class="skeleton sk-line" style="width:64%;margin-top:0"></div>
+      <div class="skeleton sk-block" style="height:56px;margin-top:16px"></div>
+      <div class="skeleton sk-block" style="height:56px"></div>
+      <div class="skeleton sk-block" style="height:180px"></div>
+    </div>
+
+    <div class="state rem-error">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="16" cy="16" r="12"/><path d="M16 10v7M16 21.5v.1"/></svg>
+      </div>
+      <div class="state-title">没能加载这条提醒</div>
+      <div class="state-desc">网络或服务没响应。这条提醒还在，这里先不把旧内容拿出来给你看，免得改错。</div>
+      <button class="btn btn-primary" type="button" id="rem-retry"
+        data-hot="⑪" data-hot-name="首屏失败的重试" data-hot-pos="top-right"
+        data-hot-label="只重发这条提醒的读取请求；成功回默认态，失败保持整页失败态与原说明，不弹局部提示、不清缓存、不回落到旧缓存">重试</button>
     </div>
   </div>
 
-  <!-- 冲突层：默认隐藏，保存时版本不一致才出现 -->
+  <!-- 改动范围层：重复提醒改了时间类字段才出现 -->
+  <div class="sheet-mask" id="sheet-scope" aria-hidden="true">
+    <div class="sheet"
+      data-hot="④" data-hot-name="改动范围" data-hot-pos="outer-top-left"
+      data-hot-label="重复项改单次 vs 改全部的高频争议点：必须二选一才可提交。「仅这一次」= 实例动作，该次按新值走、规则行与之后全部不变，列表那次带「本次已单独调整」；「之后全部」= 改规则本体，规则行整条更新（version +1）、旧到期项随对象失效、新排期由服务端重算回显；默认「仅这一次」；取消不提交、改动留在表单">
+      <div class="sheet-grabber"></div>
+      <h3>改这一次，还是之后都改？</h3>
+      <p class="sheet-sub">这条是「每周三 15:00」的周期提醒。先选改动范围，再保存。</p>
+
+      <div class="rem-sheet-seg">
+        <div class="segmented" role="group" aria-label="改动范围">
+          <button type="button" aria-selected="true" id="scope-once">仅这一次</button>
+          <button type="button" aria-selected="false" id="scope-all">之后全部</button>
+        </div>
+      </div>
+
+      <div class="rem-warn">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 3.5 17.5 17h-15z"/><path d="M10 8v4M10 14.4v.1"/></svg>
+        <span id="scope-note">「仅这一次」只调整这一次，规则与之后的每次都不变；「之后全部」才会改掉这条规则本身。</span>
+      </div>
+
+      <div class="sheet-actions">
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>先不保存</button>
+        <button class="btn btn-primary btn-block" type="button" id="scope-ok">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 冲突层：默认隐藏，保存时内容有变动才出现 -->
   <div class="sheet-mask" id="sheet-conflict" aria-hidden="true">
     <div class="sheet"
-      data-hot="⑥" data-hot-name="冲突弹层" data-hot-pos="outer-top-left"
-      data-hot-label="版本不一致时弹出：说明这条提醒已被他人修改，给查看最新 / 用我的 / 放弃修改三选一；不做字段自动合并，也不静默覆盖">
+      data-hot="⑨" data-hot-name="冲突弹层" data-hot-pos="outer-top-left"
+      data-hot-label="409 + 双版本 payload 走 §6.5 三选一；文案与按钮不出现「覆盖」二字、不显示 version 号；「用我的」为中性按钮（危险红只留给不可逆动作）；每次冲突计入 sync_conflict 埋点">
       <div class="sheet-grabber"></div>
       <h3>这条提醒已被他人修改</h3>
-      <p class="sheet-sub">你打开的是版本 3，服务器上已是版本 4。家人的改动不会被自动合并，请选择接下来的处理方式。</p>
+      <p class="sheet-sub">妈妈 刚刚改过这条提醒；你的改动不会被自动合并，请选择保留哪一份。</p>
 
       <div class="rem-diff">
         <div class="rem-diff-row">
@@ -319,45 +605,130 @@
         </div>
         <div class="rem-diff-row">
           <span class="rem-diff-k">你改的</span>
-          <span class="rem-diff-v">提前量（提前 10 分钟）与渠道（仅站内信）</span>
+          <span class="rem-diff-v">提前量（提前 10 分钟）与渠道（站内信）</span>
         </div>
       </div>
 
       <div class="rem-warn">
         <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 3.5 17.5 17h-15z"/><path d="M10 8v4M10 14.4v.1"/></svg>
-        <span>「用我的」会以你的字段整体替换版本 4，妈妈的改动不再保留；查看最新会丢弃你本次未保存的改动；两者都会整条更新本面到期项。</span>
+        <span>选「用我的」会按你此刻填的内容整条提交，妈妈这次的改动不再保留；选「查看最新」会丢掉你这次未保存的改动。</span>
       </div>
 
       <div class="sheet-actions">
         <button class="btn btn-primary btn-block" type="button" data-go="reminder.html">查看最新</button>
-        <button class="btn btn-danger btn-block" type="button" data-go="reminder-edit.html">用我的</button>
-        <button class="btn btn-secondary btn-block" type="button" data-go="reminder.html">放弃修改</button>
+        <button class="btn btn-secondary btn-block" type="button" id="rem-mine">用我的</button>
+        <button class="btn btn-ghost btn-block" type="button" data-go="reminder.html">放弃修改</button>
       </div>
     </div>
   </div>
 
-  <!-- 删除确认层：默认隐藏，点「删除提醒」出现 -->
+  <!-- 删除确认层一：看影响，再继续 -->
   <div class="sheet-mask" id="sheet-delete" aria-hidden="true">
     <div class="sheet">
       <div class="sheet-grabber"></div>
       <h3>删除这条提醒？</h3>
-      <p class="sheet-sub">删除后不再触发，规则不可恢复；要暂时停用请回到编辑页用「暂停提醒」。</p>
+      <p class="sheet-sub">删除要再确认一次；只想让某一次不响，请回到上面用「跳过这一次」。</p>
 
       <div class="rem-del-line">
         <span class="rem-del-line-body">
-          <span class="rem-del-line-v">吃药</span>
-          <span class="rem-del-line-sub num">每天 08:00 · 提前准时 · 推送 + 站内信</span>
+          <span class="rem-del-line-v">小满家长会</span>
+          <span class="rem-del-line-sub num">每周三 15:00 · 提前 1 小时 · 站内信</span>
         </span>
-        <span class="tiny">版本 3</span>
       </div>
 
       <div class="rem-cal-warn">
         <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="12" height="11" rx="2"/><path d="M4 8.5h12M7.5 3.5V6M12.5 3.5V6"/></svg>
-        <span>删除后本面到期项由服务端级联失效，日历上不再出现；家人此前收到的站内信不会被撤回。</span>
+        <span id="del-impact">已排期的触发会一并取消；这条提醒删掉后找不回来，已经收到的消息不会被撤回。</span>
       </div>
 
       <div class="sheet-actions">
-        <button class="btn btn-danger btn-block" type="button" data-go="reminder.html">删除提醒</button>
+        <button class="btn btn-secondary btn-block" type="button" id="del-cancel" data-sheet-close autofocus>取消</button>
+        <button class="btn btn-danger btn-block" type="button" id="del-continue">继续删除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 删除确认层二：二次确认，说明已排期的触发会取消 -->
+  <div class="sheet-mask" id="sheet-delete-confirm" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>再确认一次：删除「小满家长会」</h3>
+      <p class="sheet-sub">删除后，已经排好的下一次和以后每次都不会再响，也没有回收站能找回。</p>
+
+      <div class="rem-cal-warn">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="12" height="11" rx="2"/><path d="M4 8.5h12M7.5 3.5V6M12.5 3.5V6"/></svg>
+        <span>已排期的触发会全部取消；如果只是这一次不想响，点「取消」回去用「跳过这一次」。</span>
+      </div>
+
+      <div class="sheet-actions">
+        <button class="btn btn-secondary btn-block" type="button" id="del-confirm-cancel" data-sheet-close autofocus>取消</button>
+        <button class="btn btn-danger btn-block" type="button" id="del-confirm" data-go="reminder.html">确认删除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 放弃确认层 -->
+  <div class="sheet-mask" id="sheet-discard" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>放弃这次改动？</h3>
+      <p class="sheet-sub">未保存的改动会被丢掉，也没有草稿可以找回；已暂停、已跳过的变化不会被打回。</p>
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" data-sheet-close>继续编辑</button>
+        <a class="btn btn-secondary btn-block" href="reminder.html">放弃</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 日期选择层 -->
+  <div class="sheet-mask" id="sheet-date" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>提醒日期</h3>
+      <p class="sheet-sub">改成只提醒一次的，要先选哪一天；每天、每周、每月、每年与自定义不用在这里选日期。</p>
+      <div class="list" style="margin-top:16px">
+        <button class="list-item" type="button" data-date="10 月 30 日 周五" data-sheet-close>
+          <span class="li-text">10 月 30 日 周五<span class="li-sub">明天</span></span>
+        </button>
+        <button class="list-item" type="button" data-date="11 月 1 日 周日" data-sheet-close>
+          <span class="li-text">11 月 1 日 周日<span class="li-sub">后天之后</span></span>
+        </button>
+        <button class="list-item" type="button" data-date="11 月 2 日 周一" data-sheet-close>
+          <span class="li-text">11 月 2 日 周一<span class="li-sub">下周一</span></span>
+        </button>
+        <button class="list-item" type="button" data-toast="自定义日期随系统日期选择器接入；P1 先给常用日期">
+          <span class="li-text">自定义日期<span class="li-sub">精确到日</span></span>
+          <span class="chevron">›</span>
+        </button>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 自定义结束日期层 -->
+  <div class="sheet-mask" id="sheet-end-date" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>到哪天结束</h3>
+      <p class="sheet-sub">过了这一天，这条自定义提醒就不再安排下一次。</p>
+      <div class="list" style="margin-top:16px">
+        <button class="list-item" type="button" data-end-date="11 月 30 日" data-sheet-close>
+          <span class="li-text">11 月 30 日<span class="li-sub">这个月底</span></span>
+        </button>
+        <button class="list-item" type="button" data-end-date="12 月 31 日" data-sheet-close>
+          <span class="li-text">12 月 31 日<span class="li-sub">今年底</span></span>
+        </button>
+        <button class="list-item" type="button" data-end-date="2027 年 1 月 31 日" data-sheet-close>
+          <span class="li-text">2027 年 1 月 31 日<span class="li-sub">明年一月底</span></span>
+        </button>
+        <button class="list-item" type="button" data-toast="自定义日期随系统日期选择器接入；P1 先给常用日期">
+          <span class="li-text">自定义日期<span class="li-sub">精确到日</span></span>
+          <span class="chevron">›</span>
+        </button>
+      </div>
+      <div class="sheet-actions">
         <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
       </div>
     </div>
@@ -367,8 +738,8 @@
   <div class="sheet-mask" id="sheet-time" aria-hidden="true">
     <div class="sheet">
       <div class="sheet-grabber"></div>
-      <h3>触发时间</h3>
-      <p class="sheet-sub">改时间会整条更新本面到期项，旧项随对象失效（原生对象不发 {code}.due.revoked），不由客户端删日历条目。</p>
+      <h3>提醒时刻</h3>
+      <p class="sheet-sub">保存后由日历按家里的时间重新安排，下一次什么时候响以列表里显示的为准。</p>
       <div class="list" style="margin-top:16px">
         <button class="list-item" type="button" data-time="07:30" data-sheet-close>
           <span class="li-text">07:30<span class="li-sub">早于常用起床时间</span></span>
@@ -377,7 +748,7 @@
           <span class="li-text">08:00<span class="li-sub">当前设置</span></span>
         </button>
         <button class="list-item" type="button" data-time="09:00" data-sheet-close>
-          <span class="li-text">09:00<span class="li-sub">妈妈在版本 4 里改成的时刻</span></span>
+          <span class="li-text">09:00<span class="li-sub">妈妈刚改成的时刻</span></span>
         </button>
         <button class="list-item" type="button" data-time="20:00" data-sheet-close>
           <span class="li-text">20:00<span class="li-sub">晚间</span></span>
@@ -400,18 +771,376 @@
   var remState = new URLSearchParams(location.search).get('state') || 'default';
   var title = document.getElementById('rem-title');
   var save = document.getElementById('rem-save');
+  var back = document.getElementById('rem-back');
   var pause = document.getElementById('pause-switch');
+  var dateBtn = document.getElementById('date-btn');
+  var dateField = document.getElementById('date-field');
+  var dateValue = document.getElementById('date-value');
+  var dateErr = document.getElementById('date-err');
+  var weekBlock = document.getElementById('week-block');
+  var monthBlock = document.getElementById('month-block');
+  var yearBlock = document.getElementById('year-block');
+  var customBlock = document.getElementById('custom-block');
+  var cycleHelp = document.getElementById('cycle-help');
+  var skipSub = document.getElementById('skip-sub');
+  var yearMonth = document.getElementById('year-month');
+  var yearDay = document.getElementById('year-day');
+  var yearErr = document.getElementById('year-err');
+  var customN = document.getElementById('custom-n');
+  var customNErr = document.getElementById('custom-n-err');
+  var customEndErr = document.getElementById('custom-end-err');
+  var customHelp = document.getElementById('custom-help');
+  var workdayBtn = document.getElementById('workday-preset');
+  var endDateValue = document.getElementById('end-date-value');
+  var customCount = document.getElementById('custom-count');
+  var dirty = false;
+  var changedRule = false;
+  var cycle = '每周';
+  var date = '';
+  var week = { '三': true };
+  var day = '';
+  var customUnit = '天';
+  var customEnd = 'never';
+  var endDate = '';
+  var workday = false;
+
+  var cycleNote = {
+    '不重复': '只响一次：要选好哪天、几点。',
+    '每天': '每天：每个日子都在这个时刻响一次。',
+    '每周': '每周：在下面挑星期几，可以连着挑（如周一到周五）。',
+    '每月': '每月：在下面挑几号，只挑一个。',
+    '每年': '每年：填月份和日号，到了那天这个时刻响。',
+    '自定义': '自定义：每 N 天、N 周或 N 月提醒一次，可以设结束条件。'
+  };
+
+  (function buildDays() {
+    var box = document.getElementById('day-chips');
+    var html = '';
+    for (var d = 1; d <= 31; d += 1) {
+      html += '<button type="button" aria-pressed="false" data-day="' + d + '">' + d + '</button>';
+    }
+    box.innerHTML = html;
+  })();
+
+  function paint(selectors, active) {
+    document.querySelectorAll(selectors).forEach(function (b) {
+      b.setAttribute('aria-selected', String(b === active));
+    });
+  }
+
+  function customHelpText() {
+    var n = customN.value || '1';
+    if (workday) return '每周一至周五提醒；这是「自定义」里的快捷，不单独占一个周期档位。';
+    if (customUnit === '周') return '每 ' + n + ' 周提醒一次，按保存那天的星期算。';
+    if (customUnit === '月') return '每 ' + n + ' 月提醒一次，按保存那天的日号算；当月没有这一天时，那个月不提醒。';
+    return '每 ' + n + ' 天提醒一次，从保存后的第一个整天开始。';
+  }
+
+  function syncCycleFields() {
+    dateField.hidden = cycle !== '不重复';
+    weekBlock.classList.toggle('is-on', cycle === '每周');
+    monthBlock.classList.toggle('is-on', cycle === '每月');
+    yearBlock.classList.toggle('is-on', cycle === '每年');
+    customBlock.classList.toggle('is-on', cycle === '自定义');
+    cycleHelp.textContent = cycleNote[cycle];
+    if (cycle !== '不重复') { dateErr.classList.remove('is-on'); dateBtn.classList.remove('is-error'); }
+    if (cycle !== '每周') document.getElementById('week-err').classList.remove('is-on');
+    if (cycle !== '每月') document.getElementById('day-err').classList.remove('is-on');
+    if (cycle !== '每年') yearErr.classList.remove('is-on');
+    if (cycle !== '自定义') { customNErr.classList.remove('is-on'); customEndErr.classList.remove('is-on'); }
+    customHelp.textContent = customHelpText();
+  }
+
+  function timeReady() {
+    if (cycle === '不重复') return !!date;
+    if (cycle === '每周') return Object.keys(week).some(function (k) { return week[k]; });
+    if (cycle === '每月') return !!day;
+    if (cycle === '每年') {
+      var m = Number(yearMonth.value);
+      var d = Number(yearDay.value);
+      return m >= 1 && m <= 12 && d >= 1 && d <= 31;
+    }
+    if (cycle === '自定义') {
+      var n = Number(customN.value);
+      if (!(n >= 1)) return false;
+      if (customEnd === 'date') return !!endDate;
+      if (customEnd === 'count') return Number(customCount.value) >= 1;
+      return true;
+    }
+    return true;
+  }
+
+  function showTimeErrors() {
+    if (cycle === '不重复') {
+      dateErr.classList.add('is-on');
+      dateBtn.classList.add('is-error');
+    } else if (cycle === '每周') {
+      document.getElementById('week-chips').classList.add('is-error');
+      document.getElementById('week-err').classList.add('is-on');
+    } else if (cycle === '每月') {
+      document.getElementById('day-err').classList.add('is-on');
+    } else if (cycle === '每年') {
+      yearErr.classList.add('is-on');
+      if (!(Number(yearMonth.value) >= 1 && Number(yearMonth.value) <= 12)) yearMonth.classList.add('is-error');
+      if (!(Number(yearDay.value) >= 1 && Number(yearDay.value) <= 31)) yearDay.classList.add('is-error');
+    } else if (cycle === '自定义') {
+      if (!(Number(customN.value) >= 1)) {
+        customNErr.classList.add('is-on');
+        customN.classList.add('is-error');
+      } else {
+        customEndErr.classList.add('is-on');
+      }
+    }
+  }
+
+  document.querySelectorAll('[data-cycle]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      paint('[data-cycle]', b);
+      cycle = b.getAttribute('data-cycle');
+      dirty = true; changedRule = true;
+      syncCycleFields();
+    });
+  });
+
+  document.querySelectorAll('[data-week]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var k = b.getAttribute('data-week');
+      week[k] = !week[k];
+      b.setAttribute('aria-pressed', String(week[k]));
+      document.getElementById('week-chips').classList.remove('is-error');
+      document.getElementById('week-err').classList.remove('is-on');
+      dirty = true; changedRule = true;
+    });
+  });
+
+  document.querySelectorAll('[data-day]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      day = b.getAttribute('data-day');
+      document.querySelectorAll('[data-day]').forEach(function (x) {
+        x.setAttribute('aria-pressed', String(x === b));
+      });
+      document.getElementById('day-err').classList.remove('is-on');
+      dirty = true; changedRule = true;
+    });
+  });
+
+  [yearMonth, yearDay].forEach(function (input) {
+    input.addEventListener('input', function () {
+      yearErr.classList.remove('is-on');
+      input.classList.remove('is-error');
+      dirty = true; changedRule = true;
+    });
+  });
+
+  document.querySelectorAll('[data-lead]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      paint('[data-lead]', b);
+      dirty = true; changedRule = true;
+    });
+  });
+
+  document.querySelectorAll('[data-channel]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      paint('[data-channel]', b);
+      dirty = true;
+    });
+  });
+
+  document.querySelectorAll('[data-date]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      date = b.getAttribute('data-date');
+      dateValue.textContent = date;
+      dateValue.classList.remove('is-empty');
+      dateBtn.classList.remove('is-error');
+      dateErr.classList.remove('is-on');
+      dirty = true; changedRule = true;
+    });
+  });
+
+  document.querySelectorAll('[data-time]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.getElementById('time-value').textContent = b.getAttribute('data-time');
+      dirty = true; changedRule = true;
+    });
+  });
+
+  document.querySelectorAll('[data-unit]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      paint('[data-unit]', b);
+      customUnit = b.getAttribute('data-unit');
+      workday = false;
+      workdayBtn.setAttribute('aria-pressed', 'false');
+      customHelp.textContent = customHelpText();
+      dirty = true; changedRule = true;
+    });
+  });
+
+  customN.addEventListener('input', function () {
+    workday = false;
+    workdayBtn.setAttribute('aria-pressed', 'false');
+    customNErr.classList.remove('is-on');
+    customN.classList.remove('is-error');
+    customHelp.textContent = customHelpText();
+    dirty = true; changedRule = true;
+  });
+
+  workdayBtn.addEventListener('click', function () {
+    workday = !workday;
+    workdayBtn.setAttribute('aria-pressed', String(workday));
+    if (workday) {
+      customN.value = '1';
+      customUnit = '周';
+      paint('[data-unit]', document.querySelector('[data-unit="周"]'));
+    }
+    customHelp.textContent = customHelpText();
+    dirty = true; changedRule = true;
+  });
+
+  document.querySelectorAll('[data-end]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      paint('[data-end]', b);
+      customEnd = b.getAttribute('data-end');
+      document.getElementById('end-date').hidden = customEnd !== 'date';
+      document.getElementById('end-count').hidden = customEnd !== 'count';
+      customEndErr.classList.remove('is-on');
+      dirty = true; changedRule = true;
+    });
+  });
+
+  document.querySelectorAll('[data-end-date]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      endDate = b.getAttribute('data-end-date');
+      endDateValue.textContent = endDate;
+      endDateValue.classList.remove('is-empty');
+      customEndErr.classList.remove('is-on');
+      dirty = true; changedRule = true;
+    });
+  });
+
+  customCount.addEventListener('input', function () {
+    customEndErr.classList.remove('is-on');
+    dirty = true; changedRule = true;
+  });
+
+  title.addEventListener('input', function () {
+    dirty = true;
+    title.classList.remove('is-error');
+  });
+
+  pause.addEventListener('change', function () {
+    window.HC.toast(remState === 'offline'
+      ? '改动已先存在手机上，联网后自动提交'
+      : (pause.checked ? '已恢复，按原周期继续响' : '已暂停，规则原样保留'));
+    var flag = document.getElementById('ver-flag');
+    flag.textContent = pause.checked ? '我创建' : '已暂停';
+    flag.classList.toggle('is-paused', !pause.checked);
+  });
+
+  document.getElementById('rem-skip').addEventListener('click', function () {
+    skipSub.textContent = '本次已跳过 11 月 4 日 周三 15:00 · 下次 11 月 11 日 周三 15:00';
+    this.style.display = 'none';
+    document.getElementById('rem-undo-skip').style.display = 'block';
+    window.HC.toast('这一次不会响了，以后每次照常');
+  });
+
+  document.getElementById('rem-undo-skip').addEventListener('click', function () {
+    skipSub.textContent = '下一次 11 月 4 日 周三 15:00 不响，以后每次照常';
+    document.getElementById('rem-skip').style.display = '';
+    this.style.display = '';
+    window.HC.toast('已经收回，这一次还是会响');
+  });
+
+  document.getElementById('rem-delete').addEventListener('click', function () {
+    window.HC.openSheet('sheet-delete');
+    setTimeout(function () { document.getElementById('del-cancel').focus(); }, 80);
+  });
+
+  document.getElementById('del-continue').addEventListener('click', function () {
+    window.HC.closeSheet(document.getElementById('sheet-delete'));
+    window.HC.openSheet('sheet-delete-confirm');
+    setTimeout(function () { document.getElementById('del-confirm-cancel').focus(); }, 80);
+  });
+
+  function paintScope(active) {
+    ['scope-once', 'scope-all'].forEach(function (id) {
+      document.getElementById(id).setAttribute('aria-selected', String(id === active));
+    });
+  }
+
+  document.getElementById('scope-once').addEventListener('click', function () {
+    paintScope('scope-once');
+    document.getElementById('scope-note').textContent =
+      '「仅这一次」只调整这一次，规则与之后的每次都不变；列表里那一次会标出「本次已单独调整」。';
+  });
+
+  document.getElementById('scope-all').addEventListener('click', function () {
+    paintScope('scope-all');
+    document.getElementById('scope-note').textContent =
+      '「之后全部」会把这条规则整条改掉，之后的提醒都按新设置走。';
+  });
+
+  document.getElementById('scope-ok').addEventListener('click', function () {
+    var once = document.getElementById('scope-once').getAttribute('aria-selected') === 'true';
+    window.HC.toast(once ? '已只调整这一次' : '之后全部按新规则走了');
+    setTimeout(function () { location.href = 'reminder.html'; }, 1100);
+  });
+
+  document.getElementById('rem-mine').addEventListener('click', function () {
+    window.HC.toast('已按你填的内容保存');
+    setTimeout(function () { location.href = 'reminder.html'; }, 1100);
+  });
+
+  back.addEventListener('click', function () {
+    if (dirty) { window.HC.openSheet('sheet-discard'); return; }
+    location.href = 'reminder.html';
+  });
+
+  save.addEventListener('click', function () {
+    if (remState === 'conflict' || remState === 'other') return;
+    if (!title.value.trim()) {
+      title.classList.add('is-error');
+      title.focus();
+      return;
+    }
+    if (!timeReady()) {
+      showTimeErrors();
+      return;
+    }
+    if (cycle !== '不重复' && changedRule) {
+      window.HC.openSheet('sheet-scope');
+      return;
+    }
+    if (remState === 'offline') {
+      window.HC.toast('改动已先存在手机上，联网后自动提交');
+      return;
+    }
+    window.HC.toast('已保存');
+    setTimeout(function () { location.href = 'reminder.html'; }, 1100);
+  });
+
+  document.getElementById('rem-retry').addEventListener('click', function () {
+    window.HC.toast('正在重新加载这条提醒（演示）');
+    setTimeout(function () { location.href = 'reminder-edit.html'; }, 900);
+  });
 
   if (remState === 'paused') {
     pause.checked = false;
-    var tag = document.getElementById('ver-tag');
-    tag.textContent = '版本 3 · 已暂停';
-    tag.classList.add('is-paused');
-    document.getElementById('ver-note').textContent = '暂停不产生新版本 · 规则原样保留';
+    document.getElementById('ver-flag').textContent = '已暂停';
+    document.getElementById('ver-flag').classList.add('is-paused');
+  }
+
+  if (remState === 'skipped') {
+    skipSub.textContent = '本次已跳过 11 月 4 日 周三 15:00 · 下次 11 月 11 日 周三 15:00';
+  }
+
+  if (remState === 'scope') {
+    var sc = document.getElementById('sheet-scope');
+    sc.classList.add('is-open');
+    sc.setAttribute('aria-hidden', 'false');
   }
 
   if (remState === 'conflict') {
-    document.getElementById('ver-note').textContent = '你打开的是版本 3 · 服务器已更新到版本 4';
+    document.getElementById('ver-note').textContent = '妈妈 今天 09:12 改过这条提醒';
     var cf = document.getElementById('sheet-conflict');
     cf.classList.add('is-open');
     cf.setAttribute('aria-hidden', 'false');
@@ -421,47 +1150,16 @@
     var del = document.getElementById('sheet-delete');
     del.classList.add('is-open');
     del.setAttribute('aria-hidden', 'false');
+    document.getElementById('del-cancel').focus();
   }
 
-  pause.addEventListener('change', function () {
-    window.HC.toast(pause.checked ? '已恢复，按原周期继续触发' : '已暂停，规则保留');
-  });
+  if (remState === 'other') {
+    document.getElementById('ver-flag').textContent = '由妈妈创建';
+    document.getElementById('ver-flag').classList.add('is-owner');
+    pause.disabled = true;
+  }
 
-  document.getElementById('rem-delete').addEventListener('click', function () {
-    window.HC.openSheet('sheet-delete');
-  });
-
-  document.querySelectorAll('[data-cycle], [data-lead], [data-channel]').forEach(function (b) {
-    b.addEventListener('click', function () {
-      var group = b.parentNode.querySelectorAll('button');
-      group.forEach(function (x) { x.setAttribute('aria-selected', String(x === b)); });
-    });
-  });
-
-  document.querySelectorAll('[data-time]').forEach(function (b) {
-    b.addEventListener('click', function () {
-      document.getElementById('time-value').textContent = b.getAttribute('data-time');
-      window.HC.toast('时间已设为 ' + b.getAttribute('data-time'));
-    });
-  });
-
-  title.addEventListener('input', function () {
-    title.classList.remove('is-error');
-  });
-
-  save.addEventListener('click', function () {
-    if (remState === 'conflict') return;
-    if (!title.value.trim()) {
-      title.classList.add('is-error');
-      title.focus();
-      return;
-    }
-    if (remState === 'paused') {
-      window.HC.toast('已保存，仍保持暂停');
-      return;
-    }
-    location.href = 'reminder-edit.html?state=conflict';
-  });
+  syncCycleFields();
 </script>
 </body>
 </html>

@@ -123,8 +123,8 @@
             <label class="switch"><input type="checkbox" checked id="lock-switch"><span class="track"></span><span class="thumb"></span></label>
           </div>
         </div>
-        <div class="sec-lock-state sec-only-on">后台停留超过 5 分钟、冷启动均需重新解锁；连续 5 次输错锁定本机 L3 访问，按 30 秒 / 1 分钟 / 5 分钟退避。</div>
-        <div class="sec-lock-state sec-only-off">未开启时不要求本地口令，仅在进入 L3 内容时做一次会话内二次确认；建议开启。</div>
+        <div class="sec-lock-state sec-only-on">后台停留超过 5 分钟、冷启动均需重新解锁；输错 5 次会暂停几分钟才能再试。</div>
+        <div class="sec-lock-state sec-only-off">未开启时不要求本地口令，仅在进入私密内容时做一次确认；建议开启。</div>
       </div>
 
       <div class="sec-pin-note">
@@ -191,22 +191,22 @@
         </button>
       </div>
 
-      <div class="section-title">权限版本</div>
+      <div class="section-title">权限同步</div>
       <div class="card sec-pver">
         <div class="sec-pver-head">
           <div>
-            <div class="sec-pver-title">当前家庭权限版本</div>
+            <div class="sec-pver-title">本机权限与家庭设置</div>
             <div class="tiny">随角色变更自动更新</div>
           </div>
-          <span class="sec-pver-num num">pver 12</span>
+          <span class="sec-pver-num">已同步</span>
         </div>
         <div class="sec-pver-rows">
           <div class="sec-pver-row"><span class="k">最近变更</span><span class="v">09-28 管理员调整角色</span></div>
-          <div class="sec-pver-row"><span class="k">本机权限缓存</span><span class="v">已失效 · 待下次请求刷新</span></div>
+          <div class="sec-pver-row"><span class="k">生效方式</span><span class="v">下一次操作自动按新角色</span></div>
         </div>
-        <div class="sec-pver-note">角色或权限变更后版本号自动 +1，客户端收到权限更新事件立即失效缓存，无需重新登录；跨服务生效 ≤ 1 秒，客户端以「下一次请求」为准。</div>
+        <div class="sec-pver-note">管理员调整角色后，你的权限自动跟着变化，无需重新登录；下一次操作就会按新权限执行。</div>
         <button class="btn btn-secondary btn-sm" type="button" id="pver-recheck"
-          data-hot="⑥" data-hot-name="权限版本自查" data-hot-pos="top-right" data-hot-label="重新拉取快照比对 pver；一致提示已是最新，不一致自动刷新本机权限缓存">重新校验</button>
+          data-hot="⑥" data-hot-name="权限同步自查" data-hot-pos="top-right" data-hot-label="重新拉取权限快照比对 pver；一致提示已同步，不一致自动按新角色刷新本机">重新校验</button>
       </div>
     </div>
 
@@ -271,7 +271,7 @@
   });
 
   document.getElementById('pver-recheck').addEventListener('click', function () {
-    window.HC.toast('权限版本已是最新（pver 12）');
+    window.HC.toast('权限已同步，刚刚校验');
   });
 </script>
 </body>

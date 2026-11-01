@@ -110,7 +110,8 @@ for f in files:
         if token == "契约偏差" and etok == "通过":
             errors.append(f"{rel} · {cid} `契约偏差` 的执行状态不得为 `通过`（禁止「通过（除路径外）」）")
 
-        cases[cid] = {"type": t, "pri": p, "sprint": s, "auto": token, "exec": etok, "dev": dev}
+        cases[cid] = {"type": t, "pri": p, "sprint": s, "auto": token, "exec": etok,
+                      "dev": dev, "raw": a}
 
     for ln in lines:
         m = HEAD.match(ln)
@@ -123,6 +124,26 @@ for f in files:
         if cur is not None:
             buf["lines"].append(ln)
     flush(cur, buf, rel)
+
+# G-C 实现现状证据（本仓可解析性）——2026-11-01 起真实存在，不再只是横幅上的名字。
+# 断言代码事实的三类（已实现* / 契约偏差 / 引用脚本 / CI门禁）必须二选一：
+#   ① 证据里的文件路径在本仓可解析；
+#   ② 显式带 `证据待重基线` 标注（代码仓未纳入本工作区时的唯一合法降级形态）。
+# 目的：让「声称已实现但证据指向不存在的文件」变成红灯，而不是审计脚本里的一个 STALE 计数。
+GPATH = re.compile(r"(\.?[A-Za-z0-9_][A-Za-z0-9_./\-]*\.(?:go|sh|json|ya?ml|py|ts|js))(?::\d+)?")
+ASSERTING = ("契约偏差", "引用脚本", "CI门禁")
+for cid, c in cases.items():
+    tok, raw = c["auto"], c["raw"]
+    if not tok or not (tok.startswith("已实现") or tok in ASSERTING):
+        continue
+    if "证据待重基线" in raw:
+        # 证据不可复核时不得同时宣称「执行通过」——那是把不可验证当成已验证
+        if c["exec"] == "通过":
+            errors.append(f"{cid} 证据待重基线，但执行状态为 `通过`（不可复核的证据不能支撑通过）")
+        continue
+    paths = GPATH.findall(raw)
+    if paths and not any((ROOT / p).exists() for p in paths):
+        errors.append(f"{cid} G-C 证据路径在本仓不可解析且未标注 `证据待重基线`：{paths[0]}")
 
 # G-D1 ID 唯一
 dups = [k for k, v in Counter(ids).items() if v > 1]

@@ -14,7 +14,7 @@
   1. 越权改 header 中 `family_id` 调用 `/api/finance/*`
   2. 检查是否存在业务 handler 内裸 `family_id=?` 判定
 - 预期结果：跨家庭访问一律拒绝（100 次零穿透）；CI 门禁 4 静态检查无裸 SQL 判定分支
-- 实现现状（快照）：已实现(分层)（`server/test/authz/matrix_test.go:13`；另 `handler/auth_test.go:399` 受保护路由需 Bearer）
+- 实现现状（快照）：已实现(分层)（`server/test/authz/matrix_test.go:13`；另 `handler/auth_test.go:399` 受保护路由需 Bearer）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## HOM-AUTH-002 · 十行×5 角色权限矩阵 50 格逐格断言
@@ -23,7 +23,7 @@
 - 前置条件：十行含 HomeOS 三行（「HomeOS（成员/权限/设置）」「HomeOS · 面配置」「HomeOS · 协作对象」）+ 日历行 + 其余六面行（finance/采购/饮食/出行/家人/成长）
 - 步骤：对 50 格逐一构造（角色 × 系统 × 动作）请求，含未出生系统的「拒绝+未出生」态
 - 预期结果：50 格断言全过；未出生系统格子按默认策略与 17.4 契约断言（两种态区分：未启用 vs 未出生，㉙）
-- 实现现状（快照）：已实现(分层)（`server/test/authz/matrix_test.go:13`，`:171` 断言 `testCount == 45`（45 为 ㉓ 旧格数，㉚ 后 50））
+- 实现现状（快照）：已实现(分层)（`server/test/authz/matrix_test.go:13`，`:171` 断言 `testCount == 45`（45 为 ㉓ 旧格数，㉚ 后 50））｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## HOM-AUTH-003 · 字段级可见性：尺码/心愿仅本人与管理员
@@ -32,7 +32,7 @@
 - 前置条件：成员 A 有尺码偏好，成员 B 读 A 的档案
 - 步骤：B（非管理员）读取 A 的尺码/心愿字段
 - 预期结果：返回脱敏/拒显；仅 A 本人与管理员可见
-- 实现现状（快照）：已实现(分层)（`server/test/authz/matrix_test.go:377` `VisibleFields`、`:433` `FilterDTO`）
+- 实现现状（快照）：已实现(分层)（`server/test/authz/matrix_test.go:377` `VisibleFields`、`:433` `FilterDTO`）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## HOM-AUTH-004 · 财务私密行级可见性（非作者非管理员读取被拒）
@@ -41,7 +41,7 @@
 - 前置条件：成员 A 将某笔流水置 `is_private`
 - 步骤：成员 B（非作者非管理员）读取该私密行
 - 预期结果：拒绝 100%；落审计；私密行不参与 AA 分摊与跨面归集
-- 实现现状（快照）：已实现(分层)（`server/test/authz/matrix_test.go:544` `PrivateTransactionVisibility`）
+- 实现现状（快照）：已实现(分层)（`server/test/authz/matrix_test.go:544` `PrivateTransactionVisibility`）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## HOM-AUTH-005 · pver 缓存失效 ≤1 秒生效
@@ -59,7 +59,7 @@
 - 前置条件：临时阻断 authz SDK 可达性
 - 步骤：发读/写请求
 - 预期结果：写被拒、读返回已缓存数据、落审计；不静默放行
-- 实现现状（快照）：已实现(分层)（`server/test/authz/matrix_test.go:659` `DegradationStrategy`）
+- 实现现状（快照）：已实现(分层)（`server/test/authz/matrix_test.go:659` `DegradationStrategy`）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## HOM-AUTH-007 · 越权尝试全部落审计（连续 5 次告警）
@@ -86,7 +86,7 @@
 - 前置条件：已知金额样本串
 - 步骤：用 `pg_dirtyread`/裸文件十六进制扫描数据目录与备份包
 - 预期结果：已知金额串命中数=0（落盘与备份均为密文）
-- 实现现状（快照）：未实现（同上；`make backup` 存在但无加密实现）
+- 实现现状（快照）：未实现（同上；`make backup` 存在但无加密实现）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## HOM-AUTH-010 · L3 端到端加密且服务端仅存密文
@@ -106,7 +106,7 @@
 - 前置条件：已设 PIN
 - 步骤：连续 6 次（组）输错 PIN
 - 预期结果：第 5 次起锁定 L3 访问；退避限次生效；本地与服务端均不出现可暴破明文/可逆形态
-- 实现现状（快照）：未实现（全仓无 device lock/设备锁 实现；`deploy/scripts/device_lock_check.sh` 存在，但服务端无对应字段，断言会因字段缺失**假通过**）
+- 实现现状（快照）：未实现（全仓无 device lock/设备锁 实现；`deploy/scripts/device_lock_check.sh` 存在，但服务端无对应字段，断言会因字段缺失**假通过**）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## HOM-AUTH-012 · 忘记 PIN：手机号重验重置清除本机缓存

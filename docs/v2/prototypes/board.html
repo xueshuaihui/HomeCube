@@ -51,6 +51,36 @@
   }
   .board-pending .board-time { display: inline-flex; align-items: center; gap: 4px; }
 
+  .board-queued { display: none; }
+  body[data-state="queued"] .board-queued,
+  body[data-state="offline"] .board-queued { display: flex; }
+  .board-queued .board-bubble {
+    background: var(--surface-2); border-style: dashed; color: var(--text-2);
+  }
+  .board-failed { display: none; }
+  body[data-state="failed"] .board-failed { display: flex; }
+  .board-failed .board-bubble {
+    background: var(--danger-soft); border-style: dashed; border-color: var(--danger); color: var(--text-2);
+  }
+  .board-tag {
+    display: inline-flex; align-items: center;
+    padding: 1px 7px; border-radius: var(--radius-pill);
+    background: var(--warning-soft); color: var(--warning);
+    font-size: 10px; font-weight: 600;
+  }
+  .board-tag-fail { background: var(--danger-soft); color: var(--danger); }
+  .board-retry {
+    margin-left: 6px; border: 0; background: none; padding: 0;
+    color: var(--danger); font-family: inherit;
+    font-size: 10px; font-weight: 700; cursor: pointer;
+  }
+  .board-retracted { display: none; }
+  body[data-state="retracted"] .board-retracted { display: flex; }
+  .board-retracted .board-bubble {
+    background: transparent; border-style: dashed;
+    color: var(--text-3); font-size: var(--fs-12);
+  }
+
   .board-empty { display: none; margin: auto 0; }
   body[data-state="empty"] .board-empty { display: block; }
   body[data-state="empty"] .board-list,
@@ -83,7 +113,7 @@
   }
 </style>
 </head>
-<body data-screen="09 家庭留言板" data-tab="message" data-states="default,empty,sending,offline">
+<body data-screen="09 家庭留言板" data-tab="message" data-states="default,empty,sending,queued,failed,actions,retracted,offline">
 <div class="harness"></div>
 
 <div class="phone">
@@ -123,8 +153,8 @@
 
     <div class="board-list">
       <div class="board-msg" data-reply="妈妈" data-name="妈妈"
-        data-hot="②" data-hot-name="留言条目" data-hot-pos="top-right"
-        data-hot-label="头像 + 姓名 + 时间 + 正文；点击某条留言即在输入条带入「@对方」，P1 不做楼中楼与单条回复串">
+        data-hot="②" data-hot-name="他人留言条目" data-hot-pos="top-right"
+        data-hot-label="点击他人留言在输入条带入「@对方」并聚焦，作为对这条的回应；P1 不做楼中楼与单条回复串；自己的留言点击不回应、走 ⑦ 操作层">
         <span class="avatar board-av board-av-mom">妈</span>
         <div class="board-main">
           <div class="board-meta"><span class="board-name">妈妈</span><span class="board-time num">08:40</span></div>
@@ -140,7 +170,9 @@
         </div>
       </div>
 
-      <div class="board-msg is-me" data-reply="我" data-name="我">
+      <div class="board-msg is-me" data-sheet-open="sheet-actions"
+        data-hot="⑦" data-hot-name="自己的留言 · 操作层" data-hot-pos="top-right"
+        data-hot-label="长按或右滑自己的留言唤起操作层，恰两项：编辑 / 撤回（原型以点击演示）；他人留言不渲染该入口，提交时服务端同时校验发送人、非本人一律拒绝">
         <span class="avatar board-av board-av-me">我</span>
         <div class="board-main">
           <div class="board-meta"><span class="board-name">我</span><span class="board-time num">09:10</span></div>
@@ -161,6 +193,32 @@
         <div class="board-main">
           <div class="board-meta"><span class="board-name">我</span><span class="board-time">发送中…</span></div>
           <div class="board-bubble">好的，我下午两点把车开过来。</div>
+        </div>
+      </div>
+
+      <div class="board-msg is-me board-queued">
+        <span class="avatar board-av board-av-me">我</span>
+        <div class="board-main">
+          <div class="board-meta"><span class="board-name">我</span><span class="board-time"><span class="board-tag">待发送</span></span></div>
+          <div class="board-bubble">好的，我下午两点把车开过来。</div>
+        </div>
+      </div>
+
+      <div class="board-msg is-me board-failed"
+        data-hot="⑩" data-hot-name="发送状态标记" data-hot-pos="top-right"
+        data-hot-label="虚线气泡首部带状态之一：待发送（队列未回填前必显）/ 发送中… / 发送失败 · 重试；服务端回填时间即已发出、无标记；四态互斥，一条至多一态；失败点重试沿用同一条目、不产生第二条">
+        <span class="avatar board-av board-av-me">我</span>
+        <div class="board-main">
+          <div class="board-meta"><span class="board-name">我</span><span class="board-time"><span class="board-tag board-tag-fail">发送失败</span><button class="board-retry" type="button" data-toast="已按原条目重发（演示），不会多出第二条">重试</button></span></div>
+          <div class="board-bubble">好的，我下午两点把车开过来。</div>
+        </div>
+      </div>
+
+      <div class="board-msg is-me board-retracted">
+        <span class="avatar board-av board-av-me">我</span>
+        <div class="board-main">
+          <div class="board-meta"><span class="board-name">我</span><span class="board-time num">09:22</span></div>
+          <div class="board-bubble">该留言已撤回</div>
         </div>
       </div>
     </div>
@@ -194,7 +252,7 @@
       </div>
       <button class="btn btn-primary board-send" type="button"
         data-hot="⑤" data-hot-name="发送" data-hot-pos="outer-top-right"
-        data-hot-label="非空才发送；发送中按钮转圈、本条以虚线气泡置底，成功后由服务端回填时间；失败保留草稿可重试">发送</button>
+        data-hot-label="非空才发送；在线直发呈「发送中…」，离线或队列未回填前带「待发送」标记，成功后服务端回填时间、标记消失（=已发出）；失败带「发送失败 · 重试」，点重试沿用同一条目、不产生第二条">发送</button>
     </div>
   </div>
 
@@ -224,6 +282,30 @@
     </div>
   </div>
 
+  <!-- 自己的留言 · 操作层（编辑 / 撤回） -->
+  <div class="sheet-mask" id="sheet-actions" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>这条留言</h3>
+      <p class="sheet-sub">发送后 10 分钟内可以修改或收回；收回后这条会留在原位，显示「该留言已撤回」，正文不再展示。</p>
+      <div class="list" style="margin-top:16px">
+        <button class="list-item" type="button" id="btn-edit"
+          data-hot="⑧" data-hot-name="编辑" data-hot-pos="top-right"
+          data-hot-label="操作层点「编辑」：正文回填输入条、仍可改到 200 字；保存后原位更新，时间仍是发送时间、尾部带「已编辑」；仅发送后 10 分钟内可用">
+          <span class="li-text">编辑<span class="li-sub">原位更新这条，别人看到的仍是发送时的时间</span></span>
+        </button>
+        <button class="list-item" type="button" data-go="board.html?state=retracted"
+          data-hot="⑨" data-hot-name="撤回" data-hot-pos="top-right"
+          data-hot-label="操作层点「撤回」（实做需一次确认）：仅发送时间起 10 分钟内可撤；确认后条目不消失，原位留虚线占位「该留言已撤回」，正文对任何人不再显示；占位不可编辑、不可再撤">
+          <span class="li-text">撤回<span class="li-sub">收回这条，原位留下「该留言已撤回」的占位</span></span>
+        </button>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast"></div>
 </div>
 
@@ -232,10 +314,23 @@
   var input = document.getElementById('board-input');
   var send = document.querySelector('.board-send');
 
-  if (state === 'sending') {
+  if (state === 'sending' || state === 'queued' || state === 'failed') {
     send.classList.add('is-loading');
     input.value = '好的，我下午两点把车开过来。';
   }
+
+  if (state === 'actions') {
+    document.addEventListener('DOMContentLoaded', function () {
+      window.HC.openSheet('sheet-actions');
+    });
+  }
+
+  document.getElementById('btn-edit').addEventListener('click', function () {
+    window.HC.closeSheet(document.getElementById('sheet-actions'));
+    input.value = '我把「周六看外公」记到日历了，下午三点出发。';
+    input.focus();
+    window.HC.toast('已回填输入条，改完原位更新（演示）');
+  });
 
   function insertMention(name) {
     var v = input.value;
@@ -266,7 +361,7 @@
       input.focus();
       return;
     }
-    location.href = 'board.html?state=sending';
+    location.href = 'board.html?state=' + (state === 'offline' ? 'queued' : 'sending');
   });
 
   document.querySelector('[data-board-focus]').addEventListener('click', function () {

@@ -18,6 +18,14 @@
   }
   .fx-sum b { font-family: var(--font-num); font-size: var(--fs-13); font-weight: 700; color: var(--text-2); }
 
+  /* 合计位的「含 N 条你无权查看的记录」注记：只在他人视角出现，N 由服务端随合计下发 */
+  .fx-n-note { display: none; align-items: center; gap: 5px; margin: -2px 0 8px; font-size: var(--fs-12); color: var(--text-3); }
+  .fx-n-note svg { flex: none; color: var(--text-3); }
+  body[data-state="private"] .fx-n-note.is-top { display: flex; }
+
+  .fx-day-sub-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+  body[data-state="private"] .fx-day-sub-wrap .fx-n-note { display: flex; }
+
   .fx-chip-v { display: none; }
   body[data-state="filter"] .fx-chip-v { display: inline; }
   body[data-state="filter"] .fx-chip-k { display: none; }
@@ -155,26 +163,54 @@
     background: var(--surface-2); color: var(--text-3);
     font-size: var(--fs-12); font-weight: 600;
   }
-  .fx-private-row { display: none; }
-  body[data-state="private"] .fx-private-row { display: flex; }
+  /* 私密行：管理员 / 作者视角可读并带「私密」标；他人视角不下发、不显示、不可筛出 */
+  body[data-state="private"] .fx-private-real { display: none; }
+
+  /* 保存成功回列表：首行带「刚刚保存」标，反馈只有一次 toast */
+  .fx-just-saved { display: none; }
+  body[data-state="saved"] .fx-just-saved { display: inline-flex; }
+  body[data-state="saved"] .fx-saved-row { background: var(--success-soft); }
+
+  /* 失败态：保留筛选与时间窗，只换掉列表主体 */
+  .fx-error { display: none; flex-direction: column; align-items: center; gap: 8px; padding: 42px 16px 28px; text-align: center; }
+  body[data-state="failed"] .fx-error { display: flex; }
+  body[data-state="failed"] .fx-groups,
+  body[data-state="failed"] .fx-filtered,
+  body[data-state="failed"] .fx-sum,
+  body[data-state="failed"] .fx-n-note,
+  body[data-state="failed"] .fx-sum-note,
+  body[data-state="failed"] .fx-more,
+  body[data-state="failed"] .fx-filter-note,
+  body[data-state="failed"] .fx-private-note,
+  body[data-state="failed"] .fab { display: none; }
+  .fx-error-title { font-size: var(--fs-15); font-weight: 700; color: var(--text); }
+  .fx-error-desc { font-size: var(--fs-12); color: var(--text-3); line-height: var(--lh-normal); }
+
+  /* 待同步行：回执落库前只在本机，不进合计与日组小计 */
+  .fx-pending { display: none; }
+  body[data-state="offline"] .fx-pending { display: flex; }
+  body[data-state="offline"] .offline-bar { display: flex; }
+  body[data-state="offline"] .fx-sum-note { display: flex; }
+  .fx-sum-note {
+    display: none; align-items: center; gap: 6px;
+    margin: 0 0 8px; padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--warning-soft); color: var(--warning);
+    font-size: var(--fs-12);
+  }
+  .fx-tag-pending {
+    display: inline-flex; align-items: center;
+    padding: 0 6px; height: 18px;
+    border-radius: var(--radius-pill);
+    background: var(--warning-soft); color: var(--warning);
+    font-size: 10px; font-weight: 700;
+  }
 
   .fx-more {
     margin: 16px 0 4px;
     display: flex; flex-direction: column; align-items: center; gap: 6px;
   }
-  .fx-more-btn {
-    width: 100%; height: 40px;
-    border-radius: var(--radius-md);
-    border: 1px dashed var(--border-strong);
-    background: var(--surface);
-    font-family: inherit; font-size: var(--fs-13); font-weight: 600;
-    color: var(--text-2); cursor: pointer;
-  }
-  .fx-more-btn:hover { background: var(--surface-2); }
-  .fx-more-hint { font-size: var(--fs-11); color: var(--text-3); }
-  .fx-more-end { display: none; font-size: var(--fs-12); color: var(--text-3); padding: 10px 0 2px; }
-  body[data-state="end"] .fx-more-btn { display: none; }
-  body[data-state="end"] .fx-more-end { display: block; }
+  .fx-more-end { font-size: var(--fs-12); color: var(--text-3); padding: 10px 0 2px; }
 
   .fx-groups { display: block; }
   .fx-filtered { display: none; }
@@ -187,6 +223,8 @@
   body[data-state="loading"] .fx-groups,
   body[data-state="loading"] .fx-filtered,
   body[data-state="loading"] .fx-sum,
+  body[data-state="loading"] .fx-n-note,
+  body[data-state="loading"] .fx-sum-note,
   body[data-state="loading"] .fx-more,
   body[data-state="loading"] .fx-filter-note,
   body[data-state="loading"] .fx-private-note { display: none; }
@@ -197,6 +235,8 @@
   body[data-state="empty"] .fx-groups,
   body[data-state="empty"] .fx-filtered,
   body[data-state="empty"] .fx-sum,
+  body[data-state="empty"] .fx-n-note,
+  body[data-state="empty"] .fx-sum-note,
   body[data-state="empty"] .fx-more { display: none; }
 
   .fx-note-block {
@@ -208,7 +248,7 @@
   }
 </style>
 </head>
-<body data-screen="F01 流水" data-states="default,end,select,filter,private,loading,empty">
+<body data-screen="F01 流水" data-states="default,select,filter,private,saved,offline,loading,empty,failed">
 <div class="harness"></div>
 
 <div class="phone">
@@ -256,7 +296,7 @@
 
   <div class="period-bar fx-period"
     data-hot="④" data-hot-name="时间窗条" data-hot-pos="bottom-right"
-    data-hot-label="月 / 季 / 年三档（YYYY-MM / YYYY-Qn / YYYY），与首页、报表、预算共用同一个 shell 级 period；切档只改查询窗口，不改列表的按日分组">
+    data-hot-label="月 / 季 / 年三档（2026 年 10 月 / 2026 年第四季度 / 2026 年），与首页、报表、预算共用同一个时间窗；切档只改查询范围，不改列表的按日分组">
     <span class="period-label">
       2026 年 10 月
       <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5 6 7.5l3-3"/></svg>
@@ -270,15 +310,23 @@
 
   <div class="offline-bar">
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
-    当前离线 · 2 笔记账待同步
+    当前离线 · 1 笔记账等你联网后补上 · 列表缓存截至 10 月 30 日 14:32
   </div>
 
   <div class="content bottom-space fx-content">
-    <div class="fx-sum">本月 <b>31</b> 笔 · 支出 <b>-¥8,632.40</b> · 收入 <b>+¥12,260.00</b></div>
+    <div class="fx-sum">本月 <b>186</b> 笔 · 支出 <b>-¥12,480.00</b> · 收入 <b>+¥18,000.00</b> · 结余 <b>+¥5,520.00</b> · 累计余额 <b>¥38,818.40</b></div>
+    <div class="fx-n-note is-top">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="9" height="6" rx="1.8"/><path d="M5.5 7V5.6a2.5 2.5 0 0 1 5 0V7"/></svg>
+      含 4 条你无权查看的记录
+    </div>
+    <div class="fx-sum-note">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.6v3.8M8 11.3v.1"/></svg>
+      另有 1 笔待同步，不计入上面的合计
+    </div>
 
     <div class="chip-row"
       data-hot="⑤" data-hot-name="筛选条" data-hot-pos="bottom-right"
-      data-hot-label="时间 / 分类 / 账户 / 成员 / 标签 / 账本六个 chip 横向滚动；已选 chip 高亮为 brand-soft 并出现筛选摘要与「重置」；切换筛选不改 period，也不改按日分组的呈现">
+      data-hot-label="时间 / 分类 / 账户 / 成员 / 标签 / 账本六个 chip 横向滚动；已选 chip 高亮为 brand-soft 并出现筛选摘要与「重置」；切换筛选不改时间窗，也不改按日分组的呈现">
       <button class="chip" type="button" aria-pressed="false" data-filter-on
         data-toast="时间筛选：本月 / 上周 / 自定义区间；与顶部时间窗是两个维度，筛选只收敛列表">
         <span class="fx-chip-k">时间</span><span class="fx-chip-v">本月</span>
@@ -297,11 +345,11 @@
         标签
       </button>
       <button class="chip" type="button" data-sheet-open="sheet-ledger"
-        data-hot="⑥" data-hot-name="账本选择器" data-hot-pos="outer-top-right"
-        data-hot-label="chip 右侧的 selector 显示当前账本（日常）；点开选 日常 / 旅行 / 装修 / 孩子 / 项目。账本是报表与归集分组，不是隔离域：换账本后流水与报表同步过滤，数据仍在同一家庭内">
+        data-hot="⑥" data-hot-name="账本筛选" data-hot-pos="outer-top-right"
+        data-hot-label="列表顶部的账本筛选器，默认「全部」；选中后只收敛当前视图，不是切换账本，全 App 不设多账本切换器。账本是报表与归集分组，不改变流水可见性；本月合计与日组小计按该分组重算，注记里的 N 一起重算">
         账本
         <span class="fx-chip-sel">
-          日常
+          全部
           <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5 6 7.5l3-3"/></svg>
         </span>
       </button>
@@ -309,23 +357,29 @@
 
     <div class="fx-filter-note">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.5h11l-4.2 5v4.2l-2.6 1.3V8.5z"/></svg>
-      已筛选：本月 · 餐饮 · 共 4 笔 -¥156.00
+      已筛选：本月 · 餐饮 · 共 26 笔 -¥3,240.00（含 1 条你无权查看的记录，仅示意其中 2 笔）
       <button class="fx-reset" type="button" data-go="finance-flow.html">重置</button>
     </div>
 
     <div class="fx-private-note">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="10" height="6.5" rx="2"/><path d="M5.5 7V5.2a2.5 2.5 0 0 1 5 0V7"/></svg>
-      <span>他人视角：家庭流水全员可见，但被标记为<b>私密</b>的行只对作者与管理员可读。这里显示占位，金额、分类、备注与附件都不会下发到本机。</span>
+      <span>他人视角：被标记为<b>私密</b>的 4 笔只对作者与管理员可读。本视图里它们不出现在明细中，也不能被筛出来；上面的合计与各日小计仍按全量算，差额就是每处「含 N 条你无权查看的记录」里的 N。</span>
     </div>
 
     <div class="fx-groups">
       <div class="fx-day">
         <div class="fx-day-head">
           <span class="fx-day-date">10 月 29 日 <span class="tiny">周四</span></span>
-          <span class="fx-day-sub num">支出 ¥166.00</span>
+          <span class="fx-day-sub-wrap">
+            <span class="fx-day-sub num">支出 ¥286.00</span>
+            <span class="fx-n-note">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="9" height="6" rx="1.8"/><path d="M5.5 7V5.6a2.5 2.5 0 0 1 5 0V7"/></svg>
+              含 1 条你无权查看的记录
+            </span>
+          </span>
         </div>
         <div class="fx-list">
-          <a class="fx-row" href="finance-tx-detail.html"
+          <a class="fx-row fx-saved-row" href="finance-tx-detail.html"
             data-press
             data-hot="⑦" data-hot-name="流水行" data-hot-pos="bottom-right"
             data-hot-label="单击进单笔详情（金额、分类、账户、成员、时间、账本、标签、附件）；长按约半秒进入多选操作态，操作态仍是本页的状态帧、不成新页面">
@@ -334,7 +388,7 @@
             </span>
             <span class="fx-row-body">
               <span class="fx-row-top">
-                <span class="fx-name">餐饮 · 早餐</span>
+                <span class="fx-name">餐饮 · 早餐 <span class="tag fx-just-saved">刚刚保存</span></span>
                 <span class="fx-amt num">-¥28.00</span>
               </span>
               <span class="fx-row-meta"><span>楼下面馆</span><span>微信钱包</span><span>妈妈</span></span>
@@ -366,10 +420,26 @@
             </span>
             <span class="fx-row-body">
               <span class="fx-row-top">
-                <span class="fx-name">日用 · 超市</span>
+                <span class="fx-name">购物 · 超市</span>
                 <span class="fx-amt num">-¥100.00</span>
               </span>
-              <span class="fx-row-meta"><span>洗衣液、纸巾</span><span>招行信用卡</span><span>爸爸</span></span>
+              <span class="fx-row-meta"><span>洗衣液、纸巾</span><span>招商银行</span><span>爸爸</span></span>
+            </span>
+            <span class="fx-check" aria-hidden="true">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
+            </span>
+          </a>
+
+          <a class="fx-row fx-private-real" href="finance-tx-detail.html" data-press>
+            <span class="fx-ico is-private">
+              <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="9" width="11" height="7.5" rx="2"/><path d="M7 9V6.8a3 3 0 0 1 6 0V9"/></svg>
+            </span>
+            <span class="fx-row-body">
+              <span class="fx-row-top">
+                <span class="fx-name">医疗 · 门诊 <span class="tag">私密</span></span>
+                <span class="fx-amt num">-¥120.00</span>
+              </span>
+              <span class="fx-row-meta"><span>社区医院</span><span>微信钱包</span><span>妈妈</span></span>
             </span>
             <span class="fx-check" aria-hidden="true">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
@@ -381,7 +451,13 @@
       <div class="fx-day">
         <div class="fx-day-head">
           <span class="fx-day-date">10 月 28 日 <span class="tiny">周三</span></span>
-          <span class="fx-day-sub num">支出 ¥128.00 · 转账 1 笔</span>
+          <span class="fx-day-sub-wrap">
+            <span class="fx-day-sub num">支出 ¥588.00 · 转账 1 笔</span>
+            <span class="fx-n-note">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="9" height="6" rx="1.8"/><path d="M5.5 7V5.6a2.5 2.5 0 0 1 5 0V7"/></svg>
+              含 2 条你无权查看的记录
+            </span>
+          </span>
         </div>
         <div class="fx-list">
           <a class="fx-row" href="finance-tx-detail.html" data-press>
@@ -393,7 +469,7 @@
                 <span class="fx-name">餐饮 · 晚餐</span>
                 <span class="fx-amt num">-¥128.00</span>
               </span>
-              <span class="fx-row-meta"><span>家庭聚餐</span><span>招行信用卡</span><span>爸爸</span></span>
+              <span class="fx-row-meta"><span>家庭聚餐</span><span>招商银行</span><span>爸爸</span></span>
             </span>
             <span class="fx-check" aria-hidden="true">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
@@ -416,28 +492,50 @@
             </span>
           </a>
 
-          <div class="fx-row fx-private-row" data-toast="私密流水仅作者与管理员可读；本行只显示「私密」占位，服务端不返回金额与分类">
+          <a class="fx-row fx-private-real" href="finance-tx-detail.html" data-press>
             <span class="fx-ico is-private">
               <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="9" width="11" height="7.5" rx="2"/><path d="M7 9V6.8a3 3 0 0 1 6 0V9"/></svg>
             </span>
             <span class="fx-row-body">
               <span class="fx-row-top">
-                <span class="fx-name">私密</span>
-                <span class="fx-mask-amt">私密</span>
+                <span class="fx-name">购物 · 外套 <span class="tag">私密</span></span>
+                <span class="fx-amt num">-¥300.00</span>
               </span>
-              <span class="fx-row-meta"><span>妈妈</span><span>他人不可读</span></span>
+              <span class="fx-row-meta"><span>换季衣物</span><span>支付宝</span><span>妈妈</span></span>
             </span>
             <span class="fx-check" aria-hidden="true">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
             </span>
-          </div>
+          </a>
+
+          <a class="fx-row fx-private-real" href="finance-tx-detail.html" data-press>
+            <span class="fx-ico is-private">
+              <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="9" width="11" height="7.5" rx="2"/><path d="M7 9V6.8a3 3 0 0 1 6 0V9"/></svg>
+            </span>
+            <span class="fx-row-body">
+              <span class="fx-row-top">
+                <span class="fx-name">餐饮 · 下午茶 <span class="tag">私密</span></span>
+                <span class="fx-amt num">-¥160.00</span>
+              </span>
+              <span class="fx-row-meta"><span>同事聚会</span><span>微信钱包</span><span>妈妈</span></span>
+            </span>
+            <span class="fx-check" aria-hidden="true">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
+            </span>
+          </a>
         </div>
       </div>
 
       <div class="fx-day">
         <div class="fx-day-head">
           <span class="fx-day-date">10 月 26 日 <span class="tiny">周一</span></span>
-          <span class="fx-day-sub num">支出 ¥86.00 · 收入 ¥260.00</span>
+          <span class="fx-day-sub-wrap">
+            <span class="fx-day-sub num">支出 ¥366.00 · 收入 ¥260.00</span>
+            <span class="fx-n-note">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="9" height="6" rx="1.8"/><path d="M5.5 7V5.6a2.5 2.5 0 0 1 5 0V7"/></svg>
+              含 1 条你无权查看的记录
+            </span>
+          </span>
         </div>
         <div class="fx-list">
           <a class="fx-row" href="finance-tx-detail.html" data-press>
@@ -446,7 +544,7 @@
             </span>
             <span class="fx-row-body">
               <span class="fx-row-top">
-                <span class="fx-name">学习 · 绘本</span>
+                <span class="fx-name">教育 · 绘本</span>
                 <span class="fx-amt num">-¥86.00</span>
               </span>
               <span class="fx-row-meta"><span>女儿的绘本 3 本</span><span>微信钱包</span><span>妈妈</span></span>
@@ -471,6 +569,22 @@
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
             </span>
           </a>
+
+          <a class="fx-row fx-private-real" href="finance-tx-detail.html" data-press>
+            <span class="fx-ico is-private">
+              <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="9" width="11" height="7.5" rx="2"/><path d="M7 9V6.8a3 3 0 0 1 6 0V9"/></svg>
+            </span>
+            <span class="fx-row-body">
+              <span class="fx-row-top">
+                <span class="fx-name">教育 · 网课 <span class="tag">私密</span></span>
+                <span class="fx-amt num">-¥280.00</span>
+              </span>
+              <span class="fx-row-meta"><span>女儿英语课</span><span>支付宝</span><span>妈妈</span></span>
+            </span>
+            <span class="fx-check" aria-hidden="true">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
+            </span>
+          </a>
         </div>
       </div>
     </div>
@@ -480,7 +594,7 @@
       <div class="fx-day">
         <div class="fx-day-head">
           <span class="fx-day-date">筛选结果 · 餐饮</span>
-          <span class="fx-day-sub num">4 笔 · -¥156.00</span>
+          <span class="fx-day-sub num">26 笔 · -¥3,240.00</span>
         </div>
         <div class="fx-list">
           <a class="fx-row" href="finance-tx-detail.html">
@@ -504,7 +618,7 @@
                 <span class="fx-name">餐饮 · 晚餐</span>
                 <span class="fx-amt num">-¥128.00</span>
               </span>
-              <span class="fx-row-meta"><span>10 月 28 日</span><span>招行信用卡</span><span>爸爸</span></span>
+              <span class="fx-row-meta"><span>10 月 28 日</span><span>招商银行</span><span>爸爸</span></span>
             </span>
           </a>
         </div>
@@ -514,9 +628,17 @@
     <div class="fx-more">
       <button class="fx-more-btn" type="button" id="fx-load-more"
         data-hot="⑩" data-hot-name="加载更多" data-hot-pos="bottom-right"
-        data-hot-label="游标分页：只按 cursor 追加，不用页码、不重拉已加载的日组；滑到底自动加载一次，手动点也只追加不替换。列表已到底时按钮换成「已显示本月全部 31 笔」">加载更多</button>
-      <span class="fx-more-end num">已显示本月全部 31 笔</span>
-      <span class="fx-more-hint">已按日分组 · 每页 20 条 · 14:32 更新</span>
+        data-hot-label="游标分页：只按 cursor 追加，不用页码、不重拉已加载的日组；本页已载 50 笔，点一次追加下一页，不替换现有列表">
+        加载更多
+      </button>
+      <span class="fx-more-end num">已显示 10 月 29–26 日 · 本页 50 笔 · 共 186 笔</span>
+      <span class="fx-more-hint">已按日分组 · 每页 50 条 · 14:32 更新</span>
+    </div>
+
+    <div class="fx-error">
+      <div class="fx-error-title">本月流水没加载出来</div>
+      <div class="fx-error-desc">网络不太稳定，筛选与时间窗还保留着。可以重试一次；已保存的流水不会丢。</div>
+      <button class="btn btn-secondary" type="button" data-go="finance-flow.html">重试</button>
     </div>
 
     <div class="fx-sk" aria-hidden="true">
@@ -535,7 +657,7 @@
       <button class="btn btn-secondary" type="button" data-go="finance-tx-create.html">记一笔</button>
     </div>
 
-    <div class="fx-note-block">收入用成功色、支出用正文色，负号在货币符号之前；金额以「分」存储、按家庭币种显示。转账是成对的转出 / 转入，不计入收支小计。</div>
+    <div class="fx-note-block">收入用成功色、支出用正文色，负号在货币符号之前；金额以「分」存储、按家庭币种显示。转账是成对的转出 / 转入，不计入收支小计。私密行只从 AA 分摊与跨面归集里排除，家庭合计与统计总量照常包含。账户合计 ¥38,818.40；借出待收 ¥4,100.00、借入待还 ¥8,000.00，净资产 ¥34,918.40。</div>
   </div>
 
   <button class="fab" type="button" data-go="finance-tx-create.html"
@@ -592,24 +714,24 @@
   <div class="sheet-mask" id="sheet-ledger" aria-hidden="true">
     <div class="sheet">
       <div class="sheet-grabber"></div>
-      <h3>切换账本</h3>
-      <p class="sheet-sub">账本是报表与归集的分组，不是数据隔离域：换账本后流水与报表同步过滤，数据仍在同一个家庭里，成员该看的照常能看。</p>
+      <h3>按账本筛选</h3>
+      <p class="sheet-sub">账本是报表与归集的分组，不是数据隔离域。这里只筛选当前列表视图，不是切换账本；全 App 不设多账本切换器。家庭成员该看什么照常能看。</p>
       <div class="list" style="margin-top:16px">
         <button class="list-item" type="button" data-ledger="日常" data-sheet-close>
-          <span class="li-text">日常<span class="li-sub">默认账本 · 本月 20 笔</span></span>
+          <span class="li-text">日常<span class="li-sub">默认分组 · 本月 162 笔</span></span>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 5"/></svg>
         </button>
         <button class="list-item" type="button" data-ledger="旅行" data-sheet-close>
-          <span class="li-text">旅行<span class="li-sub">国庆出行 · 本月 4 笔</span></span>
+          <span class="li-text">旅行<span class="li-sub">国庆出行 · 本月 12 笔</span></span>
         </button>
         <button class="list-item" type="button" data-ledger="装修" data-sheet-close>
-          <span class="li-text">装修<span class="li-sub">按项目归集 · 本月 2 笔</span></span>
+          <span class="li-text">装修<span class="li-sub">按项目归集 · 本月 5 笔</span></span>
         </button>
         <button class="list-item" type="button" data-ledger="孩子" data-sheet-close>
-          <span class="li-text">孩子<span class="li-sub">按标签与成员范围过滤 · 本月 3 笔</span></span>
+          <span class="li-text">孩子<span class="li-sub">按标签与成员范围过滤 · 本月 4 笔</span></span>
         </button>
         <button class="list-item" type="button" data-ledger="项目·换窗" data-sheet-close>
-          <span class="li-text">项目·换窗<span class="li-sub">项目账本 · 本月 1 笔</span></span>
+          <span class="li-text">项目·换窗<span class="li-sub">项目分组 · 本月 3 笔</span></span>
         </button>
       </div>
       <div class="sheet-actions">
@@ -623,6 +745,10 @@
 
 <script>
   var flowState = new URLSearchParams(location.search).get('state') || 'default';
+
+  if (flowState === 'saved') {
+    window.HC.toast('已保存，新的一笔已在首行；本月合计已更新');
+  }
 
   if (flowState === 'filter') {
     document.querySelectorAll('[data-filter-on]').forEach(function (b) {
@@ -642,7 +768,7 @@
       if (sel && sel.firstChild) {
         sel.firstChild.textContent = name + ' ';
       }
-      window.HC.toast('已切到「' + name + '」账本：流水与报表同步过滤，成员可见范围不变');
+      window.HC.toast('已按「' + name + '」筛选当前列表：只影响本视图，不是切换账本，成员可见范围不变');
     });
   });
 
@@ -678,7 +804,7 @@
       if (i < 2) row.classList.add('is-sel');
       row.addEventListener('click', function (e) {
         e.preventDefault();
-        if (!row.classList.contains('fx-private-row')) row.classList.toggle('is-sel');
+        if (!row.classList.contains('fx-private-real')) row.classList.toggle('is-sel');
         refreshSelect();
       });
     });
@@ -690,7 +816,7 @@
 
     document.getElementById('fx-select-all').addEventListener('click', function () {
       document.querySelectorAll('.fx-row[data-press]').forEach(function (row) {
-        if (!row.classList.contains('fx-private-row')) row.classList.add('is-sel');
+        if (!row.classList.contains('fx-private-real')) row.classList.add('is-sel');
       });
       refreshSelect();
       window.HC.toast('已全选本页 4 笔；跨页选择由游标分页逐页累积');

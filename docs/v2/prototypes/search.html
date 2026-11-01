@@ -39,13 +39,14 @@
     border: 0; border-radius: 50%;
     background: var(--surface-2); color: var(--text-3); cursor: pointer;
   }
-  body[data-state="typing"] .src-clear,
+  .src-searchbar.has-value .src-clear,
+  body[data-state="loading"] .src-clear,
   body[data-state="empty"] .src-clear,
-  body[data-state="offline"] .src-clear,
-  body[data-state="loading"] .src-clear { display: inline-flex; }
+  body[data-state="offline"] .src-clear { display: inline-flex; }
+  body[data-state="failed"] .src-searchbar { display: none; }
 
   .src-default { display: none; }
-  body[data-state="default"] .src-default { display: block; }
+  body[data-view="recent"] .src-default { display: block; }
 
   .src-sec {
     display: flex; align-items: center; justify-content: space-between;
@@ -85,8 +86,11 @@
   }
 
   .src-results { display: none; }
-  body[data-state="typing"] .src-results,
-  body[data-state="offline"] .src-results { display: block; }
+  body[data-view="results"] .src-results,
+  body[data-view="group"] .src-results { display: block; }
+  body[data-state="loading"] .src-results,
+  body[data-state="empty"] .src-results,
+  body[data-state="failed"] .src-results { display: none; }
 
   .src-cache-note {
     display: none; align-items: center; gap: 6px;
@@ -98,6 +102,10 @@
   body[data-state="offline"] .src-offline { display: flex; }
 
   .src-summary { margin: 14px 2px 2px; font-size: var(--fs-12); color: var(--text-3); }
+  body[data-view="group"] .src-summary { display: none; }
+
+  .src-all-groups { display: block; }
+  body[data-view="group"] .src-all-groups { display: none; }
 
   .src-group { display: flex; align-items: center; gap: 8px; padding: 16px 2px 8px; }
   .src-group-icon {
@@ -109,6 +117,12 @@
   .src-group-os { background: var(--accent-soft); color: var(--accent); }
   .src-group-name { font-size: var(--fs-13); font-weight: 700; }
   .src-group-count { margin-left: auto; font-size: var(--fs-11); color: var(--text-3); }
+  .src-more {
+    margin-left: 2px; padding: 3px 4px;
+    border: 0; background: none; text-decoration: none;
+    color: var(--brand-text); font-family: inherit;
+    font-size: var(--fs-12); cursor: pointer;
+  }
 
   .src-list {
     background: var(--surface); border: 1px solid var(--border);
@@ -133,11 +147,36 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .src-item-meta {
-    display: flex; align-items: center; gap: 6px;
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
     margin-top: 2px; font-size: var(--fs-12); color: var(--text-3);
   }
+  .src-item-face { color: var(--text-2); font-weight: 600; }
   .src-item-amount { flex: none; font-size: var(--fs-13); }
   .src-chev { flex: none; color: var(--text-3); }
+
+  .src-item.is-gone { background: var(--surface-2); }
+  .src-item.is-gone .src-item-title { color: var(--text-3); }
+  .src-gone-badge {
+    flex: none; padding: 3px 7px; border-radius: var(--radius-pill);
+    background: var(--warning-soft); color: var(--warning);
+    font-size: var(--fs-11); font-weight: 600;
+  }
+
+  .src-group-view { display: none; }
+  body[data-view="group"] .src-group-view { display: block; }
+  .src-gv-back {
+    display: inline-block; margin-top: 14px; padding: 4px 2px;
+    color: var(--brand-text); font-size: var(--fs-13); text-decoration: none;
+  }
+  .src-gv-head { margin-top: 8px; padding: 0 2px; }
+  .src-gv-title { font-size: var(--fs-18); font-weight: 700; }
+  .src-gv-sub { margin-top: 4px; font-size: var(--fs-12); color: var(--text-3); }
+  .src-gv-foot {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin-top: 14px; padding: 0 2px;
+    font-size: var(--fs-12); color: var(--text-3);
+  }
+  .src-gv-foot[hidden] { display: none; }
 
   .src-empty { display: none; }
   body[data-state="empty"] .src-empty { display: block; }
@@ -151,6 +190,11 @@
   body[data-state="loading"] .src-sk { display: block; }
   body[data-state="loading"] .src-summary { visibility: hidden; }
 
+  .src-failed { display: none; padding-top: 20px; }
+  body[data-state="failed"] .src-failed { display: block; }
+  body[data-state="failed"] .src-privacy-note { display: none; }
+  .src-retry { margin-top: 6px; }
+
   .src-privacy-note {
     display: flex; align-items: center; justify-content: center; gap: 6px;
     margin-top: 26px; padding: 0 8px;
@@ -160,7 +204,7 @@
   .src-privacy-note svg { flex: none; opacity: .8; }
 </style>
 </head>
-<body data-screen="19 搜索" data-tab="" data-states="default,typing,empty,offline,loading">
+<body data-screen="19 搜索" data-tab="" data-states="default,loading,failed,empty,offline">
 <div class="harness"></div>
 
 <div class="phone">
@@ -182,8 +226,8 @@
     <div class="nav-title">搜索</div>
     <div class="nav-right">
       <button class="src-cancel" type="button" data-go="home.html"
-        data-hot="⑥" data-hot-name="取消" data-hot-pos="top-right"
-        data-hot-label="退出搜索并回到进入前页面（示例首页）；输入与结果不保留，不写入最近搜索">取消</button>
+        data-hot="⑦" data-hot-name="取消" data-hot-pos="top-right"
+        data-hot-label="退出搜索并回到进入前页面（示例首页）；输入与结果不保留，也不写入最近搜索">取消</button>
     </div>
   </div>
 
@@ -195,7 +239,7 @@
   <div class="content src-content">
     <div class="src-searchbar"
       data-hot="①" data-hot-name="搜索框" data-hot-pos="bottom-right"
-      data-hot-label="进页自动聚焦；停止输入 300ms 发一次请求，回车立即搜；空查询不发请求">
+      data-hot-label="进页自动聚焦；停止输入 300ms 只发一次搜索，回车立即搜；空查询不发请求、也不进入结果页">
       <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="9" r="5.5"/><path d="M13.4 13.4 17 17"/></svg>
       <input class="src-input" id="src-input" type="search" autofocus
         placeholder="搜索家庭里的任何事" enterkeyhint="search" aria-label="搜索">
@@ -214,112 +258,152 @@
       <div class="src-hists"
         data-hot="③" data-hot-name="历史词" data-hot-pos="bottom-right"
         data-hot-label="本机最近 8 条，按最近使用排序；点击填入并直接搜索，不占用搜索框焦点">
-        <a class="src-hist" href="search.html?state=typing">物业费</a>
-        <a class="src-hist" href="search.html?state=typing">房贷</a>
-        <a class="src-hist" href="search.html?state=typing">超市</a>
-        <a class="src-hist" href="search.html?state=typing">女儿 学费</a>
+        <a class="src-hist" href="search.html?q=物业费">物业费</a>
+        <a class="src-hist" href="search.html?q=房贷">房贷</a>
+        <a class="src-hist" href="search.html?q=超市">超市</a>
+        <a class="src-hist" href="search.html?q=女儿%20学费">女儿 学费</a>
       </div>
 
       <div class="src-scope">
         <div class="src-scope-title">可搜范围</div>
         <div class="src-scope-row"><span class="src-scope-dot"></span><span>财务流水与账户、家庭动态、待办与提醒、家庭留言</span></div>
-        <div class="src-scope-row"><span class="src-scope-dot"></span><span>结果按面分组；未启用的面不出现在分组里</span></div>
-        <div class="src-scope-note">搜索走 HomeOS 一个关键词索引；图片与附件正文不参与搜索。</div>
+        <div class="src-scope-row"><span class="src-scope-dot"></span><span>结果按面分组；只显示这个家庭已经开通的面</span></div>
+        <div class="src-scope-note">搜索只覆盖文字内容，图片和附件里的字不在结果里；最近搜索只保存在这台设备上。</div>
       </div>
     </div>
 
     <div class="src-results">
       <div class="src-cache-note">
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
-        离线缓存 · 最多显示本机最近 30 条
+        只显示本机缓存结果 · 最多 30 条 · 截至 08:10
       </div>
-      <div class="src-summary">“物业” · 共 5 条结果</div>
+      <div class="src-summary">找到 6 条与「物业」有关的记录</div>
 
-      <div class="src-group"
-        data-hot="④" data-hot-name="结果分组头" data-hot-pos="top-right"
-        data-hot-label="组标题 = 面名 + 命中数；只返回有命中的面，未出生与未启用的面不出组、不返回空组">
-        <span class="src-group-icon src-group-fin">
-          <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/></svg>
-        </span>
-        <span class="src-group-name">财务</span>
-        <span class="src-group-count">3 条</span>
-      </div>
-      <div class="src-list">
-        <a class="src-item" href="finance-flow.html"
-          data-hot="⑤" data-hot-name="结果条目" data-hot-pos="top-right"
-          data-hot-label="点击直达源对象（深链），不在搜索页展开详情；财务条目进财务面，日历条目进待办详情 / 日程详情，底座条目进留言板">
-          <span class="src-item-icon src-item-icon-fin">
-            <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/></svg>
+      <div class="src-all-groups">
+        <div class="src-group"
+          data-hot="④" data-hot-name="结果分组头" data-hot-pos="top-right"
+          data-hot-label="组标题 = 面名 + 命中数；只出现有命中且已开通的面，没开通的面不出组、不出占位行，零命中的面也不出空组">
+          <span class="src-group-icon src-group-os">
+            <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 5h12M4 10h8M4 15h10"/></svg>
           </span>
-          <span class="src-item-body">
-            <span class="src-item-title">10 月物业费</span>
-            <span class="src-item-meta"><span>支出</span><span>·</span><span>10 月 25 日</span><span>·</span><span>招商银行</span></span>
+          <span class="src-group-name">HomeOS</span>
+          <span class="src-group-count">2 条</span>
+          <a class="src-more" href="search.html?q=物业&group=homeos"
+            data-hot="⑤" data-hot-name="查看更多" data-hot-pos="top-right"
+            data-hot-label="进入该组全量结果；续读该组游标，每页 20 条，不给页码">查看更多</a>
+        </div>
+        <div class="src-list">
+          <a class="src-item" href="board.html"
+            data-deeplink="homecube://homeos/board_message/msg_31"
+            aria-label="打开这条家庭留言"
+            data-hot="⑥" data-hot-name="结果条目" data-hot-pos="top-right"
+            data-hot-label="点击按深链直达源对象，不在搜索页展开详情；行内给标题、所属面、时间、来源对象；来源已删除时标「已不存在」且不给链接">
+            <span class="src-item-icon src-item-icon-os">
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 5h12M4 10h9M4 15h11"/></svg>
+            </span>
+            <span class="src-item-body">
+              <span class="src-item-title">物业费我先垫了</span>
+              <span class="src-item-meta"><span class="src-item-face">HomeOS</span><span>·</span><span>昨天 18:40</span><span>·</span><span>家庭留言</span></span>
+            </span>
+            <span class="src-chev">›</span>
+          </a>
+          <div class="src-item is-gone" role="status" aria-label="这条家庭留言已不存在">
+            <span class="src-item-icon src-item-icon-os">
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 5h12M4 10h9M4 15h11"/></svg>
+            </span>
+            <span class="src-item-body">
+              <span class="src-item-title">物业费怎么分摊</span>
+              <span class="src-item-meta"><span class="src-item-face">HomeOS</span><span>·</span><span>10 月 20 日</span><span>·</span><span>家庭留言</span></span>
+            </span>
+            <span class="src-gone-badge">已不存在</span>
+          </div>
+        </div>
+
+        <div class="src-group">
+          <span class="src-group-icon src-group-fin">
+            <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/></svg>
           </span>
-          <span class="amount src-item-amount">-¥380.00</span>
-          <span class="src-chev">›</span>
-        </a>
-        <a class="src-item" href="finance-flow.html">
-          <span class="src-item-icon src-item-icon-fin">
-            <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/></svg>
+          <span class="src-group-name">财务</span>
+          <span class="src-group-count">3 条</span>
+          <a class="src-more" href="search.html?q=物业&group=finance">查看更多</a>
+        </div>
+        <div class="src-list">
+          <a class="src-item" href="finance-flow.html"
+            data-deeplink="homecube://finance/transaction/tx_1024"
+            aria-label="打开这条流水">
+            <span class="src-item-icon src-item-icon-fin">
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/></svg>
+            </span>
+            <span class="src-item-body">
+              <span class="src-item-title">10 月物业费</span>
+              <span class="src-item-meta"><span class="src-item-face">财务</span><span>·</span><span>10 月 25 日</span><span>·</span><span>流水</span></span>
+            </span>
+            <span class="amount src-item-amount">-¥380.00</span>
+            <span class="src-chev">›</span>
+          </a>
+          <a class="src-item" href="finance-flow.html"
+            data-deeplink="homecube://finance/transaction/tx_1023"
+            aria-label="打开这条流水">
+            <span class="src-item-icon src-item-icon-fin">
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/></svg>
+            </span>
+            <span class="src-item-body">
+              <span class="src-item-title">9 月物业费</span>
+              <span class="src-item-meta"><span class="src-item-face">财务</span><span>·</span><span>9 月 25 日</span><span>·</span><span>流水</span></span>
+            </span>
+            <span class="amount src-item-amount">-¥380.00</span>
+            <span class="src-chev">›</span>
+          </a>
+          <a class="src-item" href="finance-flow.html"
+            data-deeplink="homecube://finance/transaction/tx_1008"
+            aria-label="打开这条流水">
+            <span class="src-item-icon src-item-icon-fin">
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/></svg>
+            </span>
+            <span class="src-item-body">
+              <span class="src-item-title">物业维修基金</span>
+              <span class="src-item-meta"><span class="src-item-face">财务</span><span>·</span><span>8 月 12 日</span><span>·</span><span>流水</span></span>
+            </span>
+            <span class="amount src-item-amount">-¥1,200.00</span>
+            <span class="src-chev">›</span>
+          </a>
+        </div>
+
+        <div class="src-group">
+          <span class="src-group-icon src-group-cal">
+            <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4.5" width="14" height="12" rx="2"/><path d="M3 8.5h14M6.5 3v3M13.5 3v3"/></svg>
           </span>
-          <span class="src-item-body">
-            <span class="src-item-title">9 月物业费</span>
-            <span class="src-item-meta"><span>支出</span><span>·</span><span>9 月 25 日</span><span>·</span><span>招商银行</span></span>
-          </span>
-          <span class="amount src-item-amount">-¥380.00</span>
-          <span class="src-chev">›</span>
-        </a>
-        <a class="src-item" href="finance-flow.html">
-          <span class="src-item-icon src-item-icon-fin">
-            <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/></svg>
-          </span>
-          <span class="src-item-body">
-            <span class="src-item-title">物业维修基金</span>
-            <span class="src-item-meta"><span>支出</span><span>·</span><span>8 月 12 日</span><span>·</span><span>现金</span></span>
-          </span>
-          <span class="amount src-item-amount">-¥1,200.00</span>
-          <span class="src-chev">›</span>
-        </a>
+          <span class="src-group-name">日历</span>
+          <span class="src-group-count">1 条</span>
+          <a class="src-more" href="search.html?q=物业&group=calendar">查看更多</a>
+        </div>
+        <div class="src-list">
+          <a class="src-item" href="todo-detail.html"
+            data-deeplink="homecube://calendar/todo/todo_88"
+            aria-label="打开这条待办">
+            <span class="src-item-icon src-item-icon-cal">
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14l8-8"/><path d="M3 17h14"/></svg>
+            </span>
+            <span class="src-item-body">
+              <span class="src-item-title">交物业费</span>
+              <span class="src-item-meta"><span class="src-item-face">日历</span><span>·</span><span>今天 20:00 到期</span><span>·</span><span>待办</span></span>
+            </span>
+            <span class="src-chev">›</span>
+          </a>
+        </div>
       </div>
 
-      <div class="src-group">
-        <span class="src-group-icon src-group-cal">
-          <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4.5" width="14" height="12" rx="2"/><path d="M3 8.5h14M6.5 3v3M13.5 3v3"/></svg>
-        </span>
-        <span class="src-group-name">日历</span>
-        <span class="src-group-count">1 条</span>
-      </div>
-      <div class="src-list">
-        <a class="src-item" href="todo-detail.html">
-          <span class="src-item-icon src-item-icon-cal">
-            <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14l8-8"/><path d="M3 17h14"/></svg>
-          </span>
-          <span class="src-item-body">
-            <span class="src-item-title">交物业费</span>
-            <span class="src-item-meta"><span>待办</span><span>·</span><span>今天 20:00 到期</span><span>·</span><span>我</span></span>
-          </span>
-          <span class="src-chev">›</span>
-        </a>
-      </div>
-
-      <div class="src-group">
-        <span class="src-group-icon src-group-os">
-          <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 5h12M4 10h8M4 15h10"/></svg>
-        </span>
-        <span class="src-group-name">HomeOS</span>
-        <span class="src-group-count">1 条</span>
-      </div>
-      <div class="src-list">
-        <a class="src-item" href="board.html">
-          <span class="src-item-icon src-item-icon-os">
-            <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 5h12M4 10h9M4 15h11"/></svg>
-          </span>
-          <span class="src-item-body">
-            <span class="src-item-title">物业费我先垫了</span>
-            <span class="src-item-meta"><span>家庭留言</span><span>·</span><span>昨天 18:40</span><span>·</span><span>妈妈</span></span>
-          </span>
-          <span class="src-chev">›</span>
-        </a>
+      <div class="src-group-view">
+        <a class="src-gv-back" href="search.html?q=物业">‹ 全部结果</a>
+        <div class="src-gv-head">
+          <div class="src-gv-title" id="src-gv-title">财务 · 物业</div>
+          <div class="src-gv-sub" id="src-gv-sub">共 37 条 · 每页 20 条</div>
+        </div>
+        <div class="src-list" id="src-group-list" style="margin-top:12px"></div>
+        <div class="src-gv-foot" id="src-gv-foot">
+          <span id="src-group-shown">已显示 20 条 · 还有 17 条</span>
+          <button class="btn btn-secondary btn-sm" type="button" data-toast="已加载下一批">加载更多</button>
+        </div>
       </div>
     </div>
 
@@ -328,14 +412,14 @@
         <div class="state-icon">
           <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="14" cy="14" r="8"/><path d="M20 20 27 27"/></svg>
         </div>
-        <div class="state-title">没找到相关的家庭记录</div>
-        <div class="state-desc">试试更短的关键词，或换个说法。只搜索你有权查看的内容。</div>
+        <div class="state-title">没有找到与『游艇保养』相关的内容</div>
+        <div class="state-desc">换个更短或更常见的词试试，比如「物业」「房贷」「学费」。只搜索你有权查看的内容。</div>
       </div>
       <div class="src-empty-suggest">
         <span class="src-suggest-label">可以试试</span>
-        <a class="src-hist" href="search.html?state=typing">物业费</a>
-        <a class="src-hist" href="search.html?state=typing">房贷</a>
-        <a class="src-hist" href="search.html?state=typing">女儿 学费</a>
+        <a class="src-hist" href="search.html?q=物业">物业</a>
+        <a class="src-hist" href="search.html?q=房贷">房贷</a>
+        <a class="src-hist" href="search.html?q=学费">学费</a>
       </div>
     </div>
 
@@ -350,6 +434,19 @@
       <div class="skeleton sk-block" style="height:64px"></div>
     </div>
 
+    <div class="src-failed">
+      <div class="state">
+        <div class="state-icon">
+          <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="16" cy="16" r="11"/><path d="M16 10v7"/><circle cx="16" cy="22" r="1.2" fill="currentColor" stroke="none"/></svg>
+        </div>
+        <div class="state-title">搜索没有完成</div>
+        <div class="state-desc">刚才的搜索没有连上，请检查网络后再试一次。关键词已经保留。</div>
+        <a class="btn btn-primary btn-sm src-retry" href="search.html?q=物业"
+          data-hot="⑧" data-hot-name="失败重试" data-hot-pos="top-right"
+          data-hot-label="整页失败态下只重发本次搜索；成功回结果，失败停留并保留关键词，不拿旧结果冒充成功">重试</a>
+      </div>
+    </div>
+
     <div class="src-privacy-note">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5.2a2.5 2.5 0 0 1 5 0V7"/></svg>
       私密内容不会出现在搜索结果里
@@ -360,16 +457,121 @@
 </div>
 
 <script>
-  var state = new URLSearchParams(location.search).get('state') || 'default';
-  var input = document.getElementById('src-input');
-  var preset = { typing: '物业', offline: '物业', empty: '游艇保养', loading: '物业' };
-  if (preset[state]) input.value = preset[state];
+  var params = new URLSearchParams(location.search);
+  var state = params.get('state') || 'default';
+  var q = params.get('q') || '';
+  var group = params.get('group') || '';
+  var preset = { loading: '物业', failed: '物业', empty: '游艇保养', offline: '物业' };
+  if (!q && preset[state]) q = preset[state];
 
+  var input = document.getElementById('src-input');
+  var searchbar = document.querySelector('.src-searchbar');
+  if (q) input.value = q;
+
+  function syncClear() {
+    searchbar.classList.toggle('has-value', !!input.value.trim());
+  }
+  syncClear();
+
+  var view = 'recent';
+  if (state === 'failed') view = 'failed';
+  else if (state === 'loading' || state === 'empty') view = 'results';
+  else if (q) view = group ? 'group' : 'results';
+  document.body.setAttribute('data-view', view);
+
+  input.addEventListener('input', syncClear);
   input.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' && input.value.trim()) {
-      location.href = 'search.html?state=typing';
-    }
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    var v = input.value.trim();
+    if (!v) return;
+    location.href = 'search.html?q=' + encodeURIComponent(v);
   });
+
+  var GROUPS = {
+    homeos: {
+      name: 'HomeOS', total: 9,
+      rows: [
+        ['物业费我先垫了', '昨天 18:40', '家庭留言', ''],
+        ['物业费怎么分摊', '10 月 20 日', '家庭留言', '已不存在'],
+        ['楼道清洁轮值', '10 月 18 日', '家庭动态', ''],
+        ['周末大扫除', '10 月 12 日', '家庭留言', ''],
+        ['物业通知转发', '10 月 9 日', '家庭留言', ''],
+        ['门禁卡补办', '10 月 6 日', '家庭留言', ''],
+        ['快递代收', '10 月 3 日', '家庭留言', ''],
+        ['电梯检修通知', '9 月 28 日', '家庭动态', ''],
+        ['车位续费讨论', '9 月 21 日', '家庭留言', '']
+      ]
+    },
+    finance: {
+      name: '财务', total: 37,
+      rows: [
+        ['10 月物业费', '10 月 25 日', '流水', '-¥380.00'],
+        ['9 月物业费', '9 月 25 日', '流水', '-¥380.00'],
+        ['物业维修基金', '8 月 12 日', '流水', '-¥1,200.00'],
+        ['8 月物业费', '8 月 25 日', '流水', '-¥380.00'],
+        ['7 月物业费', '7 月 25 日', '流水', '-¥380.00'],
+        ['6 月物业费', '6 月 25 日', '流水', '-¥380.00'],
+        ['5 月物业费', '5 月 25 日', '流水', '-¥380.00'],
+        ['4 月物业费', '4 月 25 日', '流水', '-¥380.00'],
+        ['3 月物业费', '3 月 25 日', '流水', '-¥380.00'],
+        ['2 月物业费', '2 月 25 日', '流水', '-¥380.00'],
+        ['1 月物业费', '1 月 25 日', '流水', '-¥380.00'],
+        ['12 月物业费', '12 月 25 日', '流水', '-¥380.00'],
+        ['11 月物业费', '11 月 25 日', '流水', '-¥380.00'],
+        ['10 月物业费', '10 月 25 日', '流水', '-¥380.00'],
+        ['公共电费分摊', '10 月 20 日', '流水', '-¥86.00'],
+        ['电梯维护分摊', '10 月 15 日', '流水', '-¥120.00'],
+        ['保洁费', '10 月 8 日', '流水', '-¥200.00'],
+        ['绿化养护', '9 月 30 日', '流水', '-¥150.00'],
+        ['门禁维修', '9 月 18 日', '流水', '-¥260.00'],
+        ['垃圾清运', '9 月 10 日', '流水', '-¥90.00']
+      ]
+    },
+    calendar: {
+      name: '日历', total: 4,
+      rows: [
+        ['交物业费', '今天 20:00 到期', '待办', ''],
+        ['物业费缴纳提醒', '明天 09:00', '提醒', ''],
+        ['物业上门检修', '10 月 30 日 14:00', '日程', ''],
+        ['物业费预算复盘', '11 月 1 日 19:00', '日程', '']
+      ]
+    }
+  };
+
+  if (view === 'group' && GROUPS[group]) {
+    var data = GROUPS[group];
+    var shown = Math.min(20, data.rows.length);
+    document.getElementById('src-gv-title').textContent = data.name + ' · 物业';
+    document.getElementById('src-gv-sub').textContent = '共 ' + data.total + ' 条 · 每页 20 条';
+    document.getElementById('src-group-shown').textContent =
+      shown >= data.total ? '已显示全部 ' + data.total + ' 条' : '已显示 ' + shown + ' 条 · 还有 ' + (data.total - shown) + ' 条';
+    var foot = document.getElementById('src-gv-foot');
+    if (shown >= data.total) foot.setAttribute('hidden', '');
+    else foot.removeAttribute('hidden');
+
+    document.getElementById('src-group-list').innerHTML = data.rows.map(function (r, i) {
+      var gone = r[3] === '已不存在';
+      var tail = gone
+        ? '<span class="src-gone-badge">已不存在</span>'
+        : (r[3] ? '<span class="amount src-item-amount">' + r[3] + '</span><span class="src-chev">›</span>' : '<span class="src-chev">›</span>');
+      var href = group === 'finance' ? 'finance-flow.html'
+        : group === 'homeos' ? 'board.html'
+        : (r[2] === '提醒' ? 'reminder.html' : (r[2] === '日程' ? 'calendar-detail.html' : 'todo-detail.html'));
+      var entity = group === 'finance' ? 'transaction' : (group === 'homeos' ? 'board_message' : (r[2] === '提醒' ? 'reminder' : (r[2] === '日程' ? 'event' : 'todo')));
+      var deeplink = 'homecube://' + group + '/' + entity + '/demo_' + (i + 1);
+      var icon = '<span class="src-item-icon src-item-icon-' + (group === 'finance' ? 'fin' : (group === 'calendar' ? 'cal' : 'os')) + '">' +
+        '<svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="5" width="14" height="10" rx="2"/><path d="M3 8.5h14"/></svg></span>';
+      var body = '<span class="src-item-body">' +
+          '<span class="src-item-title">' + r[0] + '</span>' +
+          '<span class="src-item-meta"><span class="src-item-face">' + data.name + '</span><span>·</span><span>' + r[1] + '</span><span>·</span><span>' + r[2] + '</span></span>' +
+        '</span>';
+      if (gone) {
+        return '<div class="src-item is-gone" role="status" aria-label="这条内容已不存在">' + icon + body + tail + '</div>';
+      }
+      return '<a class="src-item" href="' + href + '" data-deeplink="' + deeplink + '" aria-label="打开这条' + r[2] + '">' + icon + body + tail + '</a>';
+    }).join('');
+  }
 </script>
 </body>
 </html>

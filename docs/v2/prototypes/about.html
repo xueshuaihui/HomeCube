@@ -107,28 +107,36 @@
 
       <div class="section-title">帮助中心</div>
       <div class="list">
-        <button class="list-item" type="button" data-unbuilt="P1 末（帮助中心）"
-          data-hot="①" data-hot-name="常见问题" data-hot-pos="top-right" data-hot-label="帮助中心分组入口，P1 末随合规文本一起上线；当前点击只提示交付批次">
+        <button class="list-item" type="button" data-go="board.html"
+          data-hot="①" data-hot-name="联系家庭管理员" data-hot-pos="top-right" data-hot-label="P1 唯一可达求助路径：跳家庭留言板并自动带入对管理员的提及，发送即留言 + 管理员收站内通知；离线时按留言板待同步队列兜底">
+          <span class="li-icon">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M3.5 17c.8-3.2 3.3-5 6.5-5s5.7 1.8 6.5 5"/></svg>
+          </span>
+          <span class="li-text">联系家庭管理员<span class="li-sub">遇到问题？去留言板说一声</span></span>
+          <span class="chevron">›</span>
+        </button>
+        <button class="list-item" type="button" data-toast="常见问题将在 P1 末上线；现在可以先联系家庭管理员"
+          data-hot="②" data-hot-name="常见问题" data-hot-pos="top-right" data-hot-label="说明行，非死行：点击给提示并指路联系管理员；帮助中心 P1 末随合规文本上线">
           <span class="li-icon">
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M7.8 7.6a2.3 2.3 0 0 1 4.4.9c0 1.6-2.2 1.8-2.2 3.2M10 14.3v.1"/></svg>
           </span>
-          <span class="li-text">常见问题<span class="li-sub">账号、家庭、同步与权限</span></span>
+          <span class="li-text">常见问题<span class="li-sub">账号、家庭、同步与权限 · P1 末上线</span></span>
           <span class="chevron">›</span>
         </button>
-        <button class="list-item" type="button" data-unbuilt="P1 末（帮助中心）"
-          data-hot="②" data-hot-name="使用指南" data-hot-pos="top-right" data-hot-label="按面组织的使用说明；未出生面不出章节">
+        <button class="list-item" type="button" data-toast="使用指南将在 P1 末上线；现在可以先联系家庭管理员"
+          data-hot="③" data-hot-name="使用指南" data-hot-pos="top-right" data-hot-label="说明行，非死行：点击给提示并指路联系管理员">
           <span class="li-icon">
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h5.5A2.5 2.5 0 0 1 12 7v9a2 2 0 0 0-2-2H4z"/><path d="M16 4.5h-4A2.5 2.5 0 0 0 9.5 7v9a2 2 0 0 1 2-2H16z"/></svg>
           </span>
-          <span class="li-text">使用指南<span class="li-sub">记账、提醒与数据导出</span></span>
+          <span class="li-text">使用指南<span class="li-sub">记账、提醒与数据导出 · P1 末上线</span></span>
           <span class="chevron">›</span>
         </button>
-        <button class="list-item" type="button" data-unbuilt="P1 末（反馈与客服）"
-          data-hot="③" data-hot-name="反馈与客服" data-hot-pos="top-right" data-hot-label="反馈工单与客服入口；提交时自动带版本号与设备信息，不带家庭数据">
+        <button class="list-item" type="button" data-toast="反馈与客服入口将在 P1 末上线；现在可以先联系家庭管理员"
+          data-hot="④" data-hot-name="反馈与客服" data-hot-pos="top-right" data-hot-label="说明行，非死行：点击给提示并指路联系管理员；上线后提交自动带版本号与设备信息，不带家庭数据">
           <span class="li-icon">
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M17 9.6c0 3.2-3.1 5.8-7 5.8-.8 0-1.6-.1-2.3-.3L4 17l1-2.6c-1.2-1-1.9-2.4-1.9-4.1 0-3.2 3.1-5.8 7-5.8s6.9 2.3 6.9 5.1z"/></svg>
           </span>
-          <span class="li-text">反馈与客服<span class="li-sub">工作日 9:00–18:00 响应</span></span>
+          <span class="li-text">反馈与客服<span class="li-sub">工作日 9:00–18:00 响应 · P1 末上线</span></span>
           <span class="chevron">›</span>
         </button>
       </div>
@@ -136,7 +144,7 @@
       <div class="section-title">条款与政策</div>
       <div class="list">
         <button class="list-item about-policy-row" type="button" data-sheet-open="sheet-policy"
-          data-hot="④" data-hot-name="隐私政策" data-hot-pos="top-right" data-hot-label="P1 显示「文本待定版」；点击只弹说明，不跳外链、不展示未定稿条款">
+          data-hot="⑤" data-hot-name="隐私政策" data-hot-pos="top-right" data-hot-label="P1 显示「文本待定版」；点击只弹说明，不跳外链、不展示未定稿条款">
           <span class="li-icon">
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3.5h7l3 3v10H5z"/><path d="M8 9h4M8 12h4"/></svg>
           </span>
@@ -145,7 +153,7 @@
           <span class="chevron">›</span>
         </button>
         <button class="list-item about-policy-row" type="button" data-sheet-open="sheet-policy"
-          data-hot="⑤" data-hot-name="用户协议" data-hot-pos="top-right" data-hot-label="同样显示「文本待定版」；定版前不提供全文与外部链接">
+          data-hot="⑥" data-hot-name="用户协议" data-hot-pos="top-right" data-hot-label="同样显示「文本待定版」；定版前不提供全文与外部链接">
           <span class="li-icon">
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3.5h7l3 3v10H5z"/><path d="M7.5 10.5l1.6 1.6 3-3.2"/></svg>
           </span>
@@ -165,14 +173,14 @@
           <span class="about-row-ver">1.0.0</span>
         </div>
         <button class="list-item about-check" type="button" id="check-update"
-          data-hot="⑥" data-hot-name="检查更新" data-hot-pos="top-right" data-hot-label="登录后静默检查；手动点击进入检查中，完成后提示已是最新；仅 min_compat 不满足时强制更新">
+          data-hot="⑦" data-hot-name="检查更新" data-hot-pos="top-right" data-hot-label="登录后静默检查；手动点击进入检查中，完成后提示已是最新；仅 min_compat 不满足时强制更新">
           <span class="li-icon">
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v9M6.5 8.5 10 12l3.5-3.5"/><path d="M4 14.5v1a1.5 1.5 0 0 0 1.5 1.5h9a1.5 1.5 0 0 0 1.5-1.5v-1"/></svg>
           </span>
           <span class="li-text">检查更新<span class="li-sub">
-            <span class="about-sub-default">登录后静默检查，有新版本可跳过</span>
-            <span class="about-sub-checking">正在检查 wgt 版本…</span>
-            <span class="about-sub-latest">已是最新版本 · 刚刚检查</span>
+            <span class="about-sub-default">登录后自动检查，有新版本可跳过</span>
+            <span class="about-sub-checking">正在检查新版本…</span>
+            <span class="about-sub-latest">已是最新 · 刚刚检查</span>
           </span></span>
           <span class="about-trail">
             <span class="chevron">›</span>
@@ -193,11 +201,11 @@
     <div class="sheet">
       <div class="sheet-grabber"></div>
       <h3>隐私政策 · 文本待定版</h3>
-      <p class="sheet-sub">隐私政策与用户协议属 P1 末附加门禁，文本需经人类与法务确认并入库留痕。当前入口只说明状态，不跳转外链，也不展示未定稿条款。</p>
+      <p class="sheet-sub">隐私政策与用户协议的正式文本还在定稿中。定稿前这里只说明当前状态，不跳转外部链接，也不展示未定稿的内容。</p>
       <div class="about-sheet-list">
-        <div class="about-sheet-item"><span class="n">1</span><span>当前状态：文本待定版，P1 末随合规门禁定版。</span></div>
-        <div class="about-sheet-item"><span class="n">2</span><span>定版后：在本页打开全文，首次登录展示确认并留痕。</span></div>
-        <div class="about-sheet-item"><span class="n">3</span><span>一致性：正文需与 L2/L3 字段清单、埋点字典、数据保留期底稿逐项核对，不新增未登记字段。</span></div>
+        <div class="about-sheet-item"><span class="n">1</span><span>当前状态：文本待定版，将在 P1 末随合规要求定稿。</span></div>
+        <div class="about-sheet-item"><span class="n">2</span><span>定版后：在本页打开全文，首次登录会请你确认。</span></div>
+        <div class="about-sheet-item"><span class="n">3</span><span>一致性：正文会与「收集哪些信息、保留多久」逐项对齐，不会新增未写明的项目。</span></div>
       </div>
       <div class="sheet-actions">
         <button class="btn btn-secondary btn-block" type="button" id="policy-ok" data-sheet-close>我知道了</button>

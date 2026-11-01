@@ -33,8 +33,8 @@
 
 | 编号 | 差异类型 | 阻塞 case | 代码现状（证据） | 契约要求 | 派卡 | 状态 |
 |---|---|---|---|---|---|---|
-| DEV-01 | **路径单复数** | HOM-SESS-004（P0） | `cmd/svc-homeos/main.go:228` 注册 `POST /family/switch` | PRD 3.7:419 `POST /api/homeos/families/switch` | C-H-01 | 开 |
-| DEV-02 | **路由未注册** | FIN-TX-011、FIN-TX-012（P1） | 四个 tag handler 在 `handler/finance.go:1770/1797/1979/2027`；`cmd/svc-finance/main.go` 全文 `tag` 零命中 | PRD 4.7:646 `Tag` 实体 + 4.4/4.5.1「按标签筛选」（**4.8 接口表未登记任何 tag 接口**，见 §4.2） | C-F-01 | 开 |
+| DEV-01 | **路径单复数** | HOM-SESS-004（P0） | `cmd/svc-homeos/main.go:228` 注册 `POST /family/switch`**（证据待重基线：代码仓未纳入本工作区，2026-11-01；派卡前须在原仓复核行号）** | PRD 3.7:419 `POST /api/homeos/families/switch` | C-H-01 | 开 |
+| DEV-02 | **路由未注册** | FIN-TX-011、FIN-TX-012（P1） | 四个 tag handler 在 `handler/finance.go:1770/1797/1979/2027`；`cmd/svc-finance/main.go` 全文 `tag` 零命中**（证据待重基线：代码仓未纳入本工作区，2026-11-01；派卡前须在原仓复核行号）** | PRD 4.7:678 `Tag` 实体 + 4.4/4.5.1「按标签筛选」+ **4.8 已登记四条 tag 接口（`docs/prd-homecube.md:711-712`）**，见 §4.2（原写「**4.8 接口表未登记任何 tag 接口**」，随该轮登记闭合） | C-F-01 | 开 |
 
 ---
 
@@ -71,11 +71,11 @@
 | handler（已在盘） | `internal/handler/finance.go:1770` `CreateTag`（声明 `POST /api/finance/tags`）、`:1797` `ListTags`（`GET /api/finance/tags?family_id=`）、`:1979` `UpdateTag`（`PUT /api/finance/tags/:id`）、`:2027` `DeleteTag`（`DELETE /api/finance/tags/:id`） |
 | 仓储层 | `internal/repo/finance_tag_test.go`（测试在盘，覆盖建/列/改/删） |
 | 路由 | `cmd/svc-finance/main.go` 全文大小写不敏感检索 `tag` → **零命中**。故四条路由均未注册，HTTP 不可达 |
-| PRD 要求 | 4.7:646 `Tag` 实体（`finance_tag`，`Transaction.tags` 经 id 引用）；4.4/4.5.1「标签」与「按标签筛选」；19.3 闭环域含「标签可按筛选命中」 |
-| **需求缺口（新发现）** | **PRD 4.8 接口表（648-667）没有登记任何 tag 接口**，`contracts/openapi/finance.yaml` 也只有 schema 里的 `tags` 字段、无 `/finance/tags` 路径。→ 已登记 `SPEC-GAP-08`（建议路径即 handler 注释所写的四条，待确认后写进 4.8） |
+| PRD 要求 | 4.7:678 `Tag` 实体（`finance_tag`，`Transaction.tags` 经 id 引用）；4.4/4.5.1「标签」与「按标签筛选」；19.3 闭环域含「标签可按筛选命中」 |
+| **需求缺口（已闭合）** | **PRD 4.8 接口表已登记四条 tag 接口**：`:711`（`GET /api/finance/tags` / `POST /api/finance/tags`）与 `:712`（`PUT /api/finance/tags/{id}` / `DELETE /api/finance/tags/{id}`，含「软删 + 流水 `tags` 引用置空 + 显示『未分类』」的判定口径）。原写「**PRD 4.8 接口表（648-667）没有登记任何 tag 接口**」——该需求缺口已随登记**闭合**（`SPEC-GAP-08`，见 `BACKLOG.md` §一 末行）。仍缺的是 **`server/contracts/openapi/finance.yaml` 无 `/finance/tags` 路径**，属实现侧契约登记，不再是需求缺口 → 见下方关闭动作第 1 步 |
 | 影响 | FIN-TX-011 只能停在「已实现(分层)」、FIN-TX-012 停在「待自动化」；19.3「标签可按筛选命中」当前**无 HTTP 面可判** |
 
-**关闭动作**：先在 4.8 与 openapi 补登记（SPEC-GAP-08 确认后），再在 `main.go` 挂 4 条路由（放在 `protected` 组，鉴权口径与 `categories` 一致），补 http 场景「建标签 → 记账挂标签 → 按标签筛选命中 2 条 → 删标签后流水标签置空」，改 FIN-TX-011/012 为 `已实现(HTTP)`。
+**关闭动作**（DEV-02 的差异是**路由未挂载**、不是需求缺口，故本行状态保持 `开`）：**第 1 步「先在 4.8 补登记」已完成**——PRD `4.8:711-712` 已登记四条，`SPEC-GAP-08` 随之闭合（见 `BACKLOG.md` §一 末行）。**剩余动作**：补 `contracts/openapi/finance.yaml` 的 `/finance/tags` 四条 path → 在 `main.go` 挂 4 条路由（放在 `protected` 组，鉴权口径与 `categories` 一致）→ 补 http 场景「建标签 → 记账挂标签 → 按标签筛选命中 2 条 → 删标签后流水标签置空」→ 改 FIN-TX-011/012 为 `已实现(HTTP)`。
 
 **验收口径**：`GET /api/finance/tags` 返回本家庭标签；按标签筛选的命中数与直接按 id 过滤的仓储结果**逐条一致**（不能用「数量非 0」代替）。
 

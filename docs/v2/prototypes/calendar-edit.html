@@ -1,0 +1,911 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>编辑日程 · 家立方原型</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<script src="shared/app.js" defer></script>
+<style>
+  .evt-content { padding-bottom: 24px; }
+
+  .evt-save {
+    height: 36px; padding: 0 2px;
+    border: 0; background: none;
+    font-family: inherit; font-size: var(--fs-15); font-weight: 700;
+    color: var(--brand-text); cursor: pointer;
+  }
+  .evt-save:hover { color: var(--brand-hover); }
+  body[data-state="loading"] .evt-save,
+  body[data-state="deleted"] .evt-save,
+  body[data-state="denied"] .evt-save,
+  body[data-state="readonly"] .evt-save { display: none; }
+
+  .evt-updated {
+    display: flex; align-items: center; gap: 6px;
+    margin: 2px 0 12px; font-size: var(--fs-12); color: var(--text-3);
+  }
+
+  .evt-banner {
+    display: none; align-items: flex-start; gap: 8px;
+    margin: 6px 0 12px; padding: 10px 12px;
+    border-radius: var(--radius-md);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .evt-banner svg { flex: none; margin-top: 1px; }
+  .evt-banner b { display: block; font-size: var(--fs-13); margin-bottom: 2px; }
+  .evt-banner-offline { background: var(--warning-soft); color: var(--warning); }
+  .evt-banner-fail { background: var(--danger-soft); color: var(--danger); }
+  body[data-state="offline"] .evt-banner-offline { display: flex; }
+  body[data-state="fail"] .evt-banner-fail { display: flex; }
+  body[data-state="offline"] .offline-bar { display: flex; }
+
+  .evt-readonly-card {
+    display: none; align-items: flex-start; gap: 10px;
+    margin: 6px 0 14px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--info-soft); color: var(--info);
+    font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .evt-readonly-card b { display: block; font-size: var(--fs-13); color: var(--text); margin-bottom: 2px; }
+  .evt-readonly-card .btn { margin-top: 8px; }
+  body[data-state="readonly"] .evt-readonly-card { display: block; }
+  body[data-state="readonly"] .evt-form-fields,
+  body[data-state="readonly"] .evt-foot-note { opacity: .55; pointer-events: none; }
+  body[data-state="readonly"] .evt-updated,
+  body[data-state="readonly"] .evt-del { display: none; }
+
+  .evt-form-fields { padding-top: 4px; }
+  body[data-state="conflict"] .evt-form-fields,
+  body[data-state="conflict"] .evt-del,
+  body[data-state="conflict"] .evt-foot-note { opacity: .55; pointer-events: none; }
+  body[data-state="loading"] .evt-form,
+  body[data-state="deleted"] .evt-form,
+  body[data-state="denied"] .evt-form,
+  body[data-state="loading"] .evt-updated,
+  body[data-state="deleted"] .evt-updated,
+  body[data-state="denied"] .evt-updated,
+  body[data-state="loading"] .evt-foot-note,
+  body[data-state="deleted"] .evt-foot-note,
+  body[data-state="denied"] .evt-foot-note { display: none; }
+
+  .evt-required { margin-left: 4px; font-size: var(--fs-11); font-weight: 600; color: var(--text-3); }
+  .evt-err { display: none; }
+  body[data-state="fail"] .evt-err { display: flex; }
+  body[data-state="fail"] .evt-title-input {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 3px var(--danger-soft);
+  }
+
+  .evt-pick {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    padding: 10px 14px; min-height: 56px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-family: inherit; text-align: left; color: var(--text);
+    cursor: pointer;
+  }
+  .evt-pick:hover { border-color: var(--border-strong); }
+  .evt-pick .chevron { flex: none; color: var(--text-3); }
+  .evt-pick-av { width: 32px; height: 32px; font-size: var(--fs-12); }
+  .evt-pick-icon {
+    width: 32px; height: 32px; flex: none;
+    border-radius: 10px;
+    background: var(--surface-2); color: var(--text-2);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .evt-pick-body { flex: 1; min-width: 0; }
+  .evt-pick-v { display: block; font-size: var(--fs-15); font-weight: 600; }
+  .evt-pick-sub { display: block; margin-top: 2px; font-size: var(--fs-12); color: var(--text-3); }
+
+  .evt-av-me { background: var(--brand); color: var(--on-brand); border-color: transparent; }
+  .evt-av-dad { background: var(--brand-soft); color: var(--brand-text); }
+  .evt-av-mom { background: var(--accent-soft); color: var(--accent); }
+  .evt-av-girl { background: var(--surface-2); color: var(--text-2); }
+
+  .evt-seg { margin-bottom: 4px; }
+
+  .evt-rule { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .evt-rule.is-on { display: block; }
+  .evt-rule-k { display: block; margin-top: 14px; font-size: var(--fs-12); font-weight: 600; color: var(--text-2); }
+  .evt-rule-k:first-child { margin-top: 0; }
+  .evt-rule-note { display: block; margin-top: 6px; font-size: var(--fs-12); color: var(--text-3); line-height: var(--lh-normal); }
+  .evt-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .evt-chip {
+    height: 32px; padding: 0 12px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--text-2); font-family: inherit; font-size: var(--fs-12);
+    cursor: pointer;
+  }
+  .evt-chip[aria-pressed="true"] { background: var(--brand-soft); border-color: transparent; color: var(--brand-text); font-weight: 600; }
+  .evt-num {
+    width: 72px; padding: 8px 10px;
+    border-radius: 8px; border: 1px solid var(--border-strong);
+    background: var(--surface); color: var(--text);
+    font-family: var(--font-num); font-size: var(--fs-14);
+  }
+  .evt-interval { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: var(--fs-13); color: var(--text-2); }
+  .evt-interval .evt-chips { margin-top: 0; }
+  .evt-end-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: var(--fs-13); color: var(--text-2); }
+  .evt-hidden { display: none; }
+
+  .evt-diff {
+    margin-top: 14px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    display: grid; gap: 8px;
+    font-size: var(--fs-12); color: var(--text-2);
+  }
+  .evt-diff-row { display: flex; align-items: baseline; gap: 8px; }
+  .evt-diff-k { width: 56px; flex: none; color: var(--text-3); }
+  .evt-diff-v { flex: 1; min-width: 0; }
+  .evt-diff-old { text-decoration: line-through; color: var(--text-3); }
+  .evt-diff-arrow { margin: 0 6px; color: var(--text-3); }
+  .evt-diff-new { font-weight: 600; color: var(--text); }
+  .evt-warn {
+    display: flex; align-items: flex-start; gap: 6px;
+    margin-top: 12px; font-size: var(--fs-12); color: var(--warning); line-height: var(--lh-normal);
+  }
+  .evt-warn svg { flex: none; margin-top: 1px; }
+
+  .evt-del { margin-top: 16px; }
+
+  .evt-foot-note {
+    margin-top: 12px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    color: var(--text-2); font-size: var(--fs-12); line-height: var(--lh-normal);
+  }
+  .evt-foot-note b { color: var(--text); }
+
+  .evt-retry {
+    margin-top: 8px; height: 30px; padding: 0 14px;
+    border-radius: var(--radius-pill);
+    border: 1px solid currentColor; background: transparent;
+    font-family: inherit; font-size: var(--fs-12); font-weight: 600;
+    color: inherit; cursor: pointer;
+  }
+
+  .evt-statepage { padding-top: 40px; text-align: center; }
+  .evt-statepage .btn { margin-top: 10px; }
+</style>
+</head>
+<body data-screen="20 编辑日程 · 日历面" data-tab="" data-states="default,loading,conflict,readonly,fail,offline,deleted,denied">
+<div class="harness"></div>
+
+<div class="phone">
+  <div class="statusbar">
+    <span class="num">9:41</span>
+    <span class="sb-right">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" width="3" height="11" rx="1"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 4.2a10 10 0 0 1 14 0"/><path d="M3.6 6.8a6.4 6.4 0 0 1 8.8 0"/><circle cx="8" cy="9.4" r="1" fill="currentColor" stroke="none"/></svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none"><rect x=".5" y=".5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-left">
+      <button class="icon-btn" type="button" id="evt-back"
+        data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
+        data-hot-label="有未保存内容时先弹「放弃？」确认（与全局快加页同口径），无改动直接回进入前的页面；保存成功后 redirectTo calendar/calendar/detail" aria-label="返回">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+      </button>
+    </div>
+    <div class="nav-title">编辑日程</div>
+    <div class="nav-right">
+      <button class="evt-save" type="button" id="evt-save"
+        data-hot="⑨" data-hot-name="保存" data-hot-pos="outer-top-right"
+        data-hot-label="带 version 提交（3.4.4 写路径）；版本落后返回 409 + 双版本 payload，走冲突弹层、不静默覆盖；成功回详情页；每次 409 计入 sync_conflict 埋点；离线改动入 pending_ops 排队">
+        保存
+      </button>
+    </div>
+  </div>
+
+  <div class="offline-bar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
+    当前离线 · 改动保存后先排队
+  </div>
+
+  <div class="content evt-content">
+    <div class="evt-banner evt-banner-offline">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 10a7 7 0 0 1 11.5-5.4M17 10a7 7 0 0 1-11.5 5.4"/><path d="M4 3l12 14"/></svg>
+      <div>
+        <b>当前离线</b>
+        改动先存本机并入待同步队列，联网后自动提交；若期间这条日程已被他人改动，提交时会先请你确认，你改的内容不丢。
+      </div>
+    </div>
+
+    <div class="evt-banner evt-banner-fail">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.2v4.6M10 14.2v.1"/></svg>
+      <div>
+        <b>保存没有成功</b>
+        请检查网络后重试——你改的内容都还在。
+        <div><button class="evt-retry" type="button" id="evt-retry">重试</button></div>
+      </div>
+    </div>
+
+    <div class="evt-readonly-card">
+      <b>这条日程来自账单</b>
+      时间与标题由账单页维护，这里只能看摘要；需要改动请到账单页操作。
+      <div>
+        <a class="btn btn-primary btn-sm" href="finance-bill-detail.html"
+          data-hot="⑫" data-hot-name="前往源对象" data-hot-pos="outer-top-right"
+          data-hot-label="source_system ≠ calendar 时整页只读并给本引导（§4.4 / §6.7）；源不可用时禁用、摘要照给；绕过客户端直发 PUT 亦被拒；本页不得代他面写真值（17.2）">前往源对象</a>
+      </div>
+    </div>
+
+    <div class="state evt-statepage" data-state-block="loading" hidden>
+      <div style="text-align:left;width:100%">
+        <div class="skeleton sk-line" style="width:60%"></div>
+        <div class="skeleton sk-block" style="height:88px;margin-top:14px"></div>
+        <div class="skeleton sk-block" style="height:88px;margin-top:10px"></div>
+        <div class="skeleton sk-block" style="height:88px;width:80%;margin-top:10px"></div>
+      </div>
+      <div class="state-title" style="margin-top:14px">正在载入这条日程</div>
+      <div class="state-desc">详情拉到之前不进空表单，骨架贴合表单行高。</div>
+    </div>
+
+    <div class="state evt-statepage" data-state-block="deleted" hidden>
+      <div class="state-icon sm">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7h16M9 7V5h6v2M6 7l1.5 13h9L18 7"/></svg>
+      </div>
+      <div class="state-title">已删除</div>
+      <div class="state-desc">这条日程已被删除。创建人和管理员之后还能在回收站里找到它；其他成员已经看不到了。</div>
+      <div>
+        <button class="btn btn-secondary btn-sm" type="button" data-unbuilt="回收站（日历分包暂无该路由位）">去回收站</button>
+        <a class="btn btn-primary btn-sm" href="calendar.html">返回到期中心</a>
+      </div>
+    </div>
+
+    <div class="state evt-statepage" data-state-block="denied" hidden>
+      <div class="state-icon sm">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="5" y="10" width="14" height="10" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+      </div>
+      <div class="state-title">无权访问</div>
+      <div class="state-desc">这条日程不是你创建的，不能在这里修改。能看到的日程照常能在到期中心里查看。</div>
+      <a class="btn btn-secondary btn-sm" href="calendar.html">返回</a>
+    </div>
+
+    <div class="evt-form">
+      <div class="evt-updated">上次修改 · 创建人 · 今天 09:12</div>
+
+      <div class="evt-form-fields">
+        <div class="field">
+          <label class="field-label" for="evt-title">标题<span class="evt-required">必填</span></label>
+          <input class="input evt-title-input" id="evt-title" type="text" maxlength="60"
+            placeholder="例如：周末去公园野餐" value="周末去公园野餐" autocomplete="off"
+            data-hot="②" data-hot-name="标题" data-hot-pos="outer-top-right"
+            data-hot-label="必填、上限 60 字，校验与新建页同句；为空时红框 + 行内错误、不发请求">
+          <div class="field-error evt-err" role="alert">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v4M8 11.4v.1"/></svg>
+            请填写标题
+          </div>
+          <div class="help">标题会显示在到期中心与首页今日区里。</div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">起止形态</span>
+          <div class="evt-seg"
+            data-hot="③" data-hot-name="整日 / 带时刻" data-hot-pos="outer-top-right"
+            data-hot-label="与新建页同句：两类互斥（5.5.1），同填按 400 拒绝、页面不提交">
+            <div class="segmented" role="group" aria-label="起止形态">
+              <button type="button" aria-selected="false" data-allday="整日">整日</button>
+              <button type="button" aria-selected="true" data-allday="带时刻">带时刻</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">起止时间<span class="evt-required">开始必填</span></span>
+          <button class="evt-pick" type="button" data-sheet-open="sheet-time"
+            data-hot="④" data-hot-name="起止时间" data-hot-pos="outer-top-right"
+            data-hot-label="改期后到期项只出现在新日、旧日与今日区随之收敛（5.5.4，CAL-TIME-019）；过去/无该日号/节假日三句与新建页同口径；新时刻取服务端按家庭时区计算的回显，客户端不推算">
+            <span class="evt-pick-icon">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.2v4.2l2.6 1.6"/></svg>
+            </span>
+            <span class="evt-pick-body">
+              <span class="evt-pick-v num" id="time-value">10 月 31 日 周六 09:00 – 11:00</span>
+              <span class="evt-pick-sub">带时刻 · 改期保存后，旧的日子不再显示它</span>
+            </span>
+            <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+          </button>
+        </div>
+
+        <div class="field">
+          <span class="field-label">参与人<span class="evt-required">可选</span></span>
+          <button class="evt-pick" type="button" data-sheet-open="sheet-owner"
+            data-hot="⑤" data-hot-name="参与人" data-hot-pos="outer-top-right"
+            data-hot-label="增删参与人只在创建人与管理员（16.3）；新加入者即刻可见、被移除者下次拉取被服务端裁掉；参与人可回应可完成、不可改本体（5.5.7 ㉛ 同构句）">
+            <span class="avatar evt-pick-av evt-av-me">我</span>
+            <span class="evt-pick-body">
+              <span class="evt-pick-v" id="owner-names">我、爸爸、妈妈</span>
+              <span class="evt-pick-sub">只有创建人和管理员能改这份名单</span>
+            </span>
+            <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+          </button>
+        </div>
+
+        <div class="field">
+          <span class="field-label">重复</span>
+          <button class="evt-pick" type="button" data-sheet-open="sheet-repeat"
+            data-hot="⑥" data-hot-name="重复" data-hot-pos="outer-top-right"
+            data-hot-label="六档封闭枚举（不重复/每天/每周/每月/每年/自定义，5.5.3）；星期、日号、间隔与结束条件是档内取值，不与六档并列；改规则不回溯历史实例，旧排期不再触发、新排期以服务端回显为准（CAL-TIME-019 步骤 7）；每月日号在该月不存在的口径同新建页">
+            <span class="evt-pick-icon">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 8.5a4.5 4.5 0 0 1 8.4-2.2M15 11.5a4.5 4.5 0 0 1-8.4 2.2"/><path d="M13 4.5l.8 2.2-2.2.6M7 15.5l-.8-2.2 2.2-.6"/></svg>
+            </span>
+            <span class="evt-pick-body">
+              <span class="evt-pick-v" id="repeat-value">不重复</span>
+              <span class="evt-pick-sub" id="repeat-sub">改规则只影响以后的安排，过去的日子不变</span>
+            </span>
+            <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+          </button>
+        </div>
+
+        <div class="field">
+          <span class="field-label">可见范围</span>
+          <div class="evt-seg"
+            data-hot="⑦" data-hot-name="可见范围" data-hot-pos="outer-top-right"
+            data-hot-label="改后集合由服务端按新 visibility 裁剪（5.5.1/5.5.7、18.7 第 4 条）：放开后另一成员可见、收回后不可见；客户端不出现权限判断分支">
+            <div class="segmented" role="group" aria-label="可见范围">
+              <button type="button" aria-selected="true" data-vis="家庭共享">家庭共享</button>
+              <button type="button" aria-selected="false" data-vis="个人">个人</button>
+            </div>
+          </div>
+          <div class="help">改成「个人」后，其他家人在到期中心和今日区里都看不到它。</div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">提前提醒<span class="evt-required">可选</span></span>
+          <button class="evt-pick" type="button" data-sheet-open="sheet-lead"
+            data-hot="⑧" data-hot-name="提前提醒" data-hot-pos="outer-top-right"
+            data-hot-label="档位恰为 5.5.3 第一层四档封闭枚举（㉛），改档只写回挂在本日程上的那条提醒；17.4 注册触发点不混入本选择器">
+            <span class="evt-pick-icon">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 3.5a4.5 4.5 0 0 1 4.5 4.5c0 3 1.5 4.5 1.5 4.5H4s1.5-1.5 1.5-4.5A4.5 4.5 0 0 1 10 3.5Z"/><path d="M8.5 15.5a1.6 1.6 0 0 0 3 0"/></svg>
+            </span>
+            <span class="evt-pick-body">
+              <span class="evt-pick-v" id="lead-value">提前 1 小时</span>
+              <span class="evt-pick-sub">只给参与人按所选档位提醒一次</span>
+            </span>
+            <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <button class="btn btn-danger btn-block evt-del" type="button" id="evt-del"
+        data-hot="⑪" data-hot-name="删除" data-hot-pos="outer-top-left"
+        data-hot-label="删除不在本页成路由：按钮→确认弹层→软删（deleted_at + deleted_by），挂在本日程上的提醒级联失效，回到 calendar/calendar/index（§1.3 第 12 条；行级断言由 CAL-TIME-017 承接）">
+        删除这条日程
+      </button>
+
+      <div class="evt-foot-note">
+        <b>保存后</b>：回到这条日程的详情。改期或改可见范围后，日历与今日区按新内容重新出现，旧的日子不再显示它；时间与提醒的安排，以详情页里显示的时间为准。
+      </div>
+    </div>
+  </div>
+
+  <!-- 冲突弹层：保存时版本不一致才出现 -->
+  <div class="sheet-mask" id="sheet-conflict" aria-hidden="true"
+    data-hot="⑩" data-hot-name="冲突弹层" data-hot-pos="outer-top-left"
+    data-hot-label="409 + 双版本 payload 走 §6.5 弹层；文案不出现「覆盖」、不显示 version 号；「用我的」= 带最新 version 重发（仍冲突再弹、不超过 2 轮）；每次计入 sync_conflict 埋点">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>这条日程已被他人修改</h3>
+      <p class="sheet-sub">妈妈 刚刚改过这条日程；你的改动不会被自动合并，请选择保留哪一份。</p>
+
+      <div class="evt-diff">
+        <div class="evt-diff-row">
+          <span class="evt-diff-k">修改人</span>
+          <span class="evt-diff-v">妈妈 · 今天 09:12</span>
+        </div>
+        <div class="evt-diff-row">
+          <span class="evt-diff-k">标题</span>
+          <span class="evt-diff-v">
+            <span class="evt-diff-old">周末去公园野餐</span>
+            <span class="evt-diff-arrow">→</span>
+            <span class="evt-diff-new">改到河边野餐</span>
+          </span>
+        </div>
+        <div class="evt-diff-row">
+          <span class="evt-diff-k">开始时间</span>
+          <span class="evt-diff-v">
+            <span class="evt-diff-old num">周六 09:00</span>
+            <span class="evt-diff-arrow">→</span>
+            <span class="evt-diff-new num">周六 10:00</span>
+          </span>
+        </div>
+        <div class="evt-diff-row">
+          <span class="evt-diff-k">你改的</span>
+          <span class="evt-diff-v">开始时间（周六 09:30）与参与人</span>
+        </div>
+      </div>
+
+      <div class="evt-warn">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 3.5 17.5 17h-15z"/><path d="M10 8v4M10 14.4v.1"/></svg>
+        <span>选「用我的」会按你此刻填写的内容整体提交，妈妈的改动不再保留；选「查看最新」会丢弃你本次未保存的改动。</span>
+      </div>
+
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" data-go="calendar-detail.html">查看最新</button>
+        <button class="btn btn-secondary btn-block" type="button" id="evt-mine">用我的</button>
+        <button class="btn btn-ghost btn-block" type="button" data-go="calendar-detail.html">放弃修改</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 起止时间选择层 -->
+  <div class="sheet-mask" id="sheet-time" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>起止时间</h3>
+      <p class="sheet-sub">开始必填；结束选填，填了需要晚于开始。整日形态只选日期。</p>
+      <div class="list" style="margin-top:16px">
+        <button class="list-item" type="button" data-time="10 月 31 日 周六 09:00 – 11:00" data-sheet-close>
+          <span class="li-text">10 月 31 日 周六 09:00 – 11:00<span class="li-sub">当前</span></span>
+        </button>
+        <button class="list-item" type="button" data-time="11 月 7 日 周六 09:00 – 11:00" data-sheet-close>
+          <span class="li-text">11 月 7 日 周六 09:00 – 11:00<span class="li-sub">顺延一周</span></span>
+        </button>
+        <button class="list-item" type="button" data-time="今天 07:00 – 08:00" data-sheet-close>
+          <span class="li-text">今天 07:00 – 08:00<span class="li-sub">已过去：允许记录，保存后不会再提醒</span></span>
+        </button>
+        <button class="list-item" type="button" data-toast="自定义日期与时间选择器随系统组件接入；P1 先给常用快捷时间">
+          <span class="li-text">自定义日期与时间<span class="li-sub">精确到分钟</span></span>
+          <span class="chevron">›</span>
+        </button>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 参与人选择层 -->
+  <div class="sheet-mask" id="sheet-owner" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>选择参与人</h3>
+      <p class="sheet-sub">新加入的家人即刻能看到这条日程；被移除的家人下次打开日历时就没有它了。</p>
+      <div class="list" style="margin-top:16px">
+        <button class="list-item" type="button" data-member="我" aria-pressed="true">
+          <span class="avatar evt-av-me">我</span>
+          <span class="li-text">我<span class="li-sub">创建人 · 自动在列</span></span>
+        </button>
+        <button class="list-item" type="button" data-member="爸爸" aria-pressed="true">
+          <span class="avatar evt-av-dad">爸</span>
+          <span class="li-text">爸爸<span class="li-sub">成人成员</span></span>
+        </button>
+        <button class="list-item" type="button" data-member="妈妈" aria-pressed="true">
+          <span class="avatar evt-av-mom">妈</span>
+          <span class="li-text">妈妈<span class="li-sub">成人成员</span></span>
+        </button>
+        <button class="list-item" type="button" data-member="小雨" aria-pressed="false">
+          <span class="avatar evt-av-girl">雨</span>
+          <span class="li-text">小雨<span class="li-sub">儿童成员 · 有账号</span></span>
+        </button>
+        <button class="list-item" type="button" data-member="妹妹" aria-pressed="false">
+          <span class="avatar evt-av-girl">妹</span>
+          <span class="li-text">妹妹<span class="li-sub">无账号 · 由监护人代挂</span></span>
+        </button>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" data-sheet-close>完成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 重复选择层：六档 + 档内取值（编辑页口径：只安排以后的日子） -->
+  <div class="sheet-mask" id="sheet-repeat" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>重复</h3>
+      <p class="sheet-sub">改规则只安排以后的日子，已经过去的日子不变。六档：不重复 / 每天 / 每周 / 每月 / 每年 / 自定义（5.5.3 的封闭枚举），只存规则、不提前生成每一期。每周的星期、每月的日号、自定义的间隔都是档内取值，不与六档并列。某个月没有所选日号时，那个月不出现、也不提醒。</p>
+      <div class="list" style="margin-top:16px">
+        <button class="list-item" type="button" data-repeat="不重复" data-rule="none">
+          <span class="li-text">不重复<span class="li-sub">只在开始那天出现一次</span></span>
+        </button>
+        <button class="list-item" type="button" data-repeat="每天" data-rule="day">
+          <span class="li-text">每天<span class="li-sub">每天按开始时刻出现</span></span>
+        </button>
+        <button class="list-item" type="button" data-repeat="每周" data-rule="week">
+          <span class="li-text">每周<span class="li-sub">按所选的星期，可多选</span></span>
+        </button>
+        <button class="list-item" type="button" data-repeat="每月" data-rule="month">
+          <span class="li-text">每月<span class="li-sub">按日号，可选 1–31 日</span></span>
+        </button>
+        <button class="list-item" type="button" data-repeat="每年" data-rule="year">
+          <span class="li-text">每年<span class="li-sub">按开始日期的月与日</span></span>
+        </button>
+        <button class="list-item" type="button" data-repeat="自定义" data-rule="custom">
+          <span class="li-text">自定义<span class="li-sub">每 N 天 / 周 / 月，可选结束条件；含「工作日」快捷</span></span>
+        </button>
+      </div>
+
+      <div class="evt-rule is-on" id="rule-none">
+        <span class="evt-rule-note">不重复：只在开始那天出现一次，时刻用上面选的开始时间。</span>
+      </div>
+
+      <div class="evt-rule" id="rule-week">
+        <span class="evt-rule-k">星期（可多选）</span>
+        <div class="evt-chips" role="group" aria-label="选择星期">
+          <button class="evt-chip" type="button" data-wd="周一" aria-pressed="false">周一</button>
+          <button class="evt-chip" type="button" data-wd="周二" aria-pressed="false">周二</button>
+          <button class="evt-chip" type="button" data-wd="周三" aria-pressed="true">周三</button>
+          <button class="evt-chip" type="button" data-wd="周四" aria-pressed="false">周四</button>
+          <button class="evt-chip" type="button" data-wd="周五" aria-pressed="false">周五</button>
+          <button class="evt-chip" type="button" data-wd="周六" aria-pressed="false">周六</button>
+          <button class="evt-chip" type="button" data-wd="周日" aria-pressed="false">周日</button>
+        </div>
+        <span class="evt-rule-note">只改以后的安排：已经过去的那几周不变，新选的星期从下一次开始生效。</span>
+      </div>
+
+      <div class="evt-rule" id="rule-month">
+        <span class="evt-rule-k">每月几日</span>
+        <input class="evt-num" id="month-day" type="number" min="1" max="31" value="31" aria-label="每月的日号">
+        <span class="evt-rule-note">按日号：某个月没有那一天（29 / 30 / 31 日）时，那个月不生成、也不顺延，页面不报错；规则仍记着你选的日号。</span>
+      </div>
+
+      <div class="evt-rule" id="rule-year">
+        <span class="evt-rule-note">每年按开始日期的「月与日」出现一次；选 2 月 29 日时，平年那一年不出现、不顺延，也不报错。</span>
+      </div>
+
+      <div class="evt-rule" id="rule-custom">
+        <span class="evt-rule-k">快捷</span>
+        <button class="evt-chip" type="button" id="custom-workday">工作日（周一至周五）</button>
+        <span class="evt-rule-note">这只是一个快捷：等于把下面的间隔设成「每 1 周」并勾上周一至周五；它不是和六档并列的档位，放假日照常出现。</span>
+
+        <span class="evt-rule-k">间隔</span>
+        <div class="evt-interval">
+          <span>每</span>
+          <input class="evt-num" id="custom-n" type="number" min="1" max="30" value="3" aria-label="间隔数量">
+          <div class="evt-chips" role="group" aria-label="间隔单位">
+            <button class="evt-chip" type="button" data-unit="day" aria-pressed="true">天</button>
+            <button class="evt-chip" type="button" data-unit="week" aria-pressed="false">周</button>
+            <button class="evt-chip" type="button" data-unit="month" aria-pressed="false">月</button>
+          </div>
+        </div>
+
+        <div id="custom-week" class="evt-hidden">
+          <span class="evt-rule-k">每周的哪几天（可多选）</span>
+          <div class="evt-chips" role="group" aria-label="自定义每周的星期">
+            <button class="evt-chip" type="button" data-cwd="周一" aria-pressed="false">周一</button>
+            <button class="evt-chip" type="button" data-cwd="周二" aria-pressed="false">周二</button>
+            <button class="evt-chip" type="button" data-cwd="周三" aria-pressed="true">周三</button>
+            <button class="evt-chip" type="button" data-cwd="周四" aria-pressed="false">周四</button>
+            <button class="evt-chip" type="button" data-cwd="周五" aria-pressed="false">周五</button>
+            <button class="evt-chip" type="button" data-cwd="周六" aria-pressed="false">周六</button>
+            <button class="evt-chip" type="button" data-cwd="周日" aria-pressed="false">周日</button>
+          </div>
+        </div>
+
+        <div id="custom-month" class="evt-hidden">
+          <span class="evt-rule-k">每月的第几日</span>
+          <input class="evt-num" id="custom-monthday" type="number" min="1" max="31" value="1" aria-label="自定义每月的日号">
+          <span class="evt-rule-note">某个月没有这一天时，那个月不生成、不顺延，页面不报错。</span>
+        </div>
+
+        <span class="evt-rule-k">结束</span>
+        <div class="evt-chips" role="group" aria-label="结束条件">
+          <button class="evt-chip" type="button" data-end="never" aria-pressed="true">永不</button>
+          <button class="evt-chip" type="button" data-end="date" aria-pressed="false">到某日</button>
+          <button class="evt-chip" type="button" data-end="count" aria-pressed="false">共 N 次</button>
+        </div>
+        <div id="end-date-row" class="evt-hidden">
+          <input class="evt-num" id="end-date" type="text" value="2026-12-31" aria-label="结束日期" style="width:130px">
+          <span class="evt-rule-note">按家庭时区，那天结束后不再出现。</span>
+        </div>
+        <div id="end-count-row" class="evt-end-row evt-hidden">
+          共 <input class="evt-num" id="end-count" type="number" min="1" max="99" value="12" aria-label="共出现几次"> 次
+          <span class="evt-rule-note">到次数用完就不再生成下一期。</span>
+        </div>
+        <span class="evt-rule-note" id="custom-summary">现在：每 3 天 · 永不结束</span>
+      </div>
+
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" id="repeat-apply" data-sheet-close>完成</button>
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 提前提醒档位选择层：恰为四档封闭枚举 -->
+  <div class="sheet-mask" id="sheet-lead" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>提前提醒</h3>
+      <p class="sheet-sub">只有这四档，按家庭时区统一计算后送达；也可以改回「不设置」。</p>
+      <div class="list" style="margin-top:16px">
+        <button class="list-item" type="button" data-lead="准时" data-sheet-close>
+          <span class="li-text">准时</span>
+        </button>
+        <button class="list-item" type="button" data-lead="提前 10 分钟" data-sheet-close>
+          <span class="li-text">提前 10 分钟</span>
+        </button>
+        <button class="list-item" type="button" data-lead="提前 1 小时" data-sheet-close>
+          <span class="li-text">提前 1 小时<span class="li-sub">当前选择</span></span>
+        </button>
+        <button class="list-item" type="button" data-lead="提前 1 天" data-sheet-close>
+          <span class="li-text">提前 1 天</span>
+        </button>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-secondary btn-block" type="button" id="lead-clear" data-sheet-close>不设置</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 删除确认层 -->
+  <div class="sheet-mask" id="sheet-delete" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>删除这条日程？</h3>
+      <p class="sheet-sub">删除后，日历与到期中心里不再出现；挂在它上面的提醒也会一并停用。创建人和管理员之后还能在回收站里找到它。</p>
+      <div class="sheet-actions">
+        <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
+        <a class="btn btn-danger btn-block" href="calendar.html">删除</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 放弃确认层 -->
+  <div class="sheet-mask" id="sheet-discard" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>放弃这次改动？</h3>
+      <p class="sheet-sub">你未保存的改动会被丢弃，也没有草稿可以找回。</p>
+      <div class="sheet-actions">
+        <button class="btn btn-primary btn-block" type="button" data-sheet-close>继续编辑</button>
+        <a class="btn btn-secondary btn-block" href="calendar-detail.html">放弃</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast"></div>
+</div>
+
+<script>
+  var evtState = new URLSearchParams(location.search).get('state') || 'default';
+  var save = document.getElementById('evt-save');
+  var back = document.getElementById('evt-back');
+
+  if (evtState === 'conflict') {
+    var cf = document.getElementById('sheet-conflict');
+    cf.classList.add('is-open');
+    cf.setAttribute('aria-hidden', 'false');
+  }
+
+  back.addEventListener('click', function () {
+    window.HC.openSheet('sheet-discard');
+  });
+
+  document.getElementById('evt-del').addEventListener('click', function () {
+    window.HC.openSheet('sheet-delete');
+  });
+
+  document.getElementById('evt-mine').addEventListener('click', function () {
+    window.HC.toast('已按你填的内容保存');
+    setTimeout(function () { location.href = 'calendar-detail.html'; }, 1100);
+  });
+
+  document.getElementById('evt-retry').addEventListener('click', function () {
+    window.HC.toast('正在重新提交…');
+  });
+
+  document.querySelectorAll('[data-allday]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('[data-allday]').forEach(function (x) {
+        x.setAttribute('aria-selected', String(x === b));
+      });
+    });
+  });
+
+  document.querySelectorAll('[data-vis]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('[data-vis]').forEach(function (x) {
+        x.setAttribute('aria-selected', String(x === b));
+      });
+    });
+  });
+
+  var picked = { '我': true, '爸爸': true, '妈妈': true, '小雨': false, '妹妹': false };
+  document.querySelectorAll('[data-member]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var name = b.getAttribute('data-member');
+      if (name === '我') return;
+      picked[name] = !picked[name];
+      b.setAttribute('aria-pressed', String(picked[name]));
+      document.getElementById('owner-names').textContent =
+        Object.keys(picked).filter(function (k) { return picked[k]; }).join('、');
+    });
+  });
+
+  document.querySelectorAll('[data-time]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.getElementById('time-value').textContent = b.getAttribute('data-time');
+    });
+  });
+
+  /* ---------- 重复：六档 + 档内取值 ---------- */
+  var repeatTier = 'none';
+  var custom = { unit: 'day', n: 3, days: ['周三'], monthDay: 31, end: 'never', count: 12 };
+
+  function endText() {
+    if (custom.end === 'never') return '永不结束';
+    if (custom.end === 'date') return '到 ' + (document.getElementById('end-date').value || '所选日期') + ' 结束';
+    return '共 ' + (custom.count || 1) + ' 次';
+  }
+
+  function isWorkdayPick() {
+    return custom.unit === 'week' && custom.n === 1 && custom.days.length === 5 &&
+      ['周一', '周二', '周三', '周四', '周五'].every(function (d) { return custom.days.indexOf(d) >= 0; });
+  }
+
+  function customText() {
+    var base;
+    if (custom.unit === 'day') base = '每 ' + custom.n + ' 天';
+    else if (custom.unit === 'week') base = (isWorkdayPick() ? '工作日 · ' : '每 ' + custom.n + ' 周 · ') + custom.days.join('、');
+    else base = '每 ' + custom.n + ' 月 · ' + custom.monthDay + ' 日';
+    return base + ' · ' + endText();
+  }
+
+  function updateCustom() {
+    document.getElementById('custom-summary').textContent = '现在：' + customText();
+    document.getElementById('custom-week').classList.toggle('evt-hidden', custom.unit !== 'week');
+    document.getElementById('custom-month').classList.toggle('evt-hidden', custom.unit !== 'month');
+    document.getElementById('end-date-row').classList.toggle('evt-hidden', custom.end !== 'date');
+    document.getElementById('end-count-row').classList.toggle('evt-hidden', custom.end !== 'count');
+  }
+
+  function showRule(tier) {
+    repeatTier = tier;
+    document.querySelectorAll('.evt-rule').forEach(function (p) {
+      p.classList.toggle('is-on', p.id === 'rule-' + tier);
+    });
+  }
+
+  function markRepeatTier() {
+    document.querySelectorAll('[data-repeat]').forEach(function (b) {
+      var sub = b.querySelector('.li-sub');
+      var base = sub.getAttribute('data-base') || sub.textContent.replace(/^当前选择 · /, '');
+      sub.setAttribute('data-base', base);
+      sub.textContent = (b.getAttribute('data-rule') === repeatTier ? '当前选择 · ' : '') + base;
+    });
+  }
+
+  document.querySelectorAll('[data-repeat]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.getElementById('repeat-value').textContent = b.getAttribute('data-repeat');
+      showRule(b.getAttribute('data-rule'));
+    });
+  });
+
+  document.querySelectorAll('[data-wd]').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      var on = chip.getAttribute('aria-pressed') !== 'true';
+      chip.setAttribute('aria-pressed', String(on));
+      var pickedWd = Array.prototype.slice.call(document.querySelectorAll('[data-wd][aria-pressed="true"]'))
+        .map(function (x) { return x.getAttribute('data-wd'); });
+      document.getElementById('repeat-value').textContent = pickedWd.length ? '每周' + pickedWd.join('、') : '每周';
+    });
+  });
+
+  document.getElementById('month-day').addEventListener('input', function () {
+    document.getElementById('repeat-value').textContent = '每月 ' + (this.value || 1) + ' 日';
+  });
+
+  document.querySelectorAll('[data-unit]').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      custom.unit = chip.getAttribute('data-unit');
+      document.querySelectorAll('[data-unit]').forEach(function (x) {
+        x.setAttribute('aria-pressed', String(x === chip));
+      });
+      updateCustom();
+    });
+  });
+
+  document.getElementById('custom-n').addEventListener('input', function () {
+    custom.n = Number(this.value) || 1;
+    updateCustom();
+  });
+
+  document.querySelectorAll('[data-cwd]').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      var on = chip.getAttribute('aria-pressed') !== 'true';
+      chip.setAttribute('aria-pressed', String(on));
+      custom.days = Array.prototype.slice.call(document.querySelectorAll('[data-cwd][aria-pressed="true"]'))
+        .map(function (x) { return x.getAttribute('data-cwd'); });
+      updateCustom();
+    });
+  });
+
+  document.getElementById('custom-monthday').addEventListener('input', function () {
+    custom.monthDay = Number(this.value) || 1;
+    updateCustom();
+  });
+
+  document.getElementById('custom-workday').addEventListener('click', function () {
+    custom.unit = 'week';
+    custom.n = 1;
+    custom.days = ['周一', '周二', '周三', '周四', '周五'];
+    document.querySelectorAll('[data-unit]').forEach(function (x) {
+      x.setAttribute('aria-pressed', String(x.getAttribute('data-unit') === 'week'));
+    });
+    document.getElementById('custom-n').value = 1;
+    document.querySelectorAll('[data-cwd]').forEach(function (x) {
+      x.setAttribute('aria-pressed', String(custom.days.indexOf(x.getAttribute('data-cwd')) >= 0));
+    });
+    updateCustom();
+    window.HC.toast('已设为工作日：每周一至周五，属于自定义档');
+  });
+
+  document.querySelectorAll('[data-end]').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      custom.end = chip.getAttribute('data-end');
+      document.querySelectorAll('[data-end]').forEach(function (x) {
+        x.setAttribute('aria-pressed', String(x === chip));
+      });
+      updateCustom();
+    });
+  });
+
+  document.getElementById('end-count').addEventListener('input', function () {
+    custom.count = Number(this.value) || 1;
+    updateCustom();
+  });
+  document.getElementById('end-date').addEventListener('input', updateCustom);
+
+  document.getElementById('repeat-apply').addEventListener('click', function () {
+    var map = {
+      none: '不重复 · 只在开始那天出现一次',
+      day: '每天按开始时刻 · 只存规则，不提前生成每一期',
+      week: '每周按星期 · 只存规则，不提前生成每一期',
+      month: '每月按日号 · 没有那天的月份不出现也不顺延',
+      year: '每年按开始日期的月日 · 只存规则',
+      custom: customText()
+    };
+    if (repeatTier === 'month' && Number(document.getElementById('month-day').value) >= 29) {
+      document.getElementById('repeat-sub').textContent =
+        '每月 ' + document.getElementById('month-day').value + ' 日 · 没有这天的月份不生成也不顺延';
+    } else if (repeatTier === 'week') {
+      var pickedWd = Array.prototype.slice.call(document.querySelectorAll('[data-wd][aria-pressed="true"]'))
+        .map(function (x) { return x.getAttribute('data-wd'); });
+      document.getElementById('repeat-sub').textContent = (pickedWd.length ? '每周' + pickedWd.join('、') : '每周') + ' · 只改以后的安排';
+    } else {
+      document.getElementById('repeat-sub').textContent = map[repeatTier];
+    }
+    markRepeatTier();
+  });
+
+  updateCustom();
+  showRule('none');
+  markRepeatTier();
+
+  document.querySelectorAll('[data-lead]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.getElementById('lead-value').textContent = b.getAttribute('data-lead');
+    });
+  });
+  document.getElementById('lead-clear').addEventListener('click', function () {
+    document.getElementById('lead-value').textContent = '不设置';
+  });
+
+  save.addEventListener('click', function () {
+    if (evtState === 'conflict' || evtState === 'readonly' || evtState === 'denied' || evtState === 'loading') return;
+    var title = document.getElementById('evt-title');
+    if (!title.value.trim()) {
+      document.body.setAttribute('data-state', 'fail');
+      title.focus();
+      return;
+    }
+    if (evtState === 'offline') {
+      window.HC.toast('改动已排队，联网后自动提交');
+      return;
+    }
+    window.HC.toast('已保存');
+    setTimeout(function () { location.href = 'calendar-detail.html'; }, 1100);
+  });
+</script>
+</body>
+</html>

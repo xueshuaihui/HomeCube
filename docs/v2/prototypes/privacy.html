@@ -68,6 +68,7 @@
   body[data-state="loading"] .priv-body { display: none; }
   body[data-state="loading"] .priv-sk { display: block; }
   body[data-state="delete"] #sheet-delete { display: flex; }
+  body[data-state="l2preview"] #sheet-l2preview { display: flex; }
   .priv-sheet-warn {
     display: flex; gap: 8px; align-items: flex-start;
     margin-top: 14px; padding: 12px 14px;
@@ -76,9 +77,32 @@
     font-size: var(--fs-12); line-height: var(--lh-loose);
   }
   .priv-sheet-warn svg { flex: none; margin-top: 2px; }
+  .priv-pending {
+    display: none; align-items: center; gap: 10px;
+    margin-bottom: 10px; padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--warning-soft); color: var(--warning);
+    font-size: var(--fs-12); line-height: var(--lh-loose);
+  }
+  body[data-state="deletion_pending"] .priv-pending { display: flex; }
+  .priv-pending .priv-pending-text { flex: 1; min-width: 0; }
+  .priv-pending b { display: block; font-size: var(--fs-13); }
+  .priv-pending .btn { flex: none; background: var(--surface); border-color: var(--warning); color: var(--warning); }
+  .priv-pending-note { margin-top: 8px; font-size: var(--fs-12); color: var(--text-3); line-height: var(--lh-loose); }
+  body:not([data-state="deletion_pending"]) .priv-pending-note { display: none; }
+  .priv-preview-list { margin-top: 14px; }
+  .priv-preview-item { display: flex; gap: 10px; padding: 10px 0; font-size: var(--fs-13); line-height: var(--lh-normal); }
+  .priv-preview-item + .priv-preview-item { border-top: 1px solid var(--border); }
+  .priv-preview-item .tag {
+    flex: none; padding: 1px 6px; border-radius: var(--radius-pill);
+    font-size: var(--fs-11); font-weight: 700; height: fit-content;
+  }
+  .priv-preview-item .tag.will { background: var(--warning-soft); color: var(--warning); }
+  .priv-preview-item .tag.wont { background: var(--success-soft); color: var(--success); }
+  .priv-preview-item .tag.revs { background: var(--brand-soft); color: var(--brand-text); }
 </style>
 </head>
-<body data-screen="29 隐私" data-tab="" data-states="default,readonly,delete,loading">
+<body data-screen="29 隐私" data-tab="" data-states="default,readonly,delete,deletion_pending,l2preview,loading">
 <div class="harness"></div>
 
 <div class="phone">
@@ -123,7 +147,7 @@
 
       <div class="section-title">家庭级可见性</div>
       <div class="list">
-        <div class="list-item priv-family-item priv-admin-item" data-hot="①" data-hot-name="L2 可见性开关" data-hot-pos="top-right" data-hot-label="家庭级开关，仅管理员可写；关闭后成员只能看到自己创建的 L2 字段">
+        <div class="list-item priv-family-item priv-admin-item" data-hot="①" data-hot-name="L2 可见性开关" data-hot-pos="top-right" data-hot-label="家庭级开关，仅管理员可写；切向关闭先弹影响预览，确认后才生效">
           <span class="li-icon">
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6v8M7.4 8.4h5.2M7.4 11.4h5.2"/></svg>
           </span>
@@ -147,17 +171,17 @@
 
       <div class="section-title">私密流水</div>
       <div class="list">
-        <div class="list-item priv-family-item" data-hot="③" data-hot-name="私密流水行级开关" data-hot-pos="top-right" data-hot-label="本人可写；开启后私密流水只有自己可见，家庭成员看不到金额与明细">
+        <div class="list-item priv-family-item" data-hot="③" data-hot-name="私密流水行级开关" data-hot-pos="top-right" data-hot-label="本人可写；开启后命中行仅作者与家庭管理员可读（16.3/㉛），合计仍包含私密行">
           <span class="li-icon">
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10c1.8-3.2 4.2-4.8 7-4.8s5.2 1.6 7 4.8c-1.8 3.2-4.2 4.8-7 4.8S4.8 13.2 3 10z"/><circle cx="10" cy="10" r="2"/><path d="M4 16 16 4"/></svg>
           </span>
-          <span class="li-text">私密流水仅自己可见<span class="li-sub">对标记为私密的流水生效</span></span>
+          <span class="li-text">私密流水仅本人与管理员可读<span class="li-sub">对标记为私密的流水生效</span></span>
           <label class="switch"><input type="checkbox" checked id="private-switch"><span class="track"></span><span class="thumb"></span></label>
         </div>
       </div>
       <div class="priv-explain">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="7" width="10" height="7" rx="2"/><path d="M5.2 7V5.2a2.8 2.8 0 0 1 5.6 0V7"/></svg>
-        <span>私密流水只有你自己可见，家庭成员看不到金额与明细；这类流水不参与 AA 分摊与跨面归集，导出时默认排除，需单独勾选。</span>
+        <span>私密流水只有你和家庭管理员能看到金额与明细；其他成员看不到这些行，但家庭合计仍包含它们，所以有人看到的总数可能比自己打开的明细多，这是正常现象，不是故障。这类流水不参与 AA 分摊，也不会并入其他类别的汇总；导出时默认排除，可在导出页单独勾选。</span>
       </div>
 
       <div class="section-title">读取保护</div>
@@ -173,6 +197,15 @@
       </div>
 
       <div class="section-title">数据与删除</div>
+      <div class="priv-pending" role="status">
+        <div class="priv-pending-text">
+          <b>删除申请处理中 · 剩余 26 天</b>
+          处理完成前可随时撤回；撤回后不会删除任何数据。
+        </div>
+        <button class="btn btn-sm" type="button" id="revoke-delete"
+          data-hot="⑦" data-hot-name="撤回删除申请" data-hot-pos="top-right" data-hot-label="提交后 30 天内且处理未完成即可撤回；撤回即时生效，状态条消失、入口恢复">撤回申请</button>
+      </div>
+      <div class="priv-pending-note">你在其他设备上导出的文件不在本次删除范围内，需要你自行删除或保管。</div>
       <div class="list">
         <button class="list-item priv-del" type="button" data-sheet-open="sheet-delete"
           data-hot="⑤" data-hot-name="删除请求" data-hot-pos="top-right" data-hot-label="危险操作；弹层说明处理时限与保留范围，提交后 30 天内完成，期间可撤回">
@@ -187,7 +220,7 @@
       <div class="section-title">紧急卡</div>
       <div class="list">
         <div class="list-item priv-p4" role="button" tabindex="0" data-toast="紧急卡开关随家人面 P4 上线；开启后锁定屏只显示姓名、血型、过敏与紧急电话"
-          data-hot="⑥" data-hot-name="紧急卡开关占位" data-hot-pos="top-right" data-hot-label="P4 才出 UI 的禁用态占位；输入类控件不可点，点击只解释上线期次">
+          data-hot="⑧" data-hot-name="紧急卡开关占位" data-hot-pos="top-right" data-hot-label="P4 才出 UI 的禁用态占位；输入类控件不可点，点击只解释上线期次">
           <span class="li-icon">
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17s-6-3.6-6-8.2A3.8 3.8 0 0 1 10 6a3.8 3.8 0 0 1 6 2.8C16 13.4 10 17 10 17z"/><path d="M10 8.6v3.4M8.3 10.3h3.4"/></svg>
           </span>
@@ -212,15 +245,33 @@
     <div class="sheet">
       <div class="sheet-grabber"></div>
       <h3>申请删除我的数据？</h3>
-      <p class="sheet-sub">提交后 30 天内完成处理，期间可在本页撤回。家庭共有数据与个人数据按下面的范围分别处置。</p>
+      <p class="sheet-sub">提交后 30 天内完成处理，处理完成前可在本页随时撤回。家庭共有数据与个人数据按下面的范围分别处置。</p>
       <div class="priv-sheet-warn">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 2.6 14 13H2z"/><path d="M8 6.6v3M8 11.4v.1"/></svg>
-        <span>删除不可撤销：你的个人偏好、私密流水与 L3 内容会被删除；家庭共有的流水与清单保留并标记「已退出成员」。建议先导出需要的数据。</span>
+        <span>处理完成后的删除不可撤销：你的个人偏好、私密流水与 L3 内容会被删除；家庭共有的流水与清单保留并标记「已退出成员」。你已导出的文件不在删除范围内，需要自行删除。建议先导出需要的数据。</span>
       </div>
       <div class="sheet-actions">
-        <button class="btn btn-danger btn-block" type="button" id="confirm-delete">提交删除请求</button>
         <button class="btn btn-secondary btn-block" type="button" data-go="data.html">先去导出数据</button>
+        <button class="btn btn-danger btn-block" type="button" id="confirm-delete">提交删除请求</button>
         <button class="btn btn-ghost btn-block" type="button" data-sheet-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet-mask" id="sheet-l2preview" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>关闭敏感信息可见？</h3>
+      <p class="sheet-sub">这是家庭级改动，关闭后所有非管理员成员都会受影响。你可以随时重新开启。</p>
+      <div class="priv-preview-list">
+        <div class="priv-preview-item"><span class="tag will">会变</span><span>其他成员将看不到彼此填写的金额、备注和账户名，只能看到自己写的。</span></div>
+        <div class="priv-preview-item"><span class="tag wont">不变</span><span>你自己写的内容全部照常可见；各项合计与统计的口径不变；被标记为私密的记录不受影响。</span></div>
+        <div class="priv-preview-item"><span class="tag revs">可逆</span><span>随时可以重新开启，重新开启后立即恢复家庭成员互相可见。</span></div>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn btn-secondary btn-block" type="button" id="preview-cancel" autofocus>取消</button>
+        <button class="btn btn-danger btn-block" type="button" id="preview-confirm"
+          data-hot="⑥" data-hot-name="关闭影响预览确认" data-hot-pos="top-right" data-hot-label="危险按钮非默认焦点（默认焦点在取消）；确认后才关闭，取消开关回弹">仍要关闭</button>
       </div>
     </div>
   </div>
@@ -235,19 +286,42 @@
     document.querySelectorAll('.priv-admin-item .switch input').forEach(function (sw) { sw.disabled = true; });
   }
 
+  var l2Switch = document.querySelector('.priv-family-item .switch input');
+  var pendingBar = document.querySelector('.priv-pending');
+
   document.getElementById('confirm-delete').addEventListener('click', function () {
-    window.HC.closeSheet(document.getElementById('sheet-delete'));
-    window.HC.toast('删除请求已提交，30 天内完成处理');
+    location.href = 'privacy.html?state=deletion_pending';
   });
 
-  document.querySelectorAll('.priv-admin-item .switch input').forEach(function (sw) {
+  document.getElementById('revoke-delete').addEventListener('click', function () {
+    if (st === 'deletion_pending') { location.href = 'privacy.html'; return; }
+    pendingBar.style.display = 'none';
+    document.querySelector('.priv-pending-note').style.display = 'none';
+    window.HC.toast('已撤回，不会删除任何数据');
+  });
+
+  document.querySelectorAll('.priv-admin-item .switch input').forEach(function (sw, i) {
     sw.addEventListener('change', function () {
+      if (i === 0 && !sw.checked) {
+        window.HC.openSheet('sheet-l2preview');
+        return;
+      }
       window.HC.toast(sw.checked ? '已对家庭成员开放' : '已关闭，仅本人可见');
     });
   });
 
+  document.getElementById('preview-confirm').addEventListener('click', function () {
+    window.HC.closeSheet(document.getElementById('sheet-l2preview'));
+    window.HC.toast('已关闭，随时可重新开启');
+  });
+
+  document.getElementById('preview-cancel').addEventListener('click', function () {
+    l2Switch.checked = true;
+    window.HC.closeSheet(document.getElementById('sheet-l2preview'));
+  });
+
   document.getElementById('private-switch').addEventListener('change', function () {
-    window.HC.toast(this.checked ? '私密流水已开启，仅自己可见' : '已关闭，私密流水恢复家庭可见');
+    window.HC.toast(this.checked ? '私密流水已开启，仅你和家庭管理员可见' : '已关闭，私密流水恢复家庭可见');
   });
 </script>
 </body>

@@ -115,6 +115,23 @@
 
   body[data-state="saving"] .fx-sort-list { opacity: .55; }
   body[data-state="saving"] .fx-handle { pointer-events: none; }
+  body[data-state="saved"] .fx-handle { pointer-events: none; opacity: .55; }
+
+  .fx-sk { display: none; padding-top: 8px; }
+  .fx-sk .sk-line:first-child { width: 38%; }
+  body[data-state="loading"] .fx-sk { display: block; }
+  body[data-state="loading"] .fx-real { display: none; }
+  body[data-state="loading"] .fx-footer { display: none; }
+
+  .fx-fail, .fx-empty { display: none; padding-top: 24px; }
+  body[data-state="failed"] .fx-fail { display: flex; }
+  body[data-state="empty"] .fx-empty { display: flex; }
+  body[data-state="failed"] .fx-real,
+  body[data-state="failed"] .fx-footer,
+  body[data-state="empty"] .fx-real,
+  body[data-state="empty"] .fx-footer { display: none; }
+
+  body[data-state="offline"] .offline-bar { display: flex; }
 
   .fx-footer {
     flex: none;
@@ -126,7 +143,7 @@
   body[data-state="saved"] .fx-footer .fx-saved-note { display: block; }
 </style>
 </head>
-<body data-screen="F16 分类排序" data-states="default,dragging,saving,saved">
+<body data-screen="F16 分类排序" data-states="default,dragging,saving,saved,conflict,empty,loading,failed,offline">
 <div class="harness"></div>
 
 <div class="phone">
@@ -143,7 +160,7 @@
     <div class="nav-left">
       <a class="icon-btn" href="finance-category.html" aria-label="返回分类管理"
         data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
-        data-hot-label="回分类管理；有未保存的拖动时先弹「放弃这次调整？」，不静默丢弃">
+        data-hot-label="回分类管理；有未保存的拖动时先问「放弃这次调整？」，不静默丢弃；没改过直接返回">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
       </a>
     </div>
@@ -153,170 +170,220 @@
 
   <div class="offline-bar">
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
-    当前离线 · 新顺序先存本机，联网自动提交
+    当前离线 · 新顺序先存在本机，联网自动保存
   </div>
 
   <div class="content bottom-space fx-content">
-    <div class="fx-note">
-      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7.5"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
-      <span>这个顺序同时用于<b>记账选择器</b>、<b>报表图例</b>和<b>筛选 chips</b>；保存后三处一起变，不需要各页再排一次。</span>
-    </div>
-
-    <div class="fx-drag-hint">
-      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg>
-      拖动中 · 松手后放到「餐饮」与「其他」之间
-    </div>
-
-    <div class="fx-saving-bar">
-      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.5V10l2.5 1.6"/></svg>
-      正在保存顺序 · 写入带 version，冲突则整单回滚
-    </div>
-
-    <div class="fx-saved-bar">
-      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg>
-      <span>排序已保存 · 记账选择器、报表图例、筛选 chips 已同步为新顺序。</span>
-    </div>
-
-    <div class="fx-sort-sec">
-      <span>支出一级分类</span>
-      <span class="tiny">按住行首手柄拖动</span>
-    </div>
-
-    <div class="fx-sort-list"
-      data-hot="②" data-hot-name="拖拽排序行" data-hot-pos="outer-top-right"
-      data-hot-label="行首手柄长按 200ms 进入拖动，整行抬起并高亮，落点显示插入条；只改 sort_order，不改分类 id 与历史流水">
-      <div class="fx-sort-row" data-row="餐饮">
-        <button class="fx-handle" type="button" aria-label="拖动 餐饮">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="4" r="1.3"/><circle cx="10" cy="4" r="1.3"/><circle cx="6" cy="8" r="1.3"/><circle cx="10" cy="8" r="1.3"/><circle cx="6" cy="12" r="1.3"/><circle cx="10" cy="12" r="1.3"/></svg>
-        </button>
-        <span class="fx-ico">
-          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5h13"/><path d="M4.5 10.5a5.5 5.5 0 0 1 11 0"/><path d="M8 7.5 6.5 4.5M12 7.5l1.5-3"/></svg>
-        </span>
-        <span class="fx-row-txt">
-          <span class="fx-row-name">餐饮 <span class="tag">预置</span></span>
-          <span class="fx-row-meta">3 个二级 · 本月 36 笔</span>
-        </span>
-        <span class="fx-row-num num">1</span>
+    <div class="fx-real">
+      <div class="fx-note">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7.5"/><path d="M10 9v4.5M10 6.4v.1"/></svg>
+        <span>这一个顺序同时用于<b>记账选择器</b>、<b>报表图例</b>和<b>筛选</b>；保存一次三处一起变。成人成员都能调整，改的是全家的顺序。</span>
       </div>
 
-      <div class="fx-placeholder" aria-hidden="true"></div>
-
-      <div class="fx-sort-row" data-row="其他">
-        <button class="fx-handle" type="button" aria-label="拖动 其他">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="4" r="1.3"/><circle cx="10" cy="4" r="1.3"/><circle cx="6" cy="8" r="1.3"/><circle cx="10" cy="8" r="1.3"/><circle cx="6" cy="12" r="1.3"/><circle cx="10" cy="12" r="1.3"/></svg>
-        </button>
-        <span class="fx-ico" style="background:var(--surface-2);color:var(--text-2)">
-          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.5v7M10 14.5l2.5-1.2M7.5 9.8 10 8.6"/></svg>
-        </span>
-        <span class="fx-row-txt">
-          <span class="fx-row-name">其他 <span class="tag">自定义</span></span>
-          <span class="fx-row-meta">2 个二级 · 本月 8 笔</span>
-        </span>
-        <span class="fx-row-num num">2</span>
+      <div class="fx-drag-hint">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg>
+        拖动中 · 松手后放到「餐饮」与「居住」之间
       </div>
 
-      <div class="fx-sort-row is-drag" data-row="交通">
-        <button class="fx-handle" type="button" aria-label="拖动 交通">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="4" r="1.3"/><circle cx="10" cy="4" r="1.3"/><circle cx="6" cy="8" r="1.3"/><circle cx="10" cy="8" r="1.3"/><circle cx="6" cy="12" r="1.3"/><circle cx="10" cy="12" r="1.3"/></svg>
-        </button>
-        <span class="fx-ico" style="background:var(--accent-soft);color:var(--accent)">
-          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12.5h13l-1.2 3.2a1.5 1.5 0 0 1-1.4 1H6.1a1.5 1.5 0 0 1-1.4-1z"/><path d="M5.5 12.5l1.6-5.2A2 2 0 0 1 9 6h2a2 2 0 0 1 1.9 1.3l1.6 5.2"/></svg>
-        </span>
-        <span class="fx-row-txt">
-          <span class="fx-row-name">交通 <span class="tag">预置</span></span>
-          <span class="fx-row-meta">拖动中 · 2 个二级 · 本月 14 笔</span>
-        </span>
-        <span class="fx-row-num num">3</span>
+      <div class="fx-saving-bar">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.5V10l2.5 1.6"/></svg>
+        正在保存顺序 · 整单一起保存，不会只存一半
       </div>
 
-      <div class="fx-sort-row" data-row="居家">
-        <button class="fx-handle" type="button" aria-label="拖动 居家">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="4" r="1.3"/><circle cx="10" cy="4" r="1.3"/><circle cx="6" cy="8" r="1.3"/><circle cx="10" cy="8" r="1.3"/><circle cx="6" cy="12" r="1.3"/><circle cx="10" cy="12" r="1.3"/></svg>
-        </button>
-        <span class="fx-ico" style="background:var(--info-soft);color:var(--info)">
-          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5 10 4l6.5 5.5V16a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z"/><path d="M8 17v-4.5h4V17"/></svg>
-        </span>
-        <span class="fx-row-txt">
-          <span class="fx-row-name">居家 <span class="tag">预置</span></span>
-          <span class="fx-row-meta">2 个二级 · 本月 6 笔</span>
-        </span>
-        <span class="fx-row-num num">4</span>
+      <div class="fx-saved-bar">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg>
+        <span>排序已保存 · 记账选择器、报表图例、筛选已一起换成新顺序。</span>
       </div>
 
-      <div class="fx-sort-row" data-row="教育">
-        <button class="fx-handle" type="button" aria-label="拖动 教育">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="4" r="1.3"/><circle cx="10" cy="4" r="1.3"/><circle cx="6" cy="8" r="1.3"/><circle cx="10" cy="8" r="1.3"/><circle cx="6" cy="12" r="1.3"/><circle cx="10" cy="12" r="1.3"/></svg>
-        </button>
-        <span class="fx-ico" style="background:var(--warning-soft);color:var(--warning)">
-          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h5.5A2.5 2.5 0 0 1 12 7v9a2 2 0 0 0-2-2H4z"/><path d="M16 4.5h-5.5A2.5 2.5 0 0 0 8 7v9a2 2 0 0 1 2-2h6z"/></svg>
-        </span>
-        <span class="fx-row-txt">
-          <span class="fx-row-name">教育 <span class="tag fx-off-tag">已停用</span></span>
-          <span class="fx-row-meta">停用中 · 排序保留，重新启用后回到这个位置</span>
-        </span>
-        <span class="fx-row-num num">5</span>
+      <div class="fx-sort-sec">
+        <span>支出一级分类</span>
+        <span class="tiny">按住行首手柄拖动</span>
       </div>
 
-      <div class="fx-sort-row" data-row="娱乐">
-        <button class="fx-handle" type="button" aria-label="拖动 娱乐">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="4" r="1.3"/><circle cx="10" cy="4" r="1.3"/><circle cx="6" cy="8" r="1.3"/><circle cx="10" cy="8" r="1.3"/><circle cx="6" cy="12" r="1.3"/><circle cx="10" cy="12" r="1.3"/></svg>
-        </button>
-        <span class="fx-ico" style="background:var(--danger-soft);color:var(--danger)">
-          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="13" height="8.5" rx="1.5"/><path d="M3.5 10.5h13"/><path d="M10 3.5v3.5"/><path d="M7 3.5h6"/></svg>
-        </span>
-        <span class="fx-row-txt">
-          <span class="fx-row-name">娱乐 <span class="tag fx-off-tag">已停用</span></span>
-          <span class="fx-row-meta">1 个二级 · 本月 3 笔</span>
-        </span>
-        <span class="fx-row-num num">6</span>
+      <div class="fx-sort-list"
+        data-hot="②" data-hot-name="拖拽排序行" data-hot-pos="outer-top-right"
+        data-hot-label="按住行首手柄 200ms 进入拖动，整行抬起并高亮，落点显示插入条；松手即重排序号但不写入，点保存才一次性提交">
+        <div class="fx-sort-row" data-row="餐饮">
+          <button class="fx-handle" type="button" aria-label="拖动 餐饮">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="4" r="1.3"/><circle cx="10" cy="4" r="1.3"/><circle cx="6" cy="8" r="1.3"/><circle cx="10" cy="8" r="1.3"/><circle cx="6" cy="12" r="1.3"/><circle cx="10" cy="12" r="1.3"/></svg>
+          </button>
+          <span class="fx-ico">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5h13"/><path d="M4.5 10.5a5.5 5.5 0 0 1 11 0"/><path d="M8 7.5 6.5 4.5M12 7.5l1.5-3"/></svg>
+          </span>
+          <span class="fx-row-txt">
+            <span class="fx-row-name">餐饮 <span class="tag">预置</span></span>
+            <span class="fx-row-meta">3 个二级 · 本月 82 笔 · <span class="num">-¥3,240.00</span></span>
+          </span>
+          <span class="fx-row-num num">1</span>
+        </div>
+
+        <div class="fx-placeholder" aria-hidden="true"></div>
+
+        <div class="fx-sort-row" data-row="居住">
+          <button class="fx-handle" type="button" aria-label="拖动 居住">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="4" r="1.3"/><circle cx="10" cy="4" r="1.3"/><circle cx="6" cy="8" r="1.3"/><circle cx="10" cy="8" r="1.3"/><circle cx="6" cy="12" r="1.3"/><circle cx="10" cy="12" r="1.3"/></svg>
+          </button>
+          <span class="fx-ico" style="background:var(--info-soft);color:var(--info)">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5 10 4l6.5 5.5V16a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z"/><path d="M8 17v-4.5h4V17"/></svg>
+          </span>
+          <span class="fx-row-txt">
+            <span class="fx-row-name">居住 <span class="tag">预置</span></span>
+            <span class="fx-row-meta">3 个二级 · 本月 12 笔 · <span class="num">-¥4,200.00</span></span>
+          </span>
+          <span class="fx-row-num num">2</span>
+        </div>
+
+        <div class="fx-sort-row is-drag" data-row="交通">
+          <button class="fx-handle" type="button" aria-label="拖动 交通">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="4" r="1.3"/><circle cx="10" cy="4" r="1.3"/><circle cx="6" cy="8" r="1.3"/><circle cx="10" cy="8" r="1.3"/><circle cx="6" cy="12" r="1.3"/><circle cx="10" cy="12" r="1.3"/></svg>
+          </button>
+          <span class="fx-ico" style="background:var(--accent-soft);color:var(--accent)">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12.5h13l-1.2 3.2a1.5 1.5 0 0 1-1.4 1H6.1a1.5 1.5 0 0 1-1.4-1z"/><path d="M5.5 12.5l1.6-5.2A2 2 0 0 1 9 6h2a2 2 0 0 1 1.9 1.3l1.6 5.2"/></svg>
+          </span>
+          <span class="fx-row-txt">
+            <span class="fx-row-name">交通 <span class="tag">预置</span></span>
+            <span class="fx-row-meta">2 个二级 · 本月 28 笔 · <span class="num">-¥860.00</span></span>
+          </span>
+          <span class="fx-row-num num">3</span>
+        </div>
+
+        <div class="fx-sort-row" data-row="购物">
+          <button class="fx-handle" type="button" aria-label="拖动 购物">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="4" r="1.3"/><circle cx="10" cy="4" r="1.3"/><circle cx="6" cy="8" r="1.3"/><circle cx="10" cy="8" r="1.3"/><circle cx="6" cy="12" r="1.3"/><circle cx="10" cy="12" r="1.3"/></svg>
+          </button>
+          <span class="fx-ico" style="background:var(--warning-soft);color:var(--warning)">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h10l1 9H4z"/><path d="M7.5 7V6a2.5 2.5 0 0 1 5 0v1"/></svg>
+          </span>
+          <span class="fx-row-txt">
+            <span class="fx-row-name">购物 <span class="tag">预置</span></span>
+            <span class="fx-row-meta">2 个二级 · 本月 34 笔 · <span class="num">-¥1,480.00</span></span>
+          </span>
+          <span class="fx-row-num num">4</span>
+        </div>
+
+        <div class="fx-sort-row" data-row="教育">
+          <button class="fx-handle" type="button" aria-label="拖动 教育">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="4" r="1.3"/><circle cx="10" cy="4" r="1.3"/><circle cx="6" cy="8" r="1.3"/><circle cx="10" cy="8" r="1.3"/><circle cx="6" cy="12" r="1.3"/><circle cx="10" cy="12" r="1.3"/></svg>
+          </button>
+          <span class="fx-ico" style="background:var(--face-calendar-soft,var(--surface-2));color:var(--face-calendar)">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h5.5A2.5 2.5 0 0 1 12 7v9a2 2 0 0 0-2-2H4z"/><path d="M16 4.5h-5.5A2.5 2.5 0 0 0 8 7v9a2 2 0 0 1 2-2h6z"/></svg>
+          </span>
+          <span class="fx-row-txt">
+            <span class="fx-row-name">教育 <span class="tag">自定义</span></span>
+            <span class="fx-row-meta">2 个二级 · 本月 23 笔 · <span class="num">-¥2,100.00</span></span>
+          </span>
+          <span class="fx-row-num num">5</span>
+        </div>
+
+        <div class="fx-sort-row" data-row="医疗">
+          <button class="fx-handle" type="button" aria-label="拖动 医疗">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="4" r="1.3"/><circle cx="10" cy="4" r="1.3"/><circle cx="6" cy="8" r="1.3"/><circle cx="10" cy="8" r="1.3"/><circle cx="6" cy="12" r="1.3"/><circle cx="10" cy="12" r="1.3"/></svg>
+          </button>
+          <span class="fx-ico" style="background:var(--danger-soft);color:var(--danger)">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="12" height="12" rx="3"/><path d="M10 7.5v5M7.5 10h5"/></svg>
+          </span>
+          <span class="fx-row-txt">
+            <span class="fx-row-name">医疗 <span class="tag">自定义</span></span>
+            <span class="fx-row-meta">2 个二级 · 本月 7 笔 · <span class="num">-¥600.00</span></span>
+          </span>
+          <span class="fx-row-num num">6</span>
+        </div>
       </div>
+
+      <div class="fx-sort-sec">
+        <span>收入一级分类</span>
+        <span class="tiny">与支出各自排序</span>
+      </div>
+
+      <div class="fx-sort-list">
+        <div class="fx-sort-row" data-row="工资">
+          <button class="fx-handle" type="button" aria-label="拖动 工资">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="4" r="1.3"/><circle cx="10" cy="4" r="1.3"/><circle cx="6" cy="8" r="1.3"/><circle cx="10" cy="8" r="1.3"/><circle cx="6" cy="12" r="1.3"/><circle cx="10" cy="12" r="1.3"/></svg>
+          </button>
+          <span class="fx-ico" style="background:var(--success-soft);color:var(--success)">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="14" height="10" rx="2"/><path d="M3 9h14"/><path d="M6.5 13h3"/></svg>
+          </span>
+          <span class="fx-row-txt">
+            <span class="fx-row-name">工资 <span class="tag">预置</span></span>
+            <span class="fx-row-meta">1 个二级 · 本月 2 笔 · <span class="num">+¥16,800.00</span></span>
+          </span>
+          <span class="fx-row-num num">1</span>
+        </div>
+        <div class="fx-sort-row" data-row="理财">
+          <button class="fx-handle" type="button" aria-label="拖动 理财">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="4" r="1.3"/><circle cx="10" cy="4" r="1.3"/><circle cx="6" cy="8" r="1.3"/><circle cx="10" cy="8" r="1.3"/><circle cx="6" cy="12" r="1.3"/><circle cx="10" cy="12" r="1.3"/></svg>
+          </button>
+          <span class="fx-ico" style="background:var(--accent-soft);color:var(--accent)">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 15.5h13"/><path d="M5 15.5V10M9 15.5V6.5M13 15.5V9M17 15.5V4.5"/></svg>
+          </span>
+          <span class="fx-row-txt">
+            <span class="fx-row-name">理财 <span class="tag">自定义</span></span>
+            <span class="fx-row-meta">1 个二级 · 本月 1 笔 · <span class="num">+¥1,200.00</span></span>
+          </span>
+          <span class="fx-row-num num">2</span>
+        </div>
+      </div>
+
+      <p class="tiny" style="margin-top:12px;line-height:var(--lh-normal)">
+        二级分类的顺序在各父级内部单独排；停用的分类保留原位，重新启用后回到这个位置，不会跳到末尾。
+      </p>
     </div>
 
-    <div class="fx-sort-sec">
-      <span>收入一级分类</span>
-      <span class="tiny">与支出各自排序</span>
+    <div class="fx-sk" aria-hidden="true">
+      <div class="skeleton sk-line" style="width:38%"></div>
+      <div class="skeleton sk-block" style="height:56px"></div>
+      <div class="skeleton sk-block" style="height:56px"></div>
+      <div class="skeleton sk-block" style="height:56px"></div>
+      <div class="skeleton sk-block" style="height:56px"></div>
+      <div class="skeleton sk-block" style="height:56px"></div>
     </div>
 
-    <div class="fx-sort-list">
-      <div class="fx-sort-row" data-row="工资">
-        <button class="fx-handle" type="button" aria-label="拖动 工资">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="4" r="1.3"/><circle cx="10" cy="4" r="1.3"/><circle cx="6" cy="8" r="1.3"/><circle cx="10" cy="8" r="1.3"/><circle cx="6" cy="12" r="1.3"/><circle cx="10" cy="12" r="1.3"/></svg>
-        </button>
-        <span class="fx-ico" style="background:var(--success-soft);color:var(--success)">
-          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="14" height="10" rx="2"/><path d="M3 9h14"/><path d="M6.5 13h3"/></svg>
-        </span>
-        <span class="fx-row-txt">
-          <span class="fx-row-name">工资 <span class="tag">预置</span></span>
-          <span class="fx-row-meta">1 个二级 · 本月 2 笔</span>
-        </span>
-        <span class="fx-row-num num">1</span>
+    <div class="state fx-empty">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8h10v10H8zM16 16h8v8h-8z"/></svg>
       </div>
-      <div class="fx-sort-row" data-row="理财">
-        <button class="fx-handle" type="button" aria-label="拖动 理财">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="4" r="1.3"/><circle cx="10" cy="4" r="1.3"/><circle cx="6" cy="8" r="1.3"/><circle cx="10" cy="8" r="1.3"/><circle cx="6" cy="12" r="1.3"/><circle cx="10" cy="12" r="1.3"/></svg>
-        </button>
-        <span class="fx-ico" style="background:var(--accent-soft);color:var(--accent)">
-          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 15.5h13"/><path d="M5 15.5V10M9 15.5V6.5M13 15.5V9M17 15.5V4.5"/></svg>
-        </span>
-        <span class="fx-row-txt">
-          <span class="fx-row-name">理财 <span class="tag">自定义</span></span>
-          <span class="fx-row-meta">1 个二级 · 本月 1 笔</span>
-        </span>
-        <span class="fx-row-num num">2</span>
-      </div>
+      <div class="state-title">还没有可以排序的分类</div>
+      <div class="state-desc">分类都被停用了，或家里还没建过分类。先新建一个，再回来调整顺序。</div>
+      <a class="btn btn-secondary" href="finance-category-create.html">去新建分类</a>
     </div>
 
-    <p class="tiny" style="margin-top:12px;line-height:var(--lh-normal)">
-      二级分类的顺序在各父级内部单独排；停用项保留原位置，重新启用后不会跳到末尾。
-    </p>
+    <div class="state fx-fail">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="16" r="11"/><path d="M16 9.5v8M16 21.5v.1"/></svg>
+      </div>
+      <div class="state-title">分类没有加载出来</div>
+      <div class="state-desc">网络或服务暂时没有响应。重试只重新读取分类顺序，不会改动任何设置。</div>
+      <button class="btn btn-secondary" type="button"
+        data-hot="⑤" data-hot-name="重试" data-hot-pos="center"
+        data-hot-label="整页失败态下的重试：只重新读取分类与顺序；仍失败保持失败态，不拿本机旧顺序拼一份">
+        重试</button>
+    </div>
   </div>
 
   <div class="fx-footer">
     <div class="fx-saved-note">已同步到记账、报表与筛选三处</div>
     <button class="btn btn-primary btn-block" type="button" id="fx-save"
       data-hot="③" data-hot-name="保存排序" data-hot-pos="outer-top-right"
-      data-hot-label="提交 sort_order，带 version；保存中按钮转菊花且列表锁定，成功后回分类管理并提示三处已同步">
+      data-hot-label="整单一起保存；保存中按钮转菊花且列表锁定不可拖；若期间家人也调过顺序，弹「排序刚被家人调过」层，给「保留对方 / 用我的」，不做部分保存">
       保存排序</button>
+  </div>
+
+  <div class="sheet-mask" id="sheet-conflict" aria-hidden="true">
+    <div class="sheet">
+      <div class="sheet-grabber"></div>
+      <h3>排序刚被家人调过</h3>
+      <p class="sheet-sub">保存时发现，家里的另一位成人已经调过一遍顺序。你这次的调整还没生效，先看看用哪一份。</p>
+      <div class="fx-diff" style="margin-top:12px;border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden">
+        <div style="display:flex;gap:10px;padding:9px 12px;font-size:var(--fs-12)"><span style="width:52px;flex:none;color:var(--text-3)">对方</span><span style="flex:1;color:var(--text-2)">餐饮 → 居住 → 交通 → 购物 → 教育 → 医疗</span></div>
+        <div style="display:flex;gap:10px;padding:9px 12px;font-size:var(--fs-12);border-top:1px solid var(--border)"><span style="width:52px;flex:none;color:var(--text-3)">我的</span><span style="flex:1;color:var(--text-2)">餐饮 → 交通 → 居住 → 购物 → 教育 → 医疗</span></div>
+      </div>
+      <div class="sheet-actions"
+        data-hot="④" data-hot-name="冲突处理" data-hot-pos="center"
+        data-hot-label="「保留对方」= 放弃这次拖动并载入对方的顺序；「用我的」= 以当前顺序再保存一次。整单处理，不用「覆盖」的说法">
+        <button class="btn btn-primary btn-block" type="button" id="fx-conflict-mine">用我的</button>
+        <button class="btn btn-secondary btn-block" type="button" id="fx-conflict-theirs">保留对方</button>
+      </div>
+    </div>
   </div>
 
   <div class="toast"></div>
@@ -326,6 +393,23 @@
   (function () {
     var st = new URLSearchParams(location.search).get('state') || 'default';
     var save = document.getElementById('fx-save');
+    var conflictSheet = document.getElementById('sheet-conflict');
+
+    function renumber(list) {
+      Array.prototype.forEach.call(list.querySelectorAll('.fx-sort-row'), function (r, i) {
+        r.querySelector('.fx-row-num').textContent = String(i + 1);
+      });
+    }
+
+    function applySavedOrder() {
+      var list = document.querySelector('.fx-sort-list');
+      var row = list.querySelector('[data-row="交通"]');
+      if (row) {
+        row.classList.remove('is-drag');
+        list.insertBefore(row, list.querySelector('[data-row="居住"]'));
+        renumber(list);
+      }
+    }
 
     if (st === 'saving') {
       save.classList.add('is-loading');
@@ -333,30 +417,52 @@
     }
 
     if (st === 'saved') {
+      applySavedOrder();
       save.textContent = '已保存';
       save.disabled = true;
+    }
+
+    if (st === 'dragging') {
       var list = document.querySelector('.fx-sort-list');
       var row = list.querySelector('[data-row="交通"]');
-      if (row) {
-        row.classList.remove('is-drag');
-        list.insertBefore(row, list.querySelector('.fx-sort-row'));
-        Array.prototype.forEach.call(list.querySelectorAll('.fx-sort-row'), function (r, i) {
-          r.querySelector('.fx-row-num').textContent = String(i + 1);
-        });
-      }
+      list.insertBefore(row, list.querySelector('[data-row="居住"]'));
+      renumber(list);
+    }
+
+    if (st === 'conflict') {
+      window.HC.openSheet('sheet-conflict');
     }
 
     save.addEventListener('click', function () {
+      if (st === 'conflict') {
+        window.HC.openSheet('sheet-conflict');
+        return;
+      }
       save.classList.add('is-loading');
       save.textContent = '保存中';
       document.body.setAttribute('data-state', 'saving');
       setTimeout(function () {
+        applySavedOrder();
         save.classList.remove('is-loading');
         save.textContent = '已保存';
         save.disabled = true;
         document.body.setAttribute('data-state', 'saved');
         window.HC.toast('排序已保存，三处顺序已同步');
       }, 900);
+    });
+
+    document.getElementById('fx-conflict-mine').addEventListener('click', function () {
+      window.HC.closeSheet(conflictSheet);
+      document.body.setAttribute('data-state', 'saved');
+      applySavedOrder();
+      save.textContent = '已保存';
+      save.disabled = true;
+      window.HC.toast('已保存你的顺序');
+    });
+
+    document.getElementById('fx-conflict-theirs').addEventListener('click', function () {
+      window.HC.closeSheet(conflictSheet);
+      window.HC.toast('已保留家人的顺序');
     });
   })();
 </script>

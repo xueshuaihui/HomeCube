@@ -124,6 +124,14 @@
   body[data-state="onboarding"] .fmod-back,
   body[data-state="onboarding-selected"] .fmod-back { visibility: hidden; }
 
+  .fmod-locked {
+    margin-top: 4px; padding: 0 14px 10px;
+    font-size: var(--fs-11); color: var(--text-3); line-height: var(--lh-normal);
+  }
+  .fmod-error { display: none; }
+  body[data-state="error"] .fmod-gov { display: none; }
+  body[data-state="error"] .fmod-error { display: block; }
+
   .fmod-step {
     display: inline-flex;
     padding: 3px 9px;
@@ -202,7 +210,7 @@
   }
 </style>
 </head>
-<body data-screen="26 面目录" data-tab="" data-states="default,confirm,onboarding,onboarding-selected,readonly">
+<body data-screen="26 面目录" data-tab="" data-states="default,confirm,onboarding,onboarding-selected,readonly,error">
 <div class="harness"></div>
 
 <div class="phone">
@@ -247,24 +255,21 @@
       </div>
       <div class="list">
         <div class="list-item fmod-item"
-          data-hot="②" data-hot-name="已启用开关" data-hot-pos="top-right"
-          data-hot-label="只给可选面渲染开关；日历行是必选面、只有恒启用标签。开关不直改配置：先弹二次确认层，说明入口消失、数据保留；单面家庭确认会被拒并提示「至少保留一个可选面」">
+          data-hot="②" data-hot-name="已启用行" data-hot-pos="top-right"
+          data-hot-label="开关渲染条件：N = 本家庭已启用的可选面数。N≥2 时每行渲染可操作开关（点了先弹 ⑥ 二次确认，确认才写 PUT family/modules）；N=1（P1 的实际形态）该行不渲染开关，只给状态标签 + 一句『至少要保留一个，现在只有这一个』，整行点击无动作、不报错。日历行恒为状态标签『始终开启，不能关闭』。判据「至少保留一个可选面」一字不动，被拒样本由验收脚本直发接口判">
           <span class="fmod-icon">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="2.5"/><path d="M2.5 8h15"/><path d="M6 12h3"/></svg>
           </span>
           <span class="li-text">财务<span class="li-sub">记账、预算、报表与家庭 AA · 已启用 18 天</span></span>
-          <label class="switch">
-            <input type="checkbox" id="sw-finance" checked aria-label="财务面开关（已启用）">
-            <span class="track"></span>
-            <span class="thumb"></span>
-          </label>
+          <span class="fmod-tag">已开启</span>
         </div>
+        <div class="fmod-locked">至少要保留一个，现在只有这一个；等第二项可开通的内容上线并开启后，这里才会出现可以关闭的开关。</div>
         <div class="list-item fmod-item">
           <span class="fmod-icon">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="4.5" width="14" height="12" rx="2"/><path d="M3 8.5h14M6.5 3v3M13.5 3v3"/></svg>
           </span>
-          <span class="li-text">日历<span class="li-sub">日程 / 待办 / 提醒 · 恒启用，不可停用</span></span>
-          <span class="fmod-tag">必选面</span>
+          <span class="li-text">日历<span class="li-sub">日程 / 待办 / 提醒</span></span>
+          <span class="fmod-tag">始终开启，不能关闭</span>
         </div>
       </div>
 
@@ -274,13 +279,13 @@
       </div>
       <div class="fmod-empty"
         data-hot="③" data-hot-name="可开通分区" data-hot-pos="bottom-right"
-        data-hot-label="P1 已出生的财务与日历都在「已启用」段，因此可开通区为空；不放假可点条目，也不把即将上线的面混进来">
+        data-hot-label="只列已出生且未启用的面；P1 已出生的财务与日历都在「已启用」段，因此本区为空，不放可点的假条目">
         <span class="fe-ic">
           <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 4.5v11M4.5 10h11"/></svg>
         </span>
         <div>
-          <div class="fe-t">暂无可开通的面</div>
-          <div class="fe-s">新面随期次出生后出现在这里，开通只写本家庭配置，不创建任何业务数据。</div>
+          <div class="fe-t">暂无可开通的内容</div>
+          <div class="fe-s">新内容随期次上线后出现在这里；开通只写本家庭的清单，不创建任何业务数据。</div>
         </div>
       </div>
 
@@ -330,12 +335,12 @@
 
       <div class="fmod-foot"
         data-hot="⑤" data-hot-name="规则说明卡" data-hot-pos="bottom-right"
-        data-hot-label="停用语义在这里说清：入口消失、数据保留并继续参与统计、重新开通即刻恢复；同时说明不能出现 0 面家庭">
+        data-hot-label="停用语义在这里说清：入口消失、数据保留并继续参与统计、重新开通可恢复；并说明「至少要保留一个」与它在什么情况下才允许关闭">
         <h4>开通与停用的规则</h4>
         <ul>
           <li><b>停用 = 入口消失，不是删数据。</b>该面的历史数据保留，重新开通后可恢复。</li>
           <li>停用后仍照常参与跨面归集、AA 与备份，统计口径不变。</li>
-          <li>至少要保留一个可选面：停用最后一个可选面会被服务端拒绝，开关复位。</li>
+          <li>家里要始终保留至少一项可开通的内容：现在只有财务这一项可选，所以它暂时不能关闭；等第二项上线并开通后，两个才可以关。</li>
         </ul>
       </div>
     </div>
@@ -344,13 +349,13 @@
     <div class="fmod-ro">
       <div class="fmod-note"
         data-hot="⑨" data-hot-name="只读提示条" data-hot-pos="bottom-right"
-        data-hot-label="非管理员只读且不渲染开关；不出现置灰开关，避免「点进去才发现不能改」">
+        data-hot-label="非管理员开关不渲染（不是置灰）；清单与生效状态照常可看；状态标签与管理员看到的同词（『始终开启，不能关闭』/『已开启』）">
         <span class="fn-ic">
           <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 9v4.5M10 6.6v.1"/></svg>
         </span>
         <div>
-          <div class="fn-t">仅管理员可开通或停用面</div>
-          <div class="fn-s">你当前是成人成员，本页为只读视图；开关不渲染，面清单与生效状态照常可看。</div>
+          <div class="fn-t">仅家庭管理员可以开通或停用</div>
+          <div class="fn-s">你当前是成员，本页为只读视图；开关不渲染，清单与生效状态照常可看。</div>
         </div>
       </div>
 
@@ -364,14 +369,14 @@
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="2.5"/><path d="M2.5 8h15"/><path d="M6 12h3"/></svg>
           </span>
           <span class="li-text">财务<span class="li-sub">记账、预算、报表与家庭 AA · 已启用 18 天</span></span>
-          <span class="fmod-tag">已启用</span>
+          <span class="fmod-tag">已开启</span>
         </div>
         <div class="list-item fmod-item">
           <span class="fmod-icon">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="4.5" width="14" height="12" rx="2"/><path d="M3 8.5h14M6.5 3v3M13.5 3v3"/></svg>
           </span>
-          <span class="li-text">日历<span class="li-sub">日程 / 待办 / 提醒 · 恒启用，不可停用</span></span>
-          <span class="fmod-tag">必选面</span>
+          <span class="li-text">日历<span class="li-sub">日程 / 待办 / 提醒</span></span>
+          <span class="fmod-tag">始终开启，不能关闭</span>
         </div>
       </div>
 
@@ -384,8 +389,8 @@
           <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 4.5v11M4.5 10h11"/></svg>
         </span>
         <div>
-          <div class="fe-t">暂无可开通的面</div>
-          <div class="fe-s">其余面尚未上线；开通与停用由家庭管理员在面目录里完成。</div>
+          <div class="fe-t">暂无可开通的内容</div>
+          <div class="fe-s">其余项目尚未上线；开通与停用由家庭管理员在面目录里完成。</div>
         </div>
       </div>
 
@@ -436,7 +441,7 @@
         <ul>
           <li>停用只让入口消失，该面的历史数据保留，重新开通可恢复。</li>
           <li>开通与停用只写本家庭的面配置，不改动任何业务数据。</li>
-          <li>至少保留一个可选面：最后一个可选面不会被停用。</li>
+          <li>家里要始终保留至少一项可开通的内容：现在只有财务这一项可选，所以它不能被停用。</li>
         </ul>
       </div>
     </div>
@@ -444,11 +449,11 @@
     <!-- 引导态：新家庭强制选面 -->
     <div class="fmod-guide">
       <span class="fmod-step">创建家庭 · 第 2 步</span>
-      <h2 class="fmod-title">选择你们要用的服务</h2>
-      <p class="fmod-desc">至少选 1 个<b>可选面</b>（日历为必选面、已默认开通）才能完成创建；之后可在「我的 → 开通更多面」随时调整。未上线的面暂时不能选。</p>
+      <h2 class="fmod-title">选择你们要用的</h2>
+      <p class="fmod-desc">至少选 1 项才能完成创建（日历已默认开启，不需要选）；之后可在「我的 → 开通更多面」随时调整。其余项目即将上线，暂不可选。</p>
 
       <div class="section-title">
-        <span>必选面</span>
+        <span>已默认开启</span>
         <span class="tiny">1 个</span>
       </div>
       <div class="list">
@@ -456,8 +461,8 @@
           <span class="fmod-icon">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="4.5" width="14" height="12" rx="2"/><path d="M3 8.5h14M6.5 3v3M13.5 3v3"/></svg>
           </span>
-          <span class="li-text">日历<span class="li-sub">日程 / 待办 / 提醒 · 必选面 · 已默认开通（不可取消）</span></span>
-          <span class="fmod-tag">必选面</span>
+          <span class="li-text">日历<span class="li-sub">日程 / 待办 / 提醒 · 始终开启，不能关闭</span></span>
+          <span class="fmod-tag">已默认开启</span>
         </div>
       </div>
 
@@ -523,12 +528,25 @@
 
       <div class="fmod-guide-note">开通只写本家庭的面配置，不会创建任何业务数据；之后停用也不会删除数据。</div>
     </div>
+
+    <!-- 首屏失败：三态清单与规则卡一律不渲染，不回落成上一次读到的开通状态 -->
+    <div class="state fmod-error" style="padding-top:72px">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="16" cy="16" r="12"/><path d="M16 9.5v8M16 21.6v.1"/></svg>
+      </div>
+      <div class="state-title">开通清单没加载出来</div>
+      <div class="state-desc">开通状态来自服务端。失败期间不把上一次读到的清单留在页上——把已停用的内容当成还在开启，会让人点进一个不存在的入口。</div>
+      <div class="state-code">HC-4205</div>
+      <button class="btn btn-secondary" type="button" style="margin-top:8px" data-go="family-modules.html"
+        data-hot="⑩" data-hot-name="首屏失败的重试" data-hot-pos="top-right"
+        data-hot-label="只重发一次目录请求；重试期间回到骨架态，不展示上一次读到的开通状态；三态清单与规则卡一律不渲染">重新加载</button>
+    </div>
   </div>
 
   <div class="fmod-bottom">
     <div class="fmod-picked">
-      已启用 <b class="num" id="pick-count">1</b> 面（含必选面日历）
-      <span class="tiny" id="pick-hint">至少选 1 个可选面</span>
+      已开启 <b class="num" id="pick-count">1</b> 项（含始终开启的日历）
+      <span class="tiny" id="pick-hint">至少要选一个才能继续</span>
     </div>
     <button class="btn btn-primary btn-block" id="pick-done" type="button" disabled
       data-hot="⑧" data-hot-name="引导态底部按钮" data-hot-pos="top-right"
@@ -537,11 +555,11 @@
     </button>
   </div>
 
-  <!-- 停用二次确认 -->
+  <!-- 停用二次确认：条件可达帧——仅当已启用的可选面 ≥2 时才会被 ② 唤起；P1 走不到 -->
   <div class="sheet-mask" id="sheet-disable" aria-hidden="true">
     <div class="sheet"
-      data-hot="⑥" data-hot-name="停用确认弹层" data-hot-pos="top-right"
-      data-hot-label="二次确认：说明入口消失、数据保留、重新开通可恢复；单面家庭另提示至少保留一个可选面，确认被拒后开关复位">
+      data-hot="⑥" data-hot-name="停用确认弹层（条件可达）" data-hot-pos="top-right"
+      data-hot-label="只有已启用的可选面 ≥2 时才会被 ② 唤起；P1 唯一可选面只有 1 个、该行不渲染开关，这一帧留着作为 ≥2 形态的形状与判据依据。弹层写清入口消失、数据保留、重新开通可恢复；取消不动任何状态；确认写入后开关与入口同步消失">
       <div class="sheet-grabber"></div>
       <h3>停用财务面？</h3>
       <p class="sheet-sub">停用后，首页格子、＋ 目标、搜索分组里的入口会同时消失；<b>该面数据保留，重新开通后可恢复</b>，历史流水照常参与统计。</p>
@@ -551,7 +569,7 @@
         </span>
         <span class="li-text">财务<span class="li-sub">已启用 18 天 · 1,284 笔流水保留</span></span>
       </div>
-      <div class="fmod-warn">财务是本家庭最后一个<b>可选面</b>（日历为必选面、恒启用）。停用最后一个可选面会被服务端拒绝，开关会复位。</div>
+      <div class="fmod-warn">家里要始终保留至少一项可开通的内容——这一帧只在有两项可关闭时才会出现；取消不会改动任何状态。</div>
       <div class="sheet-actions">
         <button class="btn btn-primary btn-block" type="button" id="disable-confirm">停用财务面</button>
         <button class="btn btn-secondary btn-block" type="button" data-sheet-close>取消</button>
@@ -573,7 +591,7 @@
     var n = pick.classList.contains('is-picked') ? 1 : 0;
     count.textContent = 1 + n;
     done.disabled = n === 0;
-    hint.textContent = n === 0 ? '至少选 1 个可选面' : '开通只写面配置，不建业务数据';
+    hint.textContent = n === 0 ? '至少要选一个才能继续' : '之后可在「我的 → 开通更多面」随时调整';
     pick.setAttribute('aria-pressed', String(n === 1));
   }
 
@@ -592,15 +610,10 @@
   }
   syncPick();
 
-  document.getElementById('sw-finance').addEventListener('click', function (e) {
-    e.preventDefault();
-    window.HC.openSheet('sheet-disable');
-  });
-
+  /* 停用确认层是条件可达帧（N≥2 形态）：P1 治理态没有可拨的开关，只能经 ?state=confirm 查看形状 */
   document.getElementById('disable-confirm').addEventListener('click', function () {
     window.HC.closeSheet(document.getElementById('sheet-disable'));
-    document.getElementById('sw-finance').checked = true;
-    window.HC.toast('至少保留一个可选面，开关已复位');
+    window.HC.toast('已停用财务面 · 入口消失，数据保留，重新开通可恢复');
   });
 
   document.addEventListener('DOMContentLoaded', function () {

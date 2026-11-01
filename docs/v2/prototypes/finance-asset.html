@@ -166,76 +166,85 @@
 
       <section class="fx-hero"
         data-hot="③" data-hot-name="资产三数" data-hot-pos="bottom-right"
-        data-hot-label="总资产、总负债、净资产三数同屏：净资产 = 总资产 − 总负债。信用卡欠款计入负债；归档账户的历史流水仍计入，但归档账户余额不再计入账户汇总">
+        data-hot-label="总资产、总负债、净资产三数同屏：总资产 = 全部账户余额 + 借出待收；总负债 = 借入待还 + 机构负债；净资产 = 总资产 − 总负债（4.5.8 定版 ㉛）。归档账户余额仍计入净资产；非管理员合计位注「含 N 条你无权查看的记录」">
         <div class="fx-hero-k">净资产</div>
-        <div class="amount fx-hero-v" id="fx-net">¥120,070.00</div>
+        <div class="amount fx-hero-v" id="fx-net">¥34,918.40</div>
         <div class="fx-hero-split">
-          <div class="fx-hs"><span class="fx-hk">总资产</span><span class="amount fx-hv" id="fx-assets">¥138,720.00</span></div>
-          <div class="fx-hs"><span class="fx-hk">总负债</span><span class="amount fx-hv is-liab" id="fx-liab">¥18,650.00</span></div>
-          <div class="fx-hs"><span class="fx-hk">负债率</span><span class="num fx-hv" id="fx-ratio">13.4%</span></div>
+          <div class="fx-hs"><span class="fx-hk">总资产</span><span class="amount fx-hv" id="fx-assets">¥42,918.40</span></div>
+          <div class="fx-hs"><span class="fx-hk">总负债</span><span class="amount fx-hv is-liab" id="fx-liab">¥8,000.00</span></div>
+          <div class="fx-hs"><span class="fx-hk">负债率</span><span class="num fx-hv" id="fx-ratio">18.6%</span></div>
         </div>
         <div class="fx-hero-note" id="fx-hero-note">截至 10 月 29 日 09:20 · 家庭币种 CNY · 含 7 个账户</div>
+        <div class="fx-hero-note" id="fx-hero-private">含 4 条你无权查看的记录 · 合计仍计入本页</div>
       </section>
 
-      <div class="fx-sec"><span>资产构成</span><span class="tiny">按账户类型</span></div>
+      <div class="fx-sec"><span>资产构成</span><span class="tiny">按账户类型与借出</span></div>
       <div class="card"
         data-hot="④" data-hot-name="资产构成" data-hot-pos="bottom-right"
-        data-hot-label="按账户类型分组占比：银行卡 91.1%、其他 8.0%、现金 0.9%，合计 100.0%。占比按总资产算，归档账户不计入；点底部入口去账户页看逐个账户">
+        data-hot-label="资产按账户类型与借出分组：银行卡 75.6%、第三方支付 12.8%、现金 2.0%、借出待收 9.6%，合计 100.0%。占比按总资产算，归档账户余额仍计入；借出待收按人列未还余额，与借贷列表同一份汇总">
         <div class="fx-total-bar" aria-hidden="true">
-          <i style="width:91.1%;background:var(--brand)"></i>
-          <i style="width:8%;background:var(--accent)"></i>
-          <i style="width:.9%;background:var(--border-strong)"></i>
+          <i style="width:75.6%;background:var(--brand)"></i>
+          <i style="width:12.8%;background:var(--accent)"></i>
+          <i style="width:2.0%;background:var(--border-strong)"></i>
+          <i style="width:9.6%;background:var(--success,#3f9e6a)"></i>
         </div>
 
         <div class="fx-group-row">
           <span class="fx-group-name">银行卡 <span class="tiny">1 个</span></span>
-          <span class="amount fx-group-amt">¥126,400.00</span>
-          <span class="fx-group-pct">91.1%</span>
+          <span class="amount fx-group-amt">¥32,480.00</span>
+          <span class="fx-group-pct">75.6%</span>
         </div>
-        <span class="fx-bar"><i style="width:91.1%"></i></span>
+        <span class="fx-bar"><i style="width:75.6%"></i></span>
         <div class="fx-bar-sub"><span>招商银行储蓄卡 · 默认账户</span></div>
 
         <div class="fx-group-row">
-          <span class="fx-group-name">其他 <span class="tiny">3 个</span></span>
-          <span class="amount fx-group-amt">¥11,040.00</span>
-          <span class="fx-group-pct">8.0%</span>
+          <span class="fx-group-name">第三方支付 <span class="tiny">2 个</span></span>
+          <span class="amount fx-group-amt">¥5,478.40</span>
+          <span class="fx-group-pct">12.8%</span>
         </div>
-        <span class="fx-bar"><i style="width:8%"></i></span>
-        <div class="fx-bar-sub"><span>支付宝 · 微信零钱 · 饭卡</span><span class="num">已归档 2 个未计入</span></div>
+        <span class="fx-bar"><i style="width:12.8%"></i></span>
+        <div class="fx-bar-sub"><span>支付宝 · 微信零钱</span><span class="num">已归档账户余额仍计入</span></div>
 
         <div class="fx-group-row">
           <span class="fx-group-name">现金 <span class="tiny">1 个</span></span>
-          <span class="amount fx-group-amt">¥1,280.00</span>
-          <span class="fx-group-pct">0.9%</span>
+          <span class="amount fx-group-amt">¥860.00</span>
+          <span class="fx-group-pct">2.0%</span>
         </div>
-        <span class="fx-bar"><i style="width:.9%"></i></span>
-        <div class="fx-bar-sub"><span>现金钱包</span><span class="num">合计 ¥138,720.00</span></div>
+        <span class="fx-bar"><i style="width:2.0%"></i></span>
+        <div class="fx-bar-sub"><span>现金钱包</span></div>
+
+        <div class="fx-group-row">
+          <span class="fx-group-name">借出待收 <span class="tiny">3 笔</span></span>
+          <span class="amount fx-group-amt">¥4,100.00</span>
+          <span class="fx-group-pct">9.6%</span>
+        </div>
+        <span class="fx-bar"><i style="width:9.6%"></i></span>
+        <div class="fx-bar-sub"><span>陈默 ¥1,600 · 周晴 ¥1,500 · 妈妈 ¥1,000</span><span class="num">合计 ¥42,918.40</span></div>
       </div>
 
-      <div class="fx-sec"><span>负债构成</span><span class="tiny">信用卡欠款</span></div>
+      <div class="fx-sec"><span>负债构成</span><span class="tiny">个人借入与机构负债</span></div>
       <div class="card"
         data-hot="⑤" data-hot-name="负债构成" data-hot-pos="bottom-right"
-        data-hot-label="负债按信用卡逐张列出：交通银行 ¥15,400.00 占 82.6%，招商银行 ¥3,250.00 占 17.4%；没有负债账户时显示「无负债」空态，不用 0 值条形充数">
+        data-hot-label="负债分个人借入与机构负债两组：个人借入按人列未还余额（李岩 ¥6,000.00 占 75.0%、爸爸 ¥2,000.00 占 25.0%），机构负债按银行与平台列余额（本期为 0，用文字说明，不用 0 值条形）；两组都无负债时换成「没有负债 · 净资产等于总资产」">
         <div class="fx-liab-list">
           <div class="fx-group-row">
-            <span class="fx-group-name">交通银行信用卡</span>
-            <span class="amount fx-group-amt">¥15,400.00</span>
-            <span class="fx-group-pct">82.6%</span>
+            <span class="fx-group-name">个人借入 <span class="tiny">2 笔</span></span>
+            <span class="amount fx-group-amt">¥8,000.00</span>
+            <span class="fx-group-pct">100.0%</span>
           </div>
-          <span class="fx-bar is-liab"><i style="width:82.6%"></i></span>
-          <div class="fx-bar-sub"><span>额度 ¥30,000 · 还款日 18 日</span><span class="num">-¥15,400.00</span></div>
+          <span class="fx-bar is-liab"><i style="width:100%"></i></span>
+          <div class="fx-bar-sub"><span>李岩 ¥6,000.00 · 爸爸 ¥2,000.00</span><span class="num">-¥8,000.00</span></div>
 
           <div class="fx-group-row">
-            <span class="fx-group-name">招商银行信用卡</span>
-            <span class="amount fx-group-amt">¥3,250.00</span>
-            <span class="fx-group-pct">17.4%</span>
+            <span class="fx-group-name">机构负债 <span class="tiny">0 笔</span></span>
+            <span class="amount fx-group-amt">¥0.00</span>
+            <span class="fx-group-pct">0.0%</span>
           </div>
-          <span class="fx-bar is-liab"><i style="width:17.4%"></i></span>
-          <div class="fx-bar-sub"><span>额度 ¥50,000 · 还款日 20 日</span><span class="num">-¥3,250.00</span></div>
+          <div class="fx-bar-sub"><span>没有信用卡欠款与贷款余额</span><span class="num">合计 ¥8,000.00</span></div>
         </div>
         <div class="fx-noliab">
           <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 10.5 8 14l7.5-8"/></svg>
-          没有负债账户 · 总负债 ¥0.00，净资产等于总资产
+          没有负债 · 总负债 ¥0.00，净资产等于总资产
         </div>
       </div>
 
@@ -244,8 +253,8 @@
         data-hot="⑥" data-hot-name="趋势简图" data-hot-pos="bottom-right"
         data-hot-label="近 6 个月净资产折线，只取月末账户余额相减；线只使用 currentColor 与品牌色。趋势是账户汇总的历史，不是把每月收支再累加一遍">
         <div class="fx-trend-wrap">
-          <span class="fx-trend-tag">10 月 <b>¥120,070.00</b></span>
-          <svg class="fx-trend" viewBox="0 0 320 118" role="img" aria-label="近 6 个月净资产折线：5 月 102300 元升至 10 月 120070 元">
+          <span class="fx-trend-tag">10 月 <b>¥34,918.40</b></span>
+          <svg class="fx-trend" viewBox="0 0 320 118" role="img" aria-label="近 6 个月净资产折线：5 月 25100 元升至 10 月 34918.4 元">
             <line x1="0" y1="30" x2="320" y2="30" stroke="currentColor" opacity=".1"/>
             <line x1="0" y1="60" x2="320" y2="60" stroke="currentColor" opacity=".1"/>
             <line x1="0" y1="90" x2="320" y2="90" stroke="currentColor" opacity=".1"/>
@@ -262,7 +271,7 @@
         </div>
         <div class="fx-delta">
           <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5v-7M3 5.5 6 2.5l3 3"/></svg>
-          较上月 +¥4,470.00
+          较上月 +¥2,860.00
         </div>
       </div>
 
@@ -278,7 +287,7 @@
         </a>
       </div>
 
-      <p class="fx-note">口径：净资产 = 总资产 − 总负债；信用卡欠款计入负债。归档账户余额不计入账户汇总，但历史流水仍参与统计与净资产；两处同源，首页财务格不会出现与本页不同的数。</p>
+      <p class="fx-note">口径：净资产 = 全部账户余额汇总 + 借出待收 − 借入待还；归档账户余额仍计入净资产，历史流水照常统计。同一笔往来只在借出借入或机构负债一处挂账，不双计。本页与首页财务格同源，不会出现两处不同的数。</p>
     </div>
 
     <div class="state fx-error">
@@ -310,11 +319,11 @@
   var assetState = new URLSearchParams(location.search).get('state') || 'default';
 
   if (assetState === 'no-liability') {
-    document.getElementById('fx-net').textContent = '¥138,720.00';
+    document.getElementById('fx-net').textContent = '¥42,918.40';
     document.getElementById('fx-liab').textContent = '¥0.00';
     document.getElementById('fx-liab').classList.remove('is-liab');
     document.getElementById('fx-ratio').textContent = '0.0%';
-    document.getElementById('fx-hero-note').textContent = '截至 10 月 29 日 09:20 · 家庭币种 CNY · 无负债账户 · 5 个账户';
+    document.getElementById('fx-hero-note').textContent = '截至 10 月 29 日 09:20 · 家庭币种 CNY · 无负债 · 7 个账户';
   }
 </script>
 </body>

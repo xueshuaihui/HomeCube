@@ -64,7 +64,11 @@
         <p>家庭是数据边界：账目、成员与权限都只在本家庭内可见。一个账号最多加入 5 个家庭。</p>
       </div>
 
-      <div class="field" data-hot="①" data-hot-name="家庭名称" data-hot-pos="top-right" data-hot-label="必填 2–20 字；重名不拦截，但同一账号下不允许同名，提交时在字段下方提示">
+      <div class="card" style="margin:0 0 20px;background:var(--surface-2);border-color:transparent">
+        <div class="tiny" style="line-height:1.7">创建后需要开通至少一个功能才能进入，现在可以选择的是「记账与预算」。之后可以在「我的」里随时调整。</div>
+      </div>
+
+      <div class="field" data-hot="①" data-hot-name="家庭名称" data-hot-pos="top-right" data-hot-label="必填 2–20 字：输入侧即拦上限（满 20 字不再录入），提交侧拦下限（不足 2 字提示）；同一账号下不允许同名，提交时在字段下方提示">
         <label class="field-label" for="fname">家庭名称</label>
         <input class="input js-name" id="fname" type="text" maxlength="20" placeholder="例如：三口之家" value="三口之家">
         <div class="field-error name-err" data-state-block="error">
@@ -111,14 +115,14 @@
   </div>
 
   <div class="cta">
-    <button class="btn btn-primary btn-block js-submit" type="button" data-hot="⑤" data-hot-name="创建并选面" data-hot-pos="top-right" data-hot-label="提交成功后进入「选择要开通的面」引导态，至少选择一项才能继续；失败停留本页并提示原因">创建并继续</button>
+    <button class="btn btn-primary btn-block js-submit" type="button" data-hot="⑤" data-hot-name="创建并选面" data-hot-pos="top-right" data-hot-label="提交成功后进入强制选面的引导态（不可跳过，至少开通 1 项才能进入首页）；选面预期已在页面上方的说明区先行告知，不等到这一步才第一次说明；失败停留本页并提示原因">创建并继续</button>
   </div>
 
   <div class="sheet-mask" id="sheet-next" aria-hidden="true">
     <div class="sheet">
       <div class="sheet-grabber"></div>
       <h3>家庭已创建</h3>
-      <p class="sheet-sub">下一步选择要开通的面。选面步骤不可跳过，至少选择一个可选面才能进入首页；日历面为必选面，已默认开通。之后可随时在「我的 → 开通更多面」调整。</p>
+      <p class="sheet-sub">下一步选择要开通的功能：现在只有「记账与预算」可以开通，开通后才能进入；之后可以在「我的」里随时调整。这一步不可跳过。</p>
       <div class="sheet-actions">
         <a class="btn btn-primary btn-block" href="family-modules.html?state=onboarding">去选择面</a>
       </div>
@@ -136,10 +140,9 @@
     });
   });
   document.querySelector('.js-submit').addEventListener('click', function () {
-    if (!document.getElementById('fname').value.trim()) {
-      window.HC.toast('请填写家庭名称');
-      return;
-    }
+    var name = document.getElementById('fname').value.trim();
+    if (!name) { window.HC.toast('请填写家庭名称'); return; }
+    if (name.length < 2) { window.HC.toast('家庭名称至少 2 个字'); return; }
     window.HC.openSheet('sheet-next');
   });
 </script>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>到期中心 · 家立方原型</title>
+<title>日历 · 家立方原型</title>
 <link rel="stylesheet" href="shared/tokens.css">
 <link rel="stylesheet" href="shared/base.css">
 <script src="shared/app.js" defer></script>
@@ -39,10 +39,10 @@
   .cal-week-head span { text-align: center; font-size: var(--fs-11); font-weight: 600; color: var(--text-3); }
   .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
   .cal-cell {
-    height: 40px; border: 0; border-radius: var(--radius-sm);
+    height: 48px; border: 0; border-radius: var(--radius-sm);
     background: transparent; color: var(--text);
     font-family: inherit; font-size: var(--fs-14);
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
     cursor: pointer; padding: 0;
   }
   .cal-cell:hover { background: var(--surface-2); }
@@ -50,10 +50,11 @@
   .cal-cell.is-today { background: var(--brand); color: var(--on-brand); font-weight: 700; }
   .cal-cell.is-today:hover { background: var(--brand-hover); }
   .cal-cell.is-active { box-shadow: inset 0 0 0 1.5px var(--brand-text); }
-  .cal-dot { width: 4px; height: 4px; border-radius: var(--radius-pill); background: var(--brand); }
-  .cal-dot.is-many { width: 11px; height: 3px; border-radius: 2px; }
+  .cal-dot { width: 11px; height: 3px; border-radius: 2px; background: var(--brand); }
+  .cal-more { font-size: 9px; line-height: 1; font-weight: 700; color: var(--text-3); }
   .cal-cell.is-today .cal-dot { background: var(--on-brand); }
-  .cal-cell.is-out .cal-dot { display: none; }
+  .cal-cell.is-today .cal-more { color: var(--on-brand); opacity: .85; }
+  .cal-cell.is-out .cal-dot, .cal-cell.is-out .cal-more { display: none; }
   .cal-meta {
     display: flex; align-items: center; justify-content: space-between;
     padding: 8px 4px 0; font-size: var(--fs-12); color: var(--text-3);
@@ -126,11 +127,35 @@
   body[data-state="loading"] .cal-sk { display: block; }
 
   .cal-empty { display: none; }
-  body[data-state="empty"] .cal-empty { display: flex; }
-  body[data-state="empty"] .cal-today-block { display: none; }
-  body[data-state="empty"] .cal-dot { display: none; }
-  body[data-state="empty"] .cal-meta { display: none; }
-  body[data-state="empty"] .cal-foot-note { display: none; }
+  body[data-state="empty"] .cal-empty,
+  body[data-state="empty-day"] .cal-empty,
+  body[data-state="empty-week"] .cal-empty { display: flex; }
+  body[data-state="empty"] .cal-today-block,
+  body[data-state="empty-day"] .cal-today-block,
+  body[data-state="empty-week"] .cal-today-block { display: none; }
+  body[data-state="empty"] .cal-dot,
+  body[data-state="empty-day"] .cal-dot,
+  body[data-state="empty-week"] .cal-dot { display: none; }
+  body[data-state="empty"] .cal-meta,
+  body[data-state="empty-day"] .cal-meta,
+  body[data-state="empty-week"] .cal-meta { display: none; }
+  body[data-state="empty"] .cal-foot-note,
+  body[data-state="empty-day"] .cal-foot-note,
+  body[data-state="empty-week"] .cal-foot-note { display: none; }
+  body[data-state="empty-day"] .cal-grid-wrap,
+  body[data-state="empty-week"] .cal-grid-wrap { display: none; }
+  body[data-state="empty-day"] .cal-label-month,
+  body[data-state="empty-week"] .cal-label-month { display: none; }
+  body[data-state="empty-day"] .cal-label-day { display: inline; }
+  body[data-state="empty-week"] .cal-label-week { display: inline; }
+  body[data-state="empty-week"] .cal-week { display: none; }
+  .cal-empty-title, .cal-empty-desc { display: none; }
+  body[data-state="empty"] .cal-empty-title-month,
+  body[data-state="empty"] .cal-empty-desc-month,
+  body[data-state="empty-day"] .cal-empty-title-day,
+  body[data-state="empty-day"] .cal-empty-desc-day,
+  body[data-state="empty-week"] .cal-empty-title-week,
+  body[data-state="empty-week"] .cal-empty-desc-week { display: block; }
 
   .cal-cache {
     display: none; align-items: center; gap: 6px;
@@ -160,9 +185,34 @@
   .cal-stale { display: none; margin: 0 2px 8px; font-size: var(--fs-11); color: var(--text-2); }
   body[data-state="unavailable"] .cal-stale { display: block; }
   .cal-tabnote { margin: -4px 0 12px; font-size: var(--fs-11); color: var(--text-2); }
+
+  /* 两处日程新建入口（⑧ 视图 Tab 右上 / ⑨ 日格热区＋） */
+  .cal-right { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .cal-new {
+    flex: none; display: inline-flex; align-items: center; gap: 2px;
+    padding: 5px 10px; border-radius: var(--radius-pill);
+    background: var(--brand-soft); color: var(--brand-text);
+    font-size: var(--fs-12); font-weight: 700; white-space: nowrap; text-decoration: none;
+  }
+  .cal-new:hover { background: var(--brand-soft-border); }
+  .cal-dayplus {
+    flex: none; margin-left: 6px; padding: 1px 8px;
+    border-radius: var(--radius-pill);
+    background: var(--brand-soft); color: var(--brand-text);
+    font-size: var(--fs-13); font-weight: 700; text-decoration: none;
+  }
+
+  /* 首屏聚合请求失败：整页失败态，与主包列表页同形状；失败期间不渲染旧数据 */
+  .cal-error { display: none; }
+  body[data-state="error"] .cal-error { display: block; }
+  body[data-state="error"] .cal-bar,
+  body[data-state="error"] .cal-data,
+  body[data-state="error"] .cal-sk,
+  body[data-state="error"] .cal-unavail,
+  body[data-state="error"] .cal-cache { display: none; }
 </style>
 </head>
-<body data-screen="10 到期中心 · 日历面" data-tab="home" data-states="default,day,week,empty,loading,offline,unavailable">
+<body data-screen="10 日历 · 日历面" data-tab="home" data-states="default,day,week,empty,empty-day,empty-week,loading,error,offline,unavailable">
 <div class="harness"></div>
 
 <div class="phone">
@@ -179,11 +229,11 @@
     <div class="nav-left">
       <button class="icon-btn" type="button" data-go="home.html"
         data-hot="①" data-hot-name="返回" data-hot-pos="outer-top-left"
-        data-hot-label="回首页（B 区今日区 / C 区日历格）；本页是日历面一级页 calendar/calendar/index，切面只走「回本页 → D 行首页 → 点目标格」恒定 3 步；返回不重置已选视图，下次进入沿用日 / 周 / 月" aria-label="返回">
+        data-hot-label="回首页（B 区今日区 / C 区日历格）；本页是日历面一级页 calendar/calendar/index，用户可见标题一律「日历」（「到期中心」是概念名、不进 UI 文案）；切面只走「回本页 → D 行首页 → 点目标格」恒定 3 步；返回不重置已选视图，下次进入沿用日 / 周 / 月" aria-label="返回">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
       </button>
     </div>
-    <div class="nav-title">到期中心</div>
+    <div class="nav-title">日历</div>
     <div class="nav-right"></div>
   </div>
 
@@ -203,8 +253,8 @@
     </nav>
     <div class="cal-unavail">
       <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.5V10M10 13v.1"/></svg>
-      <span><b>日历服务暂不可用</b> · 最后同步 08:10</span>
-      <button class="cu-retry" type="button" data-toast="重试只重发本面聚合请求，不白屏、不写「未启用」（本面是必选面）">重试</button>
+      <span><b>日历暂时不可用</b> · 最后同步 08:10</span>
+      <button class="cu-retry" type="button" data-toast="正在重新加载日历（演示）">重试</button>
     </div>
     <div class="cal-cache">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="5.5"/><path d="M8 4.8V8l2.2 1.3"/></svg>
@@ -213,25 +263,33 @@
 
     <div class="cal-bar">
       <div class="cal-month"
-        data-hot="③" data-hot-name="月份切换" data-hot-pos="outer-top-left"
-        data-hot-label="月视图按月切、周视图按周切、日视图按日切；只重拉当期注册项，不预取相邻周期">
-        <button class="cal-arrow" type="button" data-toast="已切到 2026 年 9 月：只重拉该月注册项，不预取相邻月" aria-label="上一月">
+        data-hot="③" data-hot-name="周期切换（‹ ›）" data-hot-pos="outer-top-left"
+        data-hot-label="月视图按月切、周视图按周切、日视图按日切；只重拉当期注册项，不预取相邻周期；三个视图之外没有第四个入口">
+        <button class="cal-arrow" type="button" data-toast="已切到上一周期：正在加载这段安排" aria-label="上一周期">
           <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
         </button>
         <span class="cal-label cal-label-month">2026 年 10 月</span>
         <span class="cal-label cal-label-week">10月26日–11月1日</span>
         <span class="cal-label cal-label-day">10 月 29 日 · 周四</span>
-        <button class="cal-arrow" type="button" data-toast="已切到 2026 年 11 月：只重拉该月注册项，不预取相邻月" aria-label="下一月">
+        <a class="cal-dayplus" href="calendar-create.html?date=2026-10-29"
+          data-hot="⑨" data-hot-name="当前视图「＋」" data-hot-pos="outer-top-left"
+          data-hot-label="当前视图内日期条上的「＋」：一步到 calendar/calendar/create 并预填当前视图日期；与顶栏 ⑧、空态 CTA 一样都落 calendar/calendar/create，不得指向旧路由；保存后回到期中心——共 2 步落库，与 19 卡「到期中心日格热区『＋』= 2 步（日期预填）」逐字一致">＋</a>
+        <button class="cal-arrow" type="button" data-toast="已切到下一周期：正在加载这段安排" aria-label="下一周期">
           <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4l6 6-6 6"/></svg>
         </button>
       </div>
 
-      <div class="segmented"
-        data-hot="②" data-hot-name="日 / 周 / 月" data-hot-pos="outer-top-right"
-        data-hot-label="三视图共用同一份注册项聚合，只换铺法；视图选择是本地偏好，不产生新请求路径">
-        <button type="button" class="cal-seg-day" data-go="calendar.html?state=day">日</button>
-        <button type="button" class="cal-seg-week" data-go="calendar.html?state=week">周</button>
-        <button type="button" class="cal-seg-month" aria-selected="true" data-go="calendar.html">月</button>
+      <div class="cal-right">
+        <div class="segmented"
+          data-hot="②" data-hot-name="日 / 周 / 月" data-hot-pos="outer-top-right"
+          data-hot-label="三视图共用同一份聚合数据，只换铺法；视图选择是本地偏好，不产生新请求路径">
+          <button type="button" class="cal-seg-day" data-go="calendar.html?state=day">日</button>
+          <button type="button" class="cal-seg-week" data-go="calendar.html?state=week">周</button>
+          <button type="button" class="cal-seg-month" aria-selected="true" data-go="calendar.html">月</button>
+        </div>
+        <a class="cal-new" href="calendar-create.html"
+          data-hot="⑧" data-hot-name="顶栏「＋ 新建日程」" data-hot-pos="outer-top-right"
+          data-hot-label="本页三处真实新建入口之一（另两处是 ⑨ 当前视图「＋」与空态 CTA）；三处都落 calendar/calendar/create，不得指向旧路由；一步进新建日程，保存后回来源列表——共 2 步落库，与 19 卡「日程二级 Tab 右上『＋ 新建日程』= 2 步」逐字一致">＋ 新建日程</a>
       </div>
     </div>
 
@@ -248,7 +306,7 @@
     <div class="cal-month-view cal-data">
       <div class="cal-grid-wrap"
         data-hot="④" data-hot-name="日历格" data-hot-pos="outer-bottom-right"
-        data-hot-label="当天高亮；有到期项的日期带点，两项以上为短条；点某日把下方列表切到该日">
+        data-hot-label="当天高亮；月视图格内最多铺 2 条短条，超过 2 条在格内显示「+N」，点某日后由下方列表全量展开（即「更多」）；当前视图「＋」见 ⑨；角标与点位只认服务端按家庭时区回显的当期数据——已过去的不给「下次」预告、每月没有的日号当月不出现、节假日不判不顺延（19 卡同口径）">
         <div class="cal-week-head"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
         <div class="cal-grid">
           <span class="cal-cell is-out">28</span>
@@ -263,14 +321,14 @@
           <button class="cal-cell" type="button" data-day="6" data-count="0"><span class="num">6</span></button>
           <button class="cal-cell" type="button" data-day="7" data-count="0"><span class="num">7</span></button>
           <button class="cal-cell" type="button" data-day="8" data-count="0"><span class="num">8</span></button>
-          <button class="cal-cell" type="button" data-day="9" data-count="2"><span class="num">9</span><span class="cal-dot is-many"></span></button>
+          <button class="cal-cell" type="button" data-day="9" data-count="2"><span class="num">9</span><span class="cal-dot"></span><span class="cal-dot"></span></button>
           <button class="cal-cell" type="button" data-day="10" data-count="0"><span class="num">10</span></button>
           <button class="cal-cell" type="button" data-day="11" data-count="0"><span class="num">11</span></button>
 
           <button class="cal-cell" type="button" data-day="12" data-count="1"><span class="num">12</span><span class="cal-dot"></span></button>
           <button class="cal-cell" type="button" data-day="13" data-count="0"><span class="num">13</span></button>
           <button class="cal-cell" type="button" data-day="14" data-count="0"><span class="num">14</span></button>
-          <button class="cal-cell" type="button" data-day="15" data-count="3"><span class="num">15</span><span class="cal-dot is-many"></span></button>
+          <button class="cal-cell" type="button" data-day="15" data-count="3"><span class="num">15</span><span class="cal-dot"></span><span class="cal-dot"></span><span class="cal-more">+1</span></button>
           <button class="cal-cell" type="button" data-day="16" data-count="0"><span class="num">16</span></button>
           <button class="cal-cell" type="button" data-day="17" data-count="0"><span class="num">17</span></button>
           <button class="cal-cell" type="button" data-day="18" data-count="0"><span class="num">18</span></button>
@@ -279,28 +337,28 @@
           <button class="cal-cell" type="button" data-day="20" data-count="1"><span class="num">20</span><span class="cal-dot"></span></button>
           <button class="cal-cell" type="button" data-day="21" data-count="0"><span class="num">21</span></button>
           <button class="cal-cell" type="button" data-day="22" data-count="0"><span class="num">22</span></button>
-          <button class="cal-cell" type="button" data-day="23" data-count="2"><span class="num">23</span><span class="cal-dot is-many"></span></button>
+          <button class="cal-cell" type="button" data-day="23" data-count="2"><span class="num">23</span><span class="cal-dot"></span><span class="cal-dot"></span></button>
           <button class="cal-cell" type="button" data-day="24" data-count="0"><span class="num">24</span></button>
           <button class="cal-cell" type="button" data-day="25" data-count="0"><span class="num">25</span></button>
 
           <button class="cal-cell" type="button" data-day="26" data-count="0"><span class="num">26</span></button>
           <button class="cal-cell" type="button" data-day="27" data-count="1"><span class="num">27</span><span class="cal-dot"></span></button>
-          <button class="cal-cell" type="button" data-day="28" data-count="0"><span class="num">28</span></button>
-          <button class="cal-cell is-today" type="button" data-day="29" data-count="5"><span class="num">29</span><span class="cal-dot is-many"></span></button>
-          <button class="cal-cell" type="button" data-day="30" data-count="2"><span class="num">30</span><span class="cal-dot is-many"></span></button>
+          <button class="cal-cell" type="button" data-day="28" data-count="1"><span class="num">28</span><span class="cal-dot"></span></button>
+          <button class="cal-cell is-today" type="button" data-day="29" data-count="5"><span class="num">29</span><span class="cal-dot"></span><span class="cal-dot"></span><span class="cal-more">+3</span></button>
+          <button class="cal-cell" type="button" data-day="30" data-count="1"><span class="num">30</span><span class="cal-dot"></span></button>
           <button class="cal-cell" type="button" data-day="31" data-count="1"><span class="num">31</span><span class="cal-dot"></span></button>
           <span class="cal-cell is-out">1</span>
         </div>
         <div class="cal-meta">
           <span>本月 19 项</span>
-          <span>仅已出生服务</span>
+          <span>已开通的内容自动汇总</span>
         </div>
       </div>
 
       <div class="cal-today-block"
         data-hot="⑤" data-hot-name="当日条目" data-hot-pos="bottom-right"
-        data-hot-label="按到期时间升序；整行点进事件详情 calendar/calendar/detail；状态只来自注册项，本页不改状态">
-        <div class="cal-stale">以下为本机最后一次投影值 · 截至 10 月 29 日 08:10</div>
+        data-hot-label="按到期时间升序；整行点进日程详情 calendar/calendar/detail；状态只来自当期数据，本页不改状态">
+        <div class="cal-stale">以下为上次打开时缓存的内容 · 截至 10 月 29 日 08:10</div>
         <div class="section-title cal-today-title">
           <span>今天 5 项</span>
           <span class="tiny">10 月 29 日 · 周四</span>
@@ -337,7 +395,7 @@
             </span>
             <svg class="cal-chev" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
           </a>
-          <a class="cal-item" href="calendar-detail.html">
+          <a class="cal-item" href="calendar-detail.html?state=calendar">
             <span class="cal-time num">16:30</span>
             <span class="cal-body">
               <span class="cal-row1">
@@ -355,8 +413,8 @@
             <span class="cal-time num">20:00</span>
             <span class="cal-body">
               <span class="cal-row1">
-                <span class="cal-title">交物业费</span>
-                <span class="amount cal-amount">-¥380.00</span>
+                <span class="cal-title">水电费</span>
+                <span class="amount cal-amount">-¥180.00</span>
               </span>
               <span class="cal-sub">
                 <span class="cal-src cal-src-fin">财务</span>
@@ -384,7 +442,7 @@
         </div>
       </div>
 
-      <div class="cal-foot-note tiny">只聚合已出生服务的到期对象：本面原生三类（日程 / 待办 / 提醒，直接持有 `calendar_*`，不经 17.4 注册表）+ 财务面按 17.4 注册的账单与周期记账。未出生与未启用的面不出现在这里，也不占位。</div>
+      <div class="cal-foot-note tiny">日程、待办、提醒都是在日历里直接创建的；账单、还款这些完成后会自动汇总到这里。还没开通的功能不会出现在这里，也不占位置。</div>
     </div>
 
     <!-- 周视图 -->
@@ -396,14 +454,14 @@
         <button class="cal-day" type="button" data-date="10 月 27 日" data-count="1">
           <span class="cal-dow">二</span><span class="cal-dnum num">27</span><span class="cal-dot"></span>
         </button>
-        <button class="cal-day" type="button" data-date="10 月 28 日" data-count="0">
-          <span class="cal-dow">三</span><span class="cal-dnum num">28</span>
+        <button class="cal-day" type="button" data-date="10 月 28 日" data-count="1">
+          <span class="cal-dow">三</span><span class="cal-dnum num">28</span><span class="cal-dot"></span>
         </button>
         <button class="cal-day is-today" type="button" data-date="10 月 29 日" data-count="5">
-          <span class="cal-dow">今天</span><span class="cal-dnum num">29</span><span class="cal-dot is-many"></span>
+          <span class="cal-dow">今天</span><span class="cal-dnum num">29</span><span class="cal-dot"></span>
         </button>
-        <button class="cal-day" type="button" data-date="10 月 30 日" data-count="2">
-          <span class="cal-dow">五</span><span class="cal-dnum num">30</span><span class="cal-dot is-many"></span>
+        <button class="cal-day" type="button" data-date="10 月 30 日" data-count="1">
+          <span class="cal-dow">五</span><span class="cal-dnum num">30</span><span class="cal-dot"></span>
         </button>
         <button class="cal-day" type="button" data-date="10 月 31 日" data-count="1">
           <span class="cal-dow">六</span><span class="cal-dnum num">31</span><span class="cal-dot"></span>
@@ -411,6 +469,29 @@
         <button class="cal-day" type="button" data-date="11 月 1 日" data-count="0">
           <span class="cal-dow">日</span><span class="cal-dnum num">1</span>
         </button>
+      </div>
+
+      <div class="cal-day-group">
+        <div class="cal-day-head">
+          <span class="cal-day-title">周三 · 10 月 28 日</span>
+          <span class="cal-day-count">1 项</span>
+        </div>
+        <div class="cal-list">
+          <a class="cal-item" href="calendar-detail.html?state=schedule">
+            <span class="cal-time num">15:00</span>
+            <span class="cal-body">
+              <span class="cal-row1">
+                <span class="cal-title">小满家长会</span>
+              </span>
+              <span class="cal-sub">
+                <span class="cal-src cal-src-cal">日历</span>
+                <span class="cal-st cal-st-soon">待提醒</span>
+                <span class="cal-note">日程 · 周三 15:00–16:00 · 妈妈、小满</span>
+              </span>
+            </span>
+            <svg class="cal-chev" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+          </a>
+        </div>
       </div>
 
       <div class="cal-day-group">
@@ -446,7 +527,7 @@
             </span>
             <svg class="cal-chev" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
           </a>
-          <a class="cal-item" href="calendar-detail.html">
+          <a class="cal-item" href="calendar-detail.html?state=calendar">
             <span class="cal-time num">16:30</span>
             <span class="cal-body">
               <span class="cal-row1">
@@ -464,8 +545,8 @@
             <span class="cal-time num">20:00</span>
             <span class="cal-body">
               <span class="cal-row1">
-                <span class="cal-title">交物业费</span>
-                <span class="amount cal-amount">-¥380.00</span>
+                <span class="cal-title">水电费</span>
+                <span class="amount cal-amount">-¥180.00</span>
               </span>
               <span class="cal-sub">
                 <span class="cal-src cal-src-fin">财务</span>
@@ -496,7 +577,7 @@
       <div class="cal-day-group">
         <div class="cal-day-head">
           <span class="cal-day-title">明天 · 10 月 30 日</span>
-          <span class="cal-day-count">2 项</span>
+          <span class="cal-day-count">1 项</span>
         </div>
         <div class="cal-list">
           <a class="cal-item" href="calendar-detail.html">
@@ -509,19 +590,6 @@
               <span class="cal-sub">
                 <span class="cal-src cal-src-fin">财务</span>
                 <span class="cal-st cal-st-wait">待缴</span>
-              </span>
-            </span>
-            <svg class="cal-chev" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
-          </a>
-          <a class="cal-item" href="calendar-detail.html">
-            <span class="cal-time num">18:30</span>
-            <span class="cal-body">
-              <span class="cal-row1">
-                <span class="cal-title">家庭聚餐</span>
-              </span>
-              <span class="cal-sub">
-                <span class="cal-src cal-src-cal">日历</span>
-                <span class="cal-st cal-st-soon">待提醒</span>
               </span>
             </span>
             <svg class="cal-chev" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
@@ -555,14 +623,34 @@
       <div class="cal-foot-note tiny">周视图与月视图共用同一份注册项，只换铺法；相邻周不预取。</div>
     </div>
 
-    <!-- 空态 -->
+    <!-- 空态：按当前视图解释；并列「新建日程 / 新建待办」两个可执行动作 -->
     <div class="state cal-empty">
       <div class="state-icon">
         <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="7" width="22" height="20" rx="4"/><path d="M5 13h22M11 4v5M21 4v5"/></svg>
       </div>
-      <div class="state-title">本月没有到期项</div>
-      <div class="state-desc">财务账单按 17.4 注册到这里；待办与提醒是本面原生对象，落库即在这里出现。未出生的服务不会占位。</div>
+      <div class="state-title cal-empty-title cal-empty-title-month">本月没有安排</div>
+      <div class="state-title cal-empty-title cal-empty-title-day">今天没有安排</div>
+      <div class="state-title cal-empty-title cal-empty-title-week">本周没有安排</div>
+      <div class="state-desc cal-empty-desc cal-empty-desc-month">这个月还没有日程、待办或提醒。新建一条就会出现在当前月里；账单完成后也会自动汇总进来。</div>
+      <div class="state-desc cal-empty-desc cal-empty-desc-day">今天还没有日程、待办或提醒。新建日程会直接落在今天，也可以先建一条待办。</div>
+      <div class="state-desc cal-empty-desc cal-empty-desc-week">本周还没有日程、待办或提醒。新建一条就会出现在本周对应的一天里。</div>
+      <a class="btn btn-primary" href="calendar-create.html">新建日程</a>
       <a class="btn btn-secondary" href="todo-create.html">新建待办</a>
+    </div>
+
+    <!-- 首屏失败：整页态，与主包列表页同形状；失败期间不渲染旧数据 -->
+    <div class="cal-error">
+      <div class="state" style="padding-top:56px">
+        <div class="state-icon">
+          <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="16" r="12"/><path d="M16 9.5V18M16 22.5v.1"/></svg>
+        </div>
+        <div class="state-title">没能加载日历</div>
+        <div class="state-desc">网络或日历没响应。家里的日程、待办、提醒和账单都还在，重试只重新拉取这一页。</div>
+        <div class="state-code">HC-5102</div>
+        <button class="btn btn-secondary" type="button" data-toast="正在重新加载日历（演示）"
+          data-hot="⑩" data-hot-name="首屏失败的重试" data-hot-pos="top-right"
+          data-hot-label="只重发本面聚合请求；成功回默认态，失败停留整页失败态与原错误码；失败期间不得展示旧数据、不渲染半成品网格">重试</button>
+      </div>
     </div>
   </div>
 
@@ -572,12 +660,12 @@
 <script>
   var state = new URLSearchParams(location.search).get('state') || 'default';
 
-  if (state === 'week') {
+  if (state === 'week' || state === 'empty-week') {
     document.querySelector('.cal-seg-week').setAttribute('aria-selected', 'true');
     document.querySelector('.cal-seg-month').setAttribute('aria-selected', 'false');
   }
 
-  if (state === 'day') {
+  if (state === 'day' || state === 'empty-day') {
     document.querySelector('.cal-seg-day').setAttribute('aria-selected', 'true');
     document.querySelector('.cal-seg-month').setAttribute('aria-selected', 'false');
   }

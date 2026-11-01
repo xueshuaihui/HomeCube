@@ -117,6 +117,13 @@
   body[data-state="empty"] .msg-data,
   body[data-state="empty"] .msg-foot { display: none; }
 
+  .msg-error { display: none; }
+  body[data-state="error"] .msg-error { display: block; }
+  body[data-state="error"] .msg-data,
+  body[data-state="error"] .msg-foot,
+  body[data-state="error"] .msg-sum { display: none; }
+  body[data-state="error"] .msg-readall { display: none; }
+
   body[data-state="offline"] .offline-bar { display: flex; }
   body[data-state="offline"] .msg-cache { display: flex; }
 
@@ -128,7 +135,7 @@
   body[data-state="empty"] .msg-tab .dot { display: none; }
 </style>
 </head>
-<body data-screen="08 消息" data-tab="message" data-states="default,empty,loading,offline,allread">
+<body data-screen="08 消息" data-tab="message" data-states="default,empty,loading,offline,allread,error">
 <div class="harness"></div>
 
 <div class="phone">
@@ -306,6 +313,20 @@
         <div class="state-title">还没有通知</div>
         <div class="state-desc">预算预警、家庭事件与到期提醒都会汇总到这里，不会分散到各个面。</div>
         <button class="btn btn-secondary" type="button" data-go="home.html">去首页看看</button>
+      </div>
+    </div>
+
+    <div class="msg-error">
+      <div class="state">
+        <div class="state-icon">
+          <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="16" cy="16" r="12"/><path d="M16 9v8M16 21.5v.1"/></svg>
+        </div>
+        <div class="state-title">通知加载失败</div>
+        <div class="state-desc">网络看起来不太稳定。红点与未读数量不受影响，重试只重新加载通知列表。</div>
+        <div class="state-code">HC-5101</div>
+        <button class="btn btn-secondary" type="button" data-toast="正在重新加载通知（演示）"
+          data-hot="⑦" data-hot-name="重新加载" data-hot-pos="top-right"
+          data-hot-label="整页错误态下唯一动作；重试只重发通知首屏请求，成功回默认态、失败停留错误态；失败期间顶栏与底栏红点维持现值，不清零">重新加载</button>
       </div>
     </div>
   </div>

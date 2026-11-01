@@ -18,7 +18,6 @@
   }
   .fx-hero-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .fx-hero-cat { font-size: var(--fs-13); font-weight: 700; color: var(--text-2); }
-  .fx-hero-ver { margin-left: auto; flex: none; font-family: var(--font-num); font-size: var(--fs-11); color: var(--text-3); }
   .fx-hero-amt {
     margin-top: 10px;
     font-family: var(--font-num); font-size: var(--fs-30); font-weight: 700;
@@ -185,14 +184,37 @@
 
   .fx-foot {
     flex: none;
-    display: flex; gap: 10px;
+    display: flex; flex-wrap: wrap; gap: 10px;
     padding: 10px 16px 16px;
     background: var(--surface);
     border-top: 1px solid var(--border);
   }
+  .fx-foot-again { flex: 0 0 100%; }
   .fx-foot-edit { flex: 1.5; }
   .fx-foot-del { flex: 1; }
   body[data-state="private-other"] .fx-foot { display: none; }
+
+  /* 加载 / 失败 / 空 */
+  .fx-sk { display: none; padding-top: 10px; }
+  .fx-sk .sk-line:first-child { width: 44%; }
+  body[data-state="loading"] .fx-sk { display: block; }
+  body[data-state="loading"] .fx-main,
+  body[data-state="loading"] .fx-private,
+  body[data-state="loading"] .fx-foot { display: none; }
+
+  .fx-fail { display: none; }
+  body[data-state="failed"] .fx-fail { display: flex; }
+  body[data-state="failed"] .fx-main,
+  body[data-state="failed"] .fx-private,
+  body[data-state="failed"] .fx-foot { display: none; }
+
+  .fx-empty { display: none; }
+  body[data-state="empty"] .fx-empty { display: flex; }
+  body[data-state="empty"] .fx-main,
+  body[data-state="empty"] .fx-private,
+  body[data-state="empty"] .fx-foot { display: none; }
+
+  body[data-state="offline"] .offline-bar { display: flex; }
 
   /* 附件预览浮层 */
   .fx-preview-mask { align-items: center; padding: 18px; }
@@ -227,12 +249,12 @@
   .fx-preview-acts { display: flex; gap: 8px; margin-top: 12px; }
   .fx-preview-acts .btn { flex: 1; padding: 0 8px; }
 
-  /* 他人视角私密 */
+  /* 他人视角：私密流水不下发明细 */
   .fx-private { display: none; }
   body[data-state="private-other"] .fx-private { display: block; }
   body[data-state="private-other"] .fx-main { display: none; }
   .fx-private-hero {
-    margin-top: 10px; padding: 22px 20px 20px;
+    margin-top: 10px; padding: 26px 20px 22px;
     border-radius: var(--radius-xl);
     border: 1px dashed var(--border-strong);
     background: var(--surface-2);
@@ -244,13 +266,8 @@
     display: flex; align-items: center; justify-content: center;
     background: var(--surface); color: var(--text-3);
   }
-  .fx-private-amt {
-    margin-top: 12px;
-    font-family: var(--font-num); font-size: var(--fs-24); font-weight: 700;
-    color: var(--text-3); letter-spacing: .04em;
-  }
-  .fx-private-cat { margin-top: 6px; font-size: var(--fs-13); color: var(--text-2); }
-  .fx-private-meta { margin-top: 10px; font-size: var(--fs-12); color: var(--text-3); }
+  .fx-private-title { margin-top: 12px; font-size: var(--fs-16); font-weight: 700; }
+  .fx-private-cat { margin-top: 6px; font-size: var(--fs-13); color: var(--text-2); line-height: var(--lh-normal); }
   .fx-private-note {
     margin-top: 12px; padding: 12px 14px;
     border-radius: var(--radius-lg);
@@ -260,24 +277,9 @@
     color: var(--text-2);
   }
   .fx-private-note b { display: block; margin-bottom: 2px; font-size: var(--fs-13); color: var(--text); }
-  .fx-private-rows {
-    margin: 12px 0 16px;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border);
-    background: var(--surface);
-    overflow: hidden;
-  }
-  .fx-private-row {
-    display: flex; align-items: center; gap: 12px;
-    padding: 12px 14px;
-    font-size: var(--fs-13);
-  }
-  .fx-private-row + .fx-private-row { border-top: 1px solid var(--border); }
-  .fx-private-row span:first-child { width: 72px; flex: none; color: var(--text-3); }
-  .fx-private-row span:last-child { flex: 1; min-width: 0; }
 </style>
 </head>
-<body data-screen="F04 单笔详情" data-states="default,transfer,attachments,private-other">
+<body data-screen="F04 单笔详情" data-states="default,transfer,attachments,private-other,loading,failed,empty,offline">
 <div class="harness"></div>
 
 <div class="phone">
@@ -304,19 +306,48 @@
 
   <div class="offline-bar">
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8a6 6 0 0 1 12 0"/><path d="M2 2l12 12"/></svg>
-    当前离线 · 显示本机缓存
+    当前离线 · 显示 10 月 30 日 14:32 的本机缓存，联网后自动更新
   </div>
 
   <div class="content bottom-space fx-content">
+    <div class="fx-sk" aria-hidden="true">
+      <div class="skeleton sk-line"></div>
+      <div class="skeleton sk-block" style="height:150px"></div>
+      <div class="skeleton sk-block" style="height:60px"></div>
+      <div class="skeleton sk-block" style="height:250px"></div>
+    </div>
+
+    <div class="fx-fail state">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="16" r="11"/><path d="M16 9.5v7M16 21v.1"/></svg>
+      </div>
+      <div class="state-title">这笔流水没加载出来</div>
+      <div class="state-desc">网络不稳或服务暂时没响应；如果之前打开过，可以先看本机缓存。点「重新加载」再试。</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" type="button" data-toast="正在重新加载这笔流水">重新加载</button>
+        <button class="btn btn-secondary" type="button" data-go="finance-flow.html">回流水列表</button>
+      </div>
+    </div>
+
+    <div class="fx-empty state">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="7" width="22" height="18" rx="3"/><path d="M11 12h10M11 16h6"/><path d="M11 24l10-8"/></svg>
+      </div>
+      <div class="state-title">该流水已不存在</div>
+      <div class="state-desc">可能已被删除，或者链接里的编号不对。删除的流水 30 天内还能在回收站里找回。</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" type="button" data-go="finance-flow.html">回流水列表</button>
+        <button class="btn btn-primary" type="button" data-go="finance-tx-trash.html">去回收站看看</button>
+      </div>
+    </div>
+
     <div class="fx-main">
       <section class="fx-hero"
         data-hot="②" data-hot-name="金额与分类" data-hot-pos="top-right"
         data-hot-label="金额是这一屏的主信息：负数在货币符号之前、按家庭币种显示；分类带二级。改动金额与分类都在编辑页，详情页只读">
         <div class="fx-hero-top">
           <span class="fx-hero-cat fx-hero-exp">餐饮 · 晚餐</span>
-          <span class="fx-hero-cat fx-hero-trf">转账 <span class="tag">成对</span></span>
-          <span class="fx-hero-ver fx-hero-exp">版本 3</span>
-          <span class="fx-hero-ver fx-hero-trf">版本 2</span>
+          <span class="fx-hero-cat fx-hero-trf">转账 <span class="tag">两笔一组</span></span>
         </div>
         <div class="fx-hero-amt num fx-hero-exp">-¥128.00</div>
         <div class="fx-hero-amt num fx-hero-trf">¥500.00</div>
@@ -351,9 +382,9 @@
 
       <section class="fx-pair"
         data-hot="④" data-hot-name="成对转账" data-hot-pos="bottom-right"
-        data-hot-label="转账是成对流水：转出与转入同属一个 transfer_group，编辑金额或删除都成对生效；点另一笔切到那条详情，两条详情都能互相跳">
+        data-hot-label="转账是两笔一组的流水：转出与转入一起生成，改金额或删除都一起生效；点另一笔切到那条详情，两条详情互相能跳">
         <div class="fx-pair-head">
-          <span>成对流水 · 1 组</span>
+          <span>转账两笔 · 1 组</span>
           <span class="tiny">转账不计入收支与预算</span>
         </div>
         <div class="fx-pair-row is-cur">
@@ -368,13 +399,13 @@
           <span class="fx-pair-amt num is-in">+¥500.00</span>
           <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
         </a>
-        <div class="fx-pair-note">两笔同一 transfer_group：改金额或删除时成对生效；删掉其中一笔会提示「转账需成对删除」。</div>
+        <div class="fx-pair-note">两笔一起改、一起删；删掉其中一笔会提示「转账要两笔一起删」。</div>
       </section>
 
       <div class="fx-sec"><span>这笔的归属</span><span class="tiny">只读</span></div>
       <div class="fx-fld-wrap"
         data-hot="⑤" data-hot-name="分类与归属" data-hot-pos="bottom-right"
-        data-hot-label="分类、账户、成员、时间、账本、标签与版本全在这里只读展示；改任一项都在编辑页，且编辑带 version。账本只是报表分组，不是权限边界">
+        data-hot-label="分类、账户、成员、时间、账本与标签都在这里只读展示；改任一项都在编辑页。账本只是报表分组，不是权限边界">
       <div class="list fx-fld-expense">
         <div class="fx-row">
           <span class="fx-row-k">分类</span>
@@ -382,7 +413,7 @@
         </div>
         <div class="fx-row">
           <span class="fx-row-k">账户</span>
-          <span class="fx-row-v num">招行信用卡 · 尾号 3941<span class="fx-row-v-sub">信用卡为负债账户，余额按欠款口径显示</span></span>
+          <span class="fx-row-v num">招商银行 · 尾号 6882<span class="fx-row-v-sub">储蓄卡；保存后余额 ¥32,480.00</span></span>
         </div>
         <div class="fx-row">
           <span class="fx-row-k">成员</span>
@@ -401,8 +432,8 @@
           <span class="fx-row-v fx-tags"><span class="tag is-brand">家庭</span><span class="tag">聚餐</span></span>
         </div>
         <div class="fx-row">
-          <span class="fx-row-k">版本</span>
-          <span class="fx-row-v num">3<span class="fx-row-v-sub">爸爸 10 月 28 日 19:26 最后修改；编辑与删除都按这个版本校验</span></span>
+          <span class="fx-row-k">最后修改</span>
+          <span class="fx-row-v num">爸爸 10 月 28 日 19:26<span class="fx-row-v-sub">编辑与删除都以家里最新的这一版为准，不会悄悄覆盖</span></span>
         </div>
       </div>
 
@@ -436,8 +467,8 @@
           <span class="fx-row-v"><span class="tiny">无标签</span></span>
         </div>
         <div class="fx-row">
-          <span class="fx-row-k">版本</span>
-          <span class="fx-row-v num">2<span class="fx-row-v-sub">我 10 月 28 日 18:22 最后修改</span></span>
+          <span class="fx-row-k">最后修改</span>
+          <span class="fx-row-v num">我 10 月 28 日 18:22</span>
         </div>
       </div>
       </div>
@@ -454,7 +485,7 @@
       <div class="fx-sec"><span>附件</span><span class="tiny">2 张 · 最多 3 张</span></div>
       <div class="fx-attach-card"
         data-hot="⑦" data-hot-name="附件" data-hot-pos="bottom-right"
-        data-hot-label="小票与凭证最多 3 张、单张 ≤5MB、只收 jpg / png / webp；点缩略图开预览浮层，可放大、看原图与下载。附件归属家庭文件，流水只存引用">
+        data-hot-label="小票与凭证最多 3 张、单张 ≤5MB、只收 jpg / png / webp；点缩略图开预览浮层，可放大、看原图与下载。附件归属家庭文件，流水只引用它">
         <div class="fx-thumbs">
           <button class="fx-thumb" type="button" data-sheet-open="sheet-attach">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="2"/><circle cx="7.5" cy="8" r="1.2"/><path d="M4 14l4-4 3 3 2-2 3 3"/></svg>
@@ -470,31 +501,42 @@
 
       <div class="fx-vis-note">
         <b>家庭流水全员可见</b>
-        只有被作者标记为「私密」的行例外：那样只有作者与管理员能读到金额、分类、备注与附件，其他成员看到的是占位。
+        标记为「私密」的行是例外：只有作者与管理员能读到金额、分类、备注与附件；其他成员连这一行都收不到。私密行仍计入家庭合计，只从 AA 分摊与跨面归集里排除。
       </div>
     </div>
 
-    <!-- 他人视角：私密流水 -->
+    <!-- 他人视角：私密流水不下发明细 -->
     <section class="fx-private">
       <div class="fx-private-hero">
         <span class="fx-lock">
           <svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="9" width="11" height="7.5" rx="2"/><path d="M7 9V6.8a3 3 0 0 1 6 0V9"/></svg>
         </span>
-        <div class="fx-private-amt">私密</div>
-        <div class="fx-private-cat">金额与分类已隐藏</div>
-        <div class="fx-private-meta">妈妈 · 10 月 28 日 21:05</div>
+        <div class="fx-private-title">这笔流水不在你的可见范围</div>
+        <div class="fx-private-cat">它被作者标记为私密，只有作者与管理员能读到明细。</div>
       </div>
 
       <div class="fx-private-note">
-        <b>这笔流水被标记为私密</b>
-        只有作者与管理员能读到金额、分类、备注与附件；其他成员在这里只看到占位，服务端也不下发具体值，本机没有可解的内容。
+        <b>家庭合计里仍然算它</b>
+        私密流水会计入家庭本月收入、支出、结余与统计总量，也会出现在合计数里；只是具体这一行其他成员收不到，本机也读不到金额、分类、备注与附件。
       </div>
 
-      <div class="fx-private-rows">
-        <div class="fx-private-row"><span>成员</span><span>妈妈</span></div>
-        <div class="fx-private-row"><span>可见范围</span><span>作者 妈妈 · 管理员 爸爸</span></div>
-        <div class="fx-private-row"><span>你的角色</span><span>成人成员 · 不可读</span></div>
-        <div class="fx-private-row"><span>是否进报表</span><span>只计入家庭总额，不出明细</span></div>
+      <div class="list" style="margin:12px 0 16px">
+        <div class="fx-row">
+          <span class="fx-row-k">可见范围</span>
+          <span class="fx-row-v">作者与管理员</span>
+        </div>
+        <div class="fx-row">
+          <span class="fx-row-k">你的角色</span>
+          <span class="fx-row-v">成人成员 · 不可读</span>
+        </div>
+        <div class="fx-row">
+          <span class="fx-row-k">是否进合计</span>
+          <span class="fx-row-v">计入家庭合计，不出明细</span>
+        </div>
+        <div class="fx-row">
+          <span class="fx-row-k">排除范围</span>
+          <span class="fx-row-v">只从 AA 分摊与跨面归集里排除</span>
+        </div>
       </div>
 
       <button class="btn btn-secondary btn-block" type="button" data-go="finance-flow.html">返回流水</button>
@@ -502,14 +544,19 @@
   </div>
 
   <div class="fx-foot">
+    <button class="btn btn-secondary btn-block fx-foot-again" type="button" data-go="finance-tx-create.html"
+      data-hot="⑧" data-hot-name="再记一笔" data-hot-pos="outer-bottom-right"
+      data-hot-label="打开一张全新的记一笔，默认值重新取当前账户与今天；不复制这一笔，也不改动这一笔">
+      再记一笔
+    </button>
     <button class="btn btn-primary fx-foot-edit" type="button" data-go="finance-tx-edit.html"
-      data-hot="⑧" data-hot-name="编辑" data-hot-pos="outer-bottom-right"
-      data-hot-label="带走当前 version 进编辑页；详情页不改任何值，改金额、分类、账户都在编辑页完成，保存后回到本页看新值">
+      data-hot="⑨" data-hot-name="编辑" data-hot-pos="outer-bottom-right"
+      data-hot-label="进编辑页；详情页不改任何值，改金额、分类、账户、类型都在编辑页完成，保存成功后回流水列表并只提示一次「已保存」">
       编辑
     </button>
     <button class="btn btn-danger fx-foot-del" type="button" data-sheet-open="sheet-del"
-      data-hot="⑨" data-hot-name="删除" data-hot-pos="outer-bottom-right"
-      data-hot-label="先弹确认层；删除是软删，进回收站后 30 天内可由作者或管理员恢复。转账会提醒两笔成对删除，周期规则自动入账的这笔只删这一笔">
+      data-hot="⑩" data-hot-name="删除" data-hot-pos="outer-bottom-right"
+      data-hot-label="先弹确认层；删除是软删，进回收站后 30 天内可由作者或管理员恢复。转账会提醒两笔一起删，周期规则自动入账的这笔只删这一笔">
       删除
     </button>
   </div>
@@ -530,7 +577,7 @@
       <div class="fx-preview-meta">1.2 MB · jpg · 爸爸 10 月 28 日 19:24 上传</div>
       <div class="fx-preview-acts">
         <button class="btn btn-secondary btn-sm" type="button" data-toast="上一张：小票 2">上一张</button>
-        <button class="btn btn-secondary btn-sm" type="button" data-toast="下载原图：附件归属家庭文件，流水只存 file_id 引用">下载</button>
+        <button class="btn btn-secondary btn-sm" type="button" data-toast="下载原图；附件归家庭文件，这笔流水只是引用它">下载</button>
         <button class="btn btn-secondary btn-sm" type="button" data-toast="下一张：小票 2">下一张</button>
       </div>
     </div>

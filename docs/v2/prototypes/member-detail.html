@@ -79,9 +79,28 @@
   body[data-state="loading"] .mbr-real { display: none; }
   .mbr-sk-item { display: flex; gap: 12px; padding: 12px 0; }
   .mbr-sk-av { width: 36px; height: 36px; border-radius: var(--radius-pill); }
+
+  .mbr-you {
+    display: none; align-items: center; gap: 4px;
+    margin-top: 8px; padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    background: var(--surface); color: var(--brand-text);
+    border: 1px solid var(--brand-soft-border);
+    font-size: 10px; font-weight: 700;
+  }
+  body[data-state="transfer"] .mbr-you { display: inline-flex; }
+
+  .mbr-transfer-hint { display: none; }
+  body[data-state="transfer"] .mbr-transfer-hint { display: block; }
+  .mbr-transfer-hint .li-text { font-size: var(--fs-13); }
+  .mbr-transfer-hint .li-sub { line-height: var(--lh-normal); }
+
+  .mbr-error { display: none; }
+  body[data-state="error"] .mbr-error { display: block; }
+  body[data-state="error"] .mbr-real { display: none; }
 </style>
 </head>
-<body data-screen="24 成员主页" data-tab="" data-states="default,empty,guardian,loading">
+<body data-screen="24 成员主页" data-tab="" data-states="default,empty,guardian,transfer,loading,error">
 <div class="harness"></div>
 
 <div class="phone">
@@ -122,6 +141,7 @@
         <span class="avatar mbr-ava" id="mbr-avatar">妈</span>
         <div class="mbr-name" id="mbr-name">李妈妈</div>
         <div class="mbr-rel"><span id="mbr-relation">妈妈</span> · 三口之家</div>
+        <span class="mbr-you">这是你</span>
         <div class="mbr-guard">
           <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l6 2.5v4.2c0 3.3-2.4 6.1-6 7.3-3.6-1.2-6-4-6-7.3V5.5z"/></svg>
           由你代管
@@ -140,6 +160,16 @@
         <div class="list-item">
           <span class="li-text">家庭<span class="li-sub">三口之家 · 家庭内称谓由管理员维护</span></span>
         </div>
+      </div>
+
+      <!-- 转让指引行：仅管理员看自己这一屏出现；纯文案 + 真实链接，本页没有可写控件 -->
+      <div class="list mbr-transfer-hint"
+        data-hot="⑦" data-hot-name="转让指引行" data-hot-pos="bottom-right"
+        data-hot-label="全角色只读的本页不放任何可写控件：这一行是纯文案 + 真实链接，点它直达 family-detail.html?state=transfer；本页不弹转让确认层，转让的判据与确认层只在治理页那一份">
+        <button class="list-item" type="button" data-go="family-detail.html?state=transfer">
+          <span class="li-text">换管理员<span class="li-sub">去成员治理页：点开要接任的那位家人，把角色选成「管理员」，确认在治理页完成</span></span>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+        </button>
       </div>
 
       <div class="section-title">
@@ -246,6 +276,19 @@
 
       <div class="tiny mbr-foot">公开页只展示姓名、头像、关系、加入时间与代管人；手机号、角色与权限不在这里展示。家人从动态或成员列表点进来，都会落到这一页。</div>
     </div>
+
+    <!-- 首屏失败：不拿上一次读到的成员头与动态顶着 -->
+    <div class="state mbr-error" style="padding-top:72px">
+      <div class="state-icon">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="16" cy="16" r="12"/><path d="M16 9.5v8M16 21.6v.1"/></svg>
+      </div>
+      <div class="state-title">成员主页没加载出来</div>
+      <div class="state-desc">TA 的信息与动态来自服务端。失败期间不展示上一次读到的内容——过期数据会被当成这个人的现状。重试不改动任何状态。</div>
+      <div class="state-code">HC-4204</div>
+      <button class="btn btn-secondary" type="button" style="margin-top:8px" data-go="member-detail.html"
+        data-hot="⑧" data-hot-name="首屏失败的重试" data-hot-pos="top-right"
+        data-hot-label="只重发一次该成员的公开页数据；重试期间回到骨架态，不把上一次读到的成员头与动态留在页上">重新加载</button>
+    </div>
   </div>
 
   <div class="toast"></div>
@@ -261,9 +304,16 @@
     document.getElementById('mbr-name').textContent = '奶奶';
     document.getElementById('mbr-relation').textContent = '奶奶';
     document.getElementById('mbr-join').textContent = '2024 年 9 月 8 日';
-    document.getElementById('mbr-guardian').textContent = '我（李建国）· 无账号被记录成员，代写标注 on_behalf_of';
+    document.getElementById('mbr-guardian').textContent = '我 · 无账号被记录成员，由我代写的记录标注「代管写入」';
     listDefault.hidden = true;
     listGuardian.hidden = false;
+  }
+
+  if (mbrState === 'transfer') {
+    document.getElementById('mbr-avatar').textContent = '建';
+    document.getElementById('mbr-name').textContent = '李建国';
+    document.getElementById('mbr-relation').textContent = '爸爸';
+    document.getElementById('mbr-guardian').textContent = '无 · 本人有账号；你代管的记录会出现在他们的成员主页上';
   }
 
   var chips = Array.prototype.slice.call(document.querySelectorAll('[data-face-filter]'));

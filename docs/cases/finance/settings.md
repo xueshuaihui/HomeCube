@@ -1,13 +1,13 @@
 # 财务 · 财务面设置（活配置）
 
 > 范围：`GET/PUT /api/finance/settings` 的读取、默认创建、部分/全量更新、参数校验、活配置写即生效。
-> 权威源：`docs/prd-homecube.md` 4.8:664（财务面内设置：提醒阈值、附件限额、记账默认项；**必须是活配置，禁止死 UI**）、3.3:246（设置必须活配置：写入即生效，禁止只做静态展示层）、3.7:412-413（HomeOS 设置同口径）。
+> 权威源：`docs/prd-homecube.md` 4.8:693（财务面内设置：提醒阈值、附件限额、记账默认项；**必须是活配置，禁止死 UI**）、3.3:246（设置必须活配置：写入即生效，禁止只做静态展示层）、3.7:413-413（HomeOS 设置同口径）。
 > 本文件 case 前缀 `FIN-SET`。**Sprint 归属：PRD 明确 P1-M1，但技术方案 §十一 未点名，故标「未点名(P1-M1)」，不得臆造 Sprint。**
 
 ---
 
 ## FIN-SET-001 · 读取设置：无记录时服务端创建默认值
-- 关联需求：PRD 4.8:664（`GET /api/finance/settings`，P1-M1 新建）、3.3:246
+- 关联需求：PRD 4.8:701（`GET /api/finance/settings`，P1-M1 新建）、3.3:246
 - 类型：功能 | 优先级：P0 | 建议归属 Sprint：未点名(P1-M1)
 - 前置条件：新建家庭，尚未写过任何财务设置
 - 步骤：首次调用 `GET /api/finance/settings`
@@ -15,11 +15,11 @@
   - 返回 200 与一组合法默认值（提醒阈值/附件限额/记账默认项齐全）
   - 服务端**落库**该默认记录，后续读取不再重复创建
   - 缺会话/缺 `family_id` 时 fail-closed 拒绝，不返回他人家庭设置
-- 实现现状（快照）：已实现(HTTP)（`server/services/svc-finance/internal/handler/finance_settings_test.go:101` 默认创建、`:281` 缺会话 fail-closed）
+- 实现现状（快照）：已实现(HTTP)（`server/services/svc-finance/internal/handler/finance_settings_test.go:101` 默认创建、`:281` 缺会话 fail-closed）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## FIN-SET-002 · 部分更新与全量更新
-- 关联需求：PRD 4.8:683（`PUT /api/finance/settings`）、4.2（写接口约定）
+- 关联需求：PRD 4.8:693（`PUT /api/finance/settings`）、4.2（写接口约定）
 - 类型：功能 | 优先级：P0 | 建议归属 Sprint：未点名(P1-M1)
 - 前置条件：已有设置记录
 - 步骤：
@@ -29,11 +29,11 @@
   - 部分更新只改指定字段，其余字段保持原值
   - 全量更新后逐字段与提交值一致
   - 更新不产生重复记录（同家庭唯一）
-- 实现现状（快照）：已实现(HTTP)（`server/services/svc-finance/internal/handler/finance_settings_test.go:178` 部分更新、`:232` 全量更新）
+- 实现现状（快照）：已实现(HTTP)（`server/services/svc-finance/internal/handler/finance_settings_test.go:178` 部分更新、`:232` 全量更新）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## FIN-SET-003 · 非法参数拒绝（三类）
-- 关联需求：PRD 4.8:664、4.2（参数校验）
+- 关联需求：PRD 4.8:701、4.2（参数校验）
 - 类型：异常 | 优先级：P1 | 建议归属 Sprint：未点名(P1-M1)
 - 前置条件：已有设置记录
 - 步骤：分别提交三类非法值（各一次）
@@ -41,11 +41,11 @@
   - 三类均返回 400，带明确错误信息
   - **不产生部分写入**（失败后原值不变）
   - 服务端不 panic、不 500
-- 实现现状（快照）：已实现(HTTP)（`server/services/svc-finance/internal/handler/finance_settings_test.go:305`、`:329`、`:353` 三类非法参数）
+- 实现现状（快照）：已实现(HTTP)（`server/services/svc-finance/internal/handler/finance_settings_test.go:305`、`:329`、`:353` 三类非法参数）｜证据待重基线（代码仓未纳入本工作区，重基线 2026-11-01）
 - 执行状态：未执行
 
 ## FIN-SET-004 · 活配置写即生效（禁止死 UI）
-- 关联需求：PRD 4.8:683（必须是活配置，禁止死 UI）、3.3:246（写入即生效，禁止只做静态展示层）
+- 关联需求：PRD 4.8:693（必须是活配置，禁止死 UI）、3.3:246（写入即生效，禁止只做静态展示层）
 - 类型：功能 | 优先级：P0 | 建议归属 Sprint：未点名(P1-M1)
 - 前置条件：已写入自定义提醒阈值与记账默认项
 - 步骤：
